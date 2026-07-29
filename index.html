@@ -4,6 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NeuroStudy — 뇌 컨디션 기반 학습 코치</title>
+
+<!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
+<meta name="description" content="수면·스트레스·피로를 넣으면 오늘 내 뇌가 어떤 공부에 맞는지 5가지 능력으로 계산하고, 과목별 공부 시간까지 짜 줍니다. 설치 없이 링크만 열면 됩니다.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NeuroStudy — 뇌 컨디션 기반 학습 코치">
+<meta property="og:description" content="오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱. 친구들과 순공 시간으로 겨루는 학교 리그도 있어요.">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary">
+
+<!-- 홈 화면에 추가했을 때 앱처럼 보이게 -->
+<meta name="theme-color" content="#6d4aff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NeuroStudy">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
 <style>
 /* =========================================================================
  * NeuroStudy — styles (light theme)
@@ -739,6 +754,28 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 .adm-divider { border: none; border-top: 1px dashed var(--line); margin: 28px 0 18px; }
 
+/* ─────────────────────────────────────────── 친구 초대 (링크 공유) */
+.invite { border: 1px solid var(--accent-line); background: linear-gradient(150deg, var(--accent-soft), var(--surface) 62%); }
+.invite-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+.invite-row .input {
+  flex: 1 1 240px; min-width: 0; font-size: 13px;
+  background: var(--surface); color: var(--muted);
+}
+.invite-row .btn { flex: 0 0 auto; }
+
+/* 관리자 진입 — 학생 눈에 띄지 않게 설정 맨 아래에 조용히 둔다 */
+.admin-entry { margin: 26px 0 4px; text-align: center; }
+.admin-entry-btn {
+  border: none; background: none; font: inherit; font-size: 12px;
+  color: var(--dim); cursor: pointer; padding: 8px 14px; border-radius: 8px;
+  transition: color .15s, background .15s;
+}
+.admin-entry-btn:hover { color: var(--muted); background: var(--surface-2); }
+
+@media (max-width: 560px) {
+  .invite-row .btn { flex: 1 1 auto; }
+}
+
 /* ===================================================== 자동완성 목록 ==== */
 .ac-wrap { position: relative; }
 .ac-list {
@@ -1127,6 +1164,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 </style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%236d4aff'/><text x='50' y='72' font-size='58' text-anchor='middle'>🧠</text></svg>">
 </head>
 <body>
 
@@ -1665,6 +1703,20 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         </div>
       </div>
     </div>
+
+    <div class="card wide invite">
+      <div class="card-head"><span class="ci">💌</span><h3>친구 초대하기</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 16px">함께 쓸수록 랭킹과 리그가 재미있어집니다.
+          아래 버튼으로 <b>앱 주소</b>를 바로 보낼 수 있어요. 설치 없이 링크만 열면 됩니다.</p>
+        <div class="invite-row">
+          <input type="text" id="shareUrl" class="input code" readonly>
+          <button type="button" class="btn primary" id="shareApp">📤 공유하기</button>
+          <button type="button" class="btn" id="copyUrl">복사</button>
+        </div>
+        <p class="tiny" id="shareHint" style="margin-top:12px">카카오톡·문자·인스타 어디로든 보낼 수 있어요.</p>
+      </div>
+    </div>
   </section>
 
   <!-- ══════════════════════════════ 5-1. 학교 리그 ══════════════════════════════ -->
@@ -1854,7 +1906,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">🙋</span><h3>선생님에게 내 기록 보이기</h3></div>
+      <div class="card-head"><span class="ci">🙋</span><h3>관리자에게 내 기록 보이기</h3></div>
       <div class="card-body">
         <p class="tiny" style="margin:0 0 14px"><b>학교 리그와는 별개의 기능입니다.</b> 리그는 학교 합계만 다뤄
           누가 누군지 알 수 없지만, 이건 <b>내 닉네임이 그대로 관리자 화면에 뜹니다.</b>
@@ -1878,7 +1930,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           </div>
         </div>
 
-        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="studentShareOn"><span><b>선생님(관리자)에게 내 닉네임과 학습 시간을 보여줍니다</b></span></label>
+        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="studentShareOn"><span><b>관리자에게 내 닉네임과 학습 시간을 보여줍니다</b></span></label>
 
         <p class="tiny" id="studentShareMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 반드시 보호자와 함께 결정하세요.</b>
           이건 <b>이름으로 나를 특정할 수 있는</b> 정보가 외부 서버에 저장되는 기능입니다.
@@ -1922,6 +1974,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           나이스 인증키는 개인 자격 증명이라 <b>백업에 포함하지 않습니다.</b> 새 기기에서는 설정에서 한 번 더 입력하세요.</p>
       </div>
     </div>
+
+    <p class="admin-entry">
+      <button type="button" class="admin-entry-btn" id="openAdmin">👑 관리자 화면</button>
+    </p>
   </section>
 
   <!-- ══════════════════════════════ 관리자 모드 ══════════════════════════════ -->
@@ -1956,7 +2012,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     <div class="card wide is-hidden" id="adminStudentsCard">
       <div class="card-head"><span class="ci">🌐</span><h3>학교 전체 — 이번 주 학생 목록 (실시간)</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px"><b>선생님에게 내 기록 보이기</b>를 켠 학생만 여기 뜹니다.
+        <p class="tiny" style="margin:0 0 14px"><b>관리자에게 내 기록 보이기</b>를 켠 학생만 여기 뜹니다.
           켜지 않은 학생은 공부를 해도 이 목록에 나타나지 않습니다 — 감춰진 게 아니라 애초에 전송되지 않은 것입니다.</p>
         <div class="search-box">
           <input type="text" id="adminStudentSearch" class="input" placeholder="닉네임, 학교 검색...">
@@ -1977,7 +2033,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     </div>
 
     <p class="tiny adm-scope is-hidden" id="adminServerScopeNote">🔒 <b>이 목록이 보여줄 수 있는 범위</b> —
-      <b>선생님에게 내 기록 보이기</b>를 스스로 켠 학생만 보입니다. 서버에 강제로 모으는 절차는 없습니다.
+      <b>관리자에게 내 기록 보이기</b>를 스스로 켠 학생만 보입니다. 서버에 강제로 모으는 절차는 없습니다.
       이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 학생</b>을 볼 수 있습니다
       (관리자가 한 명이라는 전제로 설계했습니다).</p>
 
@@ -3755,7 +3811,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
  * 위의 "학교 리그"는 학교 합계만 다뤄 누가 누군지 알 수 없다.
  * 이 아래 기능은 그 반대다 — 관리자가 "지민 · 3시간 20분" 처럼
  * 닉네임으로 개인을 식별해서 본다. 그래서 리그와는 완전히 분리된
- * 별도의 동의 스위치를 쓴다 (설정 화면의 "선생님에게 내 기록 보이기").
+ * 별도의 동의 스위치를 쓴다 (설정 화면의 "관리자에게 내 기록 보이기").
  *
  *   나가는 것: 닉네임, 학교명, 주차, 순공 시간(분), 기기 ID
  *   보는 사람: admins 테이블에 등록된 계정으로 로그인한 사람뿐.
@@ -6483,8 +6539,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (!toastEl) {
       toastEl = document.createElement('div');
       toastEl.className = 'toast';
+      // 화면을 못 보는 사용자도 알림을 들을 수 있어야 한다.
+      // 오류는 즉시(assertive), 나머지는 하던 말이 끝난 뒤(polite) 읽힌다.
+      toastEl.setAttribute('role', 'status');
+      toastEl.setAttribute('aria-live', 'polite');
       document.body.appendChild(toastEl);
     }
+    toastEl.setAttribute('aria-live', (kind === true || kind === 'err') ? 'assertive' : 'polite');
     var extra = kind === true || kind === 'err' ? ' err' : (kind === 'party' ? ' party' : '');
     toastEl.textContent = msg;
     toastEl.className = 'toast show' + extra;
@@ -6515,13 +6576,20 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     { id: 'secGroup', num: '5', label: '랭킹', hash: 'rank' },
     { id: 'secLeague', num: '🏆', label: '리그', hash: 'league' },
     { id: 'secReport', num: '6', label: '리포트', hash: 'report' },
-    { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' },
+    { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' }
+  ];
+
+  /* 상단 탭에는 없지만 이동은 되는 페이지들.
+   * 관리자 화면은 학생이 쓸 일이 없어 탭에서 빼고 [설정] 맨 아래에서만 들어간다. */
+  var HIDDEN_PAGES = [
     { id: 'secAdmin', num: '👑', label: '관리자', hash: 'admin' }
   ];
-  var ALL_SECTIONS = PAGES.map(function (p) { return p.id; }).concat(['secProfile']);
 
-  function pageBy(id) { return PAGES.filter(function (p) { return p.id === id; })[0] || null; }
-  function pageByHash(h) { return PAGES.filter(function (p) { return p.hash === h; })[0] || null; }
+  var ALL_PAGES = PAGES.concat(HIDDEN_PAGES);
+  var ALL_SECTIONS = ALL_PAGES.map(function (p) { return p.id; }).concat(['secProfile']);
+
+  function pageBy(id) { return ALL_PAGES.filter(function (p) { return p.id === id; })[0] || null; }
+  function pageByHash(h) { return ALL_PAGES.filter(function (p) { return p.hash === h; })[0] || null; }
 
   /** 지금 열 수 있는 페이지 목록 (프로필 없음 → 없음 / 분석 전 → 일부 잠금) */
   function openPages() {
@@ -6579,6 +6647,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var allowed = open.some(function (p) { return p.id === id; });
 
     if (id === 'secProfile') allowed = true; // 프로필 편집은 언제나 가능
+    // 탭에 없는 페이지(관리자)는 프로필만 있으면 들어갈 수 있다.
+    // 실제 자물쇠는 화면 안의 로그인이지 이 라우팅이 아니다.
+    if (!allowed && Store.profile() && HIDDEN_PAGES.some(function (p) { return p.id === id; })) allowed = true;
 
     if (!allowed) {
       var p = pageBy(id);
@@ -8492,6 +8563,77 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     initStudentShare();
   }
 
+  /* ============================================================ 링크 공유
+   * 친구를 부르려면 앱 주소를 보내면 된다. 그런데 그 주소를 직접 치게 하면
+   * 아무도 안 한다. 그래서 한 번 눌러 바로 보낼 수 있게 해 둔다. */
+
+  /** 지금 열려 있는 주소에서 해시·쿼리를 떼어 낸 "앱 주소" */
+  function appUrl() {
+    return location.origin + location.pathname.replace(/index\.html$/, '');
+  }
+
+  var SHARE_TEXT = '🧠 NeuroStudy — 오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱이야.\n' +
+                   '순공 시간으로 친구들이랑 겨루는 학교 리그도 있어. 설치 없이 링크만 열면 돼!';
+
+  /** execCommand 는 사라지는 중이고 clipboard 는 권한이 필요하다 — 둘 다 시도한다 */
+  function copyText(text, okMsg) {
+    function done(ok) {
+      toast(ok ? okMsg : '복사하지 못했어요. 주소를 직접 선택해 복사해 주세요.', !ok);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { fallback(); });
+      return;
+    }
+    fallback();
+
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, 99999);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+  }
+
+  function initShare() {
+    if (!$('shareUrl')) return;
+
+    var url = appUrl();
+    $('shareUrl').value = url;
+
+    /* 모바일에는 OS 공유 시트가 있다. 있으면 그걸 쓰는 게 압도적으로 편하다.
+     * 데스크톱 브라우저 대부분은 없으므로 복사로 대체한다.
+     * 이때 두 버튼이 모두 "복사"가 되면 뭐가 다른지 알 수 없으니 라벨을 갈라 준다. */
+    var canShare = !!(navigator.share);
+    $('shareApp').textContent = canShare ? '📤 공유하기' : '📋 초대 메시지 복사';
+    $('copyUrl').textContent = canShare ? '주소 복사' : '🔗 주소만';
+    $('shareHint').textContent = canShare
+      ? '카카오톡·문자·인스타 어디로든 보낼 수 있어요.'
+      : '초대 메시지에는 앱 소개와 주소가 함께 담깁니다.';
+
+    $('shareApp').addEventListener('click', function () {
+      if (canShare) {
+        navigator.share({ title: 'NeuroStudy', text: SHARE_TEXT, url: url })
+          .catch(function () { /* 사용자가 취소한 경우 — 아무 말도 하지 않는다 */ });
+      } else {
+        copyText(SHARE_TEXT + '\n' + url, '초대 메시지를 복사했어요!');
+      }
+    });
+
+    $('copyUrl').addEventListener('click', function () {
+      copyText(url, '앱 주소를 복사했어요!');
+    });
+
+    $('shareUrl').addEventListener('focus', function () { this.select(); });
+  }
+
   /* --------------------------------------------------- 학생 개별 공유 옵트인
    * 리그(cloudOn)와는 별개의 스위치다. 여긴 닉네임이 그대로 나가므로
    * 동의 문구도, 되돌리는 방법도 리그보다 한 단계 더 명확하게 짚는다. */
@@ -8539,7 +8681,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         }
         Cloud.setStudentShareEnabled(true);
         renderStudentShareSettings();
-        toast('선생님에게 내 기록을 보여줍니다.');
+        toast('관리자에게 내 기록을 보여줍니다.');
         studentShareSync(true);
       } else {
         Cloud.setStudentShareEnabled(false);
@@ -8577,7 +8719,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* ================================================================ 관리자 모드
    * 두 층으로 나뉜다.
-   *   ① 서버 목록(학생이 "선생님에게 내 기록 보이기"를 켰을 때만) — 실제 로그인 필요
+   *   ① 서버 목록(학생이 "관리자에게 내 기록 보이기"를 켰을 때만) — 실제 로그인 필요
    *   ② 이 기기 기록(예전부터 있던 것) — 로그인 없이도 "나"와 공유 코드 그룹원만 보임
    * ①은 여러 기기를 아우르는 진짜 데이터고, ②는 이 브라우저 하나에 갇힌 데이터다.
    * 화면에서도 구분해 보여 준다. */
@@ -9042,6 +9184,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       }
     });
 
+    initShare();
+
     /* 리포트 */
     $('prevWeek').addEventListener('click', function () { state.weekOffset--; renderReport(); });
     $('nextWeek').addEventListener('click', function () { if (state.weekOffset < 0) { state.weekOffset++; renderReport(); } });
@@ -9072,6 +9216,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('adminSearch').addEventListener('input', renderAdminUsersList);
     $('adminStudentSearch').addEventListener('input', drawAdminStudents);
     $('adminStudentRefresh').addEventListener('click', renderAdminStudents);
+    $('openAdmin').addEventListener('click', function () { goPage('secAdmin'); });
     initAdminSession();
 
     // 카드 안에서 다른 페이지로 보내는 링크 버튼들

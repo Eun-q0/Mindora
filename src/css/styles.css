@@ -732,6 +732,28 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 .adm-divider { border: none; border-top: 1px dashed var(--line); margin: 28px 0 18px; }
 
+/* ─────────────────────────────────────────── 친구 초대 (링크 공유) */
+.invite { border: 1px solid var(--accent-line); background: linear-gradient(150deg, var(--accent-soft), var(--surface) 62%); }
+.invite-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+.invite-row .input {
+  flex: 1 1 240px; min-width: 0; font-size: 13px;
+  background: var(--surface); color: var(--muted);
+}
+.invite-row .btn { flex: 0 0 auto; }
+
+/* 관리자 진입 — 학생 눈에 띄지 않게 설정 맨 아래에 조용히 둔다 */
+.admin-entry { margin: 26px 0 4px; text-align: center; }
+.admin-entry-btn {
+  border: none; background: none; font: inherit; font-size: 12px;
+  color: var(--dim); cursor: pointer; padding: 8px 14px; border-radius: 8px;
+  transition: color .15s, background .15s;
+}
+.admin-entry-btn:hover { color: var(--muted); background: var(--surface-2); }
+
+@media (max-width: 560px) {
+  .invite-row .btn { flex: 1 1 auto; }
+}
+
 /* ===================================================== 자동완성 목록 ==== */
 .ac-wrap { position: relative; }
 .ac-list {

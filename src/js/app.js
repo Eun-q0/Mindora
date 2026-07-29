@@ -85,8 +85,13 @@
     if (!toastEl) {
       toastEl = document.createElement('div');
       toastEl.className = 'toast';
+      // 화면을 못 보는 사용자도 알림을 들을 수 있어야 한다.
+      // 오류는 즉시(assertive), 나머지는 하던 말이 끝난 뒤(polite) 읽힌다.
+      toastEl.setAttribute('role', 'status');
+      toastEl.setAttribute('aria-live', 'polite');
       document.body.appendChild(toastEl);
     }
+    toastEl.setAttribute('aria-live', (kind === true || kind === 'err') ? 'assertive' : 'polite');
     var extra = kind === true || kind === 'err' ? ' err' : (kind === 'party' ? ' party' : '');
     toastEl.textContent = msg;
     toastEl.className = 'toast show' + extra;
@@ -117,13 +122,20 @@
     { id: 'secGroup', num: '5', label: '랭킹', hash: 'rank' },
     { id: 'secLeague', num: '🏆', label: '리그', hash: 'league' },
     { id: 'secReport', num: '6', label: '리포트', hash: 'report' },
-    { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' },
+    { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' }
+  ];
+
+  /* 상단 탭에는 없지만 이동은 되는 페이지들.
+   * 관리자 화면은 학생이 쓸 일이 없어 탭에서 빼고 [설정] 맨 아래에서만 들어간다. */
+  var HIDDEN_PAGES = [
     { id: 'secAdmin', num: '👑', label: '관리자', hash: 'admin' }
   ];
-  var ALL_SECTIONS = PAGES.map(function (p) { return p.id; }).concat(['secProfile']);
 
-  function pageBy(id) { return PAGES.filter(function (p) { return p.id === id; })[0] || null; }
-  function pageByHash(h) { return PAGES.filter(function (p) { return p.hash === h; })[0] || null; }
+  var ALL_PAGES = PAGES.concat(HIDDEN_PAGES);
+  var ALL_SECTIONS = ALL_PAGES.map(function (p) { return p.id; }).concat(['secProfile']);
+
+  function pageBy(id) { return ALL_PAGES.filter(function (p) { return p.id === id; })[0] || null; }
+  function pageByHash(h) { return ALL_PAGES.filter(function (p) { return p.hash === h; })[0] || null; }
 
   /** 지금 열 수 있는 페이지 목록 (프로필 없음 → 없음 / 분석 전 → 일부 잠금) */
   function openPages() {
@@ -181,6 +193,9 @@
     var allowed = open.some(function (p) { return p.id === id; });
 
     if (id === 'secProfile') allowed = true; // 프로필 편집은 언제나 가능
+    // 탭에 없는 페이지(관리자)는 프로필만 있으면 들어갈 수 있다.
+    // 실제 자물쇠는 화면 안의 로그인이지 이 라우팅이 아니다.
+    if (!allowed && Store.profile() && HIDDEN_PAGES.some(function (p) { return p.id === id; })) allowed = true;
 
     if (!allowed) {
       var p = pageBy(id);
@@ -2094,6 +2109,77 @@
     initStudentShare();
   }
 
+  /* ============================================================ 링크 공유
+   * 친구를 부르려면 앱 주소를 보내면 된다. 그런데 그 주소를 직접 치게 하면
+   * 아무도 안 한다. 그래서 한 번 눌러 바로 보낼 수 있게 해 둔다. */
+
+  /** 지금 열려 있는 주소에서 해시·쿼리를 떼어 낸 "앱 주소" */
+  function appUrl() {
+    return location.origin + location.pathname.replace(/index\.html$/, '');
+  }
+
+  var SHARE_TEXT = '🧠 NeuroStudy — 오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱이야.\n' +
+                   '순공 시간으로 친구들이랑 겨루는 학교 리그도 있어. 설치 없이 링크만 열면 돼!';
+
+  /** execCommand 는 사라지는 중이고 clipboard 는 권한이 필요하다 — 둘 다 시도한다 */
+  function copyText(text, okMsg) {
+    function done(ok) {
+      toast(ok ? okMsg : '복사하지 못했어요. 주소를 직접 선택해 복사해 주세요.', !ok);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { fallback(); });
+      return;
+    }
+    fallback();
+
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, 99999);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+  }
+
+  function initShare() {
+    if (!$('shareUrl')) return;
+
+    var url = appUrl();
+    $('shareUrl').value = url;
+
+    /* 모바일에는 OS 공유 시트가 있다. 있으면 그걸 쓰는 게 압도적으로 편하다.
+     * 데스크톱 브라우저 대부분은 없으므로 복사로 대체한다.
+     * 이때 두 버튼이 모두 "복사"가 되면 뭐가 다른지 알 수 없으니 라벨을 갈라 준다. */
+    var canShare = !!(navigator.share);
+    $('shareApp').textContent = canShare ? '📤 공유하기' : '📋 초대 메시지 복사';
+    $('copyUrl').textContent = canShare ? '주소 복사' : '🔗 주소만';
+    $('shareHint').textContent = canShare
+      ? '카카오톡·문자·인스타 어디로든 보낼 수 있어요.'
+      : '초대 메시지에는 앱 소개와 주소가 함께 담깁니다.';
+
+    $('shareApp').addEventListener('click', function () {
+      if (canShare) {
+        navigator.share({ title: 'NeuroStudy', text: SHARE_TEXT, url: url })
+          .catch(function () { /* 사용자가 취소한 경우 — 아무 말도 하지 않는다 */ });
+      } else {
+        copyText(SHARE_TEXT + '\n' + url, '초대 메시지를 복사했어요!');
+      }
+    });
+
+    $('copyUrl').addEventListener('click', function () {
+      copyText(url, '앱 주소를 복사했어요!');
+    });
+
+    $('shareUrl').addEventListener('focus', function () { this.select(); });
+  }
+
   /* --------------------------------------------------- 학생 개별 공유 옵트인
    * 리그(cloudOn)와는 별개의 스위치다. 여긴 닉네임이 그대로 나가므로
    * 동의 문구도, 되돌리는 방법도 리그보다 한 단계 더 명확하게 짚는다. */
@@ -2141,7 +2227,7 @@
         }
         Cloud.setStudentShareEnabled(true);
         renderStudentShareSettings();
-        toast('선생님에게 내 기록을 보여줍니다.');
+        toast('관리자에게 내 기록을 보여줍니다.');
         studentShareSync(true);
       } else {
         Cloud.setStudentShareEnabled(false);
@@ -2179,7 +2265,7 @@
 
   /* ================================================================ 관리자 모드
    * 두 층으로 나뉜다.
-   *   ① 서버 목록(학생이 "선생님에게 내 기록 보이기"를 켰을 때만) — 실제 로그인 필요
+   *   ① 서버 목록(학생이 "관리자에게 내 기록 보이기"를 켰을 때만) — 실제 로그인 필요
    *   ② 이 기기 기록(예전부터 있던 것) — 로그인 없이도 "나"와 공유 코드 그룹원만 보임
    * ①은 여러 기기를 아우르는 진짜 데이터고, ②는 이 브라우저 하나에 갇힌 데이터다.
    * 화면에서도 구분해 보여 준다. */
@@ -2644,6 +2730,8 @@
       }
     });
 
+    initShare();
+
     /* 리포트 */
     $('prevWeek').addEventListener('click', function () { state.weekOffset--; renderReport(); });
     $('nextWeek').addEventListener('click', function () { if (state.weekOffset < 0) { state.weekOffset++; renderReport(); } });
@@ -2674,6 +2762,7 @@
     $('adminSearch').addEventListener('input', renderAdminUsersList);
     $('adminStudentSearch').addEventListener('input', drawAdminStudents);
     $('adminStudentRefresh').addEventListener('click', renderAdminStudents);
+    $('openAdmin').addEventListener('click', function () { goPage('secAdmin'); });
     initAdminSession();
 
     // 카드 안에서 다른 페이지로 보내는 링크 버튼들
