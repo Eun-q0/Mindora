@@ -971,6 +971,30 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .lg-cut.promote { color: var(--good); }
 .lg-cut.demote { color: var(--warn); }
 
+/* 리그 참가 동의 — 무엇이 나가고 무엇이 남는지 나란히 보여 준다 */
+.cl-what { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cl-what > div { padding: 14px 16px; border-radius: var(--r-sm); border: 1px solid var(--line); }
+.cl-yes { background: #f2f9f6; border-color: #cfe9dd !important; }
+.cl-no { background: var(--surface-2); }
+.cl-h { margin: 0 0 8px; font-size: 12.5px; font-weight: 800; }
+.cl-yes .cl-h { color: #166b4b; }
+.cl-no .cl-h { color: var(--muted); }
+.cl-what ul { margin: 0; padding-left: 17px; }
+.cl-what li { font-size: 12.5px; line-height: 1.65; color: var(--muted); }
+.cl-what li b { color: var(--text); }
+
+#cloudMinorNote {
+  margin-top: 12px; padding: 10px 13px; border-radius: var(--r-sm);
+  background: #fbf2df; color: #8a6a15; line-height: 1.6;
+}
+
+.lg-cloud {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: 8px;
+  font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 99px;
+  background: var(--accent-soft); color: var(--accent-ink); vertical-align: middle;
+}
+.lg-cloud.off { background: var(--surface-2); color: var(--muted); }
+
 .lg-solo {
   position: absolute; left: 0; right: 0; bottom: 6px; padding: 18px 20px;
   margin: 0 12px; border-top: 1px dashed var(--line);
@@ -993,6 +1017,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 @media (prefers-reduced-motion: reduce) {
   .lg-row { transition: none; }
   .lg-capbar i { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .cl-what { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {

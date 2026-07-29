@@ -206,7 +206,7 @@
     renderPageNav();
 
     // 들어올 때마다 최신 값으로 다시 그린다
-    if (id === 'secLeague') renderLeague();
+    if (id === 'secLeague') { renderLeague(); leagueSync(false); }
     if (id === 'secAdmin' && adminState.authenticated) renderAdminAll();
 
     var pg = pageBy(id);
@@ -1898,7 +1898,6 @@
     }).join('');
 
     /* 내 학교 카드 */
-    $('lgTierLabel').textContent = b.tier.name + ' 리그 · ' + b.size + '개교 참가';
     $('lgDaysLeft').textContent = b.daysLeft > 0 ? (b.daysLeft + '일 남음') : '오늘 마감';
     $('lgSchoolName').textContent = b.me.schoolName;
     $('lgMyRank').textContent = b.me.rank;
@@ -1929,6 +1928,13 @@
     }
     $('lgGapNote').textContent = gapTxt;
     $('lgGapNote').className = 'lg-gap ' + gapCls;
+
+    /* 서버 연동 상태 — 지금 보는 순위가 어디까지 반영된 것인지 밝힌다 */
+    var cs = Cloud.status();
+    var badge = cs.enabled
+      ? '<span class="lg-cloud">🔗 ' + (cs.lastSync ? agoText(cs.lastSync) + ' 동기화' : '동기화 중') + '</span>'
+      : '<span class="lg-cloud off">📴 이 기기만</span>';
+    $('lgTierLabel').innerHTML = esc(b.tier.name) + ' 리그 · ' + b.size + '개교 참가' + badge;
 
     /* 승강 안내 */
     $('lgZoneNote').textContent = !b.ranked3
@@ -1985,6 +1991,104 @@
     $('lgCapBar').style.width = Math.min(100, (used / cap) * 100) + '%';
 
     League.snapshot(b.ranked);
+  }
+
+  /* ------------------------------------------------------- 리그 서버 연동 */
+
+  function renderCloudSettings() {
+    if (!$('cloudOn')) return;
+    var s = Cloud.status();
+
+    $('cloudOn').checked = s.enabled;
+    $('cloudOn').disabled = !s.configured;
+
+    ['cloudTest', 'cloudSync', 'cloudReset'].forEach(function (id) {
+      $(id).disabled = !s.configured;
+    });
+
+    var el = $('cloudStatus');
+    if (!s.configured) {
+      el.className = 'neis-status warn';
+      el.innerHTML = '서버가 아직 연결돼 있지 않습니다. ' +
+        '<b>supabase/schema.sql</b> 을 실행하고 <b>src/js/cloud.js</b> 상단에 프로젝트 주소와 anon 키를 넣으면 켜집니다. ' +
+        '그때까지 리그는 이 브라우저가 아는 학교만 보여 줍니다.';
+      return;
+    }
+    if (!s.enabled) {
+      el.className = 'neis-status';
+      el.textContent = '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
+      return;
+    }
+    el.className = 'neis-status ok';
+    el.innerHTML = '참가 중 · 기기 번호 <b>' + esc(String(s.deviceId).slice(0, 8)) + '…</b>' +
+      (s.lastSync ? ' · 마지막 동기화 ' + agoText(s.lastSync) : ' · 아직 동기화 전') +
+      (s.lastError ? '<br><span style="color:var(--bad)">최근 오류 — ' + esc(s.lastError) + '</span>' : '');
+  }
+
+  /** 서버에 올리고 받아 온 뒤 리그를 다시 그린다 */
+  function leagueSync(force) {
+    if (!Cloud.enabled()) return;
+    League.syncNow(force).then(function (ok) {
+      if (ok) { renderLeague(); renderCloudSettings(); }
+    }, function () {
+      renderCloudSettings();   // 실패해도 화면은 그대로 두고 사유만 남긴다
+    });
+  }
+
+  function initCloud() {
+    if (!$('cloudOn')) return;
+
+    $('cloudOn').addEventListener('change', function () {
+      if (this.checked) {
+        if (!confirm('학교명과 주간 학습 시간이 외부 서버로 전송됩니다.\n' +
+                     '이름·학년·반과 개인 기록은 전송되지 않습니다.\n\n' +
+                     '만 14세 미만이라면 보호자와 함께 결정하세요.\n\n참가할까요?')) {
+          this.checked = false;
+          return;
+        }
+        Cloud.setEnabled(true);
+        renderCloudSettings();
+        toast('학교 리그에 참가합니다. 동기화를 시작합니다.');
+        leagueSync(true);
+      } else {
+        Cloud.setEnabled(false);
+        Cloud.forget();
+        League.setCloudRows([], '');
+        renderCloudSettings();
+        renderLeague();
+        toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
+      }
+    });
+
+    $('cloudTest').addEventListener('click', function () {
+      var el = $('cloudStatus');
+      el.className = 'neis-status';
+      el.textContent = '확인 중…';
+      Cloud.test(Store.key(Store.weekStart(new Date()))).then(function () {
+        el.className = 'neis-status ok';
+        el.textContent = '서버에 연결됐습니다.';
+      }, function (e) {
+        el.className = 'neis-status err';
+        el.textContent = '연결하지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+      });
+    });
+
+    $('cloudSync').addEventListener('click', function () {
+      if (!Cloud.enabled()) { toast('먼저 리그 참가를 켜 주세요.', true); return; }
+      toast('동기화 중…');
+      leagueSync(true);
+    });
+
+    $('cloudReset').addEventListener('click', function () {
+      if (!confirm('기기 번호를 새로 받으면 서버에 쌓인 이전 기록과 연결이 끊깁니다.\n' +
+                   '이번 주 내 시간은 새 번호로 다시 올라갑니다.\n\n계속할까요?')) return;
+      Cloud.resetDeviceId();
+      renderCloudSettings();
+      toast('새 기기 번호를 발급했습니다.');
+      leagueSync(true);
+    });
+
+    renderCloudSettings();
   }
 
   /** 주가 바뀌었으면 승급·강등을 정산하고 결과를 한 번 보여 준다 */
@@ -2258,7 +2362,7 @@
   }
 
   function init() {
-    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis();
+    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud();
 
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
@@ -2412,7 +2516,7 @@
     renderGroup();
     renderReport();
     renderKids();
-    if (Store.profile()) { leagueSettle(); renderLeague(); }
+    if (Store.profile()) { leagueSettle(); renderLeague(); leagueSync(false); }
     weeklyNotice();
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);

@@ -157,11 +157,81 @@
       if (m.ts && m.ts > bb.staleAt) bb.staleAt = m.ts;
     });
 
-    return Object.keys(acc).map(function (k) {
+    var local = Object.keys(acc).map(function (k) {
       var s = acc[k];
       s.total = Math.round(s.total / 25) * 25;
       return s;
     });
+
+    return mergeCloud(local, myName);
+  }
+
+  /* ------------------------------------------------------------ 서버 병합
+   * 리그를 켜면 다른 학교의 집계가 서버에서 내려온다.
+   * 서버를 쓰지 않거나 아직 못 받았으면 cloudRows 가 비어 있고,
+   * 그때는 예전처럼 이 브라우저가 아는 학교만 나온다. */
+
+  var cloudRows = [];   // [{schoolName, total, active, updatedAt}]
+  var cloudWeek = '';
+
+  function setCloudRows(rows, wk) {
+    cloudRows = Array.isArray(rows) ? rows : [];
+    cloudWeek = wk || '';
+  }
+
+  function mergeCloud(local, myName) {
+    if (!cloudRows.length || cloudWeek !== weekKey(0)) return local;
+
+    var byName = {};
+    local.forEach(function (s) { byName[s.schoolName] = s; });
+
+    cloudRows.forEach(function (r) {
+      var cur = byName[r.schoolName];
+      if (!cur) {
+        byName[r.schoolName] = {
+          schoolCode: r.schoolName === myName ? MY_CODE : 'S:' + r.schoolName,
+          schoolName: r.schoolName,
+          active: r.active, steady: 0,
+          total: Math.round(r.total / 25) * 25,
+          mine: r.schoolName === myName,
+          staleAt: r.updatedAt, fromCloud: true
+        };
+        return;
+      }
+      /* 이 브라우저가 아는 값과 서버 값이 다를 수 있다.
+       * 서버에는 리그를 켠 사람만 올라오고, 여기에는 공유 코드를 준 사람만 있다.
+       * 어느 쪽도 전부가 아니므로 더 큰 쪽을 쓴다. */
+      var cloudTotal = Math.round(r.total / 25) * 25;
+      if (cloudTotal > cur.total) cur.total = cloudTotal;
+      if (r.active > cur.active) cur.active = r.active;
+      if (r.updatedAt > cur.staleAt) cur.staleAt = r.updatedAt;
+      cur.fromCloud = true;
+    });
+
+    return Object.keys(byName).map(function (k) { return byName[k]; });
+  }
+
+  /**
+   * 서버에 내 기록을 올리고 그 주의 집계를 받아 온다.
+   * 리그가 꺼져 있으면 아무 일도 하지 않는다.
+   */
+  function syncNow(force) {
+    var C = global.Cloud;
+    if (!C || !C.enabled()) return Promise.resolve(false);
+
+    var p = S.profile();
+    if (!p) return Promise.resolve(false);
+
+    var wk = weekKey(0);
+    var school = norm(p.school);
+
+    return C.push(school, wk, myCappedWeek(), force)
+      .catch(function () { return false; })          // 못 올려도 읽기는 시도한다
+      .then(function () { return C.fetchWeek(wk); })
+      .then(function (rows) {
+        setCloudRows(rows, wk);
+        return true;
+      });
   }
 
   /* --------------------------------------------------------------- 조회 */
@@ -304,6 +374,7 @@
     MIN_FIELD: MIN_FIELD,
     zoneSizes: zoneSizes, getZone: getZone, rankGroup: rankGroup,
     schools: schools, board: board, snapshot: snapshot,
+    syncNow: syncNow, setCloudRows: setCloudRows,
     settleIfNeeded: settleIfNeeded, clearResult: clearResult, reset: reset,
     myCappedWeek: myCappedWeek, MY_CODE: MY_CODE
   };

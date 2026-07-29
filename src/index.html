@@ -591,11 +591,10 @@
       </div>
     </div>
 
-    <p class="tiny lg-disclaimer">🔒 이 앱은 서버 없이 브라우저에서만 동작합니다.
-      <b>리그에는 실제 기록이 있는 학교만 올라갑니다</b> — 우리 학교(내 순공 시간 + 같은 학교 그룹원)와,
-      <b>공유 코드를 받아 등록한 다른 학교</b>뿐입니다. 지어낸 상대 학교는 넣지 않습니다.
-      그래서 아무도 등록하지 않았다면 우리 학교 하나만 보입니다.
-      자동 동기화는 되지 않으므로 그룹원 수치는 코드를 받은 시점의 값입니다.</p>
+    <p class="tiny lg-disclaimer">🔒 <b>리그에는 실제 기록이 있는 학교만 올라갑니다.</b> 지어낸 상대 학교는 넣지 않습니다.
+      <b>리그 참가를 켜면</b> 같은 리그를 켠 다른 학교들의 집계가 서버에서 내려와 순위가 됩니다.
+      <b>끄면</b> 이 브라우저가 아는 학교 — 우리 학교와 공유 코드로 등록한 학교 — 만 보입니다.
+      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호뿐이며, 참가 여부는 [설정]에서 언제든 바꿀 수 있습니다.</p>
   </section>
 
   <!-- ══════════════════════════════ 6. 주간 리포트 ══════════════════════════════ -->
@@ -688,6 +687,48 @@
           <span class="tiny" id="sndFileHint">mp3 · m4a · wav (한 파일 25MB 이하)</span>
         </div>
         <div id="customList" class="custom-list"></div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 참가</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">이 앱은 원래 모든 기록을 <b>이 브라우저에만</b> 보관합니다.
+          학교 리그에 참가하면 <b>딱 아래 네 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
+          끄면 즉시 전송이 멈춥니다.</p>
+
+        <div class="cl-what">
+          <div class="cl-yes">
+            <p class="cl-h">✅ 전송되는 것</p>
+            <ul>
+              <li><b>학교명</b> — 프로필에 입력한 학교</li>
+              <li><b>주차</b> — 그 주 월요일 날짜</li>
+              <li><b>순공 시간</b> — 그 주 내 합계(분)</li>
+              <li><b>기기 번호</b> — 무작위 숫자. 같은 사람을 두 번 세지 않으려고 씁니다.</li>
+            </ul>
+          </div>
+          <div class="cl-no">
+            <p class="cl-h">🚫 전송되지 않는 것</p>
+            <ul>
+              <li>이름 · 학년 · 반</li>
+              <li>과목 · 시험 일정</li>
+              <li>뇌 컨디션 점수와 수면 · 스트레스 입력값</li>
+              <li>배지 · 사운드 설정 · 나이스 인증키</li>
+            </ul>
+          </div>
+        </div>
+
+        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="cloudOn"><span><b>학교 리그에 참가합니다</b> — 위 네 가지 전송에 동의합니다</span></label>
+
+        <p class="tiny" id="cloudMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b>
+          학교명과 학습 시간이 외부 서버에 저장됩니다.</p>
+
+        <div class="file-row" style="margin-top:14px">
+          <button type="button" class="btn sm" id="cloudTest">연결 확인</button>
+          <button type="button" class="btn ghost sm" id="cloudSync">지금 동기화</button>
+          <button type="button" class="btn ghost sm" id="cloudReset">기기 번호 새로 받기</button>
+        </div>
+        <div id="cloudStatus" class="neis-status"></div>
       </div>
     </div>
 
@@ -810,7 +851,8 @@
 </main>
 
 <footer class="foot">
-  <p><b>NeuroStudy</b> — 입력한 데이터는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.</p>
+  <p><b>NeuroStudy</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
+    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, 이름·개인 기록은 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 
@@ -848,6 +890,7 @@
 <script src="js/storage.js"></script>
 <script src="js/studylog.js"></script>
 <script src="js/group.js"></script>
+<script src="js/cloud.js"></script>
 <script src="js/league.js"></script>
 <script src="js/neis.js"></script>
 <script src="js/kids.js"></script>

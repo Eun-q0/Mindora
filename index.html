@@ -978,6 +978,30 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .lg-cut.promote { color: var(--good); }
 .lg-cut.demote { color: var(--warn); }
 
+/* 리그 참가 동의 — 무엇이 나가고 무엇이 남는지 나란히 보여 준다 */
+.cl-what { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cl-what > div { padding: 14px 16px; border-radius: var(--r-sm); border: 1px solid var(--line); }
+.cl-yes { background: #f2f9f6; border-color: #cfe9dd !important; }
+.cl-no { background: var(--surface-2); }
+.cl-h { margin: 0 0 8px; font-size: 12.5px; font-weight: 800; }
+.cl-yes .cl-h { color: #166b4b; }
+.cl-no .cl-h { color: var(--muted); }
+.cl-what ul { margin: 0; padding-left: 17px; }
+.cl-what li { font-size: 12.5px; line-height: 1.65; color: var(--muted); }
+.cl-what li b { color: var(--text); }
+
+#cloudMinorNote {
+  margin-top: 12px; padding: 10px 13px; border-radius: var(--r-sm);
+  background: #fbf2df; color: #8a6a15; line-height: 1.6;
+}
+
+.lg-cloud {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: 8px;
+  font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 99px;
+  background: var(--accent-soft); color: var(--accent-ink); vertical-align: middle;
+}
+.lg-cloud.off { background: var(--surface-2); color: var(--muted); }
+
 .lg-solo {
   position: absolute; left: 0; right: 0; bottom: 6px; padding: 18px 20px;
   margin: 0 12px; border-top: 1px dashed var(--line);
@@ -1000,6 +1024,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 @media (prefers-reduced-motion: reduce) {
   .lg-row { transition: none; }
   .lg-capbar i { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .cl-what { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -1680,11 +1708,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       </div>
     </div>
 
-    <p class="tiny lg-disclaimer">🔒 이 앱은 서버 없이 브라우저에서만 동작합니다.
-      <b>리그에는 실제 기록이 있는 학교만 올라갑니다</b> — 우리 학교(내 순공 시간 + 같은 학교 그룹원)와,
-      <b>공유 코드를 받아 등록한 다른 학교</b>뿐입니다. 지어낸 상대 학교는 넣지 않습니다.
-      그래서 아무도 등록하지 않았다면 우리 학교 하나만 보입니다.
-      자동 동기화는 되지 않으므로 그룹원 수치는 코드를 받은 시점의 값입니다.</p>
+    <p class="tiny lg-disclaimer">🔒 <b>리그에는 실제 기록이 있는 학교만 올라갑니다.</b> 지어낸 상대 학교는 넣지 않습니다.
+      <b>리그 참가를 켜면</b> 같은 리그를 켠 다른 학교들의 집계가 서버에서 내려와 순위가 됩니다.
+      <b>끄면</b> 이 브라우저가 아는 학교 — 우리 학교와 공유 코드로 등록한 학교 — 만 보입니다.
+      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호뿐이며, 참가 여부는 [설정]에서 언제든 바꿀 수 있습니다.</p>
   </section>
 
   <!-- ══════════════════════════════ 6. 주간 리포트 ══════════════════════════════ -->
@@ -1777,6 +1804,48 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           <span class="tiny" id="sndFileHint">mp3 · m4a · wav (한 파일 25MB 이하)</span>
         </div>
         <div id="customList" class="custom-list"></div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 참가</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">이 앱은 원래 모든 기록을 <b>이 브라우저에만</b> 보관합니다.
+          학교 리그에 참가하면 <b>딱 아래 네 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
+          끄면 즉시 전송이 멈춥니다.</p>
+
+        <div class="cl-what">
+          <div class="cl-yes">
+            <p class="cl-h">✅ 전송되는 것</p>
+            <ul>
+              <li><b>학교명</b> — 프로필에 입력한 학교</li>
+              <li><b>주차</b> — 그 주 월요일 날짜</li>
+              <li><b>순공 시간</b> — 그 주 내 합계(분)</li>
+              <li><b>기기 번호</b> — 무작위 숫자. 같은 사람을 두 번 세지 않으려고 씁니다.</li>
+            </ul>
+          </div>
+          <div class="cl-no">
+            <p class="cl-h">🚫 전송되지 않는 것</p>
+            <ul>
+              <li>이름 · 학년 · 반</li>
+              <li>과목 · 시험 일정</li>
+              <li>뇌 컨디션 점수와 수면 · 스트레스 입력값</li>
+              <li>배지 · 사운드 설정 · 나이스 인증키</li>
+            </ul>
+          </div>
+        </div>
+
+        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="cloudOn"><span><b>학교 리그에 참가합니다</b> — 위 네 가지 전송에 동의합니다</span></label>
+
+        <p class="tiny" id="cloudMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b>
+          학교명과 학습 시간이 외부 서버에 저장됩니다.</p>
+
+        <div class="file-row" style="margin-top:14px">
+          <button type="button" class="btn sm" id="cloudTest">연결 확인</button>
+          <button type="button" class="btn ghost sm" id="cloudSync">지금 동기화</button>
+          <button type="button" class="btn ghost sm" id="cloudReset">기기 번호 새로 받기</button>
+        </div>
+        <div id="cloudStatus" class="neis-status"></div>
       </div>
     </div>
 
@@ -1899,7 +1968,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 </main>
 
 <footer class="foot">
-  <p><b>NeuroStudy</b> — 입력한 데이터는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.</p>
+  <p><b>NeuroStudy</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
+    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, 이름·개인 기록은 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 
@@ -3577,6 +3647,247 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 })(window);
 
 
+/* ===== src/js/cloud.js ===== */
+/* =========================================================================
+ * cloud.js — 학교 리그 동기화 (Supabase)
+ *
+ * 이 앱에서 유일하게 사용자의 학습 데이터를 밖으로 내보내는 곳이다.
+ * 그래서 무엇이 나가는지 한 눈에 보이도록 여기 한 파일에 모아 뒀다.
+ *
+ * 나가는 것 (전부)
+ *   · 학교명        — 프로필에 입력한 학교
+ *   · 주차          — 그 주 월요일 날짜
+ *   · 순공 시간(분) — 하루 300분 상한을 적용한 그 주 내 합계
+ *   · 기기 ID       — 무작위 UUID. 같은 사람을 두 번 더하지 않으려고 쓴다.
+ *                     이름·학년·반과 아무 관계가 없고 언제든 새로 받을 수 있다.
+ *
+ * 나가지 않는 것
+ *   이름, 학년, 반, 과목, 시험 일정, 뇌 컨디션 점수, 수면·스트레스 같은 입력값,
+ *   배지, 사운드 설정, 나이스 인증키 — 전부 기기에만 남는다.
+ *
+ * 기본값은 "꺼짐" 이다. 설정에서 켜야 처음으로 통신이 일어난다.
+ * SDK 를 쓰지 않고 REST 로 직접 호출한다. 빌드가 단일 파일이라 의존성을 늘리지 않는다.
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  /* ---------------------------------------------------------------- 설정
+   * Supabase 프로젝트를 만든 뒤 [Settings → API] 의 두 값을 여기에 넣는다.
+   * anon 키는 공개되는 값이다 (정적 사이트라 소스에 들어갈 수밖에 없다).
+   * 그래서 서버 쪽에서 RLS 로 잠그고 검증 함수 하나만 열어 뒀다 —
+   * supabase/schema.sql 참고.
+   * 두 값이 비어 있으면 동기화 기능 자체가 꺼진 것처럼 동작한다. */
+  var SUPABASE_URL = '';
+  var SUPABASE_ANON_KEY = '';
+
+  var STORE_KEY = 'neurostudy.cloud.v1';
+  var TIMEOUT_MS = 8000;
+  var MIN_PUSH_GAP = 60 * 1000;   // 같은 값을 계속 밀어 올리지 않는다
+
+  function configured() { return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
+
+  /* --------------------------------------------------------------- 상태 */
+
+  function load() {
+    var d = { enabled: false, deviceId: '', lastSync: 0, lastPush: 0, lastError: '' };
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return d;
+      var o = JSON.parse(raw);
+      return {
+        enabled: !!o.enabled,
+        deviceId: o.deviceId || '',
+        lastSync: o.lastSync || 0,
+        lastPush: o.lastPush || 0,
+        lastError: o.lastError || ''
+      };
+    } catch (e) { return d; }
+  }
+
+  function save(o) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  function uuid() {
+    if (global.crypto && global.crypto.randomUUID) return global.crypto.randomUUID();
+    // 구형 브라우저용 대체 — 충돌 확률이 중요한 값이 아니라 이 정도면 충분하다
+    var b = new Uint8Array(16);
+    if (global.crypto && global.crypto.getRandomValues) global.crypto.getRandomValues(b);
+    else for (var i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    var h = [];
+    for (var j = 0; j < 16; j++) h.push((b[j] + 0x100).toString(16).slice(1));
+    return h.slice(0, 4).join('') + '-' + h.slice(4, 6).join('') + '-' +
+           h.slice(6, 8).join('') + '-' + h.slice(8, 10).join('') + '-' + h.slice(10).join('');
+  }
+
+  /** 기기 ID 는 처음 켤 때 만들어진다. 끄고 지우면 서버와의 연결 고리가 사라진다. */
+  function deviceId() {
+    var st = load();
+    if (!st.deviceId) {
+      st.deviceId = uuid();
+      save(st);
+    }
+    return st.deviceId;
+  }
+
+  function resetDeviceId() {
+    var st = load();
+    st.deviceId = uuid();
+    st.lastPush = 0;
+    save(st);
+    return st.deviceId;
+  }
+
+  function enabled() { return configured() && load().enabled; }
+
+  function setEnabled(on) {
+    var st = load();
+    st.enabled = !!on;
+    if (st.enabled && !st.deviceId) st.deviceId = uuid();
+    if (!st.enabled) st.lastError = '';
+    save(st);
+  }
+
+  function status() {
+    var st = load();
+    return {
+      configured: configured(),
+      enabled: configured() && st.enabled,
+      deviceId: st.deviceId,
+      lastSync: st.lastSync,
+      lastError: st.lastError
+    };
+  }
+
+  function noteError(msg) {
+    var st = load();
+    st.lastError = String(msg || '');
+    save(st);
+  }
+
+  /* --------------------------------------------------------------- 통신 */
+
+  function req(path, opts) {
+    opts = opts || {};
+    var ctrl = global.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, TIMEOUT_MS);
+
+    return fetch(SUPABASE_URL.replace(/\/+$/, '') + path, {
+      method: opts.method || 'GET',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function (res) {
+      clearTimeout(timer);
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error('HTTP ' + res.status + (t ? ' — ' + t.slice(0, 160) : ''));
+        });
+      }
+      return res.status === 204 ? null : res.json();
+    }, function (e) {
+      clearTimeout(timer);
+      throw new Error(e && e.name === 'AbortError' ? '응답이 없어 중단했습니다.' : (e.message || '연결에 실패했습니다.'));
+    });
+  }
+
+  /**
+   * 내 주간 순공 시간을 올린다.
+   * 값이 그대로면 굳이 다시 보내지 않는다.
+   */
+  function push(school, weekKey, minutes, force) {
+    if (!enabled()) return Promise.resolve(false);
+
+    school = String(school || '').trim();
+    if (!school) return Promise.resolve(false);
+
+    var st = load();
+    var mins = Math.max(0, Math.min(2100, Math.round(minutes || 0)));
+    var sig = school + '|' + weekKey + '|' + mins;
+
+    if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
+      return Promise.resolve(false);
+    }
+
+    return req('/rest/v1/rpc/report_league', {
+      method: 'POST',
+      body: { p_device: deviceId(), p_week: weekKey, p_school: school, p_minutes: mins }
+    }).then(function () {
+      var s = load();
+      s.lastPush = Date.now();
+      s.lastSig = sig;
+      s.lastError = '';
+      save(s);
+      return true;
+    }, function (e) {
+      noteError(e.message);
+      throw e;
+    });
+  }
+
+  /** 그 주의 학교별 합계를 받아 온다 */
+  function fetchWeek(weekKey) {
+    if (!enabled()) return Promise.resolve([]);
+
+    return req('/rest/v1/school_week?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=school,total_min,members,updated_at&order=total_min.desc&limit=200')
+      .then(function (rows) {
+        var st = load();
+        st.lastSync = Date.now();
+        st.lastError = '';
+        save(st);
+        return (rows || []).map(function (r) {
+          return {
+            schoolName: String(r.school || '').trim(),
+            total: Math.max(0, r.total_min | 0),
+            active: Math.max(0, r.members | 0),
+            updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0
+          };
+        }).filter(function (r) { return r.schoolName; });
+      }, function (e) {
+        noteError(e.message);
+        throw e;
+      });
+  }
+
+  /** 설정 화면의 [연결 확인] — 실제로 한 번 읽어 본다 */
+  function test(weekKey) {
+    if (!configured()) return Promise.reject(new Error('서버 주소와 키가 설정돼 있지 않습니다.'));
+    return req('/rest/v1/school_week?week=eq.' + encodeURIComponent(weekKey) + '&select=school&limit=1')
+      .then(function () { return true; });
+  }
+
+  /** 서버에서 내 기록을 지운다. 리그를 끌 때 함께 부른다. */
+  function forget() {
+    if (!configured()) return Promise.resolve(false);
+    var st = load();
+    if (!st.deviceId) return Promise.resolve(false);
+    // 분을 0 으로 만들 수는 없다(감소 불가). 대신 기기 ID 를 버려 연결을 끊는다.
+    st.deviceId = '';
+    st.lastPush = 0;
+    st.lastSig = '';
+    save(st);
+    return Promise.resolve(true);
+  }
+
+  global.Cloud = {
+    configured: configured, status: status,
+    enabled: enabled, setEnabled: setEnabled,
+    deviceId: deviceId, resetDeviceId: resetDeviceId, forget: forget,
+    push: push, fetchWeek: fetchWeek, test: test,
+    SUPABASE_URL: SUPABASE_URL
+  };
+
+})(window);
+
+
 /* ===== src/js/league.js ===== */
 /* =========================================================================
  * league.js — 학교 대항 주간 리그
@@ -3737,11 +4048,81 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       if (m.ts && m.ts > bb.staleAt) bb.staleAt = m.ts;
     });
 
-    return Object.keys(acc).map(function (k) {
+    var local = Object.keys(acc).map(function (k) {
       var s = acc[k];
       s.total = Math.round(s.total / 25) * 25;
       return s;
     });
+
+    return mergeCloud(local, myName);
+  }
+
+  /* ------------------------------------------------------------ 서버 병합
+   * 리그를 켜면 다른 학교의 집계가 서버에서 내려온다.
+   * 서버를 쓰지 않거나 아직 못 받았으면 cloudRows 가 비어 있고,
+   * 그때는 예전처럼 이 브라우저가 아는 학교만 나온다. */
+
+  var cloudRows = [];   // [{schoolName, total, active, updatedAt}]
+  var cloudWeek = '';
+
+  function setCloudRows(rows, wk) {
+    cloudRows = Array.isArray(rows) ? rows : [];
+    cloudWeek = wk || '';
+  }
+
+  function mergeCloud(local, myName) {
+    if (!cloudRows.length || cloudWeek !== weekKey(0)) return local;
+
+    var byName = {};
+    local.forEach(function (s) { byName[s.schoolName] = s; });
+
+    cloudRows.forEach(function (r) {
+      var cur = byName[r.schoolName];
+      if (!cur) {
+        byName[r.schoolName] = {
+          schoolCode: r.schoolName === myName ? MY_CODE : 'S:' + r.schoolName,
+          schoolName: r.schoolName,
+          active: r.active, steady: 0,
+          total: Math.round(r.total / 25) * 25,
+          mine: r.schoolName === myName,
+          staleAt: r.updatedAt, fromCloud: true
+        };
+        return;
+      }
+      /* 이 브라우저가 아는 값과 서버 값이 다를 수 있다.
+       * 서버에는 리그를 켠 사람만 올라오고, 여기에는 공유 코드를 준 사람만 있다.
+       * 어느 쪽도 전부가 아니므로 더 큰 쪽을 쓴다. */
+      var cloudTotal = Math.round(r.total / 25) * 25;
+      if (cloudTotal > cur.total) cur.total = cloudTotal;
+      if (r.active > cur.active) cur.active = r.active;
+      if (r.updatedAt > cur.staleAt) cur.staleAt = r.updatedAt;
+      cur.fromCloud = true;
+    });
+
+    return Object.keys(byName).map(function (k) { return byName[k]; });
+  }
+
+  /**
+   * 서버에 내 기록을 올리고 그 주의 집계를 받아 온다.
+   * 리그가 꺼져 있으면 아무 일도 하지 않는다.
+   */
+  function syncNow(force) {
+    var C = global.Cloud;
+    if (!C || !C.enabled()) return Promise.resolve(false);
+
+    var p = S.profile();
+    if (!p) return Promise.resolve(false);
+
+    var wk = weekKey(0);
+    var school = norm(p.school);
+
+    return C.push(school, wk, myCappedWeek(), force)
+      .catch(function () { return false; })          // 못 올려도 읽기는 시도한다
+      .then(function () { return C.fetchWeek(wk); })
+      .then(function (rows) {
+        setCloudRows(rows, wk);
+        return true;
+      });
   }
 
   /* --------------------------------------------------------------- 조회 */
@@ -3884,6 +4265,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     MIN_FIELD: MIN_FIELD,
     zoneSizes: zoneSizes, getZone: getZone, rankGroup: rankGroup,
     schools: schools, board: board, snapshot: snapshot,
+    syncNow: syncNow, setCloudRows: setCloudRows,
     settleIfNeeded: settleIfNeeded, clearResult: clearResult, reset: reset,
     myCappedWeek: myCappedWeek, MY_CODE: MY_CODE
   };
@@ -5958,7 +6340,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     renderPageNav();
 
     // 들어올 때마다 최신 값으로 다시 그린다
-    if (id === 'secLeague') renderLeague();
+    if (id === 'secLeague') { renderLeague(); leagueSync(false); }
     if (id === 'secAdmin' && adminState.authenticated) renderAdminAll();
 
     var pg = pageBy(id);
@@ -7650,7 +8032,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     }).join('');
 
     /* 내 학교 카드 */
-    $('lgTierLabel').textContent = b.tier.name + ' 리그 · ' + b.size + '개교 참가';
     $('lgDaysLeft').textContent = b.daysLeft > 0 ? (b.daysLeft + '일 남음') : '오늘 마감';
     $('lgSchoolName').textContent = b.me.schoolName;
     $('lgMyRank').textContent = b.me.rank;
@@ -7681,6 +8062,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     }
     $('lgGapNote').textContent = gapTxt;
     $('lgGapNote').className = 'lg-gap ' + gapCls;
+
+    /* 서버 연동 상태 — 지금 보는 순위가 어디까지 반영된 것인지 밝힌다 */
+    var cs = Cloud.status();
+    var badge = cs.enabled
+      ? '<span class="lg-cloud">🔗 ' + (cs.lastSync ? agoText(cs.lastSync) + ' 동기화' : '동기화 중') + '</span>'
+      : '<span class="lg-cloud off">📴 이 기기만</span>';
+    $('lgTierLabel').innerHTML = esc(b.tier.name) + ' 리그 · ' + b.size + '개교 참가' + badge;
 
     /* 승강 안내 */
     $('lgZoneNote').textContent = !b.ranked3
@@ -7737,6 +8125,104 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('lgCapBar').style.width = Math.min(100, (used / cap) * 100) + '%';
 
     League.snapshot(b.ranked);
+  }
+
+  /* ------------------------------------------------------- 리그 서버 연동 */
+
+  function renderCloudSettings() {
+    if (!$('cloudOn')) return;
+    var s = Cloud.status();
+
+    $('cloudOn').checked = s.enabled;
+    $('cloudOn').disabled = !s.configured;
+
+    ['cloudTest', 'cloudSync', 'cloudReset'].forEach(function (id) {
+      $(id).disabled = !s.configured;
+    });
+
+    var el = $('cloudStatus');
+    if (!s.configured) {
+      el.className = 'neis-status warn';
+      el.innerHTML = '서버가 아직 연결돼 있지 않습니다. ' +
+        '<b>supabase/schema.sql</b> 을 실행하고 <b>src/js/cloud.js</b> 상단에 프로젝트 주소와 anon 키를 넣으면 켜집니다. ' +
+        '그때까지 리그는 이 브라우저가 아는 학교만 보여 줍니다.';
+      return;
+    }
+    if (!s.enabled) {
+      el.className = 'neis-status';
+      el.textContent = '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
+      return;
+    }
+    el.className = 'neis-status ok';
+    el.innerHTML = '참가 중 · 기기 번호 <b>' + esc(String(s.deviceId).slice(0, 8)) + '…</b>' +
+      (s.lastSync ? ' · 마지막 동기화 ' + agoText(s.lastSync) : ' · 아직 동기화 전') +
+      (s.lastError ? '<br><span style="color:var(--bad)">최근 오류 — ' + esc(s.lastError) + '</span>' : '');
+  }
+
+  /** 서버에 올리고 받아 온 뒤 리그를 다시 그린다 */
+  function leagueSync(force) {
+    if (!Cloud.enabled()) return;
+    League.syncNow(force).then(function (ok) {
+      if (ok) { renderLeague(); renderCloudSettings(); }
+    }, function () {
+      renderCloudSettings();   // 실패해도 화면은 그대로 두고 사유만 남긴다
+    });
+  }
+
+  function initCloud() {
+    if (!$('cloudOn')) return;
+
+    $('cloudOn').addEventListener('change', function () {
+      if (this.checked) {
+        if (!confirm('학교명과 주간 학습 시간이 외부 서버로 전송됩니다.\n' +
+                     '이름·학년·반과 개인 기록은 전송되지 않습니다.\n\n' +
+                     '만 14세 미만이라면 보호자와 함께 결정하세요.\n\n참가할까요?')) {
+          this.checked = false;
+          return;
+        }
+        Cloud.setEnabled(true);
+        renderCloudSettings();
+        toast('학교 리그에 참가합니다. 동기화를 시작합니다.');
+        leagueSync(true);
+      } else {
+        Cloud.setEnabled(false);
+        Cloud.forget();
+        League.setCloudRows([], '');
+        renderCloudSettings();
+        renderLeague();
+        toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
+      }
+    });
+
+    $('cloudTest').addEventListener('click', function () {
+      var el = $('cloudStatus');
+      el.className = 'neis-status';
+      el.textContent = '확인 중…';
+      Cloud.test(Store.key(Store.weekStart(new Date()))).then(function () {
+        el.className = 'neis-status ok';
+        el.textContent = '서버에 연결됐습니다.';
+      }, function (e) {
+        el.className = 'neis-status err';
+        el.textContent = '연결하지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+      });
+    });
+
+    $('cloudSync').addEventListener('click', function () {
+      if (!Cloud.enabled()) { toast('먼저 리그 참가를 켜 주세요.', true); return; }
+      toast('동기화 중…');
+      leagueSync(true);
+    });
+
+    $('cloudReset').addEventListener('click', function () {
+      if (!confirm('기기 번호를 새로 받으면 서버에 쌓인 이전 기록과 연결이 끊깁니다.\n' +
+                   '이번 주 내 시간은 새 번호로 다시 올라갑니다.\n\n계속할까요?')) return;
+      Cloud.resetDeviceId();
+      renderCloudSettings();
+      toast('새 기기 번호를 발급했습니다.');
+      leagueSync(true);
+    });
+
+    renderCloudSettings();
   }
 
   /** 주가 바뀌었으면 승급·강등을 정산하고 결과를 한 번 보여 준다 */
@@ -8010,7 +8496,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   }
 
   function init() {
-    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis();
+    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud();
 
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
@@ -8164,7 +8650,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     renderGroup();
     renderReport();
     renderKids();
-    if (Store.profile()) { leagueSettle(); renderLeague(); }
+    if (Store.profile()) { leagueSettle(); renderLeague(); leagueSync(false); }
     weeklyNotice();
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);
