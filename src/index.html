@@ -660,6 +660,76 @@
     </div>
   </section>
 
+  <!-- ══════════════════════════════ 관리자 모드 ══════════════════════════════ -->
+  <section id="secAdmin" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">👑</span> 관리자 대시보드</h2>
+      <p>사용자들의 학습 현황을 한눈에 모니터링합니다.</p>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🔐</span><h3>관리자 인증</h3></div>
+      <div class="card-body" id="adminAuthSection">
+        <div class="field">
+          <label for="adminPin">관리자 PIN 코드</label>
+          <input type="password" id="adminPin" class="input" placeholder="PIN 입력" maxlength="6">
+        </div>
+        <button type="button" class="btn" id="adminLogin">인증하기</button>
+      </div>
+      <div class="card-body is-hidden" id="adminContent">
+        <button type="button" class="btn ghost" id="adminLogout">로그아웃</button>
+      </div>
+    </div>
+
+    <div class="card wide is-hidden" id="adminStatsCard">
+      <div class="card-head"><span class="ci">📊</span><h3>사용 현황 통계</h3></div>
+      <div class="card-body">
+        <div class="admin-stats">
+          <div class="stat-item">
+            <div class="stat-label">등록 사용자</div>
+            <div class="stat-value" id="totalUsers">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">오늘 활동</div>
+            <div class="stat-value" id="activeToday">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">총 공부 시간</div>
+            <div class="stat-value" id="totalStudyHours">0h</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">평균 점수</div>
+            <div class="stat-value" id="avgScore">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide is-hidden" id="adminUsersCard">
+      <div class="card-head"><span class="ci">👥</span><h3>사용자 목록</h3></div>
+      <div class="card-body">
+        <div class="search-box">
+          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색...">
+        </div>
+        <div id="adminUsersList" class="admin-users-list"></div>
+      </div>
+    </div>
+
+    <div class="card wide is-hidden" id="adminGraphCard">
+      <div class="card-head"><span class="ci">📈</span><h3>그룹별 순공시간</h3></div>
+      <div class="card-body">
+        <div id="adminGroupChart" class="admin-chart"></div>
+      </div>
+    </div>
+
+    <div class="card wide is-hidden" id="adminCapacityCard">
+      <div class="card-head"><span class="ci">🧠</span><h3>뇌 컨디션 분포</h3></div>
+      <div class="card-body">
+        <div id="adminCapacityChart" class="admin-chart"></div>
+      </div>
+    </div>
+  </section>
+
   <nav class="page-nav" id="pageNav"></nav>
 
 </main>

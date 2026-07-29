@@ -116,7 +116,8 @@
     { id: 'secKids', num: '★', label: '내 성장', hash: 'grow', kidsOnly: true },
     { id: 'secGroup', num: '5', label: '랭킹', hash: 'rank' },
     { id: 'secReport', num: '6', label: '리포트', hash: 'report' },
-    { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' }
+    { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' },
+    { id: 'secAdmin', num: '👑', label: '관리자', hash: 'admin' }
   ];
   var ALL_SECTIONS = PAGES.map(function (p) { return p.id; }).concat(['secProfile']);
 
@@ -1780,6 +1781,159 @@
     }, 1400);
   }
 
+  /* ================================================================ 관리자 모드 */
+
+  var adminPin = 'eun031';  // 관리자 PIN — 변경해주세요!
+  var adminState = { authenticated: false, users: [] };
+
+  function collectAllUsers() {
+    var users = [];
+    var sess = Store.sessions();
+    var grp = Store.group();
+    var prof = Store.profile();
+    var hist = Store.history();
+
+    if (prof) {
+      var totalMinutes = 0;
+      Object.keys(sess).forEach(function (date) {
+        var dayData = sess[date];
+        Object.keys(dayData).forEach(function (subj) { totalMinutes += dayData[subj]; });
+      });
+
+      var avgScore = 0;
+      if (hist.length) {
+        var sum = 0;
+        hist.forEach(function (h) { sum += (h.overall || 0); });
+        avgScore = Math.round(sum / hist.length);
+      }
+
+      users.push({
+        id: Group.memberId(prof),
+        name: prof.name,
+        school: prof.school,
+        grade: prof.grade,
+        groupId: Group.groupId(prof),
+        groupLabel: Group.groupLabel(prof),
+        totalMinutes: totalMinutes,
+        totalHours: Math.round(totalMinutes / 60),
+        sessionCount: Object.keys(sess).length,
+        avgScore: avgScore,
+        lastActive: hist.length ? hist[hist.length - 1].date : 'N/A'
+      });
+    }
+
+    grp.members.forEach(function (m) {
+      if (!users.find(function (u) { return u.id === m.id; })) {
+        users.push({
+          id: m.id,
+          name: m.nick,
+          school: m.school || 'N/A',
+          grade: m.grade || 'N/A',
+          groupId: m.groupId,
+          groupLabel: Group.groupLabel(m),
+          totalMinutes: m.todayTotal || 0,
+          totalHours: Math.round((m.todayTotal || 0) / 60),
+          sessionCount: 0,
+          avgScore: 0,
+          lastActive: m.ts ? Store.key(new Date(m.ts)) : 'N/A'
+        });
+      }
+    });
+
+    return users;
+  }
+
+  function calculateAdminStats() {
+    var users = collectAllUsers();
+    var stats = {
+      totalUsers: users.length,
+      activeToday: 0,
+      totalMinutes: 0,
+      avgScore: 0
+    };
+
+    var today = Store.key();
+    var scoreSum = 0, scoreCount = 0;
+
+    users.forEach(function (u) {
+      stats.totalMinutes += u.totalMinutes;
+      if (u.lastActive === today) stats.activeToday++;
+      if (u.avgScore > 0) { scoreSum += u.avgScore; scoreCount++; }
+    });
+
+    if (scoreCount) stats.avgScore = Math.round(scoreSum / scoreCount);
+
+    adminState.users = users;
+    return stats;
+  }
+
+  function renderAdminStats() {
+    var stats = calculateAdminStats();
+    $('totalUsers').textContent = stats.totalUsers;
+    $('activeToday').textContent = stats.activeToday;
+    $('totalStudyHours').textContent = Math.floor(stats.totalMinutes / 60) + 'h ' + (stats.totalMinutes % 60) + 'm';
+    $('avgScore').textContent = stats.avgScore;
+  }
+
+  function renderAdminUsersList() {
+    var searchTerm = ($('adminSearch').value || '').toLowerCase();
+    var filtered = adminState.users.filter(function (u) {
+      return (u.name + u.school + u.groupLabel).toLowerCase().indexOf(searchTerm) >= 0;
+    });
+
+    var html = '';
+    filtered.forEach(function (u) {
+      html += '<div class="admin-user-card">' +
+        '<div class="auc-header">' +
+          '<div>' +
+            '<div class="auc-name">' + esc(u.name) + '</div>' +
+            '<div class="auc-group">' + esc(u.groupLabel) + ' • ' + esc(u.school) + '</div>' +
+          '</div>' +
+          '<div class="auc-badge">' + u.grade + '</div>' +
+        '</div>' +
+        '<div class="auc-stats">' +
+          '<div class="aus-item"><div class="aus-label">공부 시간</div><div class="aus-value">' + u.totalHours + 'h</div></div>' +
+          '<div class="aus-item"><div class="aus-label">평균 점수</div><div class="aus-value">' + u.avgScore + '점</div></div>' +
+        '</div>' +
+        '<div class="auc-stats">' +
+          '<div class="aus-item"><div class="aus-label">기록 수</div><div class="aus-value">' + u.sessionCount + '</div></div>' +
+          '<div class="aus-item"><div class="aus-label">마지막 활동</div><div class="aus-value">' + u.lastActive + '</div></div>' +
+        '</div>' +
+      '</div>';
+    });
+
+    $('adminUsersList').innerHTML = html || '<div style="padding:20px; text-align:center; color: var(--muted)">사용자가 없습니다.</div>';
+  }
+
+  function authAdmin() {
+    var pin = $('adminPin').value;
+    if (pin === adminPin) {
+      adminState.authenticated = true;
+      $('adminAuthSection').classList.add('is-hidden');
+      $('adminContent').classList.remove('is-hidden');
+      $$('#adminStatsCard, #adminUsersCard, #adminGraphCard, #adminCapacityCard').forEach(function (el) {
+        el.classList.remove('is-hidden');
+      });
+      renderAdminStats();
+      renderAdminUsersList();
+      toast('관리자 인증 완료');
+    } else {
+      toast('PIN 코드가 맞지 않습니다.', true);
+      $('adminPin').value = '';
+    }
+  }
+
+  function logoutAdmin() {
+    adminState.authenticated = false;
+    $('adminAuthSection').classList.remove('is-hidden');
+    $('adminContent').classList.add('is-hidden');
+    $$('#adminStatsCard, #adminUsersCard, #adminGraphCard, #adminCapacityCard').forEach(function (el) {
+      el.classList.add('is-hidden');
+    });
+    $('adminPin').value = '';
+    toast('관리자 로그아웃 완료');
+  }
+
   function init() {
     initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis();
 
@@ -1909,6 +2063,14 @@
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
       toast('모든 기록을 삭제했습니다.');
     });
+
+    // 관리자 모드 이벤트
+    $('adminLogin').addEventListener('click', authAdmin);
+    $('adminLogout').addEventListener('click', logoutAdmin);
+    $('adminPin').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') authAdmin();
+    });
+    $('adminSearch').addEventListener('input', renderAdminUsersList);
 
     // 카드 안에서 다른 페이지로 보내는 링크 버튼들
     $$('[data-goto]').forEach(function (b) {
