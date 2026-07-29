@@ -42,7 +42,24 @@
     if (h) return h + '시간';
     return r + '분';
   }
-  function signed(v) { return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1); }
+  /* 가중치는 손으로 정한 값이라 소수점 표기는 없는 정밀도를 있는 것처럼 보이게 한다.
+   * 정수로 반올림해서 보여 준다. */
+  function signed(v) {
+    var n = Math.round(v);
+    if (n === 0) return v === 0 ? '0' : (v > 0 ? '+0' : '−0');
+    return (n > 0 ? '+' : '−') + Math.abs(n);
+  }
+
+  /** "3시간 전" 처럼 상대 시각으로 (그룹 기록이 얼마나 낡았는지 정직하게 보여준다) */
+  function agoText(ts) {
+    if (!ts) return '시각 미상';
+    var m = Math.floor((Date.now() - ts) / 60000);
+    if (m < 2) return '방금';
+    if (m < 60) return m + '분 전';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + '시간 전';
+    return Math.floor(h / 24) + '일 전';
+  }
 
   /** 1분 미만도 버리지 않는 표기 — 순공 시간은 초 단위 체감이 중요하다 */
   function fmtDurFine(min) {
@@ -571,7 +588,11 @@
     $('overallState').textContent = a.state.label;
     $('overallState').className = 'g-state ' + a.state.tone;
 
-    $('heroTitle').textContent = '오늘 가장 강한 능력은 ' + a.top.label + '(' + a.top.score + '점), 가장 약한 능력은 ' + a.bottom.label + '(' + a.bottom.score + '점)입니다.';
+    // 5개 능력은 같은 뿌리(수면·피로)에서 나와 서로 붙어 움직인다.
+    // 편차가 충분히 벌어졌을 때만 "무엇이 낫다" 고 말한다.
+    $('heroTitle').textContent = a.capMeaningful
+      ? '오늘은 ' + a.top.label + '이 상대적으로 가장 잘 올라와 있고, ' + a.bottom.label + '이 가장 처져 있습니다.'
+      : '오늘은 능력별 편차가 크지 않습니다. 어떤 과목을 해도 조건은 비슷합니다.';
     $('heroLine').textContent = a.state.line + ' ' + dominantDriver(a);
 
     $('alertList').innerHTML = a.alerts.map(function (x) {
@@ -657,15 +678,25 @@
   }
 
   function renderCapBars(a) {
+    var mean = Math.round(a.capMean);
     $('capBars').innerHTML = a.capacities.map(function (c) {
       var tg = levelTag(c.level);
+      var rel = Math.round(c.rel);
+      var relCls = rel >= 2 ? 'up' : (rel <= -2 ? 'dn' : 'flat');
+      var relTxt = rel === 0 ? '평균' : (rel > 0 ? '+' + rel : '−' + Math.abs(rel));
       return '<button type="button" class="cap-bar" data-cap="' + c.id + '">' +
         '<div class="cb-top"><span>' + c.icon + '</span><span class="cb-name">' + esc(c.label) + '</span>' +
         '<span class="cb-tag" style="color:' + tg.c + ';background:' + tg.b + '">' + tg.t + '</span>' +
+        '<span class="cb-rel ' + relCls + '" title="오늘 5개 능력 평균(' + mean + '점) 대비">' + relTxt + '</span>' +
         '<span class="cb-score" style="color:' + c.color + '">' + c.score + '</span></div>' +
-        '<div class="cb-track"><div class="cb-fill" data-w="' + c.score + '" style="background:linear-gradient(90deg,' + c.color + '99,' + c.color + ')"></div></div>' +
+        '<div class="cb-track"><div class="cb-fill" data-w="' + c.score + '" style="background:linear-gradient(90deg,' + c.color + '99,' + c.color + ')"></div>' +
+        '<div class="cb-mean" style="left:calc(' + mean + '% - 1px)" title="오늘 평균 ' + mean + '점"></div></div>' +
         '<div class="cb-desc">' + esc(kidsOn() && c.kidsDesc ? c.kidsDesc : c.desc) + '</div></button>';
-    }).join('');
+    }).join('') +
+      '<p class="tiny">세로선은 오늘 5개 능력의 평균(' + mean + '점)입니다. 5개 능력은 수면·피로라는 같은 뿌리에서 나오기 때문에 함께 오르내립니다. ' +
+      (a.capMeaningful
+        ? '오늘은 능력 간 차이가 ' + Math.round(a.capSpread) + '점으로 벌어져 있어 <b>평균 대비 편차</b>를 보고 과목을 고르면 됩니다.'
+        : '오늘은 최고·최저 차이가 ' + Math.round(a.capSpread) + '점뿐이라 <b>어떤 과목이 특별히 유리하다고 말하기 어렵습니다.</b> 절대 점수(종합 컨디션)를 기준으로 총량만 조절하세요.') + '</p>';
 
     setTimeout(function () { $$('.cb-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; }); }, 80);
 
@@ -871,6 +902,64 @@
 
   /* ------------------------------------------------------------- 타이머 */
 
+  /* ------------------------------------------------- 백그라운드 알림 ---- */
+
+  /** 다른 탭을 보고 있어도 블록이 끝난 걸 알 수 있게 한다 */
+  function notify(title, body) {
+    try {
+      if (!('Notification' in window)) return;
+      if (!document.hidden) return;              // 화면을 보고 있으면 토스트로 충분
+      if (Notification.permission !== 'granted') return;
+      var n = new Notification(title, { body: body, tag: 'neurostudy-block', icon: undefined });
+      n.onclick = function () { window.focus(); n.close(); };
+    } catch (e) { /* 지원하지 않는 환경은 조용히 무시 */ }
+  }
+
+  function askNotifyPermission() {
+    try {
+      if (!('Notification' in window)) return;
+      if (Notification.permission !== 'default') return;
+      Notification.requestPermission();
+    } catch (e) { /* 무시 */ }
+  }
+
+  /* -------------------------------------------------- 백업 (파일 입출력) */
+
+  function exportData() {
+    var payload = Store.exportAll();
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'neurostudy-backup-' + Store.key() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    toast('백업 파일을 내려받았습니다. 인증키는 포함되지 않습니다.');
+  }
+
+  function importData(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var obj;
+      try { obj = JSON.parse(reader.result); }
+      catch (e) { toast('JSON 파일을 읽을 수 없습니다.', true); return; }
+
+      var when = obj && obj.exportedAt ? new Date(obj.exportedAt).toLocaleString('ko-KR') : '알 수 없음';
+      if (!confirm('백업을 불러오면 지금 기기의 기록·프로필·그룹이 모두 덮어써집니다.\n\n백업 시점: ' + when + '\n\n계속할까요?')) return;
+
+      try {
+        var n = Store.importAll(obj);
+        toast(n + '개 항목을 복원했습니다. 새로고침합니다.');
+        setTimeout(function () { location.reload(); }, 900);
+      } catch (e) {
+        toast(e.message || '복원에 실패했습니다.', true);
+      }
+    };
+    reader.onerror = function () { toast('파일을 읽지 못했습니다.', true); };
+    reader.readAsText(file);
+  }
+
   function initTimer() {
     state.timer = new Pomodoro({
       onTick: function (s) { trackStudy(s); renderTimer(s); syncSound(s); },
@@ -879,11 +968,13 @@
         if ($('soundOn').checked) Pomodoro.beep(block ? block.kind : 'study');
         if (block && block.kind === 'study') Kids.addBlock();
         if (block) {
-          toast(block.kind === 'study'
+          var msg = block.kind === 'study'
             ? (kidsOn()
                 ? '🎉 ' + block.subject + ' ' + block.minutes + '분 완주! +' + block.minutes + ' XP'
                 : '집중 블록 완료 — ' + block.subject)
-            : '휴식 종료 — 다시 집중할 시간입니다');
+            : '휴식 종료 — 다시 집중할 시간입니다';
+          toast(msg);
+          notify(block.kind === 'study' ? '집중 블록 완료' : '휴식 종료', msg);
         }
         renderLiveTotal();
         renderGroup();
@@ -903,6 +994,7 @@
 
     $('btnStart').addEventListener('click', function () {
       if (!state.timer.queue.length) { toast('먼저 플랜을 생성해 주세요.', true); return; }
+      askNotifyPermission();   // 사용자가 직접 누른 시점에만 요청한다
       if (state.timer.index >= state.timer.queue.length) state.timer.reset();
       state.timer.toggle();
     });
@@ -1408,7 +1500,8 @@
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
             (m.overall != null ? '<span class="brain">🧠 ' + m.overall + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
-          '<div class="rk-date">' + (m.self ? '실시간 반영' : (stale ? '마지막 갱신 ' + esc(m.date) : '오늘 기준')) +
+          '<div class="rk-date">' + (m.self ? '실시간 반영'
+            : (stale ? '⚠ ' + esc(m.date) + ' 기록 (' + agoText(m.ts) + ')' : '코드 받은 시점 · ' + agoText(m.ts))) +
             (m.streak ? ' · 연속 ' + m.streak + '일' : '') + '</div>' +
         '</div>' +
         '<div class="rk-time">' + durHtml(m.value) + '</div>' +
@@ -1416,6 +1509,12 @@
       '</div>';
     }).join('')
       : '<div class="m-empty">아직 그룹원이 없습니다.<br>아래 <b>공유 코드</b>를 친구에게 보내고, 친구 코드를 받아 넣으면 랭킹이 만들어집니다.</div>';
+
+    if (r.list.length > 1) {
+      $('rankList').insertAdjacentHTML('beforeend',
+        '<p class="tiny">⚠ 친구 기록은 <b>코드를 받은 시점에 멈춰 있습니다.</b> 서버가 없어 자동으로 갱신되지 않으니, ' +
+        '정확한 비교를 원하면 새 코드를 다시 주고받으세요.</p>');
+    }
 
     $$('.rk-del').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1738,6 +1837,13 @@
     $('prevWeek').addEventListener('click', function () { state.weekOffset--; renderReport(); });
     $('nextWeek').addEventListener('click', function () { if (state.weekOffset < 0) { state.weekOffset++; renderReport(); } });
     $('thisWeek').addEventListener('click', function () { state.weekOffset = 0; renderReport(); });
+    $('exportData').addEventListener('click', exportData);
+    $('importFile').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (f) importData(f);
+    });
+
     $('clearHistory').addEventListener('click', function () {
       if (!confirm('학습 기록·뇌 컨디션 기록·그룹원을 모두 삭제할까요?\n모은 배지와 경험치도 함께 사라지며 되돌릴 수 없습니다.')) return;
       Store.clearAll();

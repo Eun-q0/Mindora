@@ -507,6 +507,13 @@
 
     var sorted = capacities.slice().sort(function (a, b) { return b.exact - a.exact; });
 
+    /* 5개 능력은 수면·피로라는 같은 뿌리에서 나오기 때문에 절대 점수는 서로
+     * 강하게 붙어 움직인다(실측 평균 상관 0.85). 그래서 "오늘 뭐가 강한가" 는
+     * 절대값이 아니라 오늘 평균 대비 편차로 봐야 의미가 있다. */
+    var mean = capacities.reduce(function (s, c) { return s + c.exact; }, 0) / capacities.length;
+    capacities.forEach(function (c) { c.rel = c.exact - mean; });
+    var spread = sorted[0].exact - sorted[sorted.length - 1].exact;
+
     return {
       input: input,
       factors: factors,
@@ -518,13 +525,79 @@
       top: sorted[0],
       bottom: sorted[sorted.length - 1],
       ranked: sorted,
+      capMean: mean,
+      capSpread: spread,
+      // 편차가 이 정도는 돼야 "오늘은 A가 낫다" 고 말할 근거가 생긴다
+      capMeaningful: spread >= 8,
       alerts: buildAlerts(input),
       circMultAt: circMultiplier
     };
   }
 
+  /* 모델을 손댈 때 조용히 깨질 수 있는 불변식을 검사한다.
+   * 콘솔에서 BrainEngine.selfTest() 로 확인. */
+  function selfTest() {
+    var issues = [];
+
+    CAPACITIES.forEach(function (def) {
+      var sum = 0;
+      Object.keys(def.weights).forEach(function (fid) {
+        sum += def.weights[fid];
+        if (!FACTORS[fid]) issues.push(def.id + ': 존재하지 않는 요인 ' + fid);
+      });
+      if (Math.abs(sum - 1) > 1e-9) issues.push(def.id + ': 가중치 합이 ' + sum.toFixed(6));
+      if (!CIRC[def.id]) issues.push(def.id + ': 일주기 곡선 없음');
+    });
+
+    var ow = 0;
+    Object.keys(OVERALL_WEIGHTS).forEach(function (id) {
+      ow += OVERALL_WEIGHTS[id];
+      if (!CAPACITIES.some(function (c) { return c.id === id; })) issues.push('종합 가중치에 알 수 없는 능력 ' + id);
+    });
+    if (Math.abs(ow - 1) > 1e-9) issues.push('종합 가중치 합이 ' + ow.toFixed(6));
+
+    // 여러 시각·조건에서 점수 분해가 정확히 맞아떨어지는지
+    [3, 9, 14, 22].forEach(function (h) {
+      [[3, 1, 9, 9], [7.5, 4, 3, 2], [10, 5, 0, 0]].forEach(function (v) {
+        var a = analyze({
+          startHour: h, hour: h,
+          sleep: { hours: v[0], quality: v[1], regularity: 3 },
+          stress: v[2], fatigue: v[3], mood: 3,
+          meals: { breakfast: true, lunch: true, dinner: false },
+          hoursSinceMeal: 2, water: 5, caffeine: 1, exercise: 20,
+          availableHours: 4, subjects: []
+        });
+        a.capacities.forEach(function (c) {
+          var s = 50;
+          c.contribs.forEach(function (x) { s += x.points; });
+          if (Math.abs(s - c.baseScore) > 1e-9) issues.push(c.id + '@' + h + 'h: 기여 합계 불일치');
+          if (!c.clamped && Math.abs(c.baseScore * c.circMult - c.exact) > 1e-9) {
+            issues.push(c.id + '@' + h + 'h: 생체리듬 보정 불일치');
+          }
+          if (c.score < 1 || c.score > 100) issues.push(c.id + '@' + h + 'h: 점수 범위 이탈 ' + c.score);
+        });
+        if (a.overall < 1 || a.overall > 100) issues.push('종합 점수 범위 이탈 ' + a.overall);
+      });
+    });
+
+    // 요인 곡선이 0~1 을 벗어나지 않는지
+    Object.keys(FACTORS).forEach(function (fid) {
+      for (var t = 0; t <= 24; t += 2) {
+        var v = FACTORS[fid].value({
+          hour: t, sleep: { hours: t / 2, quality: 3, regularity: 3 },
+          stress: t % 11, fatigue: t % 11, mood: 3,
+          meals: { breakfast: true, lunch: false, dinner: false },
+          hoursSinceMeal: t / 2, water: t % 15, caffeine: t % 9, exercise: t * 7
+        });
+        if (!(v >= 0 && v <= 1)) { issues.push(fid + ': 0~1 범위를 벗어남 (' + v + ')'); break; }
+      }
+    });
+
+    return { ok: issues.length === 0, checked: CAPACITIES.length, issues: issues };
+  }
+
   global.BrainEngine = {
-    analyze: analyze,
+    analyze: analyze, selfTest: selfTest,
     CAPACITIES: CAPACITIES,
     FACTORS: FACTORS,
     OVERALL_WEIGHTS: OVERALL_WEIGHTS,

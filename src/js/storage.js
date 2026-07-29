@@ -129,6 +129,48 @@
     write(K.schools, list.slice(0, 12));
   }
 
+  /* ------------------------------------------------- 백업 (내보내기/가져오기)
+   * localStorage 는 브라우저 데이터를 지우면 함께 사라진다.
+   * 몇 달치 기록이 한순간에 없어지지 않도록 파일로 빼낼 수 있어야 한다.
+   * 인증키는 개인 자격 증명이므로 백업에 넣지 않는다. */
+
+  var EXPORT_VERSION = 1;
+  var BACKUP_KEYS = [
+    K.profile, K.input, K.history, K.sessions, K.group, K.schools,
+    'neurostudy.kids.v1', 'neurostudy.sound.v1'
+  ];
+
+  function exportAll() {
+    var out = {
+      app: 'NeuroStudy', version: EXPORT_VERSION,
+      exportedAt: new Date().toISOString(), data: {}
+    };
+    if (!ok) return out;
+    BACKUP_KEYS.forEach(function (k) {
+      var v = localStorage.getItem(k);
+      if (v !== null) out.data[k] = v;
+    });
+    return out;
+  }
+
+  function importAll(obj) {
+    if (!obj || obj.app !== 'NeuroStudy' || !obj.data) {
+      throw new Error('NeuroStudy 백업 파일이 아닙니다.');
+    }
+    if (obj.version > EXPORT_VERSION) {
+      throw new Error('더 최신 버전에서 만든 백업입니다. 앱을 업데이트해 주세요.');
+    }
+    if (!ok) throw new Error('이 브라우저에서는 저장소를 쓸 수 없습니다.');
+
+    var n = 0;
+    Object.keys(obj.data).forEach(function (k) {
+      if (BACKUP_KEYS.indexOf(k) < 0) return;   // 모르는 키는 건드리지 않는다
+      localStorage.setItem(k, obj.data[k]);
+      n++;
+    });
+    return n;
+  }
+
   function clearAll() {
     if (!ok) return;
     [K.history, K.sessions, K.group].forEach(function (k) { localStorage.removeItem(k); });
@@ -143,6 +185,7 @@
     sessions: sessions, saveSessions: saveSessions,
     group: group, saveGroup: saveGroup,
     recentSchools: recentSchools, rememberSchool: rememberSchool,
+    exportAll: exportAll, importAll: importAll, EXPORT_VERSION: EXPORT_VERSION,
     clearAll: clearAll
   };
 

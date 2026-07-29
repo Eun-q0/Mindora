@@ -35,6 +35,25 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 
+/* 키보드 사용자에게 현재 위치를 반드시 보여 준다.
+   마우스 클릭에는 나타나지 않도록 :focus 가 아니라 :focus-visible 을 쓴다. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+input[type="range"]:focus-visible { outline-offset: 4px; }
+
+/* 움직임에 민감한 사용자를 위해 애니메이션을 끈다 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -281,6 +300,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .cb-name { font-size: 13.5px; font-weight: 650; }
 .cb-score { margin-left: auto; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .cb-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 6px; font-weight: 700; }
+/* 오늘 5개 능력 평균 대비 편차 — 절대 점수보다 이쪽이 실제 정보량이 많다 */
+.cb-rel { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cb-rel.up { color: var(--good); }
+.cb-rel.dn { color: var(--bad); }
+.cb-rel.flat { color: var(--dim); }
+.cb-track { position: relative; }
+.cb-mean { position: absolute; top: -3px; width: 2px; height: 13px; background: rgba(22,26,39,0.45); border-radius: 1px; }
 .cb-track { height: 7px; border-radius: 999px; background: #e6eaf4; overflow: hidden; }
 .cb-fill { height: 100%; border-radius: 999px; width: 0; transition: width 0.9s cubic-bezier(0.22,1,0.36,1); }
 .cb-desc { font-size: 11.5px; color: var(--dim); margin-top: 6px; }
