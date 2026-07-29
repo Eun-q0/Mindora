@@ -606,9 +606,88 @@
       return '<div class="alert ' + x.level + '"><b>' + (x.level === 'bad' ? '⚠' : '!') + '</b><span>' + esc(x.text) + '</span></div>';
     }).join('') || '<div class="alert warn"><b>✓</b><span>특별한 위험 신호는 없습니다. 계획대로 진행하세요.</span></div>';
 
+    renderCapStrip(a);
     renderRadar(a);
     renderCapBars(a);
     renderCapDetails(a);
+    collapseResultDetail();
+  }
+
+  /* -------------------------------------------------- 결과 요약 스트립
+   * 결과 화면이 길어 한눈에 안 들어온다는 이야기가 있어,
+   * 기본은 점수 5개까지만 보여 주고 근거는 눌렀을 때 펼치도록 했다. */
+
+  function renderCapStrip(a) {
+    var mean = Math.round(a.capMean);
+
+    $('capStrip').innerHTML = a.capacities.map(function (c) {
+      var rel = Math.round(c.rel);
+      var relCls = rel >= 2 ? 'up' : (rel <= -2 ? 'dn' : 'flat');
+      var relTxt = rel === 0 ? '±0' : (rel > 0 ? '+' + rel : '−' + Math.abs(rel));
+      var isTop = a.capMeaningful && c.id === a.top.id;
+
+      return '<button type="button" class="cap-chip' + (isTop ? ' is-top' : '') + '"' +
+        ' data-cap="' + c.id + '" aria-label="' + esc(c.label) + ' ' + c.score + '점, 자세히 보기">' +
+        '<span class="cc-ic">' + c.icon + '</span>' +
+        '<span class="cc-score" style="color:' + c.color + '">' + c.score + '</span>' +
+        '<span class="cc-name">' + esc(c.short) + '</span>' +
+        '<span class="cc-track"><i class="cc-fill" data-w="' + c.score + '" style="width:0;background:' + c.color + '"></i></span>' +
+        '<span class="cc-rel ' + relCls + '">' + relTxt + '</span>' +
+      '</button>';
+    }).join('');
+
+    $('capStripNote').innerHTML = a.capMeaningful
+      ? '오늘 평균은 <b>' + mean + '점</b>이고 능력 간 차이가 ' + Math.round(a.capSpread) + '점으로 벌어져 있습니다. ' +
+        '아래 숫자는 평균 대비 편차입니다 — <b>' + esc(a.top.label) + '</b>을 쓰는 과목을 먼저 배치하세요.'
+      : '오늘 평균은 <b>' + mean + '점</b>이고 최고·최저 차이가 ' + Math.round(a.capSpread) + '점뿐입니다. ' +
+        '<b>어떤 과목이 특별히 유리하다고 말하기 어려우니</b> 총량만 조절하세요.';
+
+    setTimeout(function () {
+      $$('.cc-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; });
+    }, 80);
+
+    // 칩을 누르면 상세를 펼치고 그 능력의 근거 카드로 데려간다
+    $$('.cap-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () { openCapDetail(chip.dataset.cap); });
+    });
+  }
+
+  function detailOpen() { return !$('resultDetail').classList.contains('is-hidden'); }
+
+  function collapseResultDetail() {
+    $('resultDetail').classList.add('is-hidden');
+    $('resultMore').setAttribute('aria-expanded', 'false');
+    $('resultMore').querySelector('.rm-txt').textContent = '자세한 분석 보기';
+    $$('.cd').forEach(function (c) { c.classList.remove('open'); });
+    $$('.cap-bar').forEach(function (b) { b.classList.remove('on'); });
+  }
+
+  function expandResultDetail() {
+    $('resultDetail').classList.remove('is-hidden');
+    $('resultMore').setAttribute('aria-expanded', 'true');
+    $('resultMore').querySelector('.rm-txt').textContent = '자세한 분석 접기';
+    // 숨어 있는 동안 막대 애니메이션이 돌지 않았을 수 있어 다시 채운다
+    $$('.cb-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; });
+  }
+
+  function toggleResultDetail() {
+    if (detailOpen()) collapseResultDetail();
+    else expandResultDetail();
+  }
+
+  /** 특정 능력의 근거 카드를 펼쳐 보여 준다 */
+  function openCapDetail(capId) {
+    expandResultDetail();
+
+    var card = document.querySelector('.cd[data-cap="' + capId + '"]');
+    if (!card) return;
+
+    $$('.cd').forEach(function (c) { c.classList.remove('open'); });
+    card.classList.add('open');
+    $$('.cap-bar').forEach(function (b) { b.classList.toggle('on', b.dataset.cap === capId); });
+
+    // 레이아웃이 잡힌 뒤에 스크롤해야 위치가 맞는다
+    setTimeout(function () { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60);
   }
 
   function dominantDriver(a) {
@@ -711,11 +790,13 @@
       btn.addEventListener('click', function () {
         var card = document.querySelector('.cd[data-cap="' + btn.dataset.cap + '"]');
         if (!card) return;
-        var willOpen = !card.classList.contains('open');
-        $$('.cd').forEach(function (c) { c.classList.remove('open'); });
-        if (willOpen) card.classList.add('open');
-        $$('.cap-bar').forEach(function (b) { b.classList.toggle('on', b === btn && willOpen); });
-        if (willOpen) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 이미 열려 있으면 접는다
+        if (card.classList.contains('open')) {
+          card.classList.remove('open');
+          btn.classList.remove('on');
+          return;
+        }
+        openCapDetail(btn.dataset.cap);
       });
     });
   }
@@ -723,7 +804,7 @@
   /* -------------------------------------------------------- 산출 근거 */
 
   function renderCapDetails(a) {
-    $('capDetails').innerHTML = a.capacities.map(function (c, i) {
+    $('capDetails').innerHTML = a.capacities.map(function (c) {
       var maxAbs = Math.max.apply(null, c.contribs.map(function (x) { return Math.abs(x.points); }).concat([1]));
 
       var rows = c.contribs.map(function (ct) {
@@ -745,7 +826,7 @@
             ? atTime + ' ' + c.label + '이 상대적으로 잘 올라오는 시간대라 ' + circPct + '% 가산됐습니다.'
             : atTime + ' ' + c.label + '의 일주기 저점에 가까워 ' + Math.abs(circPct) + '% 감산됐습니다.');
 
-      return '<div class="cd' + (i === 0 ? ' open' : '') + '" data-cap="' + c.id + '">' +
+      return '<div class="cd" data-cap="' + c.id + '">' +
         '<button type="button" class="cd-head">' +
           '<span class="dot" style="background:' + c.color + '"></span>' +
           '<span class="nm">' + c.icon + ' ' + esc(c.label) + '</span>' +
@@ -1795,6 +1876,15 @@
 
   var LG_ROW_H = 56;
 
+  /** 받침 유무에 따라 을/를, 이/가 를 고른다 */
+  function josa(word, withBatchim, without) {
+    var s = String(word || '');
+    var last = s.charCodeAt(s.length - 1);
+    // 한글 음절이 아니면 받침을 알 수 없으니 없는 쪽으로 둔다
+    if (!(last >= 0xac00 && last <= 0xd7a3)) return without;
+    return ((last - 0xac00) % 28) ? withBatchim : without;
+  }
+
   function renderLeague() {
     if (!$('lgBoard')) return;
 
@@ -1808,7 +1898,7 @@
     }).join('');
 
     /* 내 학교 카드 */
-    $('lgTierLabel').textContent = b.tier.name + ' 리그 · ' + b.size + '개교';
+    $('lgTierLabel').textContent = b.tier.name + ' 리그 · ' + b.size + '개교 참가';
     $('lgDaysLeft').textContent = b.daysLeft > 0 ? (b.daysLeft + '일 남음') : '오늘 마감';
     $('lgSchoolName').textContent = b.me.schoolName;
     $('lgMyRank').textContent = b.me.rank;
@@ -1816,8 +1906,19 @@
     $('lgMyActive').textContent = b.me.active;
     $('lgMySteady').textContent = b.me.steady;
 
-    var gapTxt;
-    if (b.myZone === 'promote') {
+    /* 참가 학교 수에 따라 할 수 있는 말이 다르다.
+     * 상대가 없는데 승급을 이야기하면 없는 경쟁을 지어내는 셈이다. */
+    var gapTxt, gapCls = b.myZone;
+    if (b.solo) {
+      gapTxt = '아직 우리 학교만 참가하고 있어요. 다른 학교 친구의 공유 코드를 등록하면 순위가 생깁니다.';
+      gapCls = 'stay';
+    } else if (!b.ranked3) {
+      gapTxt = b.ahead
+        ? b.ahead.schoolName + josa(b.ahead.schoolName, '을', '를') +
+          ' 앞서려면 ' + b.aheadGap.toLocaleString() + '분 더 필요해요'
+        : '지금 1위예요. ' + b.size + '개교가 참가 중입니다';
+      gapCls = 'stay';
+    } else if (b.myZone === 'promote') {
       gapTxt = '승급권 안에 있어요. ' + (b.promote + 1) + '위와 ' + b.gap.toLocaleString() + '분 차이';
     } else if (b.myZone === 'demote') {
       gapTxt = '강등권이에요. ' + b.gap.toLocaleString() + '분 더 모으면 안전해져요';
@@ -1827,16 +1928,20 @@
       gapTxt = '최상위 리그예요. 자리를 지키는 중';
     }
     $('lgGapNote').textContent = gapTxt;
-    $('lgGapNote').className = 'lg-gap ' + b.myZone;
+    $('lgGapNote').className = 'lg-gap ' + gapCls;
 
     /* 승강 안내 */
-    $('lgZoneNote').textContent =
-      (b.tier.promote > 0 ? '상위 ' + b.promote + '개교 승급' : '최상위 리그') +
-      (b.tier.demote > 0 ? ' · 하위 ' + b.demote + '개교 강등' : ' · 강등 없음');
+    $('lgZoneNote').textContent = !b.ranked3
+      ? b.minField + '개교 이상 모이면 승급·강등이 시작됩니다'
+      : (b.tier.promote > 0 ? '상위 ' + b.promote + '개교 승급' : '최상위 리그') +
+        (b.demote > 0 ? ' · 하위 ' + b.demote + '개교 강등' : ' · 강등 없음');
 
     /* 순위표 — 각 행을 제 순위 자리로 옮긴다 */
     var rows = b.ranked.map(function (s) {
-      var zone = League.getZone(s.rank, b.tier, b.size);
+      // 판이 작아 승강선을 그리지 않을 때는 행에도 색을 넣지 않는다
+      var zone = (b.promote || b.demote)
+        ? League.getZone(s.rank, { promote: b.promote, demote: b.demote }, b.size)
+        : 'stay';
       var isMe = s.schoolCode === League.MY_CODE;
       var d = b.deltas[s.schoolCode];
       var deltaCls = d > 0 ? ' up' : (d < 0 ? ' down' : '');
@@ -1863,8 +1968,14 @@
         ((b.size - b.demote) * LG_ROW_H + 6) + 'px)"><span><i>강등선</i></span></div>';
     }
 
-    $('lgBoard').style.height = (b.size * LG_ROW_H + 12) + 'px';
-    $('lgBoard').innerHTML = rows + cuts;
+    /* 우리 학교뿐이면 순위표 대신 어떻게 상대를 늘리는지 알려 준다 */
+    var hint = b.solo
+      ? '<div class="lg-solo">아직 <b>우리 학교</b>만 참가하고 있습니다.<br>' +
+        '다른 학교 친구에게 <b>공유 코드</b>를 받아 [랭킹] 화면에서 등록하면 그 학교가 리그에 들어옵니다.</div>'
+      : '';
+
+    $('lgBoard').style.height = (b.size * LG_ROW_H + 12 + (b.solo ? 96 : 0)) + 'px';
+    $('lgBoard').innerHTML = rows + cuts + hint;
 
     /* 오늘 인정된 시간 */
     var used = Math.round(b.todayMin);
@@ -2155,6 +2266,7 @@
     });
 
     $('detailToggle').addEventListener('click', function () { toggleDetail(); });
+    $('resultMore').addEventListener('click', toggleResultDetail);
     DETAIL_IDS.forEach(function (id) {
       $(id).addEventListener('input', updateDetailSummary);
       $(id).addEventListener('change', updateDetailSummary);

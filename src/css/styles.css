@@ -837,6 +837,56 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .rep-nav .wk { min-width: 0; flex: 1; font-size: 12.5px; }
 }
 
+/* ============================================ 결과 요약 스트립 (secResult)
+ * 결과 화면은 기본을 짧게 두고, 근거는 눌렀을 때만 펼친다.
+ * 처음 보이는 건 종합 점수 · 경고 · 5개 능력 요약까지다. */
+
+.cap-strip {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px;
+}
+.cap-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 4px 10px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--surface); font: inherit; cursor: pointer; text-align: center;
+  transition: border-color .15s, transform .12s, background .15s;
+}
+.cap-chip:hover { border-color: var(--line-2); background: var(--surface-3); }
+.cap-chip:active { transform: scale(.97); }
+.cap-chip .cc-ic { font-size: 17px; line-height: 1; }
+.cap-chip .cc-score { font-size: 21px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cap-chip .cc-name { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.cap-chip .cc-track { width: 100%; height: 4px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin-top: 2px; }
+.cap-chip .cc-fill { display: block; height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.cap-chip .cc-rel { font-size: 10px; font-weight: 700; }
+.cap-chip .cc-rel.up { color: var(--good); }
+.cap-chip .cc-rel.dn { color: var(--warn); }
+.cap-chip .cc-rel.flat { color: var(--dim); }
+.cap-chip.is-top { border-color: var(--accent-line); background: var(--accent-soft); }
+
+.res-more {
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  width: 100%; margin-top: 16px; padding: 13px 16px; gap: 2px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-3);
+  font: inherit; color: var(--text); cursor: pointer; text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.res-more:hover { background: var(--surface-2); border-color: var(--line-2); }
+.res-more .rm-txt { font-size: 14px; font-weight: 700; }
+.res-more .rm-sub { grid-column: 1; font-size: 11.5px; color: var(--muted); }
+.res-more .rm-arw {
+  grid-column: 2; grid-row: 1 / span 2; font-size: 13px; color: var(--muted);
+  transition: transform .25s;
+}
+.res-more[aria-expanded="true"] .rm-arw { transform: rotate(180deg); }
+
+@media (max-width: 560px) {
+  .cap-strip { gap: 5px; }
+  .cap-chip { padding: 10px 2px 8px; gap: 3px; }
+  .cap-chip .cc-score { font-size: 18px; }
+  .cap-chip .cc-name { font-size: 10px; }
+  .cap-chip .cc-ic { font-size: 15px; }
+}
+
 /* ==================================================== 학교 리그 (secLeague)
  * 행을 absolute 로 띄우고 translateY 로 자리를 옮긴다.
  * 순위가 바뀔 때 줄이 미끄러지듯 이동해서 변동이 눈에 들어온다. */
@@ -920,6 +970,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .lg-cut span i { font-style: normal; color: #fff; }
 .lg-cut.promote { color: var(--good); }
 .lg-cut.demote { color: var(--warn); }
+
+.lg-solo {
+  position: absolute; left: 0; right: 0; bottom: 6px; padding: 18px 20px;
+  margin: 0 12px; border-top: 1px dashed var(--line);
+  font-size: 13px; line-height: 1.6; color: var(--muted); text-align: center;
+}
+.lg-solo b { color: var(--text); }
 
 .lg-cap { font-size: 13px; color: var(--muted); font-weight: 500; }
 .lg-cap b { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -1022,3 +1079,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .admin-stats { grid-template-columns: 1fr; }
   .admin-users-list { grid-template-columns: 1fr; }
 }
+
+/* ===================================================== 전역 숨김 유틸리티
+ * is-hidden 은 원래 .section, .card 같은 특정 선택자에 하나씩 붙어 있었다.
+ * 그래서 평범한 div 에 붙이면 아무 일도 일어나지 않았다.
+ * 이름이 뜻하는 대로 어디에 붙여도 숨도록 마지막에 한 줄로 못 박는다. */
+.is-hidden { display: none !important; }

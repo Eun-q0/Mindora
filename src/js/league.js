@@ -4,23 +4,24 @@
  * 개인 랭킹(group.js)이 "같은 반 친구들과의 겨루기"라면,
  * 리그는 "우리 학교 전체가 다른 학교와 겨루는" 한 단계 위의 판이다.
  *
- * ⚠ 이 앱에는 서버가 없다. 그래서 다른 학교의 실제 기록을 받아올 수 없다.
- *    상대 학교는 (내 학교명 + 그 주의 월요일) 로 고정된 난수에서 만들어 낸다.
- *    같은 주 안에서는 항상 같은 상대가 같은 속도로 자라므로 판은 일관되지만,
- *    실재하는 학교의 기록이 아니다. 화면에도 그렇게 밝혀 둔다.
+ * 순위에 오르는 학교는 전부 실제 기록이 있는 학교다.
+ *   · 우리 학교  — 내 순공 시간(StudyLog) + 같은 학교 그룹원
+ *   · 다른 학교  — 공유 코드를 받아 등록한 다른 학교 사용자들
+ * 지어낸 상대는 넣지 않는다. 그래서 아무도 등록하지 않았으면
+ * 리그에는 우리 학교 하나만 뜨고, 화면이 그 사실을 그대로 말해 준다.
  *
- * 내 학교의 누적 시간만은 진짜다.
- *   - 내 순공 시간(StudyLog)
- *   - 같은 학교 그룹원이 공유 코드로 넘겨준 기록
- *   두 값을 합치고 하루 상한을 적용해 계산한다.
+ * ⚠ 서버가 없어 자동 동기화는 되지 않는다. 다른 학교가 판에 들어오려면
+ *   그 학교 사용자의 공유 코드를 [랭킹] 화면에서 등록해야 한다.
+ *   그룹원 수치는 코드를 받은 시점의 값이다.
  * ========================================================================= */
 (function (global) {
   'use strict';
 
   var S = global.Store;
 
-  var GROUP_SIZE = 20;          // 한 리그에 들어가는 학교 수
   var DAILY_CAP_MINUTES = 300;  // 하루에 인정되는 최대 순공 시간
+  var GROUP_SIZE = 20;          // 승급·강등 폭의 기준이 되는 표준 리그 크기
+  var MIN_FIELD = 5;            // 이보다 작으면 승급·강등을 따지지 않는다
   var STORE_KEY = 'neurostudy.league.v1';
 
   var TIERS = [
@@ -31,17 +32,9 @@
     { id: 'forest', name: '숲',   promote: 0, demote: 5 }
   ];
 
-  /* 상대 학교 이름 풀 — 실재 학교가 아닌 가상의 이름이다 */
-  var NAMES = [
-    '한빛중학교', '새얼초등학교', '동락중학교', '푸른솔초등학교', '가온중학교',
-    '대현중학교', '이룸초등학교', '누리중학교', '밝음초등학교', '샘터중학교',
-    '청람초등학교', '온새미초등학교', '빛고을중학교', '다올초등학교', '예람중학교',
-    '하늘터초등학교', '물빛중학교', '너울초등학교', '해맑음중학교', '돌담초등학교',
-    '별뫼고등학교', '한올고등학교', '슬기고등학교', '도담고등학교', '아람고등학교',
-    '나린중학교', '해솔초등학교', '윤슬중학교', '가람고등학교', '너른고등학교'
-  ];
-
   var MY_CODE = '__me__';
+
+  function norm(s) { return String(s || '').trim().replace(/\s+/g, ' '); }
 
   /* ------------------------------------------------------------ 승강 구역 */
 
@@ -115,116 +108,88 @@
     return sum;
   }
 
-  /**
-   * 우리 학교 기록 = 나 + 같은 학교 그룹원.
-   * 그룹원 기록은 공유 코드를 받은 시점의 값이라 최신이 아닐 수 있다.
-   */
-  function mySchool() {
-    var p = S.profile();
-    if (!p) return null;
-
-    var school = String(p.school || '').trim();
-    var mine = myCappedWeek();
-    var meId = global.Group.memberId(p);
-
-    var mates = global.Group.members().filter(function (m) {
-      return m.id !== meId && String(m.school || '').trim() === school;
-    });
-
-    var total = mine;
-    var steady = mine > 0 ? 1 : 0;
-    mates.forEach(function (m) {
-      total += Math.min(m.weekMin || 0, DAILY_CAP_MINUTES * 7);
-      if ((m.streak || 0) >= 3) steady++;
-    });
-
-    return {
-      schoolCode: MY_CODE,
-      schoolName: school || '우리 학교',
-      active: mates.length + 1,
-      steady: steady,
-      total: Math.round(total / 25) * 25,
-      real: true
-    };
-  }
-
-  /* ---------------------------------------------------- 상대 학교 만들기 */
-
-  /** 문자열 → 32비트 정수 (같은 입력이면 항상 같은 값) */
-  function hash(str) {
-    var h = 2166136261, s = String(str);
-    for (var i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = (h * 16777619) >>> 0;
-    }
-    return h;
-  }
-
-  /** 선형 합동 생성기 — 시드가 같으면 같은 수열이 나온다 */
-  function rngFrom(seed) {
-    var s = seed >>> 0;
-    return function () {
-      s = (s * 1103515245 + 12345) & 0x7fffffff;
-      return s / 0x7fffffff;
-    };
-  }
-
   /** 이번 주 월요일부터 지난 날 수 (월=1 … 일=7) */
   function elapsedDays() {
     return ((new Date().getDay() + 6) % 7) + 1;
   }
 
+  /* ------------------------------------------------------ 학교별로 묶기 */
+
   /**
-   * 상대 학교를 만든다. 시드는 (내 학교 + 티어 + 그 주) 라서
-   * 같은 주 안에서는 새로고침해도 상대와 기록이 그대로다.
+   * 이 브라우저가 아는 사람들을 학교 단위로 모은다.
+   * 나와 그룹원이 전부이므로, 다른 학교가 판에 들어오려면
+   * 그 학교 사용자의 공유 코드를 등록해야 한다.
    */
-  function rivals(me, tierIdx) {
-    var rnd = rngFrom(hash(me.schoolName + '|' + tierIdx + '|' + weekKey(0)));
-    var days = elapsedDays();
-    var pool = NAMES.filter(function (n) { return n !== me.schoolName; });
-    var out = [];
+  function schools() {
+    var p = S.profile();
+    if (!p) return [];
 
-    for (var i = 0; i < GROUP_SIZE - 1; i++) {
-      // 이름은 겹치지 않게 풀에서 뽑아 낸다
-      var pick = Math.floor(rnd() * pool.length);
-      var name = pool.splice(pick, 1)[0] || ('학교 ' + (i + 1));
+    var meId = global.Group.memberId(p);
+    var myName = norm(p.school) || '우리 학교';
+    var acc = {};
 
-      var active = 3 + Math.floor(rnd() * 14);
-      var pace = 0.6 + rnd() * 0.9;
-      // 티어가 높을수록 상대의 기본 체력이 올라간다
-      var base = (200 + rnd() * 900) * (1 + tierIdx * 0.45);
-
-      out.push({
-        schoolCode: 'R' + (i < 10 ? '0' + i : i),
-        schoolName: name,
-        active: active,
-        steady: Math.floor(active * (0.3 + rnd() * 0.5)),
-        total: Math.round((base + active * 40 * pace * days * 0.28) / 25) * 25,
-        real: false
-      });
+    function bucket(name) {
+      var k = name || '(학교 미상)';
+      if (!acc[k]) {
+        acc[k] = {
+          schoolCode: k === myName ? MY_CODE : 'S:' + k,
+          schoolName: k, active: 0, steady: 0, total: 0,
+          mine: k === myName, staleAt: 0
+        };
+      }
+      return acc[k];
     }
-    return out;
+
+    // 나 — 유일하게 실시간인 값이다
+    var mine = myCappedWeek();
+    var b = bucket(myName);
+    b.active++;
+    b.total += mine;
+    if (global.StudyLog.streak() >= 3) b.steady++;
+
+    // 그룹원 — 공유 코드를 받은 시점의 스냅숏
+    global.Group.members().forEach(function (m) {
+      if (m.id === meId) return;
+      var bb = bucket(norm(m.school));
+      bb.active++;
+      bb.total += Math.min(m.weekMin || 0, DAILY_CAP_MINUTES * 7);
+      if ((m.streak || 0) >= 3) bb.steady++;
+      if (m.ts && m.ts > bb.staleAt) bb.staleAt = m.ts;
+    });
+
+    return Object.keys(acc).map(function (k) {
+      var s = acc[k];
+      s.total = Math.round(s.total / 25) * 25;
+      return s;
+    });
   }
 
   /* --------------------------------------------------------------- 조회 */
 
   /** 이번 주 판 전체. 프로필이 없으면 null. */
   function board() {
-    var me = mySchool();
-    if (!me) return null;
+    var list = schools();
+    if (!list.length) return null;
 
     var st = load();
     var tierIdx = Math.max(0, Math.min(TIERS.length - 1, st.tierIdx));
     var tier = TIERS[tierIdx];
 
-    var ranked = rankGroup([me].concat(rivals(me, tierIdx)));
+    var ranked = rankGroup(list);
     var size = ranked.length;
-    var z = zoneSizes(tier, size);
+
+    /* 참가 학교가 몇 곳 안 되면 승급·강등은 뜻이 없다.
+     * 1개교뿐인데 1위라고 승급시키는 것은 눈속임이다. */
+    var ranked3 = size >= MIN_FIELD;
+    var z = ranked3 ? zoneSizes(tier, size) : { promote: 0, demote: 0 };
+    // 승급권과 강등권이 판 전체를 덮으면 가운데가 없어져 선이 의미를 잃는다
+    if (z.promote + z.demote >= size) { z.promote = 0; z.demote = 0; }
 
     var mine = null;
     ranked.forEach(function (s) { if (s.schoolCode === MY_CODE) mine = s; });
+    if (!mine) return null;
 
-    var myZone = getZone(mine.rank, tier, size);
+    var myZone = z.promote || z.demote ? getZone(mine.rank, { promote: z.promote, demote: z.demote }, size) : 'stay';
 
     /* 승급선·강등선까지 남은 시간
      *  승급권: 나를 밀어낼 바로 아래 학교와 벌린 여유
@@ -248,11 +213,18 @@
       if (p !== undefined && p !== s.rank) deltas[s.schoolCode] = p - s.rank;
     });
 
+    /* 나보다 바로 앞선 학교 — 판이 작아 승강이 없을 때 보여 줄 목표 */
+    var ahead = mine.rank > 1 ? ranked[mine.rank - 2] : null;
+
     return {
       tier: tier, tierIdx: tierIdx, tiers: TIERS,
       ranked: ranked, size: size,
       promote: z.promote, demote: z.demote,
+      ranked3: ranked3, minField: MIN_FIELD,
+      solo: size < 2,
       me: mine, myZone: myZone, gap: Math.abs(gap),
+      ahead: ahead,
+      aheadGap: ahead ? (ahead.total - mine.total + 25) : 0,
       deltas: deltas,
       daysLeft: 7 - elapsedDays(),
       todayMin: Math.min(global.StudyLog.todayTotal(), DAILY_CAP_MINUTES),
@@ -289,6 +261,15 @@
     var b = board();
     if (!b) return null;
 
+    /* 참가 학교가 MIN_FIELD 미만이면 겨룬 상대가 없는 것이나 마찬가지다.
+     * 이런 주는 티어를 건드리지 않고 넘어간다. */
+    if (!b.ranked3) {
+      st.weekKey = wk;
+      st.prevRanks = {};
+      save(st);
+      return null;
+    }
+
     var result = 'stay', from = b.tierIdx, to = b.tierIdx;
     if (b.myZone === 'promote' && b.tierIdx < TIERS.length - 1) { result = 'promote'; to = b.tierIdx + 1; }
     else if (b.myZone === 'demote' && b.tierIdx > 0) { result = 'demote'; to = b.tierIdx - 1; }
@@ -320,8 +301,9 @@
 
   global.League = {
     TIERS: TIERS, GROUP_SIZE: GROUP_SIZE, DAILY_CAP_MINUTES: DAILY_CAP_MINUTES,
+    MIN_FIELD: MIN_FIELD,
     zoneSizes: zoneSizes, getZone: getZone, rankGroup: rankGroup,
-    board: board, snapshot: snapshot,
+    schools: schools, board: board, snapshot: snapshot,
     settleIfNeeded: settleIfNeeded, clearResult: clearResult, reset: reset,
     myCappedWeek: myCappedWeek, MY_CODE: MY_CODE
   };

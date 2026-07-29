@@ -326,26 +326,41 @@
       </div>
     </div>
 
-    <div class="grid-radar">
-      <div class="card">
-        <div class="card-head"><span class="ci">📊</span><h3>5대 학습 능력 프로필</h3></div>
-        <div class="card-body radar-body">
-          <svg id="radar" viewBox="0 0 340 320" class="radar"></svg>
-          <div class="radar-legend" id="radarLegend"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head"><span class="ci">🔍</span><h3>능력별 점수</h3></div>
-        <div class="card-body">
-          <div id="capBars" class="cap-bars"></div>
-          <p class="tiny">각 항목을 누르면 <b>왜 그 점수가 나왔는지</b> 입력 데이터 기반 근거가 펼쳐집니다.</p>
-        </div>
+    <div class="card wide">
+      <div class="card-head"><span class="ci">📊</span><h3>5대 학습 능력</h3></div>
+      <div class="card-body">
+        <div id="capStrip" class="cap-strip"></div>
+        <p class="tiny" id="capStripNote">—</p>
+        <button type="button" class="res-more" id="resultMore" aria-expanded="false" aria-controls="resultDetail">
+          <span class="rm-txt">자세한 분석 보기</span>
+          <span class="rm-sub">레이더 차트 · 능력별 근거 · 계산 과정</span>
+          <span class="rm-arw">▾</span>
+        </button>
       </div>
     </div>
 
-    <div class="card wide">
-      <div class="card-head"><span class="ci">🧾</span><h3>산출 근거 — 입력한 데이터가 각 능력에 미친 영향</h3></div>
-      <div class="card-body"><div id="capDetails" class="cap-details"></div></div>
+    <div id="resultDetail" class="is-hidden">
+      <div class="grid-radar">
+        <div class="card">
+          <div class="card-head"><span class="ci">📊</span><h3>5대 학습 능력 프로필</h3></div>
+          <div class="card-body radar-body">
+            <svg id="radar" viewBox="0 0 340 320" class="radar"></svg>
+            <div class="radar-legend" id="radarLegend"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="ci">🔍</span><h3>능력별 점수</h3></div>
+          <div class="card-body">
+            <div id="capBars" class="cap-bars"></div>
+            <p class="tiny">각 항목을 누르면 <b>왜 그 점수가 나왔는지</b> 입력 데이터 기반 근거가 펼쳐집니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card wide">
+        <div class="card-head"><span class="ci">🧾</span><h3>산출 근거 — 입력한 데이터가 각 능력에 미친 영향</h3></div>
+        <div class="card-body"><div id="capDetails" class="cap-details"></div></div>
+      </div>
     </div>
   </section>
 
@@ -577,9 +592,10 @@
     </div>
 
     <p class="tiny lg-disclaimer">🔒 이 앱은 서버 없이 브라우저에서만 동작합니다.
-      <b>우리 학교의 누적 시간은 실제 기록</b>(내 순공 시간 + 공유 코드로 받은 같은 학교 그룹원)이지만,
-      <b>상대 학교는 실재하는 학교가 아니라 연습용으로 만들어 낸 상대</b>입니다.
-      같은 주 안에서는 상대와 기록이 바뀌지 않습니다.</p>
+      <b>리그에는 실제 기록이 있는 학교만 올라갑니다</b> — 우리 학교(내 순공 시간 + 같은 학교 그룹원)와,
+      <b>공유 코드를 받아 등록한 다른 학교</b>뿐입니다. 지어낸 상대 학교는 넣지 않습니다.
+      그래서 아무도 등록하지 않았다면 우리 학교 하나만 보입니다.
+      자동 동기화는 되지 않으므로 그룹원 수치는 코드를 받은 시점의 값입니다.</p>
   </section>
 
   <!-- ══════════════════════════════ 6. 주간 리포트 ══════════════════════════════ -->
