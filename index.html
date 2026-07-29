@@ -5118,12 +5118,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     clearTimeout(acTimer);
     var seq = ++acSeq;
     acTimer = setTimeout(function () {
+      // 결과가 도착했을 때 아직 유효한 요청인지 판단한다.
+      // 포커스로 판정하면 창이 잠깐 focus 를 잃어도 결과가 사라지므로,
+      // "더 최근 입력이 없고, 목록이 아직 열려 있고, 입력값이 그대로인가" 로 본다.
+      var stillValid = function () {
+        return seq === acSeq &&
+               !$('schoolAc').classList.contains('is-hidden') &&
+               $('pfSchool').value === q;
+      };
       Neis.searchSchools(q, level).then(function (rows) {
-        if (seq !== acSeq) return;                       // 더 최근 입력이 있으면 버린다
-        if (document.activeElement !== $('pfSchool')) return;
+        if (!stillValid()) return;
         paintAc(rows.length ? rows.slice(0, 8) : offline, false);
       }).catch(function () {
-        if (seq !== acSeq) return;
+        if (!stillValid()) return;
         paintAc(offline, false);                          // 실패하면 오프라인 후보 유지
       });
     }, 280);
