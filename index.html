@@ -486,6 +486,37 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .queue li.now { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; border: 1px solid var(--accent-line); }
 .queue li.done { opacity: 0.45; text-decoration: line-through; }
 
+/* ─────────────────────────── 진행 순서 시간 조절
+ * 플랜은 추천일 뿐이다. 아직 시작하지 않은 블록은 직접 늘리고 줄일 수 있어야 한다. */
+.up-next h4 { display: flex; align-items: center; gap: 8px; }
+.qe-toggle {
+  margin-left: auto; border: 1px solid var(--line); background: var(--surface);
+  font: inherit; font-size: 11px; font-weight: 600; color: var(--muted);
+  padding: 3px 9px; border-radius: 99px; cursor: pointer; transition: all .15s;
+}
+.qe-toggle:hover { border-color: var(--line-2); color: var(--text); }
+.qe-toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.qe-hint { margin: 0 0 9px; line-height: 1.55; }
+
+.queue li .q-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue li.editable { background: var(--surface-3); }
+.queue li .qe { margin-left: auto; display: flex; align-items: center; gap: 3px; flex: none; }
+.qe-b {
+  width: 25px; height: 25px; flex: none; display: grid; place-items: center;
+  border: 1px solid var(--line-2); background: var(--surface); border-radius: 7px;
+  font: inherit; font-size: 14px; line-height: 1; color: var(--text); cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.qe-b:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent-line); }
+.qe-b:active:not(:disabled) { transform: scale(.92); }
+.qe-b:disabled { opacity: .35; cursor: default; }
+.qe-v {
+  min-width: 42px; text-align: center; font-size: 12.5px; font-weight: 700;
+  color: var(--text); font-variant-numeric: tabular-nums;
+}
+.qe-v small { font-size: 10px; color: var(--dim); font-weight: 600; margin-left: 1px; }
+
 /* ==================================================== 프로필 · 온보딩 ==== */
 .onboard { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: start; }
 .ob-hello { padding: 26px; border-radius: var(--r); border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(135deg, #ffffff 0%, #f3efff 60%, #e9f7fb 100%); }
@@ -1631,7 +1662,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         </div>
         <div class="progress-dots" id="progressDots"></div>
         <div class="up-next">
-          <h4>진행 순서</h4>
+          <h4>진행 순서 <button type="button" class="qe-toggle" id="queueEditBtn">시간 조절</button></h4>
+          <p class="tiny qe-hint is-hidden" id="queueEditHint">아직 시작하지 않은 블록의 시간을 바꿀 수 있어요.
+            집중은 5~120분, 휴식은 1~60분까지입니다.</p>
           <ol id="queueList" class="queue"></ol>
         </div>
       </div>
@@ -6397,6 +6430,53 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     this.emit();
   };
 
+  /* 블록 길이 조절 한도 — 계획은 추천일 뿐이라 사용자가 고칠 수 있어야 한다.
+   * 다만 이미 지나갔거나 지금 돌아가는 블록을 건드리면 기록이 어긋나므로 막는다. */
+  var LIMITS = { study: { min: 5, max: 120 }, other: { min: 1, max: 60 } };
+
+  function limitOf(kind) { return kind === 'study' ? LIMITS.study : LIMITS.other; }
+
+  /** index 번째 블록을 지금 고칠 수 있는가 */
+  Pomodoro.prototype.canEdit = function (index) {
+    if (index < 0 || index >= this.queue.length) return false;
+    if (index < this.index) return false;                    // 이미 지난 블록
+    if (index === this.index && this.running) return false;  // 지금 돌아가는 블록
+    return true;
+  };
+
+  /**
+   * 블록 길이를 분 단위로 바꾼다. 한도를 벗어나면 잘라서 넣는다.
+   * 바꾼 값(분)을 돌려주고, 못 바꾸면 null 을 돌려준다.
+   */
+  Pomodoro.prototype.setMinutes = function (index, minutes) {
+    if (!this.canEdit(index)) return null;
+
+    var b = this.queue[index];
+    var lim = limitOf(b.kind);
+    var m = Math.round(minutes);
+    if (!isFinite(m)) return null;
+    m = Math.min(lim.max, Math.max(lim.min, m));
+
+    b.minutes = m;
+    b.ms = m * 60 * 1000;
+    // 아직 시작하지 않은 현재 블록이면 남은 시간도 함께 맞춘다
+    if (index === this.index) this.remainingMs = b.ms;
+    this.emit();
+    return m;
+  };
+
+  Pomodoro.prototype.limitFor = function (index) {
+    var b = this.queue[index];
+    return b ? limitOf(b.kind) : LIMITS.other;
+  };
+
+  /** 집중 블록 합계(분) — 목표 시간 표시를 다시 계산할 때 쓴다 */
+  Pomodoro.prototype.studyMinutes = function () {
+    return this.queue.reduce(function (sum, b) {
+      return sum + (b.kind === 'study' ? b.minutes : 0);
+    }, 0);
+  };
+
   /** 현재 블록을 끝내고 다음으로 (완료 콜백 없이 수동 이동) */
   Pomodoro.prototype.skip = function () {
     var wasRunning = this.running;
@@ -6501,6 +6581,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     timer: null,
     rankRange: 'today',
     weekOffset: 0,
+    queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
     page: 'secInput',
     pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
     span: null,        // 진행 중인 순공 구간
@@ -7688,8 +7769,58 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('queueList').innerHTML = state.timer.queue.map(function (b, i) {
       var cls = i < s.index ? 'done' : (i === s.index ? 'now' : '');
       var icon = b.kind === 'study' ? '📖' : (b.kind === 'longBreak' ? '🌿' : '☕');
-      return '<li class="' + cls + '">' + icon + ' ' + esc(b.label) + '<span class="qt">' + b.minutes + '분</span></li>';
+      var editable = state.queueEdit && state.timer.canEdit(i);
+      var lim = state.timer.limitFor(i);
+
+      var tail = editable
+        ? '<span class="qe">' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="-5"' +
+              (b.minutes <= lim.min ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 줄이기">−</button>' +
+            '<span class="qe-v">' + b.minutes + '<small>분</small></span>' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="5"' +
+              (b.minutes >= lim.max ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 늘리기">＋</button>' +
+          '</span>'
+        : '<span class="qt">' + b.minutes + '분</span>';
+
+      return '<li class="' + cls + (editable ? ' editable' : '') + '">' +
+        '<span class="q-name">' + icon + ' ' + esc(b.label) + '</span>' + tail + '</li>';
     }).join('');
+
+    if (state.queueEdit) {
+      $$('#queueList .qe-b').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var i = +btn.dataset.qi, d = +btn.dataset.qd;
+          var cur = state.timer.queue[i];
+          if (!cur) return;
+          var next = state.timer.setMinutes(i, cur.minutes + d);
+          if (next === null) { toast('이미 지났거나 진행 중인 블록은 바꿀 수 없어요.', true); return; }
+          // setMinutes 안에서 emit() 이 돌아 목록은 이미 다시 그려졌다.
+          // 여기서는 바뀐 길이에 맞춰 목표 시간만 갱신한다.
+          renderQueueTotals();
+        });
+      });
+    }
+  }
+
+  /** 블록 길이를 바꾸면 목표 시간과 타임라인 표기도 같이 움직여야 한다 */
+  function renderQueueTotals() {
+    if (state.plan) {
+      state.plan.plannedStudyMin = state.timer.studyMinutes();
+      state.plan.plannedBreakMin = state.timer.queue.reduce(function (s, b) {
+        return s + (b.kind === 'study' ? 0 : b.minutes);
+      }, 0);
+    }
+    renderLiveTotal();
+  }
+
+  function toggleQueueEdit() {
+    state.queueEdit = !state.queueEdit;
+    $('queueEditBtn').textContent = state.queueEdit ? '완료' : '시간 조절';
+    $('queueEditBtn').classList.toggle('on', state.queueEdit);
+    $('queueEditHint').classList.toggle('is-hidden', !state.queueEdit);
+    // renderTimer 는 타이머 상태 스냅숏을 인자로 받는다.
+    // emit() 이 그 스냅숏을 만들어 onTick 으로 넘겨 주므로 이걸 쓴다.
+    state.timer.emit();
   }
 
   /* ======================================================== 집중 사운드 == */
@@ -9163,6 +9294,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('detailToggle').addEventListener('click', function () { toggleDetail(); });
     $('resultMore').addEventListener('click', toggleResultDetail);
     $('planMore').addEventListener('click', togglePlanDetail);
+    $('queueEditBtn').addEventListener('click', toggleQueueEdit);
     DETAIL_IDS.forEach(function (id) {
       $(id).addEventListener('input', updateDetailSummary);
       $(id).addEventListener('change', updateDetailSummary);

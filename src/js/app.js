@@ -13,6 +13,7 @@
     timer: null,
     rankRange: 'today',
     weekOffset: 0,
+    queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
     page: 'secInput',
     pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
     span: null,        // 진행 중인 순공 구간
@@ -1200,8 +1201,58 @@
     $('queueList').innerHTML = state.timer.queue.map(function (b, i) {
       var cls = i < s.index ? 'done' : (i === s.index ? 'now' : '');
       var icon = b.kind === 'study' ? '📖' : (b.kind === 'longBreak' ? '🌿' : '☕');
-      return '<li class="' + cls + '">' + icon + ' ' + esc(b.label) + '<span class="qt">' + b.minutes + '분</span></li>';
+      var editable = state.queueEdit && state.timer.canEdit(i);
+      var lim = state.timer.limitFor(i);
+
+      var tail = editable
+        ? '<span class="qe">' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="-5"' +
+              (b.minutes <= lim.min ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 줄이기">−</button>' +
+            '<span class="qe-v">' + b.minutes + '<small>분</small></span>' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="5"' +
+              (b.minutes >= lim.max ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 늘리기">＋</button>' +
+          '</span>'
+        : '<span class="qt">' + b.minutes + '분</span>';
+
+      return '<li class="' + cls + (editable ? ' editable' : '') + '">' +
+        '<span class="q-name">' + icon + ' ' + esc(b.label) + '</span>' + tail + '</li>';
     }).join('');
+
+    if (state.queueEdit) {
+      $$('#queueList .qe-b').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var i = +btn.dataset.qi, d = +btn.dataset.qd;
+          var cur = state.timer.queue[i];
+          if (!cur) return;
+          var next = state.timer.setMinutes(i, cur.minutes + d);
+          if (next === null) { toast('이미 지났거나 진행 중인 블록은 바꿀 수 없어요.', true); return; }
+          // setMinutes 안에서 emit() 이 돌아 목록은 이미 다시 그려졌다.
+          // 여기서는 바뀐 길이에 맞춰 목표 시간만 갱신한다.
+          renderQueueTotals();
+        });
+      });
+    }
+  }
+
+  /** 블록 길이를 바꾸면 목표 시간과 타임라인 표기도 같이 움직여야 한다 */
+  function renderQueueTotals() {
+    if (state.plan) {
+      state.plan.plannedStudyMin = state.timer.studyMinutes();
+      state.plan.plannedBreakMin = state.timer.queue.reduce(function (s, b) {
+        return s + (b.kind === 'study' ? 0 : b.minutes);
+      }, 0);
+    }
+    renderLiveTotal();
+  }
+
+  function toggleQueueEdit() {
+    state.queueEdit = !state.queueEdit;
+    $('queueEditBtn').textContent = state.queueEdit ? '완료' : '시간 조절';
+    $('queueEditBtn').classList.toggle('on', state.queueEdit);
+    $('queueEditHint').classList.toggle('is-hidden', !state.queueEdit);
+    // renderTimer 는 타이머 상태 스냅숏을 인자로 받는다.
+    // emit() 이 그 스냅숏을 만들어 onTick 으로 넘겨 주므로 이걸 쓴다.
+    state.timer.emit();
   }
 
   /* ======================================================== 집중 사운드 == */
@@ -2675,6 +2726,7 @@
     $('detailToggle').addEventListener('click', function () { toggleDetail(); });
     $('resultMore').addEventListener('click', toggleResultDetail);
     $('planMore').addEventListener('click', togglePlanDetail);
+    $('queueEditBtn').addEventListener('click', toggleQueueEdit);
     DETAIL_IDS.forEach(function (id) {
       $(id).addEventListener('input', updateDetailSummary);
       $(id).addEventListener('change', updateDetailSummary);

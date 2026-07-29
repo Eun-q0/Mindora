@@ -74,6 +74,53 @@
     this.emit();
   };
 
+  /* 블록 길이 조절 한도 — 계획은 추천일 뿐이라 사용자가 고칠 수 있어야 한다.
+   * 다만 이미 지나갔거나 지금 돌아가는 블록을 건드리면 기록이 어긋나므로 막는다. */
+  var LIMITS = { study: { min: 5, max: 120 }, other: { min: 1, max: 60 } };
+
+  function limitOf(kind) { return kind === 'study' ? LIMITS.study : LIMITS.other; }
+
+  /** index 번째 블록을 지금 고칠 수 있는가 */
+  Pomodoro.prototype.canEdit = function (index) {
+    if (index < 0 || index >= this.queue.length) return false;
+    if (index < this.index) return false;                    // 이미 지난 블록
+    if (index === this.index && this.running) return false;  // 지금 돌아가는 블록
+    return true;
+  };
+
+  /**
+   * 블록 길이를 분 단위로 바꾼다. 한도를 벗어나면 잘라서 넣는다.
+   * 바꾼 값(분)을 돌려주고, 못 바꾸면 null 을 돌려준다.
+   */
+  Pomodoro.prototype.setMinutes = function (index, minutes) {
+    if (!this.canEdit(index)) return null;
+
+    var b = this.queue[index];
+    var lim = limitOf(b.kind);
+    var m = Math.round(minutes);
+    if (!isFinite(m)) return null;
+    m = Math.min(lim.max, Math.max(lim.min, m));
+
+    b.minutes = m;
+    b.ms = m * 60 * 1000;
+    // 아직 시작하지 않은 현재 블록이면 남은 시간도 함께 맞춘다
+    if (index === this.index) this.remainingMs = b.ms;
+    this.emit();
+    return m;
+  };
+
+  Pomodoro.prototype.limitFor = function (index) {
+    var b = this.queue[index];
+    return b ? limitOf(b.kind) : LIMITS.other;
+  };
+
+  /** 집중 블록 합계(분) — 목표 시간 표시를 다시 계산할 때 쓴다 */
+  Pomodoro.prototype.studyMinutes = function () {
+    return this.queue.reduce(function (sum, b) {
+      return sum + (b.kind === 'study' ? b.minutes : 0);
+    }, 0);
+  };
+
   /** 현재 블록을 끝내고 다음으로 (완료 콜백 없이 수동 이동) */
   Pomodoro.prototype.skip = function () {
     var wasRunning = this.running;
