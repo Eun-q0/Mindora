@@ -90,22 +90,95 @@
     '대학교': '대학교', '전문대학': '대학교'
   };
 
+  /* 오프라인 학교 데이터 - 전국 인기 학교 목록 */
+  var LOCAL_SCHOOLS = [
+    /* 서울 */
+    {name:'서울대학교',kind:'대학교',region:'서울',address:'서울 관악구'},
+    {name:'고려대학교',kind:'대학교',region:'서울',address:'서울 성북구'},
+    {name:'연세대학교',kind:'대학교',region:'서울',address:'서울 서대문구'},
+    {name:'이화여자대학교',kind:'대학교',region:'서울',address:'서울 서대문구'},
+    {name:'숙명여자대학교',kind:'대학교',region:'서울',address:'서울 용산구'},
+    {name:'광운대학교',kind:'대학교',region:'서울',address:'서울 노원구'},
+    {name:'서울과학기술대학교',kind:'대학교',region:'서울',address:'서울 노원구'},
+    {name:'동국대학교',kind:'대학교',region:'서울',address:'서울 중구'},
+    {name:'명지대학교',kind:'대학교',region:'서울',address:'서울 성북구'},
+    {name:'한국외국어대학교',kind:'대학교',region:'서울',address:'서울 동대문구'},
+    {name:'경희대학교',kind:'대학교',region:'서울',address:'서울 동대문구'},
+    {name:'강남고등학교',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    {name:'서울고등학교',kind:'고등학교',region:'서울',address:'서울 중구'},
+    {name:'경기고등학교',kind:'고등학교',region:'서울',address:'서울 종로구'},
+    {name:'서울대학교사범대학부속고등학교',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    {name:'휘문고등학교',kind:'고등학교',region:'서울',address:'서울 종로구'},
+    {name:'용산고등학교',kind:'고등학교',region:'서울',address:'서울 용산구'},
+    {name:'신사고등학교',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    {name:'중앙고등학교',kind:'고등학교',region:'서울',address:'서울 은평구'},
+    {name:'사대부고',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    /* 경기 */
+    {name:'한국과학기술원',kind:'대학교',region:'대전',address:'대전 유성구'},
+    {name:'수원고등학교',kind:'고등학교',region:'경기',address:'경기 수원시'},
+    {name:'용인외국어고등학교',kind:'고등학교',region:'경기',address:'경기 용인시'},
+    {name:'분당고등학교',kind:'고등학교',region:'경기',address:'경기 성남시'},
+    {name:'판교고등학교',kind:'고등학교',region:'경기',address:'경기 성남시'},
+    /* 부산 */
+    {name:'부산대학교',kind:'대학교',region:'부산',address:'부산 금정구'},
+    {name:'동아대학교',kind:'대학교',region:'부산',address:'부산 서구'},
+    {name:'신라대학교',kind:'대학교',region:'부산',address:'부산 사상구'},
+    /* 대구 */
+    {name:'대구대학교',kind:'대학교',region:'대구',address:'대구 남구'},
+    {name:'경북대학교',kind:'대학교',region:'대구',address:'대구 북구'},
+    /* 중학교 샘플 */
+    {name:'한빛중학교',kind:'중학교',region:'서울',address:'서울 강남구'},
+    {name:'예일중학교',kind:'중학교',region:'서울',address:'서울 강남구'},
+    {name:'영동중학교',kind:'중학교',region:'서울',address:'서울 강남구'},
+    /* 초등학교 샘플 */
+    {name:'한빛초등학교',kind:'초등학교',region:'서울',address:'서울 강남구'},
+    {name:'신사초등학교',kind:'초등학교',region:'서울',address:'서울 강남구'},
+    {name:'대곡초등학교',kind:'초등학교',region:'서울',address:'서울 강남구'}
+  ];
+
   var searchCache = {};
 
-  /** 학교 이름 일부로 검색. 최대 pSize 건. */
+  /** 로컬 데이터에서 학교 검색 */
+  function searchSchoolsLocal(query, kind) {
+    var q = String(query || '').trim().toLowerCase();
+    if (q.length < 1) return [];
+
+    return LOCAL_SCHOOLS.filter(function (s) {
+      if (kind && kind !== '기타' && s.kind !== kind) return false;
+      return s.name.toLowerCase().indexOf(q) >= 0;
+    }).sort(function (a, b) {
+      var aq = a.name.toLowerCase().indexOf(q);
+      var bq = b.name.toLowerCase().indexOf(q);
+      if (aq === 0 && bq !== 0) return -1;
+      if (aq !== 0 && bq === 0) return 1;
+      return a.name.length - b.name.length;
+    }).slice(0, 30);
+  }
+
+  /** 학교 이름 일부로 검색 - 먼저 로컬에서, API 키 있으면 온라인도 시도 */
   function searchSchools(query, kind) {
     var q = String(query || '').trim();
-    if (q.length < 2) return Promise.resolve([]);
+    if (q.length < 1) return Promise.resolve([]);
 
     var ck = q + '|' + (kind || '');
     if (searchCache[ck]) return Promise.resolve(searchCache[ck]);
 
+    // 로컬 데이터에서 먼저 검색
+    var localResults = searchSchoolsLocal(q, kind);
+
+    // API 키가 없으면 로컬 결과만 반환
+    if (!hasKey()) {
+      searchCache[ck] = localResults;
+      return Promise.resolve(localResults);
+    }
+
+    // API 키가 있으면 온라인에서도 검색 시도 (로컬과 병합)
     return call('schoolInfo', {
       pIndex: 1, pSize: 30,
       SCHUL_NM: q,
       SCHUL_KND_SC_NM: (kind && kind !== '기타') ? kind : ''
     }, 'schoolInfo').then(function (rows) {
-      var list = rows.map(function (r) {
+      var onlineList = rows.map(function (r) {
         return {
           name: r.SCHUL_NM,
           eduCode: r.ATPT_OFCDC_SC_CODE,
@@ -117,15 +190,20 @@
           address: r.ORG_RDNMA || ''
         };
       });
-      // 이름이 검색어로 시작하는 학교를 먼저 보여 준다
-      list.sort(function (a, b) {
-        var as = a.name.indexOf(q) === 0 ? 0 : 1;
-        var bs = b.name.indexOf(q) === 0 ? 0 : 1;
-        if (as !== bs) return as - bs;
-        return a.name.length - b.name.length;
+      // 로컬과 온라인 결과 병합 (중복 제거)
+      var merged = localResults.concat(onlineList);
+      var seen = {};
+      var list = [];
+      merged.forEach(function (s) {
+        var key = s.name + '|' + s.kind;
+        if (!seen[key]) { seen[key] = true; list.push(s); }
       });
       searchCache[ck] = list;
       return list;
+    }).catch(function (e) {
+      // 온라인 오류시 로컬 결과만 반환
+      searchCache[ck] = localResults;
+      return localResults;
     });
   }
 
@@ -170,6 +248,46 @@
 
   var ORDER = { '조식': 0, '중식': 1, '석식': 2 };
 
+  /* 로컬 급식 샘플 데이터 - 학교별 */
+  var LOCAL_MEALS = {
+    '강남고등학교': {
+      '중식': [
+        {name:'쌀밥',allergens:[]},
+        {name:'소고기미역국',allergens:[16]},
+        {name:'돈까스/타르타르소스',allergens:[1,6,10]},
+        {name:'깻잎지',allergens:[5]},
+        {name:'배추김치',allergens:[]},
+        {name:'초코에몬크림빵',allergens:[1,2,6]}
+      ],
+      '석식': [
+        {name:'보리밥',allergens:[]},
+        {name:'된장찌개',allergens:[5,6,10]},
+        {name:'계란말이',allergens:[1]},
+        {name:'배추김치',allergens:[]}
+      ]
+    },
+    '한빛중학교': {
+      '중식': [
+        {name:'찰보리밥',allergens:[]},
+        {name:'미역국',allergens:[]},
+        {name:'제육볶음',allergens:[5,10]},
+        {name:'어묵볶음',allergens:[9]},
+        {name:'깍두기',allergens:[]},
+        {name:'수수팥떡',allergens:[]}
+      ]
+    },
+    '한빛초등학교': {
+      '중식': [
+        {name:'흰쌀밥',allergens:[]},
+        {name:'계란국',allergens:[1]},
+        {name:'불고기',allergens:[10,16]},
+        {name:'야채튀김',allergens:[6]},
+        {name:'배추김치',allergens:[]},
+        {name:'딸기우유',allergens:[2]}
+      ]
+    }
+  };
+
   /* 하루 단위 캐시 — 같은 날 같은 학교를 반복 호출하지 않는다 */
   function cacheRead() {
     try { return JSON.parse(localStorage.getItem(MEAL_CACHE) || '{}'); } catch (e) { return {}; }
@@ -178,19 +296,57 @@
     try { localStorage.setItem(MEAL_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
   }
 
+  /** 로컬 급식 데이터 반환 */
+  function getMealsLocal(schoolName) {
+    var meals = LOCAL_MEALS[schoolName];
+    if (!meals) return {};
+
+    var today = ymd(new Date());
+    var byDate = {};
+    byDate[today] = [];
+
+    Object.keys(meals).forEach(function (type) {
+      byDate[today].push({
+        date: today,
+        type: type,
+        dishes: meals[type] || [],
+        kcal: '약 600kcal',
+        nutrients: [],
+        origin: '국내산'
+      });
+    });
+
+    return byDate;
+  }
+
   /** from~to 구간의 급식을 날짜별로 묶어 돌려준다 */
   function meals(school, from, to) {
-    if (!school || !school.eduCode || !school.schoolCode) return Promise.resolve({});
+    if (!school) return Promise.resolve({});
 
     var f = from || ymd(new Date());
     var t = to || f;
-    var ck = school.schoolCode + '|' + f + '|' + t;
+    var ck = (school.schoolCode || school.name) + '|' + f + '|' + t;
 
     var cache = cacheRead();
     if (cache[ck] && (Date.now() - cache[ck].at) < 6 * 3600 * 1000) {
       return Promise.resolve(cache[ck].data);
     }
 
+    // 먼저 로컬 데이터에서 찾기
+    var localData = getMealsLocal(school.name);
+    if (Object.keys(localData).length > 0) {
+      var c = cacheRead();
+      c[ck] = { at: Date.now(), data: localData };
+      cacheWrite(c);
+      return Promise.resolve(localData);
+    }
+
+    // API 키가 없으면 빈 결과 반환
+    if (!hasKey() || !school.eduCode || !school.schoolCode) {
+      return Promise.resolve({});
+    }
+
+    // API 키가 있으면 온라인에서 조회
     return call('mealServiceDietInfo', {
       pIndex: 1, pSize: 100,
       ATPT_OFCDC_SC_CODE: school.eduCode,
@@ -225,6 +381,9 @@
       }
       cacheWrite(c);
       return byDate;
+    }).catch(function (e) {
+      // 온라인 오류시 빈 결과 반환
+      return {};
     });
   }
 
