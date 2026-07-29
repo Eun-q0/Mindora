@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NeuroStudy — 뇌 컨디션 기반 학습 코치</title>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">🧠</div>
+      <div class="brand-text">
+        <strong>NeuroStudy</strong>
+        <span>뇌 컨디션 기반 학습 코치</span>
+      </div>
+    </div>
+    <nav class="steps" id="stepNav"></nav>
+    <button type="button" class="profile-chip is-hidden" id="profileChip">
+      <span class="pc-av" id="pcAvatar">?</span>
+      <span class="pc-txt"><b id="pcName">—</b><span id="pcGroup">—</span></span>
+    </button>
+    <div class="clock" id="clock">--:--</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ══════════════════════════════ 0. 프로필 ══════════════════════════════ -->
+  <section id="secProfile" class="section">
+    <div class="sec-head">
+      <h2><span class="sec-num">00</span> 시작하기</h2>
+      <p>학교와 학년을 입력하면 같은 학교·학년 친구들과 <b>스터디 그룹</b>이 만들어집니다. 공부한 시간을 서로 측정해 등수로 볼 수 있어요.</p>
+    </div>
+
+    <div class="onboard">
+      <div class="ob-hello">
+        <h3>오늘 내 뇌가 어떤 공부에<br>가장 잘 맞는지 알려드릴게요.</h3>
+        <p>수면·스트레스·피로·식사 같은 데이터를 넣으면 학습 능력을 5가지로 나눠 계산하고, 과목별 공부 시간까지 배분해 줍니다.</p>
+        <ul class="ob-list">
+          <li><span class="oi">🧠</span><span><b>뇌 상태 분석</b>집중력·기억력·계산력·창의력·언어력을 오늘 컨디션 기준으로 산출하고 근거를 숫자로 보여줍니다.</span></li>
+          <li><span class="oi">⏱️</span><span><b>순공 시간 측정</b>타이머를 돌린 만큼 실제 공부한 시간이 과목별로 쌓입니다.</span></li>
+          <li><span class="oi">🏆</span><span><b>그룹 등수</b>같은 학교·학년 친구들과 오늘·이번 주 순공 시간을 겨룹니다.</span></li>
+          <li><span class="oi">📈</span><span><b>주간 리포트</b>매주 공부 시간, 과목 분포, 뇌 컨디션 추이를 정리해 드립니다.</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🎓</span><h3>내 프로필</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="pfNick">이름 / 닉네임 <em>랭킹에 표시됩니다</em></label>
+            <input type="text" id="pfNick" class="input" maxlength="12" placeholder="예) 지민">
+          </div>
+          <div class="field">
+            <label for="pfSchool">학교명 <em>앞 글자만 쳐도 아래에서 고를 수 있어요</em></label>
+            <div class="ac-wrap">
+              <input type="text" id="pfSchool" class="input" maxlength="24" placeholder="예) 한빛" autocomplete="off">
+              <div class="ac-list is-hidden" id="schoolAc"></div>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="pfLevel">학교급</label>
+              <select id="pfLevel" class="input">
+                <option value="초등학교">초등학교</option>
+                <option value="중학교">중학교</option>
+                <option value="고등학교" selected>고등학교</option>
+                <option value="대학교">대학교</option>
+                <option value="기타">기타 (재수·검정고시 등)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="pfGrade">학년</label>
+              <select id="pfGrade" class="input"></select>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="pfClass">반 <em>선택</em></label>
+              <input type="text" id="pfClass" class="input" maxlength="8" placeholder="예) 3">
+            </div>
+            <div class="field">
+              <label for="pfGoal">주간 목표 학습 시간</label>
+              <div class="range-row">
+                <input type="range" id="pfGoal" min="3" max="70" step="1" value="25" data-out="pfGoalOut">
+                <output id="pfGoalOut" class="out">25시간</output>
+              </div>
+            </div>
+          </div>
+          <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
+          <div class="actions">
+            <button type="button" class="btn primary lg" id="saveProfile">저장하고 시작하기</button>
+            <button type="button" class="btn ghost" id="cancelProfile">취소</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ 1. 입력 ══════════════════════════════ -->
+  <section id="secInput" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">01</span> 오늘의 데이터 입력</h2>
+      <p>수면·심리·생활 습관과 시험 일정을 입력하면, 오늘 당신의 뇌가 어떤 학습에 최적인지 계산합니다.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><span class="ci">🛏️</span><h3>수면</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="sleepHours">어젯밤 수면 시간</label>
+            <div class="range-row">
+              <input type="range" id="sleepHours" min="0" max="12" step="0.5" value="6.5" data-out="sleepHoursOut">
+              <output id="sleepHoursOut" class="out">6.5시간</output>
+            </div>
+            <div class="scale-hint"><span>0h</span><span class="opt">권장 7~9h</span><span>12h</span></div>
+          </div>
+          <div class="field">
+            <label>수면의 질 <em>깊게 잤는지, 자주 깼는지</em></label>
+            <div class="seg" data-target="sleepQuality">
+              <button type="button" data-v="1">매우 나쁨</button>
+              <button type="button" data-v="2">나쁨</button>
+              <button type="button" data-v="3">보통</button>
+              <button type="button" data-v="4">좋음</button>
+              <button type="button" data-v="5">매우 좋음</button>
+            </div>
+            <input type="hidden" id="sleepQuality" value="3">
+          </div>
+          <div class="field">
+            <label>수면 규칙성 <em>평소와 취침·기상 시각이 비슷한가</em></label>
+            <div class="seg" data-target="sleepRegularity">
+              <button type="button" data-v="1">매우 불규칙</button>
+              <button type="button" data-v="2">불규칙</button>
+              <button type="button" data-v="3">보통</button>
+              <button type="button" data-v="4">규칙적</button>
+              <button type="button" data-v="5">매우 규칙적</button>
+            </div>
+            <input type="hidden" id="sleepRegularity" value="3">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">💗</span><h3>심리 · 신체 상태</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="stress">스트레스 지수</label>
+            <div class="range-row">
+              <input type="range" id="stress" min="0" max="10" step="1" value="4" data-out="stressOut">
+              <output id="stressOut" class="out">4 / 10</output>
+            </div>
+            <div class="scale-hint"><span>편안함</span><span class="opt">집중 최적 3~4</span><span>매우 심함</span></div>
+          </div>
+          <div class="field">
+            <label for="fatigue">피로도</label>
+            <div class="range-row">
+              <input type="range" id="fatigue" min="0" max="10" step="1" value="4" data-out="fatigueOut">
+              <output id="fatigueOut" class="out">4 / 10</output>
+            </div>
+            <div class="scale-hint"><span>쌩쌩함</span><span></span><span>탈진</span></div>
+          </div>
+          <div class="field">
+            <label>기분 / 정서 상태</label>
+            <div class="seg" data-target="mood">
+              <button type="button" data-v="1">😞</button>
+              <button type="button" data-v="2">🙁</button>
+              <button type="button" data-v="3">😐</button>
+              <button type="button" data-v="4">🙂</button>
+              <button type="button" data-v="5">😄</button>
+            </div>
+            <input type="hidden" id="mood" value="3">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🍚</span><h3>식사 · 영양</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label>오늘 먹은 끼니</label>
+            <div class="meals">
+              <label class="meal"><input type="checkbox" id="mealBreakfast"><span><b>🌅</b>아침</span></label>
+              <label class="meal"><input type="checkbox" id="mealLunch" checked><span><b>🌞</b>점심</span></label>
+              <label class="meal"><input type="checkbox" id="mealDinner"><span><b>🌙</b>저녁</span></label>
+            </div>
+            <p class="tiny">아직 시간이 되지 않은 끼니는 감점되지 않습니다.</p>
+          </div>
+
+          <div class="field" id="mealField">
+            <label>오늘 학교 급식 <em>나이스 교육정보 개방포털</em></label>
+            <div id="mealToday" class="meal-box"></div>
+          </div>
+          <div class="field">
+            <label for="hoursSinceMeal">마지막 식사 후 경과 시간</label>
+            <div class="range-row">
+              <input type="range" id="hoursSinceMeal" min="0" max="12" step="0.5" value="2" data-out="hoursSinceMealOut">
+              <output id="hoursSinceMealOut" class="out">2시간</output>
+            </div>
+          </div>
+          <div class="field">
+            <label for="water">수분 섭취 (컵, 200~250ml 기준)</label>
+            <div class="range-row">
+              <input type="range" id="water" min="0" max="14" step="1" value="4" data-out="waterOut">
+              <output id="waterOut" class="out">4컵</output>
+            </div>
+            <div class="scale-hint"><span>0컵</span><span class="opt">권장 6~8컵</span><span>14컵</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🏃</span><h3>생활 습관</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="caffeine">오늘 마신 카페인 (잔)</label>
+            <div class="range-row">
+              <input type="range" id="caffeine" min="0" max="8" step="1" value="1" data-out="caffeineOut">
+              <output id="caffeineOut" class="out">1잔</output>
+            </div>
+            <div class="scale-hint"><span>0잔</span><span class="opt">최적 1~2잔</span><span>8잔</span></div>
+          </div>
+          <div class="field">
+            <label for="exercise">오늘 운동 시간 (분)</label>
+            <div class="range-row">
+              <input type="range" id="exercise" min="0" max="180" step="5" value="0" data-out="exerciseOut">
+              <output id="exerciseOut" class="out">0분</output>
+            </div>
+            <div class="scale-hint"><span>0분</span><span class="opt">최적 20~60분</span><span>180분</span></div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="startTime">학습 시작 시각</label>
+              <input type="time" id="startTime" class="input">
+            </div>
+            <div class="field">
+              <label for="availableHours">오늘 가용 학습 시간</label>
+              <div class="range-row">
+                <input type="range" id="availableHours" min="0.5" max="14" step="0.5" value="4" data-out="availableHoursOut">
+                <output id="availableHoursOut" class="out">4시간</output>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head">
+        <span class="ci">📚</span><h3>과목 · 시험 일정</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="addSubject">+ 과목 추가</button></span>
+      </div>
+      <div class="card-body">
+        <div class="subject-head">
+          <span>과목명</span><span>유형</span><span>시험일</span><span>중요도</span><span>준비도</span><span></span>
+        </div>
+        <div id="subjectList" class="subject-list"></div>
+        <p class="tiny">유형에 따라 어떤 뇌 능력과 매칭할지가 결정됩니다. 시험일을 비워 두면 긴급도는 기본값으로 계산됩니다.</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary lg" id="analyzeBtn">🧠 오늘의 뇌 상태 분석하기</button>
+      <button type="button" class="btn" id="sampleBtn">예시 데이터</button>
+      <button type="button" class="btn ghost" id="resetBtn">초기화</button>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ 2. 결과 ══════════════════════════════ -->
+  <section id="secResult" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">02</span> 뇌 학습 능력 분석</h2>
+      <p id="analyzedAt">—</p>
+    </div>
+
+    <div class="hero">
+      <div class="hero-gauge">
+        <svg viewBox="0 0 220 220" class="gauge">
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7c5cff"></stop>
+              <stop offset="55%" stop-color="#22b8d8"></stop>
+              <stop offset="100%" stop-color="#0f9d6e"></stop>
+            </linearGradient>
+          </defs>
+          <circle cx="110" cy="110" r="92" class="g-track"></circle>
+          <circle cx="110" cy="110" r="92" class="g-fill" id="gaugeFill"></circle>
+        </svg>
+        <div class="gauge-center">
+          <div class="g-score" id="overallScore">0</div>
+          <div class="g-unit">/ 100</div>
+          <div class="g-state" id="overallState">—</div>
+        </div>
+      </div>
+      <div class="hero-text">
+        <h3 id="heroTitle">—</h3>
+        <p id="heroLine">—</p>
+        <div class="alerts" id="alertList"></div>
+      </div>
+    </div>
+
+    <div class="grid-radar">
+      <div class="card">
+        <div class="card-head"><span class="ci">📊</span><h3>5대 학습 능력 프로필</h3></div>
+        <div class="card-body radar-body">
+          <svg id="radar" viewBox="0 0 340 320" class="radar"></svg>
+          <div class="radar-legend" id="radarLegend"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ci">🔍</span><h3>능력별 점수</h3></div>
+        <div class="card-body">
+          <div id="capBars" class="cap-bars"></div>
+          <p class="tiny">각 항목을 누르면 <b>왜 그 점수가 나왔는지</b> 입력 데이터 기반 근거가 펼쳐집니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🧾</span><h3>산출 근거 — 입력한 데이터가 각 능력에 미친 영향</h3></div>
+      <div class="card-body"><div id="capDetails" class="cap-details"></div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ 3. 플랜 ══════════════════════════════ -->
+  <section id="secPlan" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">03</span> 오늘의 학습 추천</h2>
+      <p id="planHeadline">—</p>
+    </div>
+
+    <div class="pom-summary" id="pomSummary"></div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">⚖️</span><h3>과목별 학습 시간 배분</h3></div>
+      <div class="card-body">
+        <div id="allocBar" class="alloc-bar"></div>
+        <div id="subjectPlans" class="subject-plans"></div>
+        <div id="droppedNote"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><span class="ci">🗓️</span><h3>오늘의 타임라인</h3></div>
+        <div class="card-body"><div id="timeline" class="timeline"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ci">🌿</span><h3>휴식 가이드</h3></div>
+        <div class="card-body"><div id="restList" class="rest-list"></div></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary lg" id="startTimerBtn">▶ 이 플랜으로 뽀모도로 시작</button>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ 4. 타이머 ══════════════════════════════ -->
+  <section id="secTimer" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">04</span> 뽀모도로 타이머</h2>
+      <p>집중 블록을 돌린 시간만 <b>순공 시간</b>으로 기록됩니다. 일시정지하거나 휴식 중일 때는 쌓이지 않습니다.</p>
+    </div>
+
+    <div class="timer-wrap">
+      <div class="timer-dial">
+        <svg viewBox="0 0 260 260" class="dial">
+          <circle cx="130" cy="130" r="112" class="d-track"></circle>
+          <circle cx="130" cy="130" r="112" class="d-fill" id="dialFill"></circle>
+        </svg>
+        <div class="dial-center">
+          <div class="d-phase" id="phaseLabel">대기 중</div>
+          <div class="d-time" id="timeLeft">00:00</div>
+          <div class="d-subject" id="currentSubject">—</div>
+        </div>
+      </div>
+
+      <div class="timer-side">
+        <div class="live-total">
+          <div>
+            <div class="lt-k"><span class="rec-dot" id="recDot"></span>오늘 순공 시간</div>
+            <div class="lt-v" id="todayTotal">0<small>분</small></div>
+          </div>
+          <div class="lt-goal">
+            <div class="lt-goal-top"><span>오늘 목표</span><span id="goalText">—</span></div>
+            <div class="lt-track"><div class="lt-fill" id="goalFill"></div></div>
+            <p class="tiny" id="todayBreakdown">아직 기록된 순공 시간이 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="timer-controls">
+          <button type="button" class="btn primary" id="btnStart">▶ 시작</button>
+          <button type="button" class="btn" id="btnSkip">⏭ 건너뛰기</button>
+          <button type="button" class="btn ghost" id="btnReset">↺ 리셋</button>
+        </div>
+        <div class="progress-dots" id="progressDots"></div>
+        <div class="up-next">
+          <h4>진행 순서</h4>
+          <ol id="queueList" class="queue"></ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head">
+        <span class="ci">🎧</span><h3>집중 사운드</h3>
+        <span class="right">
+          <button type="button" class="btn sm" id="sndToggle">▶ 재생</button>
+          <button type="button" class="btn ghost sm" data-goto="secSettings">설정 →</button>
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="snd-bar">
+          <div class="snd-now" id="sndNow"></div>
+          <div class="snd-vol">
+            <label for="sndVol">볼륨</label>
+            <div class="range-row">
+              <input type="range" id="sndVol" min="0" max="100" step="1" value="45" data-out="sndVolOut">
+              <output id="sndVolOut" class="out">45%</output>
+            </div>
+          </div>
+        </div>
+        <div class="snd-picker" id="sndPicker"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ ★ 내 성장 (초·중 전용) ══════════════════════ -->
+  <section id="secKids" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">★</span> 내 뇌 키우기</h2>
+      <p>공부한 시간이 그대로 경험치가 돼요. 미션을 깨고 배지를 모아서 내 뇌 친구를 키워 보세요!</p>
+    </div>
+
+    <div class="kid-hero" id="kidHero"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><span class="ci">🎯</span><h3>오늘의 미션</h3><span class="right" id="missionCount"></span></div>
+        <div class="card-body">
+          <div id="missionList" class="mission-list"></div>
+          <p class="tiny">미션을 하나 깨면 경험치를 <b>+30</b> 받아요. 미션은 매일 새로 바뀝니다.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ci">📅</span><h3>이번 주 도장판</h3></div>
+        <div class="card-body">
+          <div id="stampBoard" class="stamps"></div>
+          <p class="tiny" id="stampNote">—</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🏅</span><h3>모은 배지</h3><span class="right" id="badgeCount"></span></div>
+      <div class="card-body"><div id="badgeGrid" class="badge-grid"></div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ 5. 그룹 랭킹 ══════════════════════════════ -->
+  <section id="secGroup" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">05</span> 그룹 랭킹</h2>
+      <p>같은 학교·학년 친구들과 순공 시간을 겨뤄 보세요. 공유 코드를 주고받으면 서로의 기록이 랭킹에 올라갑니다.</p>
+    </div>
+
+    <div class="group-hero" id="groupHero"></div>
+
+    <div class="card wide">
+      <div class="card-head">
+        <span class="ci">🏆</span><h3>순공 시간 랭킹</h3>
+        <span class="right">
+          <div class="tabs" id="rankTabs">
+            <button type="button" data-range="today" class="on">오늘</button>
+            <button type="button" data-range="week">이번 주</button>
+          </div>
+        </span>
+      </div>
+      <div class="card-body"><div id="rankList" class="rank-list"></div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><span class="ci">📊</span><h3>뇌 능력 — 그룹 평균 대비 나</h3></div>
+        <div class="card-body"><div id="groupCompare" class="gcmp"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ci">🔗</span><h3>그룹원 추가</h3></div>
+        <div class="card-body">
+          <p class="share-label">① 내 공유 코드 — 친구에게 보내세요</p>
+          <div class="share-row">
+            <textarea id="myCode" class="input code" readonly rows="3"></textarea>
+            <button type="button" class="btn" id="copyCode">복사</button>
+          </div>
+          <p class="share-label">② 친구 코드 붙여넣기</p>
+          <div class="share-row">
+            <textarea id="joinCode" class="input code" rows="3" placeholder="친구에게 받은 코드를 여기에 붙여넣으세요"></textarea>
+            <button type="button" class="btn primary" id="addMember">추가</button>
+          </div>
+          <p class="tiny">이 앱은 서버 없이 브라우저에서만 동작합니다. 그래서 자동 동기화 대신 <b>공유 코드</b>를 주고받는 방식을 씁니다. 같은 친구의 코드를 다시 넣으면 최신 기록으로 갱신됩니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ 6. 주간 리포트 ══════════════════════════════ -->
+  <section id="secReport" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">06</span> 주간 학습 리포트</h2>
+      <p id="reportRange">—</p>
+    </div>
+
+    <div class="rep-nav">
+      <button type="button" class="btn sm" id="prevWeek">← 지난주</button>
+      <span class="wk" id="weekLabel">—</span>
+      <button type="button" class="btn sm" id="nextWeek">다음주 →</button>
+      <button type="button" class="btn ghost sm" id="thisWeek">이번 주</button>
+    </div>
+
+    <div class="rep-grid" id="repStats"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><span class="ci">📅</span><h3>요일별 순공 시간</h3></div>
+        <div class="card-body">
+          <div class="week-bars" id="weekBars"></div>
+          <p class="tiny" id="weekBarsNote">—</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ci">📚</span><h3>과목별 투자 시간</h3></div>
+        <div class="card-body"><div id="subjSplit" class="subj-split"></div></div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">📈</span><h3>뇌 컨디션 추이</h3></div>
+      <div class="card-body">
+        <svg id="historyChart" viewBox="0 0 720 240" class="hchart"></svg>
+        <p class="tiny" id="historyNote">—</p>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🧭</span><h3>이번 주 총평</h3></div>
+      <div class="card-body"><div id="repSummary" class="rep-summary"></div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ ⚙ 설정 ══════════════════════════════ -->
+  <section id="secSettings" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">⚙</span> 설정</h2>
+      <p>프로필, 사운드, 데이터를 한곳에서 관리합니다.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><span class="ci">🎓</span><h3>내 프로필</h3></div>
+        <div class="card-body">
+          <div id="profileSummary" class="prof-sum"></div>
+          <div class="actions" style="margin-top:16px">
+            <button type="button" class="btn" id="editProfile">프로필 · 그룹 수정</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🔔</span><h3>타이머 · 알림</h3></div>
+        <div class="card-body">
+          <label class="toggle"><input type="checkbox" id="soundOn" checked><span>블록이 끝날 때 알림음 울리기</span></label>
+          <label class="toggle" style="margin-top:10px"><input type="checkbox" id="sndAuto" checked><span>집중 블록이 시작되면 사운드 자동 재생</span></label>
+          <label class="toggle" style="margin-top:10px"><input type="checkbox" id="sndFollow" checked><span>오늘 상태(스트레스·피로 등)에 맞춰 사운드 자동 변경</span></label>
+          <div class="field" style="margin-top:18px">
+            <label for="sndBreak">휴식 시간에 재생할 사운드</label>
+            <select id="sndBreak" class="input"></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🎧</span><h3>과목 유형별 사운드</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">과목 유형마다 어떤 소리를 틀지 정해 두면, 타이머가 그 과목 블록에 들어갈 때 자동으로 바뀝니다.</p>
+        <div id="sndMap" class="snd-map"></div>
+
+        <p class="share-label" style="margin-top:22px">🎵 내 음악 추가</p>
+        <p class="tiny" style="margin-top:0">좋아하는 K-pop 같은 곡은 <b>내 기기의 음원 파일</b>을 등록해서 쓰세요. 등록한 파일은 이 브라우저 안에만 저장되고 어디로도 전송되지 않습니다.</p>
+        <div class="file-row">
+          <label class="btn sm" for="sndFile">＋ 음악 파일 고르기</label>
+          <input type="file" id="sndFile" accept="audio/*" multiple hidden>
+          <span class="tiny" id="sndFileHint">mp3 · m4a · wav (한 파일 25MB 이하)</span>
+        </div>
+        <div id="customList" class="custom-list"></div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🏫</span><h3>나이스(NEIS) 연동</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">교육정보 개방포털 API 키를 넣으면 <b>실제 학교 검색</b>과 <b>급식 식단</b>을 불러옵니다.
+          키를 비우면 연동을 끄고 오프라인 자동완성만 씁니다. 키는 <a href="https://open.neis.go.kr" target="_blank" rel="noopener">open.neis.go.kr</a> 에서 무료로 발급받습니다.</p>
+        <div class="field">
+          <label for="neisKey">API 인증키 <em>이 브라우저에만 저장됩니다</em></label>
+          <div class="file-row" style="margin-top:0">
+            <input type="text" id="neisKey" class="input code" placeholder="키를 비우면 연동하지 않습니다" style="flex:1;min-width:220px">
+            <button type="button" class="btn sm" id="neisTest">연결 확인</button>
+            <button type="button" class="btn ghost sm" id="neisClearCache">급식 캐시 비우기</button>
+          </div>
+          <div id="neisStatus" class="neis-status"></div>
+        </div>
+        <p class="tiny">🔒 키는 소스 코드에 포함되지 않고 <b>이 브라우저의 저장소에만</b> 남습니다. 다른 기기나 브라우저에서 쓰려면 그곳에서 한 번 더 입력하면 됩니다.</p>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🗄️</span><h3>데이터 관리</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">모든 데이터는 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 함께 사라지니 주의하세요.</p>
+        <div id="dataSummary" class="data-sum"></div>
+        <div class="actions">
+          <button type="button" class="btn ghost" id="clearHistory">모든 기록 삭제</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="page-nav" id="pageNav"></nav>
+
+</main>
+
+<footer class="foot">
+  <p><b>NeuroStudy</b> — 입력한 데이터는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.</p>
+  <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
+</footer>
+
+<template id="subjectRowTpl">
+  <div class="subject-row">
+    <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20">
+    <select class="input s-type">
+      <option value="memorize">📚 암기형</option>
+      <option value="calculate">🔢 계산형</option>
+      <option value="reading">📖 독해형</option>
+      <option value="creative">✍️ 창의·서술형</option>
+      <option value="mixed">🧩 혼합형</option>
+    </select>
+    <input type="date" class="input s-date">
+    <select class="input s-imp">
+      <option value="1">1 · 낮음</option>
+      <option value="2">2</option>
+      <option value="3" selected>3 · 보통</option>
+      <option value="4">4</option>
+      <option value="5">5 · 매우 높음</option>
+    </select>
+    <select class="input s-ready">
+      <option value="1">1 · 거의 안 됨</option>
+      <option value="2">2</option>
+      <option value="3" selected>3 · 보통</option>
+      <option value="4">4</option>
+      <option value="5">5 · 충분함</option>
+    </select>
+    <button type="button" class="icon-btn s-del" title="삭제">✕</button>
+  </div>
+</template>
+
+<script src="js/engine.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/studylog.js"></script>
+<script src="js/group.js"></script>
+<script src="js/neis.js"></script>
+<script src="js/kids.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/report.js"></script>
+<script src="js/pomodoro.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
