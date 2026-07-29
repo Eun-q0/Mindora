@@ -163,16 +163,46 @@
     ]);
   }
 
-  /** 특정 시각 t 에서 해당 과목 유형의 뇌 적합도 (0~1) */
-  function fitAt(analysis, type, hour) {
+  function capScoreAt(cap, hour) {
+    return clamp(cap.baseScore * global.BrainEngine.circMultiplier(cap.id, hour), 1, 100);
+  }
+
+  /** 시각 t 에서 해당 유형이 쓰는 능력의 가중 평균 점수 (0~100, 절대값) */
+  function typeScoreAt(analysis, type, hour) {
     var aff = TYPES[type].affinity, sum = 0;
     Object.keys(aff).forEach(function (capId) {
-      var cap = analysis.byId[capId];
-      var atT = clamp(cap.baseScore * global.BrainEngine.circMultiplier(capId, hour), 1, 100);
-      sum += aff[capId] * atT;
+      sum += aff[capId] * capScoreAt(analysis.byId[capId], hour);
     });
-    return clamp(sum / 100, 0, 1);
+    return sum;
   }
+
+  /** 시각 t 에서 5개 능력의 평균 (0~100) */
+  function capMeanAt(analysis, hour) {
+    var sum = 0;
+    analysis.capacities.forEach(function (cap) { sum += capScoreAt(cap, hour); });
+    return sum / analysis.capacities.length;
+  }
+
+  /** 유형 점수가 평균에서 몇 점 떨어져 있는지 (부호 있는 점수) */
+  function fitDevAt(analysis, type, hour) {
+    return typeScoreAt(analysis, type, hour) - capMeanAt(analysis, hour);
+  }
+
+  /** 특정 시각 t 에서 해당 과목 유형의 뇌 적합도 (0~1)
+   *
+   *  절대 점수가 아니라 "그 시각 5개 능력 평균 대비 편차" 로 잰다.
+   *  5개 능력은 수면·피로라는 같은 뿌리에서 나와 함께 오르내리기 때문에,
+   *  절대값으로 재면 컨디션 나쁜 날에는 모든 과목이 한꺼번에 '궁합 나쁨' 이 되어
+   *  정작 "그래서 뭘 먼저 하냐" 는 질문에 답을 주지 못한다.
+   *  오늘 총량이 얼마나 되는지는 종합 점수가 따로 말해 주므로,
+   *  궁합은 배분(무엇부터)만 책임진다. */
+  function fitAt(analysis, type, hour) {
+    // 편차가 작은 날에는 반폭 하한(4점)이 값을 0.5 근처로 눌러 준다
+    var half = Math.max(4, analysis.capSpread / 2);
+    return clamp(0.5 + fitDevAt(analysis, type, hour) / (2 * half), 0, 1);
+  }
+
+  var FIT_GOOD = 0.62, FIT_OK = 0.42;
 
   /* ------------------------------------------------ 블록 수 배분 (최대잔여법) */
 
@@ -201,9 +231,50 @@
     subjects.forEach(function (s, idx) { s.blocks = base[idx]; });
   }
 
+  /* ------------------------------------------------------------- 취침 커퓨
+   *
+   *  수면을 가장 큰 변수로 쓰는 앱이 사용자를 밤새우게 스케줄하면 안 된다.
+   *  목표 취침 시각을 하드 리밋으로 두고, 그 시각을 넘는 블록은 아예 만들지 않는다.
+   *  화면을 끄고 잠들기까지의 완충으로 30분을 남겨 둔다. */
+  var WIND_DOWN_MIN = 30;
+  // 하루의 경계. 이 시각 이전에 앱을 열었다면 아직 "어제" 가 안 끝난 것으로 본다.
+  var DAY_START = 5;
+
+  /** 취침 시각을 startHour 와 같은 연속 축 위의 값으로 정규화 */
+  function normalizedBedHour(startHour, bedHour) {
+    if (bedHour === null || bedHour === undefined) return null;
+    if (startHour < DAY_START) {
+      // 새벽에 열었다 = 이미 자정을 넘겼다.
+      // 저녁 취침 시각(23:30 등)은 '어젯밤' 이므로 이미 지난 시각이다.
+      return bedHour >= DAY_START ? bedHour - 24 : bedHour;
+    }
+    return bedHour <= startHour ? bedHour + 24 : bedHour;
+  }
+
+  function fmtDur(min) {
+    var m = Math.max(0, Math.round(min));
+    var h = Math.floor(m / 60);
+    if (!h) return m + '분';
+    return m % 60 ? h + '시간 ' + (m % 60) + '분' : h + '시간';
+  }
+
+  function fmtHour(h) {
+    var t = ((h % 24) + 24) % 24;
+    var hh = Math.floor(t), mm = Math.round((t - hh) * 60);
+    if (mm >= 60) { mm -= 60; hh = (hh + 1) % 24; }
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  /** 지금부터 취침까지 남은 분. 음수면 이미 취침 시각을 넘긴 것. null 이면 미설정 */
+  function curfewMinutes(input) {
+    var bed = normalizedBedHour(input.startHour, input.bedHour);
+    if (bed === null) return null;
+    return (bed - input.startHour) * 60 - WIND_DOWN_MIN;
+  }
+
   /* ------------------------------------------------------- 타임라인 생성 */
 
-  function buildTimeline(analysis, subjects, pom, startHour) {
+  function buildTimeline(analysis, subjects, pom, startHour, hardEndHour) {
     var timeline = [];
     var t = startHour;
     var remaining = {};
@@ -226,6 +297,12 @@
       });
 
       if (!best) break;
+
+      // 취침 시각을 넘기면서까지 블록을 밀어 넣지 않는다.
+      // 블록 수 추정은 사이클 평균값이라 실제 배치와 몇 분씩 어긋날 수 있어,
+      // 여기서 한 번 더 잘라 줘야 타임라인이 커퓨를 넘지 않는다.
+      if (hardEndHour !== null && hardEndHour !== undefined && t + pom.focus / 60 > hardEndHour) break;
+
       remaining[best.id]--; done++; last = best.id;
 
       timeline.push({
@@ -252,6 +329,8 @@
       });
       t += brk / 60;
     }
+    // 커퓨에 걸려 중간에 끊긴 경우 휴식으로 끝나 버리므로 꼬리를 잘라 낸다
+    while (timeline.length && timeline[timeline.length - 1].kind !== 'study') timeline.pop();
     return timeline;
   }
 
@@ -297,6 +376,24 @@
 
   /* --------------------------------------------------------- 과목별 사유 */
 
+  /* 궁합은 "오늘 평균 대비" 라는 것이 문장에서도 드러나야 한다.
+   * 절대 점수만 읊으면 종합 점수가 낮은 날 요약("계산 능력이 가장 잘 올라와 있다")과
+   * 과목 카드("계산형은 궁합이 나쁘다")가 정면으로 어긋난다. */
+  function fitReason(s, analysis) {
+    var label = TYPES[s.type].label;
+    if (!analysis.capMeaningful) {
+      return '오늘은 능력 간 편차가 작아 유형 궁합이 큰 변수가 아닙니다';
+    }
+    var dev = Math.round(Math.abs(s.fitDev) * 10) / 10;
+    if (s.brainFit >= FIT_GOOD) {
+      return '오늘 ' + label + ' 과목이 쓰는 능력(' + s.domCapLabel + ' 중심)이 평균보다 ' + dev + '점 높아 궁합이 좋습니다';
+    }
+    if (s.brainFit >= FIT_OK) {
+      return '오늘 ' + label + ' 과목이 쓰는 능력이 평균과 비슷해 무난하게 맞습니다';
+    }
+    return '오늘 ' + label + ' 과목이 쓰는 능력(' + s.domCapLabel + ' 중심)이 평균보다 ' + dev + '점 낮아 궁합이 떨어집니다';
+  }
+
   function reasonFor(s, analysis) {
     var parts = [];
     var drivers = [
@@ -306,7 +403,7 @@
              : '시험까지 ' + s.daysLeft + '일 남아 긴급도 ' + Math.round(s.urgency * 100) + '%로 계산됐습니다') },
       { k: 'gap', v: s.gap, txt: '준비도가 ' + s.readiness + '/5라 ' + (s.readiness <= 2 ? '보완 여지가 매우 큽니다' : (s.readiness >= 4 ? '이미 어느 정도 올라와 있습니다' : '중간 수준입니다')) },
       { k: 'importance', v: s.importance, txt: '중요도 ' + s.importanceRaw + '/5로 ' + (s.importanceRaw >= 4 ? '비중이 큰 과목입니다' : '비중은 보통입니다') },
-      { k: 'fit', v: s.brainFit, txt: '오늘 ' + s.domCapLabel + '이 ' + s.domCapScore + '점이라 ' + TYPES[s.type].label + ' 과목과 ' + (s.brainFit >= 0.7 ? '궁합이 좋습니다' : (s.brainFit >= 0.5 ? '무난하게 맞습니다' : '궁합이 좋지 않습니다')) }
+      { k: 'fit', v: s.brainFit, txt: fitReason(s, analysis) }
     ].sort(function (a, b) { return b.v - a.v; });
 
     parts.push(drivers[0].txt);
@@ -324,7 +421,21 @@
     var pom = pomodoroFor(overall, input.fatigue);
     var scale = totalScale(overall);
 
-    var rawMin = Math.max(0, input.availableHours * 60);
+    var requestedMin = Math.max(0, input.availableHours * 60);
+    var curfewMin = curfewMinutes(input);
+    var bedHour = normalizedBedHour(input.startHour, input.bedHour);
+
+    // 취침까지 남은 시간이 가용 시간보다 짧으면 취침 쪽이 이긴다
+    var rawMin = requestedMin;
+    var curfewCut = false;
+    if (curfewMin !== null) {
+      rawMin = Math.min(rawMin, Math.max(0, curfewMin));
+      curfewCut = curfewMin < requestedMin;
+    }
+
+    // 커퓨를 이미 넘겼거나 한 블록도 들어가지 않으면 플랜 대신 취침을 권한다
+    var bedtimeNow = curfewMin !== null && curfewMin < pom.focus;
+
     var targetMin = rawMin * scale.k;
 
     // 한 사이클(집중+휴식) 평균 길이로 나눠 실제 소화 가능한 블록 수 추정
@@ -336,11 +447,13 @@
     // 과목 전처리
     var subjects = (input.subjects || []).map(function (s, idx) {
       var aff = TYPES[s.type].affinity;
-      var brainFit = 0, domCap = null, domW = -1;
+      var domCap = null, domW = -1;
       Object.keys(aff).forEach(function (capId) {
-        brainFit += aff[capId] * (analysis.byId[capId].exact / 100);
         if (aff[capId] > domW) { domW = aff[capId]; domCap = capId; }
       });
+      // 분석 화면과 같은 시각(input.hour)의 능력치를 기준으로 잰다
+      var brainFit = fitAt(analysis, s.type, input.hour);
+      var fitDev = fitDevAt(analysis, s.type, input.hour);
 
       var urgency = urgencyOf(s.daysLeft);
       var gap = 0.12 + 0.88 * ((5 - s.readiness) / 4);
@@ -360,9 +473,11 @@
         importanceRaw: s.importance,
         urgency: urgency, gap: gap, importance: importance,
         brainFit: brainFit,
+        fitDev: fitDev,
         domCap: domCap,
         domCapLabel: analysis.byId[domCap].label,
         domCapScore: analysis.byId[domCap].score,
+        domCapRel: Math.round(analysis.byId[domCap].rel * 10) / 10,
         priority: priority,
         blocks: 0
       };
@@ -387,7 +502,22 @@
       s.reason = reasonFor(s, analysis);
     });
 
-    var timeline = buildTimeline(analysis, active, pom, input.startHour);
+    var hardEnd = bedHour === null ? null : bedHour - WIND_DOWN_MIN / 60;
+    var timeline = buildTimeline(analysis, active, pom, input.startHour, hardEnd);
+
+    // 커퓨에 걸려 잘린 블록이 있으면 과목별 배정도 실제 배치에 맞춰 되돌린다.
+    // 그러지 않으면 "30분 배정" 이라고 써 놓고 타임라인에는 없는 상태가 된다.
+    var placed = {};
+    timeline.forEach(function (b) {
+      if (b.kind === 'study') placed[b.subjectId] = (placed[b.subjectId] || 0) + 1;
+    });
+    active.forEach(function (s) {
+      s.blocks = placed[s.id] || 0;
+      s.minutes = s.blocks * pom.focus;
+    });
+    dropped = dropped.concat(active.filter(function (s) { return s.blocks === 0; }));
+    active = active.filter(function (s) { return s.blocks > 0; });
+
     var studyMin = active.reduce(function (a, s) { return a + s.minutes; }, 0);
     var breakMin = timeline.filter(function (b) { return b.kind !== 'study'; })
                            .reduce(function (a, b) { return a + b.minutes; }, 0);
@@ -396,7 +526,11 @@
     // 헤드라인
     var top = analysis.top, bottom = analysis.bottom;
     var headline;
-    if (active.length === 0) {
+    if (bedtimeNow) {
+      headline = curfewMin < 0
+        ? '목표 취침 시각을 ' + fmtDur(-curfewMin) + ' 넘겼습니다. 지금은 자는 것이 오늘 할 수 있는 가장 좋은 학습입니다.'
+        : '취침까지 ' + fmtDur(Math.max(0, curfewMin)) + ' 남았습니다. 새 블록을 시작하기엔 짧으니 오늘은 여기서 접으세요.';
+    } else if (active.length === 0) {
       headline = '배정할 학습 블록이 없습니다. 가용 시간이나 과목을 확인해 주세요.';
     } else {
       headline = '오늘은 ' + top.label + '(' + top.score + '점)이 가장 잘 올라와 있고 ' +
@@ -405,10 +539,24 @@
                  pom.focus + '분 집중 / ' + pom.short + '분 휴식 리듬을 추천합니다.';
     }
 
+    var scaleNote = scale.note;
+    if (curfewCut && !bedtimeNow) {
+      scaleNote += ' 목표 취침 ' + fmtHour(bedHour) + ' 기준으로 남은 시간이 ' + fmtDur(curfewMin) +
+                   '이라, 가용 시간(' + fmtDur(requestedMin) + ') 대신 이쪽에 맞춰 잘랐습니다.';
+    }
+
     return {
       pomodoro: pom,
       pomodoroReason: pomodoroReason(overall, input.fatigue, pom),
-      scaleNote: scale.note,
+      scaleNote: scaleNote,
+      curfew: curfewMin === null ? null : {
+        bedHour: bedHour,
+        minutesLeft: curfewMin,
+        passed: curfewMin < 0,
+        bedtimeNow: bedtimeNow,
+        cut: curfewCut,
+        windDownMin: WIND_DOWN_MIN
+      },
       requestedMin: Math.round(rawMin),
       plannedStudyMin: studyMin,
       plannedBreakMin: breakMin,
@@ -435,6 +583,9 @@
     return base;
   }
 
-  global.BrainPlanner = { plan: plan, TYPES: TYPES, METHODS: METHODS, fitAt: fitAt };
+  global.BrainPlanner = {
+    plan: plan, TYPES: TYPES, METHODS: METHODS, fitAt: fitAt,
+    curfewMinutes: curfewMinutes, normalizedBedHour: normalizedBedHour
+  };
 
 })(window);

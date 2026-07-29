@@ -8,6 +8,35 @@
 (function (global) {
   'use strict';
 
+  /* ------------------------------------------------------- 화면 꺼짐 방지
+   *
+   * 집중 블록이 도는 25분 동안 폰 화면이 잠기면 몰입이 그대로 끊긴다.
+   * Wake Lock 은 탭이 숨겨지면 브라우저가 자동으로 해제하므로,
+   * 다시 돌아왔을 때 (아직 돌아가는 중이면) 재획득해 줘야 한다.
+   * 미지원 브라우저(현재 iOS 사파리 일부)에서는 조용히 아무 일도 하지 않는다. */
+  var wakeLock = null, wantWakeLock = false;
+
+  function acquireWakeLock() {
+    wantWakeLock = true;
+    if (!navigator.wakeLock || wakeLock || document.hidden) return;
+    navigator.wakeLock.request('screen').then(function (lock) {
+      wakeLock = lock;
+      lock.addEventListener('release', function () { wakeLock = null; });
+    })['catch'](function () { /* 배터리 절약 모드 등에서는 거부될 수 있다 */ });
+  }
+
+  function releaseWakeLock() {
+    wantWakeLock = false;
+    if (!wakeLock) return;
+    var lock = wakeLock;
+    wakeLock = null;
+    lock.release()['catch'](function () {});
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && wantWakeLock) acquireWakeLock();
+  });
+
   function Pomodoro(opts) {
     this.queue = [];
     this.index = 0;
@@ -49,6 +78,7 @@
     this.endsAt = Date.now() + this.remainingMs;
     var self = this;
     this.tick = setInterval(function () { self._step(); }, 200);
+    acquireWakeLock();
     this.emit();
   };
 
@@ -57,6 +87,7 @@
     this.remainingMs = Math.max(0, this.endsAt - Date.now());
     this.running = false;
     clearInterval(this.tick); this.tick = null;
+    releaseWakeLock();
     this.emit();
   };
 
@@ -65,6 +96,7 @@
   Pomodoro.prototype.stop = function () {
     this.running = false;
     if (this.tick) { clearInterval(this.tick); this.tick = null; }
+    releaseWakeLock();
   };
 
   Pomodoro.prototype.reset = function () {

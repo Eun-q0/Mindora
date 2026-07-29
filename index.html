@@ -14,17 +14,26 @@
 <meta name="twitter:card" content="summary">
 
 <!-- 홈 화면에 추가했을 때 앱처럼 보이게 -->
-<meta name="theme-color" content="#6d4aff">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#6d4aff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151827" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="NeuroStudy">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <style>
 /* =========================================================================
- * NeuroStudy — styles (light theme)
+ * NeuroStudy — styles
+ *
+ * 라이트가 기본이고, 다크는 파일 맨 아래 @media (prefers-color-scheme: dark)
+ * 블록에서 아래 변수들을 덮어쓴다. 새 색을 넣을 때는 되도록 변수를 쓰고,
+ * 어쩔 수 없이 하드코딩한다면 다크 블록에도 대응 규칙을 같이 넣어야 한다.
  * ========================================================================= */
 
 :root {
+  color-scheme: light;
+
   --bg: #f2f5fc;
   --surface: #ffffff;
   --surface-2: #eff2fa;
@@ -34,6 +43,7 @@
   --text: #161a27;
   --muted: #5b6579;
   --dim: #8b93a8;
+  --track: #e6eaf4;          /* 게이지·막대의 빈 구간 */
 
   --accent: #6d4aff;
   --accent-soft: #f0ecff;
@@ -43,6 +53,16 @@
   --good: #0f9d6e;
   --warn: #c2740a;
   --bad: #dc3d55;
+
+  /* 상태 배지·알림에 쓰는 틴트 3종 (배경 / 테두리 / 글자) */
+  --ok-bg: #eafaf3;   --ok-line: #a5e0c6;   --ok-ink: #0b6b4c;
+  --warn-bg: #fbf2df; --warn-line: #efd9a3; --warn-ink: #8a6a15;
+  --bad-bg: #fff0f2;  --bad-line: #f6bcc5;  --bad-ink: #a81f38;
+
+  /* 큰 카드 배경에 쓰는 은은한 그라데이션 */
+  --hero-grad: linear-gradient(135deg, #ffffff 0%, #f5f2ff 55%, #eef9fc 100%);
+  --ob-grad: linear-gradient(135deg, #ffffff 0%, #f3efff 60%, #e9f7fb 100%);
+  --gh-grad: linear-gradient(135deg, #ffffff 0%, #eef9fc 100%);
 
   --gold: #e0a010;
   --silver: #8e9bb3;
@@ -134,7 +154,7 @@ body {
   background: var(--surface-2); color: var(--muted);
 }
 .step:hover { color: var(--text); background: var(--surface-2); }
-.step.is-active { color: var(--text); background: #fff; border-color: var(--line-2); box-shadow: var(--shadow-sm); }
+.step.is-active { color: var(--text); background: var(--surface); border-color: var(--line-2); box-shadow: var(--shadow-sm); }
 .step.is-active i { background: linear-gradient(140deg, #7c5cff, #22b8d8); color: #fff; }
 .step.is-done i { background: #d6f5e8; color: var(--good); }
 
@@ -143,7 +163,7 @@ body {
 .profile-chip {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
   padding: 5px 13px 5px 5px; border-radius: 999px; cursor: pointer;
-  background: #fff; border: 1px solid var(--line); font: inherit; color: inherit;
+  background: var(--surface); border: 1px solid var(--line); font: inherit; color: inherit;
   transition: 0.16s; box-shadow: var(--shadow-sm);
 }
 .profile-chip:hover { border-color: var(--accent); }
@@ -169,7 +189,7 @@ body {
 }
 .page-nav .pn {
   display: flex; align-items: center; gap: 9px; padding: 12px 18px; border-radius: var(--r-sm);
-  background: #fff; border: 1px solid var(--line-2); color: var(--text);
+  background: var(--surface); border: 1px solid var(--line-2); color: var(--text);
   font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: 0.16s;
   box-shadow: var(--shadow-sm); max-width: 47%;
 }
@@ -206,7 +226,7 @@ body {
 
 .input {
   width: 100%; padding: 9px 12px; border-radius: var(--r-sm);
-  background: #fff; border: 1px solid var(--line-2);
+  background: var(--surface); border: 1px solid var(--line-2);
   color: var(--text); font: inherit; font-size: 13.5px; outline: none; transition: 0.16s;
 }
 .input::placeholder { color: #aeb5c6; }
@@ -226,30 +246,30 @@ input[type="range"] {
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--pct, 50%), #dde3f0 var(--pct, 50%));
   outline: none; cursor: pointer;
 }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 4px solid var(--accent); cursor: grab; box-shadow: 0 2px 6px rgba(22, 26, 39, 0.22); }
-input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: #fff; border: 4px solid var(--accent); cursor: grab; box-shadow: 0 2px 6px rgba(22, 26, 39, 0.22); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 4px solid var(--accent); cursor: grab; box-shadow: 0 2px 6px rgba(22, 26, 39, 0.22); }
+input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--surface); border: 4px solid var(--accent); cursor: grab; box-shadow: 0 2px 6px rgba(22, 26, 39, 0.22); }
 .out { min-width: 72px; text-align: right; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .scale-hint { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; color: var(--dim); }
 .scale-hint .opt { color: var(--good); font-weight: 600; }
 
 /* ------------------------------------------------------------------ seg */
 .seg { display: flex; gap: 5px; }
-.seg button { flex: 1; padding: 8px 4px; border-radius: var(--r-sm); background: #fff; border: 1px solid var(--line-2); color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; transition: 0.16s; white-space: nowrap; }
+.seg button { flex: 1; padding: 8px 4px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line-2); color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; transition: 0.16s; white-space: nowrap; }
 .seg button:hover { border-color: var(--accent); color: var(--text); }
 .seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; box-shadow: 0 4px 12px -5px rgba(109, 74, 255, 0.8); }
 
 /* 탭형 토글 (오늘 / 이번 주) */
 .tabs { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); gap: 2px; }
 .tabs button { padding: 5px 14px; border-radius: 999px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.16s; }
-.tabs button.on { background: #fff; color: var(--accent); box-shadow: var(--shadow-sm); }
+.tabs button.on { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-sm); }
 
 /* ---------------------------------------------------------------- meals */
 .meals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .meal { cursor: pointer; }
 .meal input { position: absolute; opacity: 0; pointer-events: none; }
-.meal span { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 11px 6px; border-radius: var(--r-sm); font-size: 12px; background: #fff; border: 1px solid var(--line-2); color: var(--muted); transition: 0.16s; }
+.meal span { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 11px 6px; border-radius: var(--r-sm); font-size: 12px; background: var(--surface); border: 1px solid var(--line-2); color: var(--muted); transition: 0.16s; }
 .meal span b { font-size: 18px; font-weight: 400; filter: grayscale(1); opacity: 0.45; transition: 0.16s; }
-.meal input:checked + span { background: #e6faf1; border-color: #7fd8b4; color: #0b6b4c; font-weight: 600; }
+.meal input:checked + span { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); font-weight: 600; }
 .meal input:checked + span b { filter: none; opacity: 1; }
 
 /* -------------------------------------------------------------- subject */
@@ -263,14 +283,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .subject-row { animation: pop 0.22s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 
-.icon-btn { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: #fff; border: 1px solid var(--line-2); color: var(--dim); cursor: pointer; font-size: 12px; transition: 0.16s; }
-.icon-btn:hover { background: #ffeef0; border-color: #f3aab4; color: var(--bad); }
+.icon-btn { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line-2); color: var(--dim); cursor: pointer; font-size: 12px; transition: 0.16s; }
+.icon-btn:hover { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad); }
 
 .tiny { font-size: 11.5px; color: var(--dim); margin: 8px 0 0; line-height: 1.65; }
 
 /* ----------------------------------------------------------------- btns */
 .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
-.btn { padding: 10px 18px; border-radius: var(--r-sm); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid var(--line-2); background: #fff; color: var(--text); transition: 0.16s; white-space: nowrap; box-shadow: var(--shadow-sm); }
+.btn { padding: 10px 18px; border-radius: var(--r-sm); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); transition: 0.16s; white-space: nowrap; box-shadow: var(--shadow-sm); }
 .btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
 .btn:active { transform: none; }
 .btn.primary { background: linear-gradient(140deg, #7c5cff, #5b7cff); border-color: transparent; color: #fff; box-shadow: 0 8px 20px -8px rgba(109, 74, 255, 0.9); }
@@ -282,20 +302,20 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* ----------------------------------------------------------------- hero */
-.hero { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 26px; align-items: center; padding: 26px; border-radius: var(--r); box-shadow: var(--shadow); background: linear-gradient(135deg, #ffffff 0%, #f5f2ff 55%, #eef9fc 100%); border: 1px solid var(--line); }
+.hero { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 26px; align-items: center; padding: 26px; border-radius: var(--r); box-shadow: var(--shadow); background: var(--hero-grad); border: 1px solid var(--line); }
 .hero-gauge { position: relative; width: 220px; height: 220px; margin: 0 auto; }
 .gauge { width: 100%; height: 100%; transform: rotate(-90deg); }
-.g-track { fill: none; stroke: #e6eaf4; stroke-width: 13; }
+.g-track { fill: none; stroke: var(--track); stroke-width: 13; }
 .g-fill { fill: none; stroke: url(#gaugeGrad); stroke-width: 13; stroke-linecap: round; stroke-dasharray: 578; stroke-dashoffset: 578; transition: stroke-dashoffset 1.1s cubic-bezier(0.22, 1, 0.36, 1); }
 .gauge-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .g-score { font-size: 52px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .g-unit { font-size: 11px; color: var(--dim); margin-top: 2px; }
-.g-state { margin-top: 9px; font-size: 12.5px; font-weight: 700; padding: 4px 13px; border-radius: 999px; background: #fff; border: 1px solid var(--line-2); }
+.g-state { margin-top: 9px; font-size: 12.5px; font-weight: 700; padding: 4px 13px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-2); }
 .g-state.excellent { color: #6d28d9; background: #f3ebff; border-color: #d8c5ff; }
-.g-state.good { color: #067a55; background: #e2f8ef; border-color: #93e2c4; }
+.g-state.good { color: var(--ok-ink); background: var(--ok-bg); border-color: var(--ok-line); }
 .g-state.fair { color: #0670a1; background: #e2f4fd; border-color: #97d4ee; }
-.g-state.low { color: #a35c05; background: #fdf1de; border-color: #f0ca8b; }
-.g-state.critical { color: #b8253c; background: #ffe9ec; border-color: #f6b0bb; }
+.g-state.low { color: var(--warn-ink); background: var(--warn-bg); border-color: var(--warn-line); }
+.g-state.critical { color: var(--bad-ink); background: var(--bad-bg); border-color: var(--bad-line); }
 
 .hero-text h3 { margin: 0 0 8px; font-size: 19px; letter-spacing: -0.025em; line-height: 1.45; }
 .hero-text > p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
@@ -303,8 +323,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .alerts { display: flex; flex-direction: column; gap: 7px; }
 .alert { display: flex; gap: 9px; align-items: flex-start; font-size: 12.5px; padding: 8px 12px; border-radius: var(--r-sm); border: 1px solid; }
 .alert b { flex-shrink: 0; }
-.alert.warn { background: #fdf6e7; border-color: #f0d9a3; color: #8a5c06; }
-.alert.bad { background: #fff0f2; border-color: #f6bcc5; color: #a81f38; }
+.alert.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+.alert.bad { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad-ink); }
 
 /* ---------------------------------------------------------------- radar */
 .radar-body { display: flex; flex-direction: column; align-items: center; }
@@ -329,13 +349,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .cb-rel.flat { color: var(--dim); }
 .cb-track { position: relative; }
 .cb-mean { position: absolute; top: -3px; width: 2px; height: 13px; background: rgba(22,26,39,0.45); border-radius: 1px; }
-.cb-track { height: 7px; border-radius: 999px; background: #e6eaf4; overflow: hidden; }
+.cb-track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .cb-fill { height: 100%; border-radius: 999px; width: 0; transition: width 0.9s cubic-bezier(0.22,1,0.36,1); }
 .cb-desc { font-size: 11.5px; color: var(--dim); margin-top: 6px; }
 
 /* ---------------------------------------------------------- cap details */
 .cap-details { display: flex; flex-direction: column; gap: 12px; }
-.cd { border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; background: #fff; }
+.cd { border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; background: var(--surface); }
 .cd-head { display: flex; align-items: center; gap: 10px; padding: 12px 15px; cursor: pointer; background: var(--surface-3); border: 0; width: 100%; font: inherit; color: inherit; text-align: left; }
 .cd-head:hover { background: var(--surface-2); }
 .cd-head .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
@@ -411,13 +431,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .sp-body { display: none; padding: 0 16px 15px; }
 .sp.open .sp-body { display: block; }
 .sp-name { font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em; }
-.sp-chip { font-size: 10.5px; padding: 2.5px 8px; border-radius: 6px; font-weight: 600; background: #fff; border: 1px solid var(--line-2); color: var(--muted); }
-.sp-chip.dday { color: #a81f38; background: #fff0f2; border-color: #f6bcc5; }
-.sp-chip.dday.far { color: var(--muted); background: #fff; border-color: var(--line-2); }
+.sp-chip { font-size: 10.5px; padding: 2.5px 8px; border-radius: 6px; font-weight: 600; background: var(--surface); border: 1px solid var(--line-2); color: var(--muted); }
+.sp-chip.dday { color: var(--bad-ink); background: var(--bad-bg); border-color: var(--bad-line); }
+.sp-chip.dday.far { color: var(--muted); background: var(--surface); border-color: var(--line-2); }
 .sp-time { font-size: 19px; font-weight: 800; letter-spacing: -0.03em; color: var(--c); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sp-time small { font-size: 11.5px; color: var(--dim); font-weight: 600; margin-left: 4px; }
 .sp-reason { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.7; }
-.sp-method { margin-top: 11px; padding: 12px 14px; border-radius: 9px; background: #fff; border: 1px solid var(--line); }
+.sp-method { margin-top: 11px; padding: 12px 14px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); }
 .sp-method h5 { margin: 0 0 5px; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
 .sp-method h5::before { content: '💡'; }
 .sp-method p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
@@ -429,7 +449,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .tl { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; padding: 9px 11px; border-radius: 9px; font-size: 12.5px; }
 .tl.study { background: var(--surface-3); border-left: 3px solid var(--c); }
 .tl.break { color: var(--dim); font-size: 11.5px; padding: 5px 11px; }
-.tl.longBreak { background: #eafaf3; border-left: 3px solid var(--good); color: #0b6b4c; }
+.tl.longBreak { background: var(--ok-bg); border-left: 3px solid var(--good); color: var(--ok-ink); }
 .tl-time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11.5px; }
 .tl-name { font-weight: 600; display: flex; align-items: center; gap: 7px; }
 .tl-name .fit { font-size: 10px; color: var(--dim); font-weight: 500; margin-left: auto; }
@@ -445,7 +465,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .timer-wrap { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 30px; align-items: start; }
 .timer-dial { position: relative; width: 100%; max-width: 300px; aspect-ratio: 1; margin: 0 auto; }
 .dial { width: 100%; height: 100%; transform: rotate(-90deg); }
-.d-track { fill: none; stroke: #e6eaf4; stroke-width: 11; }
+.d-track { fill: none; stroke: var(--track); stroke-width: 11; }
 .d-fill { fill: none; stroke: var(--accent); stroke-width: 11; stroke-linecap: round; stroke-dasharray: 704; stroke-dashoffset: 0; transition: stroke-dashoffset 0.35s linear, stroke 0.4s; }
 .dial-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .d-phase { font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent); padding: 3px 12px; border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--accent-line); }
@@ -468,7 +488,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .lt-v small { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 2px; }
 .lt-goal { min-width: 0; }
 .lt-goal-top { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
-.lt-track { height: 9px; border-radius: 999px; background: #e0e6f2; overflow: hidden; }
+.lt-track { height: 9px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .lt-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #22b8d8); width: 0; transition: width 0.6s cubic-bezier(0.22,1,0.36,1); }
 .rec-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--bad); margin-right: 6px; vertical-align: 1px; }
 .rec-dot.live { animation: blink 1.4s ease-in-out infinite; }
@@ -519,7 +539,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 /* ==================================================== 프로필 · 온보딩 ==== */
 .onboard { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: start; }
-.ob-hello { padding: 26px; border-radius: var(--r); border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(135deg, #ffffff 0%, #f3efff 60%, #e9f7fb 100%); }
+.ob-hello { padding: 26px; border-radius: var(--r); border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--ob-grad); }
 .ob-hello h3 { margin: 0 0 10px; font-size: 21px; letter-spacing: -0.03em; line-height: 1.4; }
 .ob-hello > p { margin: 0 0 18px; color: var(--muted); font-size: 13.5px; line-height: 1.75; }
 .ob-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
@@ -528,7 +548,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .ob-list .oi { font-size: 16px; text-align: center; }
 
 /* ========================================================= 그룹 · 랭킹 ==== */
-.group-hero { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 20px; align-items: center; padding: 22px 26px; border-radius: var(--r); border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(135deg, #ffffff 0%, #eef9fc 100%); margin-bottom: 16px; }
+.group-hero { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 20px; align-items: center; padding: 22px 26px; border-radius: var(--r); border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--gh-grad); margin-bottom: 16px; }
 .gh-name { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 4px; }
 .gh-sub { font-size: 13px; color: var(--muted); margin: 0; }
 .gh-stats { display: flex; gap: 26px; }
@@ -554,8 +574,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .rk-info { min-width: 0; }
 .rk-name { font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .rk-name .me-tag { font-size: 9.5px; padding: 1px 6px; border-radius: 5px; background: var(--accent); color: #fff; font-weight: 700; }
-.rk-name .brain { font-size: 10px; padding: 1px 6px; border-radius: 5px; background: #fff; border: 1px solid var(--line-2); color: var(--muted); font-weight: 600; }
-.rk-track { height: 6px; border-radius: 999px; background: #e0e6f2; margin-top: 6px; overflow: hidden; }
+.rk-name .brain { font-size: 10px; padding: 1px 6px; border-radius: 5px; background: var(--surface); border: 1px solid var(--line-2); color: var(--muted); font-weight: 600; }
+.rk-track { height: 6px; border-radius: 999px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
 .rk-fill { height: 100%; border-radius: 999px; transition: width 0.8s cubic-bezier(0.22,1,0.36,1); }
 .rk-date { font-size: 10.5px; color: var(--dim); margin-top: 4px; }
 .rk-time { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; text-align: right; white-space: nowrap; }
@@ -568,7 +588,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .gc-top .df { margin-left: auto; font-size: 11.5px; font-weight: 700; }
 .gc-top .df.up { color: var(--good); }
 .gc-top .df.dn { color: var(--bad); }
-.gc-track { position: relative; height: 9px; border-radius: 999px; background: #e6eaf4; }
+.gc-track { position: relative; height: 9px; border-radius: 999px; background: var(--surface-2); }
 .gc-mine { position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px; transition: width 0.8s cubic-bezier(0.22,1,0.36,1); }
 .gc-avg { position: absolute; top: -3.5px; width: 2px; height: 16px; background: var(--text); border-radius: 2px; }
 .gc-legend { display: flex; gap: 16px; font-size: 11px; color: var(--dim); margin-top: 10px; }
@@ -600,7 +620,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .wb-val { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .wb-bar { width: 100%; max-width: 42px; border-radius: 7px 7px 3px 3px; background: linear-gradient(180deg, #8b6dff, #6d4aff); min-height: 3px; transition: height 0.7s cubic-bezier(0.22,1,0.36,1); }
 .wb.today .wb-bar { background: linear-gradient(180deg, #22c9e8, #0891b2); }
-.wb.zero .wb-bar { background: #e0e6f2; }
+.wb.zero .wb-bar { background: var(--surface-2); }
 .wb-day { font-size: 11.5px; color: var(--muted); font-weight: 600; }
 .wb.today .wb-day { color: var(--accent-2); font-weight: 800; }
 .wb-goal { position: relative; }
@@ -610,7 +630,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .ss-name { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .ss-name i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 .ss-name b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ss-track { grid-column: 1 / -1; height: 7px; border-radius: 999px; background: #e6eaf4; overflow: hidden; }
+.ss-track { grid-column: 1 / -1; height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .ss-fill { height: 100%; border-radius: 999px; transition: width 0.8s cubic-bezier(0.22,1,0.36,1); }
 .ss-time { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); font-size: 12px; }
 
@@ -619,8 +639,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .rsum .ri { font-size: 17px; text-align: center; line-height: 1.3; }
 .rsum h5 { margin: 0 0 3px; font-size: 12.5px; font-weight: 700; }
 .rsum p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
-.rsum.good { background: #f0fbf6; border-color: #b6e7d2; }
-.rsum.warn { background: #fdf8ec; border-color: #f0dcb0; }
+.rsum.good { background: var(--ok-bg); border-color: var(--ok-line); }
+.rsum.warn { background: var(--warn-bg); border-color: var(--warn-line); }
 
 .hchart { width: 100%; height: auto; }
 
@@ -635,7 +655,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 }
 .kh-char {
   width: 104px; height: 104px; border-radius: 26px; display: grid; place-items: center;
-  font-size: 52px; background: #fff; border: 2px solid #ffe2b5;
+  font-size: 52px; background: var(--surface); border: 2px solid #ffe2b5;
   box-shadow: 0 10px 26px -12px rgba(224, 160, 16, 0.6);
   animation: bob 3.2s ease-in-out infinite;
 }
@@ -645,7 +665,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .kh-lv { font-size: 12px; font-weight: 800; padding: 3px 11px; border-radius: 999px; background: var(--accent); color: #fff; }
 .kh-line { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
 .xp-top { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
-.xp-track { height: 13px; border-radius: 999px; background: #fff; border: 1px solid #ffe2b5; overflow: hidden; }
+.xp-track { height: 13px; border-radius: 999px; background: var(--surface); border: 1px solid #ffe2b5; overflow: hidden; }
 .xp-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ffb020, #ff7a45 55%, #f24b8f); width: 0; transition: width 0.9s cubic-bezier(0.22,1,0.36,1); }
 .kh-stats { display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap; }
 .kh-stats span { font-size: 12px; color: var(--muted); }
@@ -657,11 +677,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   padding: 12px 13px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface-3);
   transition: 0.2s;
 }
-.mission.done { background: #f0fbf6; border-color: #a5e0c6; }
+.mission.done { background: var(--ok-bg); border-color: var(--ok-line); }
 .ms-icon { font-size: 19px; text-align: center; }
 .ms-text { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
-.mission.done .ms-text { color: #0b6b4c; }
-.ms-track { height: 6px; border-radius: 999px; background: #e0e6f2; overflow: hidden; }
+.mission.done .ms-text { color: var(--ok-ink); }
+.ms-track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .ms-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #8b6dff, #6d4aff); transition: width 0.7s cubic-bezier(0.22,1,0.36,1); }
 .mission.done .ms-fill { background: linear-gradient(90deg, #4fd6a4, #0f9d6e); }
 .ms-num { font-size: 10.5px; color: var(--dim); margin-top: 4px; font-variant-numeric: tabular-nums; }
@@ -675,7 +695,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   width: 100%; aspect-ratio: 1; max-width: 56px; border-radius: 50%; display: grid; place-items: center;
   font-size: 21px; background: var(--surface-3); border: 2px dashed var(--line-2); color: var(--dim);
 }
-.stamp.got .sc { background: #fff4dc; border: 2px solid #f0b64a; color: #a35c05; border-style: solid; animation: stampIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.stamp.got .sc { background: var(--warn-bg); border: 2px solid var(--warn-line); color: var(--warn-ink); border-style: solid; animation: stampIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .stamp.today .sd { color: var(--accent); font-weight: 800; }
 .stamp.today .sc { box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.16); }
 .stamp.future .sc { opacity: 0.4; }
@@ -706,7 +726,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   padding: 15px 16px; border-radius: var(--r-sm);
   background: linear-gradient(135deg, #f3f0ff, #e9f7fb); border: 1px solid var(--accent-line);
 }
-.sn-icon { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; background: #fff; border: 1px solid var(--line); }
+.sn-icon { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; background: var(--surface); border: 1px solid var(--line); }
 .sn-icon.on { animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(109, 74, 255, 0.30); } 50% { box-shadow: 0 0 0 9px rgba(109, 74, 255, 0); } }
 .sn-name { font-size: 15px; font-weight: 750; letter-spacing: -0.02em; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
@@ -717,7 +737,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .snd-picker { display: flex; flex-wrap: wrap; gap: 6px; }
 .snd-chip {
   display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
-  background: #fff; border: 1px solid var(--line-2); color: var(--muted);
+  background: var(--surface); border: 1px solid var(--line-2); color: var(--muted);
   font: inherit; font-size: 12px; cursor: pointer; transition: 0.16s;
 }
 .snd-chip:hover { border-color: var(--accent); color: var(--accent); }
@@ -764,7 +784,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .quick-note {
   display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 13px; align-items: center;
   padding: 14px 17px; border-radius: var(--r); margin-bottom: 16px;
-  background: linear-gradient(135deg, #f3f0ff, #eafaf3); border: 1px solid var(--accent-line);
+  background: linear-gradient(135deg, #f3f0ff, var(--ok-bg)); border: 1px solid var(--accent-line);
 }
 .qn-icon { font-size: 21px; text-align: center; }
 .qn-title { font-size: 13.5px; font-weight: 700; }
@@ -781,10 +801,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .meal-card { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-3); overflow: hidden; }
 .mc-head {
   display: flex; align-items: center; gap: 9px; padding: 9px 12px;
-  background: #fff; border-bottom: 1px solid var(--line);
+  background: var(--surface); border-bottom: 1px solid var(--line);
 }
 .mc-type { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 6px; }
-.mc-type.조식 { background: #fff3e0; color: #a35c05; }
+.mc-type.조식 { background: var(--warn-bg); color: var(--warn-ink); }
 .mc-type.중식 { background: #e6f5ff; color: #0670a1; }
 .mc-type.석식 { background: #f1ebff; color: #6d28d9; }
 .mc-kcal { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -792,7 +812,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .mc-dishes { display: flex; flex-wrap: wrap; gap: 5px; }
 .mc-dish {
   font-size: 12px; padding: 4px 9px; border-radius: 7px;
-  background: #fff; border: 1px solid var(--line); color: var(--text);
+  background: var(--surface); border: 1px solid var(--line); color: var(--text);
 }
 .mc-dish i { font-style: normal; font-size: 10px; color: var(--warn); margin-left: 4px; }
 .mc-note { font-size: 10.5px; color: var(--dim); margin: 8px 0 0; line-height: 1.6; }
@@ -802,11 +822,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 .neis-status { font-size: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; display: none; line-height: 1.6; }
 .neis-status.show { display: block; }
-.neis-status.ok { background: #eafaf3; border: 1px solid #a5e0c6; color: #0b6b4c; }
-.neis-status.bad { background: #fff0f2; border: 1px solid #f6bcc5; color: #a81f38; }
+.neis-status.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-ink); }
+.neis-status.bad { background: var(--bad-bg); border: 1px solid var(--bad-line); color: var(--bad-ink); }
 .neis-status.info { background: var(--surface-3); border: 1px solid var(--line); color: var(--muted); }
-.neis-status.err  { background: #fff0f2; border: 1px solid #f6bcc5; color: #a81f38; }
-.neis-status.warn { background: #fbf2df; border: 1px solid #efd9a3; color: #8a6a15; }
+.neis-status.err  { background: var(--bad-bg); border: 1px solid var(--bad-line); color: var(--bad-ink); }
+.neis-status.warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); }
 
 .adm-divider { border: none; border-top: 1px dashed var(--line); margin: 28px 0 18px; }
 
@@ -836,7 +856,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .ac-wrap { position: relative; }
 .ac-list {
   position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 40;
-  background: #fff; border: 1px solid var(--line-2); border-radius: var(--r-sm);
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-sm);
   box-shadow: 0 12px 30px -10px rgba(22, 26, 39, 0.28); overflow: hidden;
   max-height: 250px; overflow-y: auto;
 }
@@ -881,7 +901,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 /* --------------------------------------------------------------- toast */
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 16px); z-index: 200; padding: 11px 20px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #171a27; color: #fff; box-shadow: 0 16px 40px -14px rgba(22, 26, 39, 0.5); opacity: 0; pointer-events: none; transition: 0.28s cubic-bezier(0.22, 1, 0.36, 1); max-width: 88vw; text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
-.toast.err { background: #b8253c; }
+.toast.err { background: var(--bad-ink); }
 
 /* ----------------------------------------------------------- responsive */
 @media (max-width: 1020px) {
@@ -1024,9 +1044,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .lg-mine-meta b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .lg-gap { margin-top: 14px; padding: 11px 13px; border-radius: 10px; font-size: 13.5px; font-weight: 600; line-height: 1.45; }
-.lg-gap.promote { background: #e7f5ee; color: #166b4b; }
+.lg-gap.promote { background: var(--ok-bg); color: var(--ok-ink); }
 .lg-gap.stay    { background: var(--surface-2); color: #3d4e6b; }
-.lg-gap.demote  { background: #fbf2df; color: #8a6a15; }
+.lg-gap.demote  { background: var(--warn-bg); color: var(--warn-ink); }
 
 .lg-board-head {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
@@ -1078,10 +1098,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 /* 리그 참가 동의 — 무엇이 나가고 무엇이 남는지 나란히 보여 준다 */
 .cl-what { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .cl-what > div { padding: 14px 16px; border-radius: var(--r-sm); border: 1px solid var(--line); }
-.cl-yes { background: #f2f9f6; border-color: #cfe9dd !important; }
+.cl-yes { background: var(--ok-bg); border-color: var(--ok-line) !important; }
 .cl-no { background: var(--surface-2); }
 .cl-h { margin: 0 0 8px; font-size: 12.5px; font-weight: 800; }
-.cl-yes .cl-h { color: #166b4b; }
+.cl-yes .cl-h { color: var(--ok-ink); }
 .cl-no .cl-h { color: var(--muted); }
 .cl-what ul { margin: 0; padding-left: 17px; }
 .cl-what li { font-size: 12.5px; line-height: 1.65; color: var(--muted); }
@@ -1089,7 +1109,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 #cloudMinorNote, #studentShareMinorNote {
   margin-top: 12px; padding: 10px 13px; border-radius: var(--r-sm);
-  background: #fbf2df; color: #8a6a15; line-height: 1.6;
+  background: var(--warn-bg); color: var(--warn-ink); line-height: 1.6;
 }
 
 .lg-cloud {
@@ -1114,9 +1134,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .lg-disclaimer { margin-top: 18px; padding: 0 4px; line-height: 1.6; }
 
 .lg-settle { margin-bottom: 14px; padding: 15px; border-radius: 12px; font-size: 14px; font-weight: 700; line-height: 1.5; }
-.lg-settle.promote { background: #e7f5ee; color: #166b4b; }
+.lg-settle.promote { background: var(--ok-bg); color: var(--ok-ink); }
 .lg-settle.stay    { background: var(--surface-2); color: #3d4e6b; }
-.lg-settle.demote  { background: #fbf2df; color: #8a6a15; }
+.lg-settle.demote  { background: var(--warn-bg); color: var(--warn-ink); }
 
 @media (prefers-reduced-motion: reduce) {
   .lg-row { transition: none; }
@@ -1210,6 +1230,98 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 @media (max-width: 640px) {
   .admin-stats { grid-template-columns: 1fr; }
   .admin-users-list { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════ iOS 안전 영역 (노치·홈 인디케이터)
+ *
+ * viewport-fit=cover 를 선언해 화면 끝까지 그리므로, 홈 인디케이터가 있는
+ * 기기에서는 아래쪽 요소가 가려질 수 있다. env() 로 그만큼 비워 준다.
+ * 안전 영역이 없는 기기에서는 env() 가 0 이라 아무 영향이 없다. */
+
+.topbar-inner { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.wrap { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.foot { padding-bottom: calc(46px + env(safe-area-inset-bottom)); }
+.page-nav { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+.toast { bottom: calc(28px + env(safe-area-inset-bottom)); }
+
+/* ═══════════════════════════════════════════════════════════════ 다크 모드
+ *
+ * 이 앱은 새벽·야간 학습을 전제로 하고 수면 위생까지 코칭한다.
+ * 그런 앱이 한밤중에 흰 화면을 띄우면 스스로의 조언과 어긋난다.
+ *
+ * 구조는 라이트와 같고 변수만 갈아 끼운다. 색을 그대로 반전시키지 않고
+ * 어두운 배경에서 눈이 편한 채도·명도로 다시 잡았다 —
+ * 특히 배경 위 큰 면적은 순검정(#000)을 피해 눈부심과 번짐을 줄였다. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #0f1220;
+    --surface: #181c2b;
+    --surface-2: #212637;
+    --surface-3: #1d2231;
+    --line: #2b3143;
+    --line-2: #3c4459;
+    --text: #e9ecf5;
+    --muted: #a2abc2;
+    --dim: #7b849b;
+    --track: #2b3143;
+
+    --accent: #9b83ff;          /* 어두운 배경에서 대비를 맞추려면 라이트보다 밝아야 한다 */
+    --accent-soft: #262244;
+    --accent-line: #453c78;
+    --accent-ink: #cabfff;
+    --accent-2: #22b8d8;
+    --good: #3ecf9a;
+    --warn: #e5a44b;
+    --bad: #ff7089;
+
+    --ok-bg: #16302a;   --ok-line: #2a5a4a;   --ok-ink: #7ee2b8;
+    --warn-bg: #332a17;  --warn-line: #5c4a26; --warn-ink: #f0cd85;
+    --bad-bg: #351d24;   --bad-line: #5e2f3b;  --bad-ink: #ff9aab;
+
+    --hero-grad: linear-gradient(135deg, #1b2033 0%, #201c38 55%, #16283a 100%);
+    --ob-grad: linear-gradient(135deg, #1b2033 0%, #221d3b 60%, #152736 100%);
+    --gh-grad: linear-gradient(135deg, #1b2033 0%, #16283a 100%);
+
+    --gold: #f0bc45;
+    --silver: #aab5cb;
+    --bronze: #d6935a;
+
+    /* 어두운 면 위에서는 그림자가 거의 안 보인다. 더 진하게 깔아 층을 만든다. */
+    --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.4), 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 12px -6px rgba(0, 0, 0, 0.5);
+  }
+
+  /* 배경 오로라는 라이트 기준 파스텔이라 그대로 두면 너무 튄다 */
+  .aurora span { opacity: 0.16 !important; filter: blur(100px); }
+
+  /* 상단바 반투명 배경도 어두운 쪽으로 */
+  .topbar { background: rgba(15, 18, 32, 0.84); }
+
+  /* 컬러 배경 위 흰 글자는 그대로 두되, 흰 면 위 검은 글자는 뒤집어야 한다 */
+  .toast { background: #e9ecf5; color: #12151f; }
+  .toast.party { color: #fff; }
+
+  /* 급식 종류 배지 — 라이트용 파스텔이라 어두운 톤으로 다시 잡는다 */
+  .mc-type.조식 { background: var(--warn-bg); color: var(--warn-ink); }
+  .mc-type.중식 { background: #16293a; color: #8fd0f0; }
+  .mc-type.석식 { background: var(--accent-soft); color: var(--accent-ink); }
+
+  /* 종합 컨디션 배지 */
+  .g-state.excellent { color: #cbb2ff; background: #251d3f; border-color: #453270; }
+  .g-state.good { color: var(--ok-ink); background: var(--ok-bg); border-color: var(--ok-line); }
+  .g-state.fair { color: #8fd0f0; background: #16293a; border-color: #27506e; }
+
+  /* 도장판 — 밝은 노랑 배경을 어둡게 */
+  .stamp.got .sc { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+
+  /* 리그 순위표 · 정산 안내는 틴트 변수를 쓰므로 자동으로 따라온다.
+   * 다만 컷라인 배지 안의 글자는 배경색이 currentColor 라 흰색을 유지해야 한다. */
+  .lg-cut span i { color: #12151f; }
+
+  /* SVG 안에 하드코딩된 격자선 — 어두운 배경에서는 밝은 쪽으로 뒤집는다 */
+  .radar polygon[stroke^="rgba(22"], .radar line[stroke^="rgba(22"] { stroke: rgba(233, 236, 245, 0.14) !important; }
 }
 
 /* ===================================================== 전역 숨김 유틸리티
@@ -1473,12 +1585,17 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
               <input type="time" id="startTime" class="input">
             </div>
             <div class="field">
-              <label for="availableHours">오늘 가용 학습 시간</label>
-              <div class="range-row">
-                <input type="range" id="availableHours" min="0.5" max="14" step="0.5" value="4" data-out="availableHoursOut">
-                <output id="availableHoursOut" class="out">4시간</output>
-              </div>
+              <label for="bedTime">목표 취침 시각 <em>이 시각을 넘는 블록은 만들지 않습니다</em></label>
+              <input type="time" id="bedTime" class="input" value="23:30">
             </div>
+          </div>
+          <div class="field">
+            <label for="availableHours">오늘 가용 학습 시간</label>
+            <div class="range-row">
+              <input type="range" id="availableHours" min="0.5" max="14" step="0.5" value="4" data-out="availableHoursOut">
+              <output id="availableHoursOut" class="out">4시간</output>
+            </div>
+            <p class="tiny" id="curfewHint"></p>
           </div>
         </div>
       </div>
@@ -1585,6 +1702,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       <h2><span class="sec-num">03</span> 오늘의 학습 추천</h2>
       <p id="planHeadline">—</p>
     </div>
+
+    <div id="curfewBanner" class="is-hidden"></div>
 
     <div class="pom-summary" id="pomSummary"></div>
 
@@ -2984,16 +3103,46 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     ]);
   }
 
-  /** 특정 시각 t 에서 해당 과목 유형의 뇌 적합도 (0~1) */
-  function fitAt(analysis, type, hour) {
+  function capScoreAt(cap, hour) {
+    return clamp(cap.baseScore * global.BrainEngine.circMultiplier(cap.id, hour), 1, 100);
+  }
+
+  /** 시각 t 에서 해당 유형이 쓰는 능력의 가중 평균 점수 (0~100, 절대값) */
+  function typeScoreAt(analysis, type, hour) {
     var aff = TYPES[type].affinity, sum = 0;
     Object.keys(aff).forEach(function (capId) {
-      var cap = analysis.byId[capId];
-      var atT = clamp(cap.baseScore * global.BrainEngine.circMultiplier(capId, hour), 1, 100);
-      sum += aff[capId] * atT;
+      sum += aff[capId] * capScoreAt(analysis.byId[capId], hour);
     });
-    return clamp(sum / 100, 0, 1);
+    return sum;
   }
+
+  /** 시각 t 에서 5개 능력의 평균 (0~100) */
+  function capMeanAt(analysis, hour) {
+    var sum = 0;
+    analysis.capacities.forEach(function (cap) { sum += capScoreAt(cap, hour); });
+    return sum / analysis.capacities.length;
+  }
+
+  /** 유형 점수가 평균에서 몇 점 떨어져 있는지 (부호 있는 점수) */
+  function fitDevAt(analysis, type, hour) {
+    return typeScoreAt(analysis, type, hour) - capMeanAt(analysis, hour);
+  }
+
+  /** 특정 시각 t 에서 해당 과목 유형의 뇌 적합도 (0~1)
+   *
+   *  절대 점수가 아니라 "그 시각 5개 능력 평균 대비 편차" 로 잰다.
+   *  5개 능력은 수면·피로라는 같은 뿌리에서 나와 함께 오르내리기 때문에,
+   *  절대값으로 재면 컨디션 나쁜 날에는 모든 과목이 한꺼번에 '궁합 나쁨' 이 되어
+   *  정작 "그래서 뭘 먼저 하냐" 는 질문에 답을 주지 못한다.
+   *  오늘 총량이 얼마나 되는지는 종합 점수가 따로 말해 주므로,
+   *  궁합은 배분(무엇부터)만 책임진다. */
+  function fitAt(analysis, type, hour) {
+    // 편차가 작은 날에는 반폭 하한(4점)이 값을 0.5 근처로 눌러 준다
+    var half = Math.max(4, analysis.capSpread / 2);
+    return clamp(0.5 + fitDevAt(analysis, type, hour) / (2 * half), 0, 1);
+  }
+
+  var FIT_GOOD = 0.62, FIT_OK = 0.42;
 
   /* ------------------------------------------------ 블록 수 배분 (최대잔여법) */
 
@@ -3022,9 +3171,50 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     subjects.forEach(function (s, idx) { s.blocks = base[idx]; });
   }
 
+  /* ------------------------------------------------------------- 취침 커퓨
+   *
+   *  수면을 가장 큰 변수로 쓰는 앱이 사용자를 밤새우게 스케줄하면 안 된다.
+   *  목표 취침 시각을 하드 리밋으로 두고, 그 시각을 넘는 블록은 아예 만들지 않는다.
+   *  화면을 끄고 잠들기까지의 완충으로 30분을 남겨 둔다. */
+  var WIND_DOWN_MIN = 30;
+  // 하루의 경계. 이 시각 이전에 앱을 열었다면 아직 "어제" 가 안 끝난 것으로 본다.
+  var DAY_START = 5;
+
+  /** 취침 시각을 startHour 와 같은 연속 축 위의 값으로 정규화 */
+  function normalizedBedHour(startHour, bedHour) {
+    if (bedHour === null || bedHour === undefined) return null;
+    if (startHour < DAY_START) {
+      // 새벽에 열었다 = 이미 자정을 넘겼다.
+      // 저녁 취침 시각(23:30 등)은 '어젯밤' 이므로 이미 지난 시각이다.
+      return bedHour >= DAY_START ? bedHour - 24 : bedHour;
+    }
+    return bedHour <= startHour ? bedHour + 24 : bedHour;
+  }
+
+  function fmtDur(min) {
+    var m = Math.max(0, Math.round(min));
+    var h = Math.floor(m / 60);
+    if (!h) return m + '분';
+    return m % 60 ? h + '시간 ' + (m % 60) + '분' : h + '시간';
+  }
+
+  function fmtHour(h) {
+    var t = ((h % 24) + 24) % 24;
+    var hh = Math.floor(t), mm = Math.round((t - hh) * 60);
+    if (mm >= 60) { mm -= 60; hh = (hh + 1) % 24; }
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  /** 지금부터 취침까지 남은 분. 음수면 이미 취침 시각을 넘긴 것. null 이면 미설정 */
+  function curfewMinutes(input) {
+    var bed = normalizedBedHour(input.startHour, input.bedHour);
+    if (bed === null) return null;
+    return (bed - input.startHour) * 60 - WIND_DOWN_MIN;
+  }
+
   /* ------------------------------------------------------- 타임라인 생성 */
 
-  function buildTimeline(analysis, subjects, pom, startHour) {
+  function buildTimeline(analysis, subjects, pom, startHour, hardEndHour) {
     var timeline = [];
     var t = startHour;
     var remaining = {};
@@ -3047,6 +3237,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       });
 
       if (!best) break;
+
+      // 취침 시각을 넘기면서까지 블록을 밀어 넣지 않는다.
+      // 블록 수 추정은 사이클 평균값이라 실제 배치와 몇 분씩 어긋날 수 있어,
+      // 여기서 한 번 더 잘라 줘야 타임라인이 커퓨를 넘지 않는다.
+      if (hardEndHour !== null && hardEndHour !== undefined && t + pom.focus / 60 > hardEndHour) break;
+
       remaining[best.id]--; done++; last = best.id;
 
       timeline.push({
@@ -3073,6 +3269,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       });
       t += brk / 60;
     }
+    // 커퓨에 걸려 중간에 끊긴 경우 휴식으로 끝나 버리므로 꼬리를 잘라 낸다
+    while (timeline.length && timeline[timeline.length - 1].kind !== 'study') timeline.pop();
     return timeline;
   }
 
@@ -3118,6 +3316,24 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* --------------------------------------------------------- 과목별 사유 */
 
+  /* 궁합은 "오늘 평균 대비" 라는 것이 문장에서도 드러나야 한다.
+   * 절대 점수만 읊으면 종합 점수가 낮은 날 요약("계산 능력이 가장 잘 올라와 있다")과
+   * 과목 카드("계산형은 궁합이 나쁘다")가 정면으로 어긋난다. */
+  function fitReason(s, analysis) {
+    var label = TYPES[s.type].label;
+    if (!analysis.capMeaningful) {
+      return '오늘은 능력 간 편차가 작아 유형 궁합이 큰 변수가 아닙니다';
+    }
+    var dev = Math.round(Math.abs(s.fitDev) * 10) / 10;
+    if (s.brainFit >= FIT_GOOD) {
+      return '오늘 ' + label + ' 과목이 쓰는 능력(' + s.domCapLabel + ' 중심)이 평균보다 ' + dev + '점 높아 궁합이 좋습니다';
+    }
+    if (s.brainFit >= FIT_OK) {
+      return '오늘 ' + label + ' 과목이 쓰는 능력이 평균과 비슷해 무난하게 맞습니다';
+    }
+    return '오늘 ' + label + ' 과목이 쓰는 능력(' + s.domCapLabel + ' 중심)이 평균보다 ' + dev + '점 낮아 궁합이 떨어집니다';
+  }
+
   function reasonFor(s, analysis) {
     var parts = [];
     var drivers = [
@@ -3127,7 +3343,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
              : '시험까지 ' + s.daysLeft + '일 남아 긴급도 ' + Math.round(s.urgency * 100) + '%로 계산됐습니다') },
       { k: 'gap', v: s.gap, txt: '준비도가 ' + s.readiness + '/5라 ' + (s.readiness <= 2 ? '보완 여지가 매우 큽니다' : (s.readiness >= 4 ? '이미 어느 정도 올라와 있습니다' : '중간 수준입니다')) },
       { k: 'importance', v: s.importance, txt: '중요도 ' + s.importanceRaw + '/5로 ' + (s.importanceRaw >= 4 ? '비중이 큰 과목입니다' : '비중은 보통입니다') },
-      { k: 'fit', v: s.brainFit, txt: '오늘 ' + s.domCapLabel + '이 ' + s.domCapScore + '점이라 ' + TYPES[s.type].label + ' 과목과 ' + (s.brainFit >= 0.7 ? '궁합이 좋습니다' : (s.brainFit >= 0.5 ? '무난하게 맞습니다' : '궁합이 좋지 않습니다')) }
+      { k: 'fit', v: s.brainFit, txt: fitReason(s, analysis) }
     ].sort(function (a, b) { return b.v - a.v; });
 
     parts.push(drivers[0].txt);
@@ -3145,7 +3361,21 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var pom = pomodoroFor(overall, input.fatigue);
     var scale = totalScale(overall);
 
-    var rawMin = Math.max(0, input.availableHours * 60);
+    var requestedMin = Math.max(0, input.availableHours * 60);
+    var curfewMin = curfewMinutes(input);
+    var bedHour = normalizedBedHour(input.startHour, input.bedHour);
+
+    // 취침까지 남은 시간이 가용 시간보다 짧으면 취침 쪽이 이긴다
+    var rawMin = requestedMin;
+    var curfewCut = false;
+    if (curfewMin !== null) {
+      rawMin = Math.min(rawMin, Math.max(0, curfewMin));
+      curfewCut = curfewMin < requestedMin;
+    }
+
+    // 커퓨를 이미 넘겼거나 한 블록도 들어가지 않으면 플랜 대신 취침을 권한다
+    var bedtimeNow = curfewMin !== null && curfewMin < pom.focus;
+
     var targetMin = rawMin * scale.k;
 
     // 한 사이클(집중+휴식) 평균 길이로 나눠 실제 소화 가능한 블록 수 추정
@@ -3157,11 +3387,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     // 과목 전처리
     var subjects = (input.subjects || []).map(function (s, idx) {
       var aff = TYPES[s.type].affinity;
-      var brainFit = 0, domCap = null, domW = -1;
+      var domCap = null, domW = -1;
       Object.keys(aff).forEach(function (capId) {
-        brainFit += aff[capId] * (analysis.byId[capId].exact / 100);
         if (aff[capId] > domW) { domW = aff[capId]; domCap = capId; }
       });
+      // 분석 화면과 같은 시각(input.hour)의 능력치를 기준으로 잰다
+      var brainFit = fitAt(analysis, s.type, input.hour);
+      var fitDev = fitDevAt(analysis, s.type, input.hour);
 
       var urgency = urgencyOf(s.daysLeft);
       var gap = 0.12 + 0.88 * ((5 - s.readiness) / 4);
@@ -3181,9 +3413,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         importanceRaw: s.importance,
         urgency: urgency, gap: gap, importance: importance,
         brainFit: brainFit,
+        fitDev: fitDev,
         domCap: domCap,
         domCapLabel: analysis.byId[domCap].label,
         domCapScore: analysis.byId[domCap].score,
+        domCapRel: Math.round(analysis.byId[domCap].rel * 10) / 10,
         priority: priority,
         blocks: 0
       };
@@ -3208,7 +3442,22 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       s.reason = reasonFor(s, analysis);
     });
 
-    var timeline = buildTimeline(analysis, active, pom, input.startHour);
+    var hardEnd = bedHour === null ? null : bedHour - WIND_DOWN_MIN / 60;
+    var timeline = buildTimeline(analysis, active, pom, input.startHour, hardEnd);
+
+    // 커퓨에 걸려 잘린 블록이 있으면 과목별 배정도 실제 배치에 맞춰 되돌린다.
+    // 그러지 않으면 "30분 배정" 이라고 써 놓고 타임라인에는 없는 상태가 된다.
+    var placed = {};
+    timeline.forEach(function (b) {
+      if (b.kind === 'study') placed[b.subjectId] = (placed[b.subjectId] || 0) + 1;
+    });
+    active.forEach(function (s) {
+      s.blocks = placed[s.id] || 0;
+      s.minutes = s.blocks * pom.focus;
+    });
+    dropped = dropped.concat(active.filter(function (s) { return s.blocks === 0; }));
+    active = active.filter(function (s) { return s.blocks > 0; });
+
     var studyMin = active.reduce(function (a, s) { return a + s.minutes; }, 0);
     var breakMin = timeline.filter(function (b) { return b.kind !== 'study'; })
                            .reduce(function (a, b) { return a + b.minutes; }, 0);
@@ -3217,7 +3466,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     // 헤드라인
     var top = analysis.top, bottom = analysis.bottom;
     var headline;
-    if (active.length === 0) {
+    if (bedtimeNow) {
+      headline = curfewMin < 0
+        ? '목표 취침 시각을 ' + fmtDur(-curfewMin) + ' 넘겼습니다. 지금은 자는 것이 오늘 할 수 있는 가장 좋은 학습입니다.'
+        : '취침까지 ' + fmtDur(Math.max(0, curfewMin)) + ' 남았습니다. 새 블록을 시작하기엔 짧으니 오늘은 여기서 접으세요.';
+    } else if (active.length === 0) {
       headline = '배정할 학습 블록이 없습니다. 가용 시간이나 과목을 확인해 주세요.';
     } else {
       headline = '오늘은 ' + top.label + '(' + top.score + '점)이 가장 잘 올라와 있고 ' +
@@ -3226,10 +3479,24 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
                  pom.focus + '분 집중 / ' + pom.short + '분 휴식 리듬을 추천합니다.';
     }
 
+    var scaleNote = scale.note;
+    if (curfewCut && !bedtimeNow) {
+      scaleNote += ' 목표 취침 ' + fmtHour(bedHour) + ' 기준으로 남은 시간이 ' + fmtDur(curfewMin) +
+                   '이라, 가용 시간(' + fmtDur(requestedMin) + ') 대신 이쪽에 맞춰 잘랐습니다.';
+    }
+
     return {
       pomodoro: pom,
       pomodoroReason: pomodoroReason(overall, input.fatigue, pom),
-      scaleNote: scale.note,
+      scaleNote: scaleNote,
+      curfew: curfewMin === null ? null : {
+        bedHour: bedHour,
+        minutesLeft: curfewMin,
+        passed: curfewMin < 0,
+        bedtimeNow: bedtimeNow,
+        cut: curfewCut,
+        windDownMin: WIND_DOWN_MIN
+      },
       requestedMin: Math.round(rawMin),
       plannedStudyMin: studyMin,
       plannedBreakMin: breakMin,
@@ -3256,7 +3523,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return base;
   }
 
-  global.BrainPlanner = { plan: plan, TYPES: TYPES, METHODS: METHODS, fitAt: fitAt };
+  global.BrainPlanner = {
+    plan: plan, TYPES: TYPES, METHODS: METHODS, fitAt: fitAt,
+    curfewMinutes: curfewMinutes, normalizedBedHour: normalizedBedHour
+  };
 
 })(window);
 
@@ -6364,6 +6634,35 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 (function (global) {
   'use strict';
 
+  /* ------------------------------------------------------- 화면 꺼짐 방지
+   *
+   * 집중 블록이 도는 25분 동안 폰 화면이 잠기면 몰입이 그대로 끊긴다.
+   * Wake Lock 은 탭이 숨겨지면 브라우저가 자동으로 해제하므로,
+   * 다시 돌아왔을 때 (아직 돌아가는 중이면) 재획득해 줘야 한다.
+   * 미지원 브라우저(현재 iOS 사파리 일부)에서는 조용히 아무 일도 하지 않는다. */
+  var wakeLock = null, wantWakeLock = false;
+
+  function acquireWakeLock() {
+    wantWakeLock = true;
+    if (!navigator.wakeLock || wakeLock || document.hidden) return;
+    navigator.wakeLock.request('screen').then(function (lock) {
+      wakeLock = lock;
+      lock.addEventListener('release', function () { wakeLock = null; });
+    })['catch'](function () { /* 배터리 절약 모드 등에서는 거부될 수 있다 */ });
+  }
+
+  function releaseWakeLock() {
+    wantWakeLock = false;
+    if (!wakeLock) return;
+    var lock = wakeLock;
+    wakeLock = null;
+    lock.release()['catch'](function () {});
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && wantWakeLock) acquireWakeLock();
+  });
+
   function Pomodoro(opts) {
     this.queue = [];
     this.index = 0;
@@ -6405,6 +6704,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     this.endsAt = Date.now() + this.remainingMs;
     var self = this;
     this.tick = setInterval(function () { self._step(); }, 200);
+    acquireWakeLock();
     this.emit();
   };
 
@@ -6413,6 +6713,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     this.remainingMs = Math.max(0, this.endsAt - Date.now());
     this.running = false;
     clearInterval(this.tick); this.tick = null;
+    releaseWakeLock();
     this.emit();
   };
 
@@ -6421,6 +6722,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   Pomodoro.prototype.stop = function () {
     this.running = false;
     if (this.tick) { clearInterval(this.tick); this.tick = null; }
+    releaseWakeLock();
   };
 
   Pomodoro.prototype.reset = function () {
@@ -6910,8 +7212,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       var now = new Date();
       startHour = now.getHours() + now.getMinutes() / 60;
     }
+    var bt = $('bedTime').value, bedHour = null;
+    if (bt) {
+      var q = bt.split(':');
+      bedHour = parseInt(q[0], 10) + parseInt(q[1], 10) / 60;
+    }
     return {
-      startHour: startHour, hour: startHour,
+      startHour: startHour, hour: startHour, bedHour: bedHour,
       sleep: {
         hours: parseFloat($('sleepHours').value),
         quality: parseInt($('sleepQuality').value, 10),
@@ -6950,6 +7257,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('caffeine').value = inp.caffeine;
     $('exercise').value = inp.exercise;
     $('availableHours').value = inp.availableHours;
+    // 취침 시각은 나중에 추가된 항목이라 예전 기록에는 없다 — 기본값을 유지한다
+    if (inp.bedHour !== null && inp.bedHour !== undefined) {
+      $('bedTime').value = pad(Math.floor(inp.bedHour)) + ':' + pad(Math.round((inp.bedHour % 1) * 60));
+    }
 
     $('subjectList').innerHTML = '';
     (inp.subjects && inp.subjects.length ? inp.subjects : [null, null]).forEach(addSubjectRow);
@@ -7287,12 +7598,34 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return '종합 점수를 가장 크게 움직인 것은 ' + f.label + '(' + f.display + ')이며, 종합에 ' + signed(arr[0].v) + '점만큼 작용했습니다.';
   }
 
+  // 카운트업은 장식이므로 값을 먼저 확정해 둔다.
+  // 백그라운드 탭에서는 rAF 가 한 번도 돌지 않아서, 애니메이션에만 의존하면
+  // 분석 직후 앱을 전환한 사용자는 돌아왔을 때 0 점에서 굳은 화면을 보게 된다.
   function animateNum(el, target) {
-    var dur = 900, t0 = performance.now();
+    var final = Math.round(target);
+    el.textContent = final;
+
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || document.hidden) return;
+
+    var dur = 900, t0 = performance.now(), done = false;
+
+    function finish() {
+      if (done) return;
+      done = true;
+      el.textContent = final;
+      document.removeEventListener('visibilitychange', onHide);
+    }
+    function onHide() { if (document.hidden) finish(); }
+    document.addEventListener('visibilitychange', onHide);
+
+    el.textContent = '0';
     function step(t) {
+      if (done) return;
       var p = Math.min(1, (t - t0) / dur);
-      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      el.textContent = Math.round(final * (1 - Math.pow(1 - p, 3)));
       if (p < 1) requestAnimationFrame(step);
+      else finish();
     }
     requestAnimationFrame(step);
   }
@@ -7462,6 +7795,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   function renderPlan(p) {
     $('planHeadline').textContent = p.headline;
+    renderCurfew(p);
 
     $('pomSummary').innerHTML =
       '<div class="pm hi"><div class="pm-k">추천 모드</div><div class="pm-v" style="font-size:17px">' + esc(p.pomodoro.name) + '</div></div>' +
@@ -7501,12 +7835,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
             '<span><b>긴급도</b> ' + Math.round(s.urgency * 100) + '%</span>' +
             '<span><b>중요도</b> ' + s.importanceRaw + '/5</span>' +
             '<span><b>준비도</b> ' + s.readiness + '/5</span>' +
-            '<span><b>오늘 뇌 궁합</b> ' + Math.round(s.brainFit * 100) + '% (' + esc(s.domCapLabel) + ' ' + s.domCapScore + '점)</span>' +
+            '<span><b>오늘 뇌 궁합</b> ' + Math.round(s.brainFit * 100) + '% (' + esc(s.domCapLabel) + ' ' + s.domCapScore + '점 · 평균 대비 ' + signed(s.domCapRel) + ')</span>' +
           '</div>' +
         '</div></div>';
-    }).join('') || '<p class="tiny">배정된 과목이 없습니다. 가용 학습 시간을 늘리거나 과목을 추가해 주세요.</p>';
+    }).join('') || '<p class="tiny">' + (p.curfew && p.curfew.bedtimeNow
+      ? '취침 시각이 지나 오늘은 블록을 배정하지 않았습니다.'
+      : '배정된 과목이 없습니다. 가용 학습 시간을 늘리거나 과목을 추가해 주세요.') + '</p>';
 
     $('planTapHint').style.display = p.subjects.length ? '' : 'none';
+    // 커퓨를 넘긴 상태에서 "이 플랜으로 시작" 을 눌러 봐야 돌릴 블록이 없다
+    $('startTimerBtn').style.display = p.subjects.length ? '' : 'none';
 
     // 한 번에 하나만 펼친다 — 여러 개가 열리면 접은 의미가 없다
     $$('#subjectPlans .sp-top').forEach(function (btn) {
@@ -7524,7 +7862,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       });
     });
 
-    $('droppedNote').innerHTML = p.dropped.length
+    // 커퓨로 전부 빠진 경우는 배너가 이미 설명하고 있어 중복이다
+    $('droppedNote').innerHTML = (p.dropped.length && !(p.curfew && p.curfew.bedtimeNow))
       ? '<p class="tiny">⏸ 오늘 가용 시간으로는 ' + esc(p.dropped.map(function (d) { return d.name; }).join(', ')) +
         ' 까지 배정할 수 없었습니다. 우선순위가 낮아 내일로 미루는 편이 전체 성과에 유리합니다.</p>' : '';
 
@@ -7548,6 +7887,37 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     }).join('');
 
     collapsePlanDetail();
+  }
+
+  /* 취침 커퓨 안내.
+   * 수면을 최대 변수로 쓰는 앱이 "일찍 자라" 고 조언하면서 동시에 새벽까지
+   * 타임라인을 깔면 조언 두 개가 정면으로 부딪힌다. 커퓨를 넘긴 시점에는
+   * 플랜 대신 취침을 1순위로 내세운다. */
+  function renderCurfew(p) {
+    var el = $('curfewBanner');
+    var c = p.curfew;
+    if (!c || (!c.bedtimeNow && !c.cut)) { el.className = 'is-hidden'; el.innerHTML = ''; return; }
+
+    if (c.bedtimeNow) {
+      el.className = 'curfew now';
+      el.innerHTML =
+        '<div class="cf-ic">🛏️</div>' +
+        '<div><h4>' + (c.passed ? '지금은 자야 할 시간입니다' : '오늘은 여기까지가 좋습니다') + '</h4>' +
+        '<p>' + (c.passed
+          ? '목표 취침 ' + fmtHour(c.bedHour) + '을(를) ' + fmtDur(-c.minutesLeft) + ' 넘겼습니다. ' +
+            '지금 한 블록을 더 하는 것보다, 자고 일어나 내일 아침에 하는 편이 같은 시간으로 더 많이 남습니다.'
+          : '취침까지 ' + fmtDur(c.minutesLeft) + ' 남았습니다. 새 집중 블록을 시작하기엔 짧습니다.') +
+        ' 알람을 맞추고 아침에 다시 열어 주세요.</p>' +
+        '<p class="tiny">취침 시각을 바꾸려면 <b>[입력] → 수면 리듬 · 학습 시간</b>에서 조정하세요.</p></div>';
+      return;
+    }
+
+    el.className = 'curfew cut';
+    el.innerHTML =
+      '<div class="cf-ic">⏳</div>' +
+      '<div><h4>취침 시각에 맞춰 잘랐습니다</h4>' +
+      '<p>목표 취침 ' + fmtHour(c.bedHour) + ' 기준으로 잠들기 전 ' + c.windDownMin + '분을 비워 두면 ' +
+      fmtDur(c.minutesLeft) + '이 남습니다. 가용 시간보다 짧아 이쪽에 맞춰 플랜을 줄였습니다.</p></div>';
   }
 
   /* 타임라인·휴식 가이드는 계획을 세울 때보다 실제로 돌릴 때 필요한 정보다.
@@ -8041,7 +8411,43 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (!t) return;
     var span = t.querySelector('.ch-text span');
     span.textContent = '수분 ' + $('water').value + '컵 · 카페인 ' + $('caffeine').value + '잔 · 운동 ' +
-      $('exercise').value + '분 · 가용 ' + $('availableHours').value + '시간';
+      $('exercise').value + '분 · 가용 ' + $('availableHours').value + '시간' +
+      ($('bedTime').value ? ' · 취침 ' + $('bedTime').value : '');
+  }
+
+  /* 분석을 돌리기 전에도 "취침까지 몇 시간 남았는지" 를 보여 준다.
+   * 가용 시간을 6시간으로 잡아 놓고 취침까지 2시간뿐인 상황을 입력 단계에서 알 수 있다. */
+  function updateCurfewHint() {
+    var el = $('curfewHint');
+    if (!el) return;
+    var inp = { startHour: 0, bedHour: null };
+
+    var st = $('startTime').value;
+    if (st) {
+      var p = st.split(':');
+      inp.startHour = parseInt(p[0], 10) + parseInt(p[1], 10) / 60;
+    } else {
+      var now = new Date();
+      inp.startHour = now.getHours() + now.getMinutes() / 60;
+    }
+    var bt = $('bedTime').value;
+    if (!bt) { el.textContent = ''; el.className = 'tiny'; return; }
+    var q = bt.split(':');
+    inp.bedHour = parseInt(q[0], 10) + parseInt(q[1], 10) / 60;
+
+    var left = BrainPlanner.curfewMinutes(inp);
+    var want = parseFloat($('availableHours').value) * 60;
+
+    if (left < 0) {
+      el.className = 'tiny warn';
+      el.textContent = '⚠ 목표 취침 시각을 ' + fmtDur(-left) + ' 넘겼습니다. 오늘은 플랜 대신 취침을 권합니다.';
+    } else if (left < want) {
+      el.className = 'tiny warn';
+      el.textContent = '⚠ 취침까지 ' + fmtDur(left) + '뿐입니다(잠들기 전 30분 제외). 플랜은 이 시간에 맞춰 줄어듭니다.';
+    } else {
+      el.className = 'tiny';
+      el.textContent = '취침까지 ' + fmtDur(left) + ' 사용할 수 있습니다(잠들기 전 30분 제외).';
+    }
   }
 
   function renderQuickNote() {
@@ -9299,6 +9705,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       $(id).addEventListener('input', updateDetailSummary);
       $(id).addEventListener('change', updateDetailSummary);
     });
+    ['startTime', 'bedTime', 'availableHours'].forEach(function (id) {
+      $(id).addEventListener('input', updateCurfewHint);
+      $(id).addEventListener('change', updateCurfewHint);
+    });
 
     var now = new Date();
     $('startTime').value = pad(now.getHours()) + ':' + pad(Math.floor(now.getMinutes() / 5) * 5);
@@ -9442,6 +9852,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     renderMeals();
     renderQuickNote();
     updateDetailSummary();
+    updateCurfewHint();
     renderLiveTotal();
     renderGroup();
     renderReport();
@@ -9450,6 +9861,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     weeklyNotice();
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);
+
+    registerServiceWorker();
+  }
+
+  /* 서비스 워커 — 홈 화면 설치와 오프라인 실행을 위해 필요하다.
+   * file:// 로 열었을 때는 등록 자체가 불가능하므로 조용히 건너뛴다.
+   * (README 대로 index.html 을 더블클릭해서 쓰는 경로가 살아 있어야 한다) */
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+    navigator.serviceWorker.register('sw.js')['catch'](function () {
+      // 등록에 실패해도 앱 동작에는 지장이 없다 — 설치·오프라인만 빠진다
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

@@ -14,10 +14,13 @@
 <meta name="twitter:card" content="summary">
 
 <!-- 홈 화면에 추가했을 때 앱처럼 보이게 -->
-<meta name="theme-color" content="#6d4aff">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#6d4aff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151827" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="NeuroStudy">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
@@ -274,12 +277,17 @@
               <input type="time" id="startTime" class="input">
             </div>
             <div class="field">
-              <label for="availableHours">오늘 가용 학습 시간</label>
-              <div class="range-row">
-                <input type="range" id="availableHours" min="0.5" max="14" step="0.5" value="4" data-out="availableHoursOut">
-                <output id="availableHoursOut" class="out">4시간</output>
-              </div>
+              <label for="bedTime">목표 취침 시각 <em>이 시각을 넘는 블록은 만들지 않습니다</em></label>
+              <input type="time" id="bedTime" class="input" value="23:30">
             </div>
+          </div>
+          <div class="field">
+            <label for="availableHours">오늘 가용 학습 시간</label>
+            <div class="range-row">
+              <input type="range" id="availableHours" min="0.5" max="14" step="0.5" value="4" data-out="availableHoursOut">
+              <output id="availableHoursOut" class="out">4시간</output>
+            </div>
+            <p class="tiny" id="curfewHint"></p>
           </div>
         </div>
       </div>
@@ -386,6 +394,8 @@
       <h2><span class="sec-num">03</span> 오늘의 학습 추천</h2>
       <p id="planHeadline">—</p>
     </div>
+
+    <div id="curfewBanner" class="is-hidden"></div>
 
     <div class="pom-summary" id="pomSummary"></div>
 

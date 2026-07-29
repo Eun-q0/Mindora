@@ -342,8 +342,13 @@
       var now = new Date();
       startHour = now.getHours() + now.getMinutes() / 60;
     }
+    var bt = $('bedTime').value, bedHour = null;
+    if (bt) {
+      var q = bt.split(':');
+      bedHour = parseInt(q[0], 10) + parseInt(q[1], 10) / 60;
+    }
     return {
-      startHour: startHour, hour: startHour,
+      startHour: startHour, hour: startHour, bedHour: bedHour,
       sleep: {
         hours: parseFloat($('sleepHours').value),
         quality: parseInt($('sleepQuality').value, 10),
@@ -382,6 +387,10 @@
     $('caffeine').value = inp.caffeine;
     $('exercise').value = inp.exercise;
     $('availableHours').value = inp.availableHours;
+    // 취침 시각은 나중에 추가된 항목이라 예전 기록에는 없다 — 기본값을 유지한다
+    if (inp.bedHour !== null && inp.bedHour !== undefined) {
+      $('bedTime').value = pad(Math.floor(inp.bedHour)) + ':' + pad(Math.round((inp.bedHour % 1) * 60));
+    }
 
     $('subjectList').innerHTML = '';
     (inp.subjects && inp.subjects.length ? inp.subjects : [null, null]).forEach(addSubjectRow);
@@ -719,12 +728,34 @@
     return '종합 점수를 가장 크게 움직인 것은 ' + f.label + '(' + f.display + ')이며, 종합에 ' + signed(arr[0].v) + '점만큼 작용했습니다.';
   }
 
+  // 카운트업은 장식이므로 값을 먼저 확정해 둔다.
+  // 백그라운드 탭에서는 rAF 가 한 번도 돌지 않아서, 애니메이션에만 의존하면
+  // 분석 직후 앱을 전환한 사용자는 돌아왔을 때 0 점에서 굳은 화면을 보게 된다.
   function animateNum(el, target) {
-    var dur = 900, t0 = performance.now();
+    var final = Math.round(target);
+    el.textContent = final;
+
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || document.hidden) return;
+
+    var dur = 900, t0 = performance.now(), done = false;
+
+    function finish() {
+      if (done) return;
+      done = true;
+      el.textContent = final;
+      document.removeEventListener('visibilitychange', onHide);
+    }
+    function onHide() { if (document.hidden) finish(); }
+    document.addEventListener('visibilitychange', onHide);
+
+    el.textContent = '0';
     function step(t) {
+      if (done) return;
       var p = Math.min(1, (t - t0) / dur);
-      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      el.textContent = Math.round(final * (1 - Math.pow(1 - p, 3)));
       if (p < 1) requestAnimationFrame(step);
+      else finish();
     }
     requestAnimationFrame(step);
   }
@@ -894,6 +925,7 @@
 
   function renderPlan(p) {
     $('planHeadline').textContent = p.headline;
+    renderCurfew(p);
 
     $('pomSummary').innerHTML =
       '<div class="pm hi"><div class="pm-k">추천 모드</div><div class="pm-v" style="font-size:17px">' + esc(p.pomodoro.name) + '</div></div>' +
@@ -933,12 +965,16 @@
             '<span><b>긴급도</b> ' + Math.round(s.urgency * 100) + '%</span>' +
             '<span><b>중요도</b> ' + s.importanceRaw + '/5</span>' +
             '<span><b>준비도</b> ' + s.readiness + '/5</span>' +
-            '<span><b>오늘 뇌 궁합</b> ' + Math.round(s.brainFit * 100) + '% (' + esc(s.domCapLabel) + ' ' + s.domCapScore + '점)</span>' +
+            '<span><b>오늘 뇌 궁합</b> ' + Math.round(s.brainFit * 100) + '% (' + esc(s.domCapLabel) + ' ' + s.domCapScore + '점 · 평균 대비 ' + signed(s.domCapRel) + ')</span>' +
           '</div>' +
         '</div></div>';
-    }).join('') || '<p class="tiny">배정된 과목이 없습니다. 가용 학습 시간을 늘리거나 과목을 추가해 주세요.</p>';
+    }).join('') || '<p class="tiny">' + (p.curfew && p.curfew.bedtimeNow
+      ? '취침 시각이 지나 오늘은 블록을 배정하지 않았습니다.'
+      : '배정된 과목이 없습니다. 가용 학습 시간을 늘리거나 과목을 추가해 주세요.') + '</p>';
 
     $('planTapHint').style.display = p.subjects.length ? '' : 'none';
+    // 커퓨를 넘긴 상태에서 "이 플랜으로 시작" 을 눌러 봐야 돌릴 블록이 없다
+    $('startTimerBtn').style.display = p.subjects.length ? '' : 'none';
 
     // 한 번에 하나만 펼친다 — 여러 개가 열리면 접은 의미가 없다
     $$('#subjectPlans .sp-top').forEach(function (btn) {
@@ -956,7 +992,8 @@
       });
     });
 
-    $('droppedNote').innerHTML = p.dropped.length
+    // 커퓨로 전부 빠진 경우는 배너가 이미 설명하고 있어 중복이다
+    $('droppedNote').innerHTML = (p.dropped.length && !(p.curfew && p.curfew.bedtimeNow))
       ? '<p class="tiny">⏸ 오늘 가용 시간으로는 ' + esc(p.dropped.map(function (d) { return d.name; }).join(', ')) +
         ' 까지 배정할 수 없었습니다. 우선순위가 낮아 내일로 미루는 편이 전체 성과에 유리합니다.</p>' : '';
 
@@ -980,6 +1017,37 @@
     }).join('');
 
     collapsePlanDetail();
+  }
+
+  /* 취침 커퓨 안내.
+   * 수면을 최대 변수로 쓰는 앱이 "일찍 자라" 고 조언하면서 동시에 새벽까지
+   * 타임라인을 깔면 조언 두 개가 정면으로 부딪힌다. 커퓨를 넘긴 시점에는
+   * 플랜 대신 취침을 1순위로 내세운다. */
+  function renderCurfew(p) {
+    var el = $('curfewBanner');
+    var c = p.curfew;
+    if (!c || (!c.bedtimeNow && !c.cut)) { el.className = 'is-hidden'; el.innerHTML = ''; return; }
+
+    if (c.bedtimeNow) {
+      el.className = 'curfew now';
+      el.innerHTML =
+        '<div class="cf-ic">🛏️</div>' +
+        '<div><h4>' + (c.passed ? '지금은 자야 할 시간입니다' : '오늘은 여기까지가 좋습니다') + '</h4>' +
+        '<p>' + (c.passed
+          ? '목표 취침 ' + fmtHour(c.bedHour) + '을(를) ' + fmtDur(-c.minutesLeft) + ' 넘겼습니다. ' +
+            '지금 한 블록을 더 하는 것보다, 자고 일어나 내일 아침에 하는 편이 같은 시간으로 더 많이 남습니다.'
+          : '취침까지 ' + fmtDur(c.minutesLeft) + ' 남았습니다. 새 집중 블록을 시작하기엔 짧습니다.') +
+        ' 알람을 맞추고 아침에 다시 열어 주세요.</p>' +
+        '<p class="tiny">취침 시각을 바꾸려면 <b>[입력] → 수면 리듬 · 학습 시간</b>에서 조정하세요.</p></div>';
+      return;
+    }
+
+    el.className = 'curfew cut';
+    el.innerHTML =
+      '<div class="cf-ic">⏳</div>' +
+      '<div><h4>취침 시각에 맞춰 잘랐습니다</h4>' +
+      '<p>목표 취침 ' + fmtHour(c.bedHour) + ' 기준으로 잠들기 전 ' + c.windDownMin + '분을 비워 두면 ' +
+      fmtDur(c.minutesLeft) + '이 남습니다. 가용 시간보다 짧아 이쪽에 맞춰 플랜을 줄였습니다.</p></div>';
   }
 
   /* 타임라인·휴식 가이드는 계획을 세울 때보다 실제로 돌릴 때 필요한 정보다.
@@ -1473,7 +1541,43 @@
     if (!t) return;
     var span = t.querySelector('.ch-text span');
     span.textContent = '수분 ' + $('water').value + '컵 · 카페인 ' + $('caffeine').value + '잔 · 운동 ' +
-      $('exercise').value + '분 · 가용 ' + $('availableHours').value + '시간';
+      $('exercise').value + '분 · 가용 ' + $('availableHours').value + '시간' +
+      ($('bedTime').value ? ' · 취침 ' + $('bedTime').value : '');
+  }
+
+  /* 분석을 돌리기 전에도 "취침까지 몇 시간 남았는지" 를 보여 준다.
+   * 가용 시간을 6시간으로 잡아 놓고 취침까지 2시간뿐인 상황을 입력 단계에서 알 수 있다. */
+  function updateCurfewHint() {
+    var el = $('curfewHint');
+    if (!el) return;
+    var inp = { startHour: 0, bedHour: null };
+
+    var st = $('startTime').value;
+    if (st) {
+      var p = st.split(':');
+      inp.startHour = parseInt(p[0], 10) + parseInt(p[1], 10) / 60;
+    } else {
+      var now = new Date();
+      inp.startHour = now.getHours() + now.getMinutes() / 60;
+    }
+    var bt = $('bedTime').value;
+    if (!bt) { el.textContent = ''; el.className = 'tiny'; return; }
+    var q = bt.split(':');
+    inp.bedHour = parseInt(q[0], 10) + parseInt(q[1], 10) / 60;
+
+    var left = BrainPlanner.curfewMinutes(inp);
+    var want = parseFloat($('availableHours').value) * 60;
+
+    if (left < 0) {
+      el.className = 'tiny warn';
+      el.textContent = '⚠ 목표 취침 시각을 ' + fmtDur(-left) + ' 넘겼습니다. 오늘은 플랜 대신 취침을 권합니다.';
+    } else if (left < want) {
+      el.className = 'tiny warn';
+      el.textContent = '⚠ 취침까지 ' + fmtDur(left) + '뿐입니다(잠들기 전 30분 제외). 플랜은 이 시간에 맞춰 줄어듭니다.';
+    } else {
+      el.className = 'tiny';
+      el.textContent = '취침까지 ' + fmtDur(left) + ' 사용할 수 있습니다(잠들기 전 30분 제외).';
+    }
   }
 
   function renderQuickNote() {
@@ -2731,6 +2835,10 @@
       $(id).addEventListener('input', updateDetailSummary);
       $(id).addEventListener('change', updateDetailSummary);
     });
+    ['startTime', 'bedTime', 'availableHours'].forEach(function (id) {
+      $(id).addEventListener('input', updateCurfewHint);
+      $(id).addEventListener('change', updateCurfewHint);
+    });
 
     var now = new Date();
     $('startTime').value = pad(now.getHours()) + ':' + pad(Math.floor(now.getMinutes() / 5) * 5);
@@ -2874,6 +2982,7 @@
     renderMeals();
     renderQuickNote();
     updateDetailSummary();
+    updateCurfewHint();
     renderLiveTotal();
     renderGroup();
     renderReport();
@@ -2882,6 +2991,19 @@
     weeklyNotice();
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);
+
+    registerServiceWorker();
+  }
+
+  /* 서비스 워커 — 홈 화면 설치와 오프라인 실행을 위해 필요하다.
+   * file:// 로 열었을 때는 등록 자체가 불가능하므로 조용히 건너뛴다.
+   * (README 대로 index.html 을 더블클릭해서 쓰는 경로가 살아 있어야 한다) */
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+    navigator.serviceWorker.register('sw.js')['catch'](function () {
+      // 등록에 실패해도 앱 동작에는 지장이 없다 — 설치·오프라인만 빠진다
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
