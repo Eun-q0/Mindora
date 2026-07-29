@@ -909,24 +909,51 @@
         (pct > 11 ? esc(s.name) : '') + '</div>';
     }).join('');
 
+    /* 과목마다 근거·공부법·지표를 다 펼쳐 두면 화면이 너무 길어진다.
+     * 기본은 "무엇을 얼마나" 한 줄만 두고, 누르면 이유가 펼쳐지게 한다. */
     $('subjectPlans').innerHTML = p.subjects.map(function (s) {
       var dd = s.daysLeft === null ? '' :
         '<span class="sp-chip dday' + (s.daysLeft > 7 ? ' far' : '') + '">' + (s.daysLeft < 0 ? '종료' : (s.daysLeft === 0 ? 'D-DAY' : 'D-' + s.daysLeft)) + '</span>';
-      return '<div class="sp" style="--c:' + s.color + '">' +
-        '<div class="sp-top"><span class="sp-name">' + esc(s.name) + '</span>' +
-        '<span class="sp-chip">' + s.typeIcon + ' ' + esc(s.typeLabel) + '</span>' + dd +
-        '<span class="sp-time">' + fmtDur(s.minutes) + '<small>' + s.blocks + '블록</small></span></div>' +
-        '<p class="sp-reason">' + esc(s.reason) + '</p>' +
-        '<div class="sp-method"><h5>' + esc(s.method) + '</h5><p>' +
-          esc(kidsOn() && s.methodBodyKids ? s.methodBodyKids : s.methodBody) + '</p></div>' +
-        '<div class="sp-meta">' +
-          '<span><b>우선순위</b> ' + Math.round(s.priority * 100) + '</span>' +
-          '<span><b>긴급도</b> ' + Math.round(s.urgency * 100) + '%</span>' +
-          '<span><b>중요도</b> ' + s.importanceRaw + '/5</span>' +
-          '<span><b>준비도</b> ' + s.readiness + '/5</span>' +
-          '<span><b>오늘 뇌 궁합</b> ' + Math.round(s.brainFit * 100) + '% (' + esc(s.domCapLabel) + ' ' + s.domCapScore + '점)</span>' +
+      return '<div class="sp" style="--c:' + s.color + '" data-subj="' + esc(s.name) + '">' +
+        '<button type="button" class="sp-top" aria-expanded="false">' +
+          '<span class="sp-lead">' +
+            '<span class="sp-name">' + esc(s.name) + '</span>' +
+            '<span class="sp-chip">' + s.typeIcon + ' ' + esc(s.typeLabel) + '</span>' + dd +
+          '</span>' +
+          '<span class="sp-time">' + fmtDur(s.minutes) + '<small>' + s.blocks + '블록</small></span>' +
+          '<span class="sp-arw" aria-hidden="true">▾</span>' +
+        '</button>' +
+        '<div class="sp-body">' +
+          '<p class="sp-reason">' + esc(s.reason) + '</p>' +
+          '<div class="sp-method"><h5>' + esc(s.method) + '</h5><p>' +
+            esc(kidsOn() && s.methodBodyKids ? s.methodBodyKids : s.methodBody) + '</p></div>' +
+          '<div class="sp-meta">' +
+            '<span><b>우선순위</b> ' + Math.round(s.priority * 100) + '</span>' +
+            '<span><b>긴급도</b> ' + Math.round(s.urgency * 100) + '%</span>' +
+            '<span><b>중요도</b> ' + s.importanceRaw + '/5</span>' +
+            '<span><b>준비도</b> ' + s.readiness + '/5</span>' +
+            '<span><b>오늘 뇌 궁합</b> ' + Math.round(s.brainFit * 100) + '% (' + esc(s.domCapLabel) + ' ' + s.domCapScore + '점)</span>' +
+          '</div>' +
         '</div></div>';
     }).join('') || '<p class="tiny">배정된 과목이 없습니다. 가용 학습 시간을 늘리거나 과목을 추가해 주세요.</p>';
+
+    $('planTapHint').style.display = p.subjects.length ? '' : 'none';
+
+    // 한 번에 하나만 펼친다 — 여러 개가 열리면 접은 의미가 없다
+    $$('#subjectPlans .sp-top').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var card = btn.parentElement;
+        var willOpen = !card.classList.contains('open');
+        $$('#subjectPlans .sp').forEach(function (c) {
+          c.classList.remove('open');
+          c.querySelector('.sp-top').setAttribute('aria-expanded', 'false');
+        });
+        if (willOpen) {
+          card.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
 
     $('droppedNote').innerHTML = p.dropped.length
       ? '<p class="tiny">⏸ 오늘 가용 시간으로는 ' + esc(p.dropped.map(function (d) { return d.name; }).join(', ')) +
@@ -950,6 +977,26 @@
     $('restList').innerHTML = p.rest.map(function (r) {
       return '<div class="rest"><div class="ri">' + r.icon + '</div><div><h5>' + esc(r.title) + '</h5><p>' + esc(r.text) + '</p></div></div>';
     }).join('');
+
+    collapsePlanDetail();
+  }
+
+  /* 타임라인·휴식 가이드는 계획을 세울 때보다 실제로 돌릴 때 필요한 정보다.
+   * 기본은 접어 두고 필요할 때 펼친다. */
+
+  function collapsePlanDetail() {
+    if (!$('planDetail')) return;
+    $('planDetail').classList.add('is-hidden');
+    $('planMore').setAttribute('aria-expanded', 'false');
+    $('planMore').querySelector('.rm-txt').textContent = '타임라인 · 휴식 가이드 보기';
+  }
+
+  function togglePlanDetail() {
+    var open = !$('planDetail').classList.contains('is-hidden');
+    if (open) { collapsePlanDetail(); return; }
+    $('planDetail').classList.remove('is-hidden');
+    $('planMore').setAttribute('aria-expanded', 'true');
+    $('planMore').querySelector('.rm-txt').textContent = '타임라인 · 휴식 가이드 접기';
   }
 
   /* ======================================================= 순공 시간 == */
@@ -2627,6 +2674,7 @@
 
     $('detailToggle').addEventListener('click', function () { toggleDetail(); });
     $('resultMore').addEventListener('click', toggleResultDetail);
+    $('planMore').addEventListener('click', togglePlanDetail);
     DETAIL_IDS.forEach(function (id) {
       $(id).addEventListener('input', updateDetailSummary);
       $(id).addEventListener('change', updateDetailSummary);

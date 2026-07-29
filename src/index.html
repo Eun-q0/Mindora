@@ -394,18 +394,27 @@
       <div class="card-body">
         <div id="allocBar" class="alloc-bar"></div>
         <div id="subjectPlans" class="subject-plans"></div>
+        <p class="tiny" id="planTapHint">각 과목을 누르면 <b>왜 이만큼 배정했는지</b>와 <b>추천 공부법</b>이 펼쳐집니다.</p>
         <div id="droppedNote"></div>
       </div>
     </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-head"><span class="ci">🗓️</span><h3>오늘의 타임라인</h3></div>
-        <div class="card-body"><div id="timeline" class="timeline"></div></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><span class="ci">🌿</span><h3>휴식 가이드</h3></div>
-        <div class="card-body"><div id="restList" class="rest-list"></div></div>
+    <button type="button" class="res-more" id="planMore" aria-expanded="false" aria-controls="planDetail">
+      <span class="rm-txt">타임라인 · 휴식 가이드 보기</span>
+      <span class="rm-sub">시간대별 블록 배치와 휴식 방법</span>
+      <span class="rm-arw">▾</span>
+    </button>
+
+    <div id="planDetail" class="is-hidden">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><span class="ci">🗓️</span><h3>오늘의 타임라인</h3></div>
+          <div class="card-body"><div id="timeline" class="timeline"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="ci">🌿</span><h3>휴식 가이드</h3></div>
+          <div class="card-body"><div id="restList" class="rest-list"></div></div>
+        </div>
       </div>
     </div>
 
