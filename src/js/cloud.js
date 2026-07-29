@@ -27,8 +27,8 @@
    * 그래서 서버 쪽에서 RLS 로 잠그고 검증 함수 하나만 열어 뒀다 —
    * supabase/schema.sql 참고.
    * 두 값이 비어 있으면 동기화 기능 자체가 꺼진 것처럼 동작한다. */
-  var SUPABASE_URL = '';
-  var SUPABASE_ANON_KEY = '';
+  var SUPABASE_URL = 'https://vtlvuhzdxoxnvsdrpfqb.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0bHZ1aHpkeG94bnZzZHJwZnFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMTg4NzcsImV4cCI6MjEwMDg5NDg3N30.6-If6Q47kXkdOxmkt8QNiYzxhqWMDl3dnGC1pMYQLGQ';
 
   var STORE_KEY = 'neurostudy.cloud.v1';
   var TIMEOUT_MS = 8000;
