@@ -1248,6 +1248,56 @@
     setTimeout(renderSoundNow, 340);
   }
 
+  /* ================================================ 입력 부담 줄이기 == */
+
+  /* 매일 바뀌는 항목은 5~8개뿐인데 전에는 15개를 다 만져야 했다.
+   * 자주 안 바뀌는 항목은 접어 두고, 지난 입력을 그대로 쓸 수 있게 한다. */
+
+  var DETAIL_IDS = ['water', 'caffeine', 'exercise', 'sleepRegularity', 'availableHours'];
+
+  function toggleDetail(open) {
+    var wrap = $('detailToggle').parentElement;
+    var body = $('detailBody');
+    var willOpen = open === undefined ? body.classList.contains('is-hidden') : open;
+    body.classList.toggle('is-hidden', !willOpen);
+    wrap.classList.toggle('open', willOpen);
+    $('detailToggle').setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    $('detailToggle').querySelector('.ch-icon').textContent = willOpen ? '−' : '＋';
+  }
+
+  /** 접힌 영역에 지금 어떤 값이 들어 있는지 한 줄로 보여 준다 */
+  function updateDetailSummary() {
+    var t = $('detailToggle');
+    if (!t) return;
+    var span = t.querySelector('.ch-text span');
+    span.textContent = '수분 ' + $('water').value + '컵 · 카페인 ' + $('caffeine').value + '잔 · 운동 ' +
+      $('exercise').value + '분 · 가용 ' + $('availableHours').value + '시간';
+  }
+
+  function renderQuickNote() {
+    var box = $('quickNote');
+    var saved = Store.loadInput();
+    if (!saved || !saved._date) { box.innerHTML = ''; box.className = ''; return; }
+
+    var today = Store.key();
+    var same = saved._date === today;
+    var d = Store.parseKey(saved._date);
+    var days = Math.round((Store.parseKey(today) - d) / 86400000);
+    var when = same ? '오늘' : (days === 1 ? '어제' : days + '일 전');
+
+    box.className = 'quick-note';
+    box.innerHTML =
+      '<div class="qn-icon">' + (same ? '✅' : '🕘') + '</div>' +
+      '<div><div class="qn-title">' + when + ' 입력값을 불러왔습니다</div>' +
+      '<div class="qn-sub">수면 <b>' + saved.sleep.hours + '시간</b> · 스트레스 <b>' + saved.stress +
+      '</b> · 피로 <b>' + saved.fatigue + '</b> · 가용 <b>' + saved.availableHours + '시간</b><br>' +
+      (same ? '오늘 이미 입력한 값입니다. 바뀐 것만 고치고 다시 분석하면 됩니다.'
+            : '<b>오늘 컨디션</b>만 고쳐서 바로 분석하세요. 세부 항목은 그대로 둬도 됩니다.') + '</div></div>' +
+      '<button type="button" class="btn primary sm" id="quickAnalyze">그대로 분석 →</button>';
+
+    $('quickAnalyze').addEventListener('click', runAnalysis);
+  }
+
   /* ============================================================ 급식 == */
 
   var MEAL_FIELD = { '조식': 'mealBreakfast', '중식': 'mealLunch', '석식': 'mealDinner' };
@@ -1675,6 +1725,7 @@
     renderPlan(p);
     state.timer.load(p.timeline);
 
+    input._date = Store.key();   // 언제 입력한 값인지 기억해 다음 방문에 안내한다
     Store.saveInput(input);
     Store.pushRecord(a);
     Group.syncSelf();
@@ -1685,6 +1736,7 @@
     renderKids();
     renderSoundNow();
     renderSettingsPage();
+    renderQuickNote();
 
     renderNav();
     goPage('secResult');
@@ -1734,6 +1786,12 @@
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
       $(id).addEventListener('change', function () { renderMeals(); });
+    });
+
+    $('detailToggle').addEventListener('click', function () { toggleDetail(); });
+    DETAIL_IDS.forEach(function (id) {
+      $(id).addEventListener('input', updateDetailSummary);
+      $(id).addEventListener('change', updateDetailSummary);
     });
 
     var now = new Date();
@@ -1859,6 +1917,8 @@
 
     renderSettingsPage();
     renderMeals();
+    renderQuickNote();
+    updateDetailSummary();
     renderLiveTotal();
     renderGroup();
     renderReport();

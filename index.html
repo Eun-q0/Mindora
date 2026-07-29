@@ -668,6 +668,43 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .custom-item .cs { font-size: 10.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
 .custom-empty { font-size: 11.5px; color: var(--dim); padding: 12px 2px; line-height: 1.7; }
 
+/* ============================================ 입력 부담 줄이기 (접기) ==== */
+.collapse { margin-top: 16px; }
+.collapse-head {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 14px 18px; border-radius: var(--r); cursor: pointer;
+  background: var(--surface); border: 1px dashed var(--line-2); color: var(--text);
+  font: inherit; transition: 0.16s;
+}
+.collapse-head:hover { border-color: var(--accent); border-style: solid; }
+.collapse-head .ch-icon {
+  width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 14px; flex-shrink: 0;
+}
+.collapse-head .ch-text { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; }
+.collapse-head .ch-text b { font-size: 13.5px; font-weight: 700; }
+.collapse-head .ch-text span { font-size: 11.5px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.collapse-head .ch-hint { margin-left: auto; font-size: 11px; color: var(--dim); flex-shrink: 0; }
+.collapse.open .collapse-head { border-style: solid; background: var(--surface-3); }
+.collapse.open .ch-icon { background: var(--accent); color: #fff; }
+.collapse-body { margin-top: 14px; }
+.collapse-body.is-hidden { display: none; }
+
+.quick-note {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 13px; align-items: center;
+  padding: 14px 17px; border-radius: var(--r); margin-bottom: 16px;
+  background: linear-gradient(135deg, #f3f0ff, #eafaf3); border: 1px solid var(--accent-line);
+}
+.qn-icon { font-size: 21px; text-align: center; }
+.qn-title { font-size: 13.5px; font-weight: 700; }
+.qn-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.55; }
+.qn-sub b { color: var(--text); }
+@media (max-width: 760px) {
+  .quick-note { grid-template-columns: 28px minmax(0, 1fr); }
+  .quick-note .btn { grid-column: 1 / -1; }
+  .collapse-head .ch-hint { display: none; }
+}
+
 /* ======================================================= 급식 (NEIS) ==== */
 .meal-box { display: flex; flex-direction: column; gap: 9px; }
 .meal-card { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-3); overflow: hidden; }
@@ -913,6 +950,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       <p>수면·심리·생활 습관과 시험 일정을 입력하면, 오늘 당신의 뇌가 어떤 학습에 최적인지 계산합니다.</p>
     </div>
 
+    <div id="quickNote"></div>
+
     <div class="grid-2">
       <div class="card">
         <div class="card-head"><span class="ci">🛏️</span><h3>수면</h3></div>
@@ -935,17 +974,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
               <button type="button" data-v="5">매우 좋음</button>
             </div>
             <input type="hidden" id="sleepQuality" value="3">
-          </div>
-          <div class="field">
-            <label>수면 규칙성 <em>평소와 취침·기상 시각이 비슷한가</em></label>
-            <div class="seg" data-target="sleepRegularity">
-              <button type="button" data-v="1">매우 불규칙</button>
-              <button type="button" data-v="2">불규칙</button>
-              <button type="button" data-v="3">보통</button>
-              <button type="button" data-v="4">규칙적</button>
-              <button type="button" data-v="5">매우 규칙적</button>
-            </div>
-            <input type="hidden" id="sleepRegularity" value="3">
           </div>
         </div>
       </div>
@@ -1007,6 +1035,22 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
               <output id="hoursSinceMealOut" class="out">2시간</output>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="collapse">
+      <button type="button" class="collapse-head" id="detailToggle" aria-expanded="false" aria-controls="detailBody">
+        <span class="ch-icon">＋</span>
+        <span class="ch-text"><b>세부 항목</b><span>수분 · 카페인 · 운동 · 수면 규칙성 · 학습 시간</span></span>
+        <span class="ch-hint">평소와 같다면 안 열어도 됩니다</span>
+      </button>
+      <div class="collapse-body is-hidden" id="detailBody">
+        <div class="grid-2">
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🏃</span><h3>생활 습관</h3></div>
+        <div class="card-body">
           <div class="field">
             <label for="water">수분 섭취 (컵, 200~250ml 기준)</label>
             <div class="range-row">
@@ -1015,12 +1059,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
             </div>
             <div class="scale-hint"><span>0컵</span><span class="opt">권장 6~8컵</span><span>14컵</span></div>
           </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><span class="ci">🏃</span><h3>생활 습관</h3></div>
-        <div class="card-body">
           <div class="field">
             <label for="caffeine">오늘 마신 카페인 (잔)</label>
             <div class="range-row">
@@ -1037,6 +1075,23 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
             </div>
             <div class="scale-hint"><span>0분</span><span class="opt">최적 20~60분</span><span>180분</span></div>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">⏰</span><h3>수면 리듬 · 학습 시간</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label>수면 규칙성 <em>평소와 취침·기상 시각이 비슷한가</em></label>
+            <div class="seg" data-target="sleepRegularity">
+              <button type="button" data-v="1">매우 불규칙</button>
+              <button type="button" data-v="2">불규칙</button>
+              <button type="button" data-v="3">보통</button>
+              <button type="button" data-v="4">규칙적</button>
+              <button type="button" data-v="5">매우 규칙적</button>
+            </div>
+            <input type="hidden" id="sleepRegularity" value="3">
+          </div>
           <div class="two-col">
             <div class="field">
               <label for="startTime">학습 시작 시각</label>
@@ -1050,6 +1105,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
         </div>
       </div>
     </div>
@@ -6075,6 +6133,56 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     setTimeout(renderSoundNow, 340);
   }
 
+  /* ================================================ 입력 부담 줄이기 == */
+
+  /* 매일 바뀌는 항목은 5~8개뿐인데 전에는 15개를 다 만져야 했다.
+   * 자주 안 바뀌는 항목은 접어 두고, 지난 입력을 그대로 쓸 수 있게 한다. */
+
+  var DETAIL_IDS = ['water', 'caffeine', 'exercise', 'sleepRegularity', 'availableHours'];
+
+  function toggleDetail(open) {
+    var wrap = $('detailToggle').parentElement;
+    var body = $('detailBody');
+    var willOpen = open === undefined ? body.classList.contains('is-hidden') : open;
+    body.classList.toggle('is-hidden', !willOpen);
+    wrap.classList.toggle('open', willOpen);
+    $('detailToggle').setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    $('detailToggle').querySelector('.ch-icon').textContent = willOpen ? '−' : '＋';
+  }
+
+  /** 접힌 영역에 지금 어떤 값이 들어 있는지 한 줄로 보여 준다 */
+  function updateDetailSummary() {
+    var t = $('detailToggle');
+    if (!t) return;
+    var span = t.querySelector('.ch-text span');
+    span.textContent = '수분 ' + $('water').value + '컵 · 카페인 ' + $('caffeine').value + '잔 · 운동 ' +
+      $('exercise').value + '분 · 가용 ' + $('availableHours').value + '시간';
+  }
+
+  function renderQuickNote() {
+    var box = $('quickNote');
+    var saved = Store.loadInput();
+    if (!saved || !saved._date) { box.innerHTML = ''; box.className = ''; return; }
+
+    var today = Store.key();
+    var same = saved._date === today;
+    var d = Store.parseKey(saved._date);
+    var days = Math.round((Store.parseKey(today) - d) / 86400000);
+    var when = same ? '오늘' : (days === 1 ? '어제' : days + '일 전');
+
+    box.className = 'quick-note';
+    box.innerHTML =
+      '<div class="qn-icon">' + (same ? '✅' : '🕘') + '</div>' +
+      '<div><div class="qn-title">' + when + ' 입력값을 불러왔습니다</div>' +
+      '<div class="qn-sub">수면 <b>' + saved.sleep.hours + '시간</b> · 스트레스 <b>' + saved.stress +
+      '</b> · 피로 <b>' + saved.fatigue + '</b> · 가용 <b>' + saved.availableHours + '시간</b><br>' +
+      (same ? '오늘 이미 입력한 값입니다. 바뀐 것만 고치고 다시 분석하면 됩니다.'
+            : '<b>오늘 컨디션</b>만 고쳐서 바로 분석하세요. 세부 항목은 그대로 둬도 됩니다.') + '</div></div>' +
+      '<button type="button" class="btn primary sm" id="quickAnalyze">그대로 분석 →</button>';
+
+    $('quickAnalyze').addEventListener('click', runAnalysis);
+  }
+
   /* ============================================================ 급식 == */
 
   var MEAL_FIELD = { '조식': 'mealBreakfast', '중식': 'mealLunch', '석식': 'mealDinner' };
@@ -6502,6 +6610,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     renderPlan(p);
     state.timer.load(p.timeline);
 
+    input._date = Store.key();   // 언제 입력한 값인지 기억해 다음 방문에 안내한다
     Store.saveInput(input);
     Store.pushRecord(a);
     Group.syncSelf();
@@ -6512,6 +6621,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     renderKids();
     renderSoundNow();
     renderSettingsPage();
+    renderQuickNote();
 
     renderNav();
     goPage('secResult');
@@ -6561,6 +6671,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
       $(id).addEventListener('change', function () { renderMeals(); });
+    });
+
+    $('detailToggle').addEventListener('click', function () { toggleDetail(); });
+    DETAIL_IDS.forEach(function (id) {
+      $(id).addEventListener('input', updateDetailSummary);
+      $(id).addEventListener('change', updateDetailSummary);
     });
 
     var now = new Date();
@@ -6686,6 +6802,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     renderSettingsPage();
     renderMeals();
+    renderQuickNote();
+    updateDetailSummary();
     renderLiveTotal();
     renderGroup();
     renderReport();

@@ -661,6 +661,43 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .custom-item .cs { font-size: 10.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
 .custom-empty { font-size: 11.5px; color: var(--dim); padding: 12px 2px; line-height: 1.7; }
 
+/* ============================================ 입력 부담 줄이기 (접기) ==== */
+.collapse { margin-top: 16px; }
+.collapse-head {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 14px 18px; border-radius: var(--r); cursor: pointer;
+  background: var(--surface); border: 1px dashed var(--line-2); color: var(--text);
+  font: inherit; transition: 0.16s;
+}
+.collapse-head:hover { border-color: var(--accent); border-style: solid; }
+.collapse-head .ch-icon {
+  width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 14px; flex-shrink: 0;
+}
+.collapse-head .ch-text { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; }
+.collapse-head .ch-text b { font-size: 13.5px; font-weight: 700; }
+.collapse-head .ch-text span { font-size: 11.5px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.collapse-head .ch-hint { margin-left: auto; font-size: 11px; color: var(--dim); flex-shrink: 0; }
+.collapse.open .collapse-head { border-style: solid; background: var(--surface-3); }
+.collapse.open .ch-icon { background: var(--accent); color: #fff; }
+.collapse-body { margin-top: 14px; }
+.collapse-body.is-hidden { display: none; }
+
+.quick-note {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 13px; align-items: center;
+  padding: 14px 17px; border-radius: var(--r); margin-bottom: 16px;
+  background: linear-gradient(135deg, #f3f0ff, #eafaf3); border: 1px solid var(--accent-line);
+}
+.qn-icon { font-size: 21px; text-align: center; }
+.qn-title { font-size: 13.5px; font-weight: 700; }
+.qn-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.55; }
+.qn-sub b { color: var(--text); }
+@media (max-width: 760px) {
+  .quick-note { grid-template-columns: 28px minmax(0, 1fr); }
+  .quick-note .btn { grid-column: 1 / -1; }
+  .collapse-head .ch-hint { display: none; }
+}
+
 /* ======================================================= 급식 (NEIS) ==== */
 .meal-box { display: flex; flex-direction: column; gap: 9px; }
 .meal-card { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-3); overflow: hidden; }

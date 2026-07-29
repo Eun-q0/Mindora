@@ -110,6 +110,8 @@
       <p>수면·심리·생활 습관과 시험 일정을 입력하면, 오늘 당신의 뇌가 어떤 학습에 최적인지 계산합니다.</p>
     </div>
 
+    <div id="quickNote"></div>
+
     <div class="grid-2">
       <div class="card">
         <div class="card-head"><span class="ci">🛏️</span><h3>수면</h3></div>
@@ -132,17 +134,6 @@
               <button type="button" data-v="5">매우 좋음</button>
             </div>
             <input type="hidden" id="sleepQuality" value="3">
-          </div>
-          <div class="field">
-            <label>수면 규칙성 <em>평소와 취침·기상 시각이 비슷한가</em></label>
-            <div class="seg" data-target="sleepRegularity">
-              <button type="button" data-v="1">매우 불규칙</button>
-              <button type="button" data-v="2">불규칙</button>
-              <button type="button" data-v="3">보통</button>
-              <button type="button" data-v="4">규칙적</button>
-              <button type="button" data-v="5">매우 규칙적</button>
-            </div>
-            <input type="hidden" id="sleepRegularity" value="3">
           </div>
         </div>
       </div>
@@ -204,6 +195,22 @@
               <output id="hoursSinceMealOut" class="out">2시간</output>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="collapse">
+      <button type="button" class="collapse-head" id="detailToggle" aria-expanded="false" aria-controls="detailBody">
+        <span class="ch-icon">＋</span>
+        <span class="ch-text"><b>세부 항목</b><span>수분 · 카페인 · 운동 · 수면 규칙성 · 학습 시간</span></span>
+        <span class="ch-hint">평소와 같다면 안 열어도 됩니다</span>
+      </button>
+      <div class="collapse-body is-hidden" id="detailBody">
+        <div class="grid-2">
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🏃</span><h3>생활 습관</h3></div>
+        <div class="card-body">
           <div class="field">
             <label for="water">수분 섭취 (컵, 200~250ml 기준)</label>
             <div class="range-row">
@@ -212,12 +219,6 @@
             </div>
             <div class="scale-hint"><span>0컵</span><span class="opt">권장 6~8컵</span><span>14컵</span></div>
           </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><span class="ci">🏃</span><h3>생활 습관</h3></div>
-        <div class="card-body">
           <div class="field">
             <label for="caffeine">오늘 마신 카페인 (잔)</label>
             <div class="range-row">
@@ -234,6 +235,23 @@
             </div>
             <div class="scale-hint"><span>0분</span><span class="opt">최적 20~60분</span><span>180분</span></div>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">⏰</span><h3>수면 리듬 · 학습 시간</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label>수면 규칙성 <em>평소와 취침·기상 시각이 비슷한가</em></label>
+            <div class="seg" data-target="sleepRegularity">
+              <button type="button" data-v="1">매우 불규칙</button>
+              <button type="button" data-v="2">불규칙</button>
+              <button type="button" data-v="3">보통</button>
+              <button type="button" data-v="4">규칙적</button>
+              <button type="button" data-v="5">매우 규칙적</button>
+            </div>
+            <input type="hidden" id="sleepRegularity" value="3">
+          </div>
           <div class="two-col">
             <div class="field">
               <label for="startTime">학습 시작 시각</label>
@@ -247,6 +265,9 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
         </div>
       </div>
     </div>
