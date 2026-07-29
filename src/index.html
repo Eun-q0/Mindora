@@ -733,6 +733,41 @@
     </div>
 
     <div class="card wide">
+      <div class="card-head"><span class="ci">🙋</span><h3>선생님에게 내 기록 보이기</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px"><b>학교 리그와는 별개의 기능입니다.</b> 리그는 학교 합계만 다뤄
+          누가 누군지 알 수 없지만, 이건 <b>내 닉네임이 그대로 관리자 화면에 뜹니다.</b>
+          둘 다 각자 따로 켜고 끌 수 있습니다.</p>
+
+        <div class="cl-what">
+          <div class="cl-yes">
+            <p class="cl-h">✅ 전송되는 것</p>
+            <ul>
+              <li><b>닉네임</b> — 프로필에 입력한 이름 그대로</li>
+              <li><b>학교명</b>, <b>주차</b>, <b>순공 시간</b></li>
+              <li><b>기기 번호</b></li>
+            </ul>
+          </div>
+          <div class="cl-no">
+            <p class="cl-h">🔎 볼 수 있는 사람</p>
+            <ul>
+              <li>이 앱에 등록된 <b>관리자 계정으로 로그인한 사람만</b></li>
+              <li>익명 방문자·다른 학생은 <b>절대 볼 수 없습니다</b></li>
+            </ul>
+          </div>
+        </div>
+
+        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="studentShareOn"><span><b>선생님(관리자)에게 내 닉네임과 학습 시간을 보여줍니다</b></span></label>
+
+        <p class="tiny" id="studentShareMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 반드시 보호자와 함께 결정하세요.</b>
+          이건 <b>이름으로 나를 특정할 수 있는</b> 정보가 외부 서버에 저장되는 기능입니다.
+          부담스러우면 리그(학교 합계)만 켜고 이건 꺼 두어도 됩니다.</p>
+
+        <div id="studentShareStatus" class="neis-status" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div class="card wide">
       <div class="card-head"><span class="ci">🏫</span><h3>나이스(NEIS) 연동</h3></div>
       <div class="card-body">
         <p class="tiny" style="margin:0 0 14px">교육정보 개방포털 API 키를 넣으면 <b>실제 학교 검색</b>과 <b>급식 식단</b>을 불러옵니다.
@@ -772,21 +807,64 @@
   <section id="secAdmin" class="section is-hidden">
     <div class="sec-head">
       <h2><span class="sec-num">👑</span> 관리자 대시보드</h2>
-      <p>사용자들의 학습 현황을 한눈에 모니터링합니다.</p>
+      <p>학생들의 학습 현황을 한눈에 모니터링합니다.</p>
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">🔐</span><h3>관리자 인증</h3></div>
+      <div class="card-head"><span class="ci">🔐</span><h3>관리자 로그인</h3></div>
       <div class="card-body" id="adminAuthSection">
+        <p class="tiny" style="margin:0 0 14px">Supabase 대시보드에서 만든 관리자 계정으로 로그인합니다.
+          이 계정으로 로그인해야만 학생 개별 기록을 볼 수 있습니다 — 다른 방법으로는 볼 수 없습니다.</p>
         <div class="field">
-          <label for="adminPin">관리자 PIN 코드</label>
-          <input type="password" id="adminPin" class="input" placeholder="PIN 입력" maxlength="6">
+          <label for="adminEmail">이메일</label>
+          <input type="email" id="adminEmail" class="input" placeholder="admin@example.com" autocomplete="username">
         </div>
-        <button type="button" class="btn" id="adminLogin">인증하기</button>
+        <div class="field" style="margin-top:12px">
+          <label for="adminPassword">비밀번호</label>
+          <input type="password" id="adminPassword" class="input" placeholder="비밀번호" autocomplete="current-password">
+        </div>
+        <button type="button" class="btn" id="adminLogin" style="margin-top:14px">로그인</button>
+        <div id="adminAuthStatus" class="neis-status" style="margin-top:10px"></div>
       </div>
       <div class="card-body is-hidden" id="adminContent">
-        <button type="button" class="btn ghost" id="adminLogout">로그아웃</button>
+        <span class="tiny" id="adminWhoAmI">—</span>
+        <button type="button" class="btn ghost" id="adminLogout" style="margin-left:10px">로그아웃</button>
       </div>
+    </div>
+
+    <div class="card wide is-hidden" id="adminStudentsCard">
+      <div class="card-head"><span class="ci">🌐</span><h3>학교 전체 — 이번 주 학생 목록 (실시간)</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px"><b>선생님에게 내 기록 보이기</b>를 켠 학생만 여기 뜹니다.
+          켜지 않은 학생은 공부를 해도 이 목록에 나타나지 않습니다 — 감춰진 게 아니라 애초에 전송되지 않은 것입니다.</p>
+        <div class="search-box">
+          <input type="text" id="adminStudentSearch" class="input" placeholder="닉네임, 학교 검색...">
+        </div>
+        <button type="button" class="btn ghost sm" id="adminStudentRefresh" style="margin:10px 0">↻ 새로고침</button>
+        <div id="adminStudentsList" class="admin-users-list"></div>
+        <div id="adminStudentsStatus" class="tiny" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="card wide is-hidden" id="adminSchoolAggCard">
+      <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 합계 (익명)</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">위 목록과 달리 이건 <b>학교 리그</b>에서 온 값입니다.
+          닉네임 공유에 동의하지 않은 학생도 학교 합계에는 포함될 수 있어, 위 목록의 합보다 클 수 있습니다.</p>
+        <div id="adminSchoolAgg" class="adm-feed"></div>
+      </div>
+    </div>
+
+    <p class="tiny adm-scope is-hidden" id="adminServerScopeNote">🔒 <b>이 목록이 보여줄 수 있는 범위</b> —
+      <b>선생님에게 내 기록 보이기</b>를 스스로 켠 학생만 보입니다. 서버에 강제로 모으는 절차는 없습니다.
+      이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 학생</b>을 볼 수 있습니다
+      (관리자가 한 명이라는 전제로 설계했습니다).</p>
+
+    <hr class="adm-divider">
+
+    <div class="sec-head" style="margin-top:8px">
+      <h2><span class="sec-num">📱</span> 이 기기 기록</h2>
+      <p>아래는 서버와 무관하게, <b>지금 이 브라우저</b>에 저장된 내용만 보여줍니다.</p>
     </div>
 
     <div class="card wide is-hidden" id="adminStatsCard">
@@ -838,9 +916,8 @@
       </div>
     </div>
 
-    <p class="tiny adm-scope is-hidden" id="adminScopeNote">🔒 <b>이 대시보드가 볼 수 있는 범위</b> —
-      이 앱은 서버가 없어 모든 기록이 각자의 브라우저에만 저장됩니다.
-      따라서 여기 보이는 것은 <b>이 브라우저에 있는 데이터</b>, 즉 <b>내 기록</b>과
+    <p class="tiny adm-scope is-hidden" id="adminScopeNote">🔒 <b>이 아래 섹션이 볼 수 있는 범위</b> —
+      위의 서버 목록과 달리, 여기부터는 <b>이 브라우저에 있는 데이터</b>, 즉 <b>내 기록</b>과
       <b>공유 코드로 직접 추가한 그룹원의 기록</b>뿐입니다.
       그룹원 수치는 코드를 받은 시점의 스냅숏이라 실시간이 아니며,
       코드를 주지 않은 사용자의 활동은 원리상 볼 수 없습니다.</p>

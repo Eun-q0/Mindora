@@ -207,7 +207,7 @@
 
     // 들어올 때마다 최신 값으로 다시 그린다
     if (id === 'secLeague') { renderLeague(); leagueSync(false); }
-    if (id === 'secAdmin' && adminState.authenticated) renderAdminAll();
+    if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
 
     var pg = pageBy(id);
     if (!skipHash && pg) {
@@ -2008,25 +2008,27 @@
 
     var el = $('cloudStatus');
     if (!s.configured) {
-      el.className = 'neis-status warn';
+      el.className = 'neis-status show warn';
       el.innerHTML = '서버가 아직 연결돼 있지 않습니다. ' +
         '<b>supabase/schema.sql</b> 을 실행하고 <b>src/js/cloud.js</b> 상단에 프로젝트 주소와 anon 키를 넣으면 켜집니다. ' +
         '그때까지 리그는 이 브라우저가 아는 학교만 보여 줍니다.';
       return;
     }
     if (!s.enabled) {
-      el.className = 'neis-status';
+      el.className = 'neis-status show';
       el.textContent = '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
       return;
     }
-    el.className = 'neis-status ok';
+    el.className = 'neis-status show ok';
     el.innerHTML = '참가 중 · 기기 번호 <b>' + esc(String(s.deviceId).slice(0, 8)) + '…</b>' +
       (s.lastSync ? ' · 마지막 동기화 ' + agoText(s.lastSync) : ' · 아직 동기화 전') +
       (s.lastError ? '<br><span style="color:var(--bad)">최근 오류 — ' + esc(s.lastError) + '</span>' : '');
   }
 
-  /** 서버에 올리고 받아 온 뒤 리그를 다시 그린다 */
+  /** 서버에 올리고 받아 온 뒤 리그를 다시 그린다. 학생 개별 공유도 같은 타이밍에 함께 올린다. */
   function leagueSync(force) {
+    studentShareSync(force);   // 리그와 별개 스위치지만, 동기화 타이밍은 같이 탄다
+
     if (!Cloud.enabled()) return;
     League.syncNow(force).then(function (ok) {
       if (ok) { renderLeague(); renderCloudSettings(); }
@@ -2062,13 +2064,13 @@
 
     $('cloudTest').addEventListener('click', function () {
       var el = $('cloudStatus');
-      el.className = 'neis-status';
+      el.className = 'neis-status show';
       el.textContent = '확인 중…';
       Cloud.test(Store.key(Store.weekStart(new Date()))).then(function () {
-        el.className = 'neis-status ok';
+        el.className = 'neis-status show ok';
         el.textContent = '서버에 연결됐습니다.';
       }, function (e) {
-        el.className = 'neis-status err';
+        el.className = 'neis-status show err';
         el.textContent = '연결하지 못했습니다 — ' + (e.message || '알 수 없는 오류');
       });
     });
@@ -2089,6 +2091,67 @@
     });
 
     renderCloudSettings();
+    initStudentShare();
+  }
+
+  /* --------------------------------------------------- 학생 개별 공유 옵트인
+   * 리그(cloudOn)와는 별개의 스위치다. 여긴 닉네임이 그대로 나가므로
+   * 동의 문구도, 되돌리는 방법도 리그보다 한 단계 더 명확하게 짚는다. */
+
+  function renderStudentShareSettings() {
+    if (!$('studentShareOn')) return;
+    var s = Cloud.studentShareStatus();
+
+    $('studentShareOn').checked = s.enabled;
+    $('studentShareOn').disabled = !s.configured;
+
+    var el = $('studentShareStatus');
+    if (!s.configured) {
+      el.className = 'neis-status show';
+      el.textContent = '서버가 연결되지 않아 이 기능을 쓸 수 없습니다.';
+      return;
+    }
+    el.className = s.enabled ? 'neis-status show ok' : 'neis-status show';
+    el.innerHTML = s.enabled
+      ? '공유 중 · ' + (s.lastPush ? '마지막 전송 ' + agoText(s.lastPush) : '아직 전송 전') +
+        (s.lastError ? '<br><span style="color:var(--bad)">오류 — ' + esc(s.lastError) + '</span>' : '')
+      : '꺼져 있습니다. 닉네임이 서버로 나가지 않습니다.';
+  }
+
+  function studentShareSync(force) {
+    if (!Cloud.studentShareEnabled()) return;
+    var p = Store.profile();
+    if (!p) return;
+    var wk = Store.key(Store.weekStart(new Date()));
+    Cloud.pushStudent(p.nick, p.school, wk, League.myCappedWeek(), force)
+      .then(function () { renderStudentShareSettings(); },
+            function () { renderStudentShareSettings(); });
+  }
+
+  function initStudentShare() {
+    if (!$('studentShareOn')) return;
+
+    $('studentShareOn').addEventListener('change', function () {
+      if (this.checked) {
+        if (!confirm('내 닉네임과 학교명, 주간 학습 시간이 관리자 계정에 그대로 보입니다.\n' +
+                     '(익명 처리되지 않습니다 — 관리자는 "누구"인지 압니다)\n\n' +
+                     '만 14세 미만이라면 반드시 보호자와 함께 결정하세요.\n\n동의하고 켤까요?')) {
+          this.checked = false;
+          return;
+        }
+        Cloud.setStudentShareEnabled(true);
+        renderStudentShareSettings();
+        toast('선생님에게 내 기록을 보여줍니다.');
+        studentShareSync(true);
+      } else {
+        Cloud.setStudentShareEnabled(false);
+        Cloud.forgetStudent();
+        renderStudentShareSettings();
+        toast('공유를 껐습니다. 앞으로 닉네임이 전송되지 않습니다.');
+      }
+    });
+
+    renderStudentShareSettings();
   }
 
   /** 주가 바뀌었으면 승급·강등을 정산하고 결과를 한 번 보여 준다 */
@@ -2114,10 +2177,14 @@
     League.clearResult();
   }
 
-  /* ================================================================ 관리자 모드 */
+  /* ================================================================ 관리자 모드
+   * 두 층으로 나뉜다.
+   *   ① 서버 목록(학생이 "선생님에게 내 기록 보이기"를 켰을 때만) — 실제 로그인 필요
+   *   ② 이 기기 기록(예전부터 있던 것) — 로그인 없이도 "나"와 공유 코드 그룹원만 보임
+   * ①은 여러 기기를 아우르는 진짜 데이터고, ②는 이 브라우저 하나에 갇힌 데이터다.
+   * 화면에서도 구분해 보여 준다. */
 
-  var adminPin = 'eun031';  // 관리자 PIN — 변경해주세요!
-  var adminState = { authenticated: false, users: [] };
+  var adminState = { users: [], students: [], schoolAgg: [] };
 
   function collectAllUsers() {
     var users = [];
@@ -2328,37 +2395,140 @@
     }).join('');
   }
 
-  var ADMIN_CARDS = '#adminStatsCard, #adminUsersCard, #adminActivityCard, #adminFeedCard, #adminScopeNote';
+  var ADMIN_LOCAL_CARDS = '#adminStatsCard, #adminUsersCard, #adminActivityCard, #adminFeedCard, #adminScopeNote';
+  var ADMIN_SERVER_CARDS = '#adminStudentsCard, #adminSchoolAggCard, #adminServerScopeNote';
 
-  function renderAdminAll() {
+  function renderAdminLocal() {
     renderAdminStats();
     renderAdminUsersList();
     renderAdminTimeline();
     renderAdminFeed();
   }
 
-  function authAdmin() {
-    var pin = $('adminPin').value;
-    if (pin === adminPin) {
-      adminState.authenticated = true;
-      $('adminAuthSection').classList.add('is-hidden');
-      $('adminContent').classList.remove('is-hidden');
-      $$(ADMIN_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
-      renderAdminAll();
-      toast('관리자 인증 완료');
-    } else {
-      toast('PIN 코드가 맞지 않습니다.', true);
-      $('adminPin').value = '';
-    }
+  /** 서버에 등록된 학생 개별 기록 — 로그인된 관리자만 부를 수 있다 */
+  function renderAdminStudents() {
+    var wk = Store.key(Store.weekStart(new Date()));
+    var statusEl = $('adminStudentsStatus');
+    statusEl.textContent = '불러오는 중…';
+
+    return Cloud.fetchStudentWeek(wk).then(function (rows) {
+      adminState.students = rows;
+      statusEl.textContent = rows.length
+        ? rows.length + '명 · 방금 갱신'
+        : '아직 아무도 공유하지 않았습니다.';
+      drawAdminStudents();
+    }, function (e) {
+      if (e.status === 401) {
+        statusEl.textContent = '';
+        adminShowLoggedOut('세션이 만료됐습니다. 다시 로그인해 주세요.');
+      } else {
+        statusEl.textContent = '불러오지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+      }
+    });
+  }
+
+  function drawAdminStudents() {
+    var q = ($('adminStudentSearch').value || '').toLowerCase();
+    var rows = adminState.students.filter(function (r) {
+      return (r.nickname + r.schoolName).toLowerCase().indexOf(q) >= 0;
+    }).sort(function (a, b) { return b.minutes - a.minutes; });
+
+    var html = rows.map(function (r) {
+      return '<div class="admin-user-card">' +
+        '<div class="auc-header">' +
+          '<div>' +
+            '<div class="auc-name">' + esc(r.nickname) + '</div>' +
+            '<div class="auc-group">' + esc(r.schoolName) + '</div>' +
+          '</div>' +
+          '<div class="auc-badge">' + esc(agoText(r.updatedAt)) + '</div>' +
+        '</div>' +
+        '<div class="auc-stats">' +
+          '<div class="aus-item"><div class="aus-label">이번 주 순공</div>' +
+            '<div class="aus-value">' + fmtDur(r.minutes) + '</div></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    $('adminStudentsList').innerHTML = html || '<div class="adm-empty">조건에 맞는 학생이 없습니다.</div>';
+  }
+
+  /** 학교 리그(익명 합계)도 관리자 화면에 같이 보여 준다 — 개인 목록과의 차이를 비교하도록 */
+  function renderAdminSchoolAgg() {
+    var wk = Store.key(Store.weekStart(new Date()));
+    return Cloud.fetchWeek(wk).then(function (rows) {
+      adminState.schoolAgg = rows;
+      if (!rows.length) {
+        $('adminSchoolAgg').innerHTML = '<div class="adm-empty">아직 리그에 참가한 학교가 없습니다.</div>';
+        return;
+      }
+      $('adminSchoolAgg').innerHTML = rows
+        .sort(function (a, b) { return b.total - a.total; })
+        .map(function (r) {
+          return '<div class="adm-ev">' +
+            '<span class="e-ic">🏫</span>' +
+            '<span class="e-txt"><b>' + esc(r.schoolName) + '</b>' +
+              '<span class="e-sub">참여 ' + r.active + '명 · ' + agoText(r.updatedAt) + '</span></span>' +
+            '<span class="e-ago">' + fmtDur(r.total) + '</span>' +
+          '</div>';
+        }).join('');
+    }, function () { /* 리그를 안 켰으면 자연스럽게 비어 있다 — 조용히 둔다 */ });
+  }
+
+  function renderAdminServer() {
+    renderAdminStudents();
+    renderAdminSchoolAgg();
+  }
+
+  /** 로그인 화면으로 되돌린다. 세션 만료 때도 이걸 쓴다. */
+  function adminShowLoggedOut(msg) {
+    $('adminAuthSection').classList.remove('is-hidden');
+    $('adminContent').classList.add('is-hidden');
+    $$(ADMIN_SERVER_CARDS).forEach(function (el) { el.classList.add('is-hidden'); });
+    $$(ADMIN_LOCAL_CARDS).forEach(function (el) { el.classList.add('is-hidden'); });
+    if (msg) { $('adminAuthStatus').className = 'neis-status show warn'; $('adminAuthStatus').textContent = msg; }
+  }
+
+  function adminShowLoggedIn() {
+    var s = Cloud.adminSession();
+    $('adminAuthSection').classList.add('is-hidden');
+    $('adminContent').classList.remove('is-hidden');
+    $('adminWhoAmI').textContent = s ? ('로그인: ' + s.email) : '';
+    $$(ADMIN_SERVER_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
+    $$(ADMIN_LOCAL_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
+    renderAdminServer();
+    renderAdminLocal();
+  }
+
+  function adminLogin() {
+    var email = $('adminEmail').value;
+    var pw = $('adminPassword').value;
+    var statusEl = $('adminAuthStatus');
+    statusEl.className = 'neis-status show';
+    statusEl.textContent = '로그인 중…';
+
+    Cloud.adminSignIn(email, pw).then(function () {
+      $('adminPassword').value = '';
+      statusEl.className = 'neis-status';
+      statusEl.textContent = '';
+      adminShowLoggedIn();
+      toast('관리자로 로그인했습니다.');
+    }, function (e) {
+      statusEl.className = 'neis-status show err';
+      statusEl.textContent = e.message || '로그인에 실패했습니다.';
+    });
   }
 
   function logoutAdmin() {
-    adminState.authenticated = false;
-    $('adminAuthSection').classList.remove('is-hidden');
-    $('adminContent').classList.add('is-hidden');
-    $$(ADMIN_CARDS).forEach(function (el) { el.classList.add('is-hidden'); });
-    $('adminPin').value = '';
-    toast('관리자 로그아웃 완료');
+    Cloud.adminSignOut();
+    adminShowLoggedOut();
+    toast('로그아웃했습니다.');
+  }
+
+  /** 앱을 새로 열었을 때 세션이 남아 있으면 로그인 화면을 건너뛴다 */
+  function initAdminSession() {
+    if (!$('adminAuthSection')) return;
+    if (Cloud.adminSession()) adminShowLoggedIn();
+    else adminShowLoggedOut();
   }
 
   function init() {
@@ -2496,12 +2666,15 @@
     });
 
     // 관리자 모드 이벤트
-    $('adminLogin').addEventListener('click', authAdmin);
+    $('adminLogin').addEventListener('click', adminLogin);
     $('adminLogout').addEventListener('click', logoutAdmin);
-    $('adminPin').addEventListener('keypress', function (e) {
-      if (e.key === 'Enter') authAdmin();
+    $('adminPassword').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') adminLogin();
     });
     $('adminSearch').addEventListener('input', renderAdminUsersList);
+    $('adminStudentSearch').addEventListener('input', drawAdminStudents);
+    $('adminStudentRefresh').addEventListener('click', renderAdminStudents);
+    initAdminSession();
 
     // 카드 안에서 다른 페이지로 보내는 링크 버튼들
     $$('[data-goto]').forEach(function (b) {

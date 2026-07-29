@@ -12,11 +12,23 @@
  *                     이름·학년·반과 아무 관계가 없고 언제든 새로 받을 수 있다.
  *
  * 나가지 않는 것
- *   이름, 학년, 반, 과목, 시험 일정, 뇌 컨디션 점수, 수면·스트레스 같은 입력값,
+ *   학년, 반, 과목, 시험 일정, 뇌 컨디션 점수, 수면·스트레스 같은 입력값,
  *   배지, 사운드 설정, 나이스 인증키 — 전부 기기에만 남는다.
  *
  * 기본값은 "꺼짐" 이다. 설정에서 켜야 처음으로 통신이 일어난다.
  * SDK 를 쓰지 않고 REST 로 직접 호출한다. 빌드가 단일 파일이라 의존성을 늘리지 않는다.
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * 관리자용 개별 학생 추적 (선택 기능, 리그와 별도 동의)
+ *
+ * 위의 "학교 리그"는 학교 합계만 다뤄 누가 누군지 알 수 없다.
+ * 이 아래 기능은 그 반대다 — 관리자가 "지민 · 3시간 20분" 처럼
+ * 닉네임으로 개인을 식별해서 본다. 그래서 리그와는 완전히 분리된
+ * 별도의 동의 스위치를 쓴다 (설정 화면의 "선생님에게 내 기록 보이기").
+ *
+ *   나가는 것: 닉네임, 학교명, 주차, 순공 시간(분), 기기 ID
+ *   보는 사람: admins 테이블에 등록된 계정으로 로그인한 사람뿐.
+ *             익명 키로는 개별 기록을 절대 읽을 수 없다 (RLS).
  * ========================================================================= */
 (function (global) {
   'use strict';
@@ -119,7 +131,13 @@
 
   /* --------------------------------------------------------------- 통신 */
 
-  function req(path, opts) {
+  /**
+   * bearer 를 안 주면 anon 키로 호출한다(학생 쪽 — 로그인 없음).
+   * 관리자 조회는 로그인한 사람의 access_token 을 bearer 로 넘긴다 —
+   * apikey 는 프로젝트 식별용으로 항상 anon 을 쓰고, Authorization 만 바뀐다.
+   * 어느 쪽이든 401 이 오면 그대로 올려서 호출부가 "권한 없음"을 구분하게 한다.
+   */
+  function req(path, opts, bearer) {
     opts = opts || {};
     var ctrl = global.AbortController ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, TIMEOUT_MS);
@@ -128,7 +146,7 @@
       method: opts.method || 'GET',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + (bearer || SUPABASE_ANON_KEY),
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
@@ -138,7 +156,9 @@
       clearTimeout(timer);
       if (!res.ok) {
         return res.text().then(function (t) {
-          throw new Error('HTTP ' + res.status + (t ? ' — ' + t.slice(0, 160) : ''));
+          var err = new Error('HTTP ' + res.status + (t ? ' — ' + t.slice(0, 160) : ''));
+          err.status = res.status;
+          throw err;
         });
       }
       return res.status === 204 ? null : res.json();
@@ -227,11 +247,174 @@
     return Promise.resolve(true);
   }
 
+  /* ===================================================== 학생 개별 공유
+   * 리그(enabled)와 별개인 스위치다. 리그만 켜고 이건 꺼 둘 수 있다 —
+   * 그러면 학교 합계에는 잡히지만 관리자에게 "누구"인지는 보이지 않는다. */
+
+  var STUDENT_KEY = 'neurostudy.studentShare.v1';
+
+  function studentLoad() {
+    try {
+      var raw = localStorage.getItem(STUDENT_KEY);
+      var o = raw ? JSON.parse(raw) : {};
+      return { enabled: !!o.enabled, lastPush: o.lastPush || 0, lastSig: o.lastSig || '', lastError: o.lastError || '' };
+    } catch (e) { return { enabled: false, lastPush: 0, lastSig: '', lastError: '' }; }
+  }
+
+  function studentSave(o) {
+    try { localStorage.setItem(STUDENT_KEY, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  function studentShareEnabled() { return configured() && studentLoad().enabled; }
+
+  function setStudentShareEnabled(on) {
+    var st = studentLoad();
+    st.enabled = !!on;
+    if (!st.enabled) st.lastError = '';
+    studentSave(st);
+  }
+
+  function studentShareStatus() {
+    var st = studentLoad();
+    return { configured: configured(), enabled: configured() && st.enabled, lastPush: st.lastPush, lastError: st.lastError };
+  }
+
+  /** 닉네임을 포함해 개별 기록을 올린다. 학생 쪽은 로그인이 필요 없다(anon 키). */
+  function pushStudent(nickname, school, weekKey, minutes, force) {
+    if (!studentShareEnabled()) return Promise.resolve(false);
+
+    nickname = String(nickname || '').trim();
+    school = String(school || '').trim();
+    if (!nickname || !school) return Promise.resolve(false);
+
+    var st = studentLoad();
+    var mins = Math.max(0, Math.min(2100, Math.round(minutes || 0)));
+    var sig = nickname + '|' + school + '|' + weekKey + '|' + mins;
+
+    if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
+      return Promise.resolve(false);
+    }
+
+    return req('/rest/v1/rpc/report_student', {
+      method: 'POST',
+      body: { p_device: deviceId(), p_week: weekKey, p_nickname: nickname, p_school: school, p_minutes: mins }
+    }).then(function () {
+      var s = studentLoad();
+      s.lastPush = Date.now();
+      s.lastSig = sig;
+      s.lastError = '';
+      studentSave(s);
+      return true;
+    }, function (e) {
+      var s = studentLoad();
+      s.lastError = e.message;
+      studentSave(s);
+      throw e;
+    });
+  }
+
+  /** 리그와 마찬가지로, 기기 ID 를 버려 서버 기록과의 연결을 끊는다. */
+  function forgetStudent() {
+    var st = studentLoad();
+    st.lastPush = 0;
+    st.lastSig = '';
+    studentSave(st);
+    return Promise.resolve(true);
+  }
+
+  /* ============================================================ 관리자 로그인
+   * Supabase Auth 의 이메일·비밀번호 로그인이다. 계정 자체는 Supabase 대시보드
+   * [Authentication → Users] 에서 직접 만든다 — 이 앱은 가입 화면을 두지 않는다.
+   * (누구나 가입할 수 있게 열어 두면 공격면이 넓어지고, 어차피 admins 테이블에
+   *  없으면 아무것도 못 읽으니 가입 화면 자체가 불필요하다.) */
+
+  var ADMIN_SESSION_KEY = 'neurostudy.adminSession.v1';
+
+  function adminSessionLoad() {
+    try {
+      var raw = localStorage.getItem(ADMIN_SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function adminSessionSave(s) {
+    try {
+      if (s) localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(s));
+      else localStorage.removeItem(ADMIN_SESSION_KEY);
+    } catch (e) { /* 무시 */ }
+  }
+
+  function adminSession() {
+    var s = adminSessionLoad();
+    if (!s || !s.accessToken || !s.expiresAt) return null;
+    if (Date.now() > s.expiresAt) { adminSessionSave(null); return null; }
+    return s;
+  }
+
+  function adminSignIn(email, password) {
+    if (!configured()) return Promise.reject(new Error('서버가 설정돼 있지 않습니다.'));
+    email = String(email || '').trim();
+    if (!email || !password) return Promise.reject(new Error('이메일과 비밀번호를 입력하세요.'));
+
+    return req('/auth/v1/token?grant_type=password', {
+      method: 'POST', body: { email: email, password: password }
+    }).then(function (r) {
+      if (!r || !r.access_token) throw new Error('로그인에 실패했습니다.');
+      adminSessionSave({
+        accessToken: r.access_token,
+        email: (r.user && r.user.email) || email,
+        expiresAt: Date.now() + (Math.max(60, r.expires_in || 3600) - 30) * 1000
+      });
+      return true;
+    }, function (e) {
+      // Supabase 는 잘못된 자격 증명도 400 으로 준다 — 사용자에게는 뭉뚱그려 안내한다
+      throw new Error(e.status === 400 || e.status === 401
+        ? '이메일 또는 비밀번호가 올바르지 않습니다.' : (e.message || '로그인에 실패했습니다.'));
+    });
+  }
+
+  function adminSignOut() {
+    adminSessionSave(null);
+    return Promise.resolve(true);
+  }
+
+  /**
+   * 그 주의 학생 개별 기록을 받아 온다. 로그인 세션이 없으면 빈 배열 —
+   * 화면 쪽에서 "로그인하지 않음"과 구분해 처리한다.
+   */
+  function fetchStudentWeek(weekKey) {
+    var s = adminSession();
+    if (!s) return Promise.reject(Object.assign(new Error('로그인이 필요합니다.'), { status: 401 }));
+
+    return req('/rest/v1/student_report?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=nickname,school,minutes,updated_at&order=minutes.desc&limit=500', {}, s.accessToken)
+      .then(function (rows) {
+        return (rows || []).map(function (r) {
+          return {
+            nickname: String(r.nickname || '').trim(),
+            schoolName: String(r.school || '').trim(),
+            minutes: Math.max(0, r.minutes | 0),
+            updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0
+          };
+        });
+      }, function (e) {
+        if (e.status === 401) adminSessionSave(null);   // 세션이 만료·무효 — 다시 로그인해야 한다
+        throw e;
+      });
+  }
+
   global.Cloud = {
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
     deviceId: deviceId, resetDeviceId: resetDeviceId, forget: forget,
     push: push, fetchWeek: fetchWeek, test: test,
+
+    studentShareEnabled: studentShareEnabled, setStudentShareEnabled: setStudentShareEnabled,
+    studentShareStatus: studentShareStatus, pushStudent: pushStudent, forgetStudent: forgetStudent,
+
+    adminSession: adminSession, adminSignIn: adminSignIn, adminSignOut: adminSignOut,
+    fetchStudentWeek: fetchStudentWeek,
+
     SUPABASE_URL: SUPABASE_URL
   };
 

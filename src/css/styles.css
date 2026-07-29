@@ -727,6 +727,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .neis-status.ok { background: #eafaf3; border: 1px solid #a5e0c6; color: #0b6b4c; }
 .neis-status.bad { background: #fff0f2; border: 1px solid #f6bcc5; color: #a81f38; }
 .neis-status.info { background: var(--surface-3); border: 1px solid var(--line); color: var(--muted); }
+.neis-status.err  { background: #fff0f2; border: 1px solid #f6bcc5; color: #a81f38; }
+.neis-status.warn { background: #fbf2df; border: 1px solid #efd9a3; color: #8a6a15; }
+
+.adm-divider { border: none; border-top: 1px dashed var(--line); margin: 28px 0 18px; }
 
 /* ===================================================== 자동완성 목록 ==== */
 .ac-wrap { position: relative; }
@@ -983,7 +987,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .cl-what li { font-size: 12.5px; line-height: 1.65; color: var(--muted); }
 .cl-what li b { color: var(--text); }
 
-#cloudMinorNote {
+#cloudMinorNote, #studentShareMinorNote {
   margin-top: 12px; padding: 10px 13px; border-radius: var(--r-sm);
   background: #fbf2df; color: #8a6a15; line-height: 1.6;
 }
