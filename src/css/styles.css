@@ -837,6 +837,117 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .rep-nav .wk { min-width: 0; flex: 1; font-size: 12.5px; }
 }
 
+/* ==================================================== 학교 리그 (secLeague)
+ * 행을 absolute 로 띄우고 translateY 로 자리를 옮긴다.
+ * 순위가 바뀔 때 줄이 미끄러지듯 이동해서 변동이 눈에 들어온다. */
+
+.lg-rail { display: flex; gap: 6px; margin-bottom: 18px; }
+.lg-rail button {
+  flex: 1; padding: 9px 0; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--muted); cursor: pointer; transition: all .18s;
+}
+.lg-rail button:hover { border-color: var(--line-2); }
+.lg-rail button.on { background: var(--text); border-color: var(--text); color: #fff; }
+.lg-rail button[disabled] { opacity: .55; cursor: default; }
+
+.lg-mine .card-body { padding-top: 20px; }
+.lg-mine-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12.5px; color: var(--muted); font-weight: 600; letter-spacing: .02em;
+}
+.lg-mine-name { font-size: 19px; font-weight: 700; margin: 10px 0 2px; letter-spacing: -.02em; }
+.lg-mine-rank { display: flex; align-items: baseline; gap: 10px; margin-top: 12px; }
+.lg-mine-rank b {
+  font-size: 56px; font-weight: 800; line-height: .9; letter-spacing: -.05em;
+  font-variant-numeric: tabular-nums;
+}
+.lg-mine-rank span { font-size: 15px; font-weight: 600; color: var(--muted); }
+.lg-mine-meta {
+  display: flex; gap: 16px; margin-top: 14px; padding-top: 14px;
+  border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); flex-wrap: wrap;
+}
+.lg-mine-meta b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.lg-gap { margin-top: 14px; padding: 11px 13px; border-radius: 10px; font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+.lg-gap.promote { background: #e7f5ee; color: #166b4b; }
+.lg-gap.stay    { background: var(--surface-2); color: #3d4e6b; }
+.lg-gap.demote  { background: #fbf2df; color: #8a6a15; }
+
+.lg-board-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  margin: 22px 4px 8px; font-size: 12.5px; color: var(--muted); font-weight: 600;
+}
+.lg-board {
+  position: relative; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 6px 0; overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.lg-row {
+  position: absolute; left: 0; right: 0; height: 56px; display: flex; align-items: center;
+  padding: 0 16px; gap: 12px; transition: transform .55s cubic-bezier(.2, .8, .2, 1);
+}
+.lg-row .r-rank {
+  width: 26px; flex: none; font-size: 15px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.lg-row .r-name {
+  flex: 1; min-width: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lg-row .r-sub { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; margin-top: 1px; }
+.lg-row .r-total { flex: none; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lg-row .r-delta {
+  flex: none; width: 26px; text-align: right; font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: transparent;
+}
+.lg-row .r-delta.up { color: var(--good); }
+.lg-row .r-delta.down { color: var(--warn); }
+.lg-row.is-me { background: var(--accent-soft); }
+.lg-row.is-me .r-rank, .lg-row.is-me .r-name { color: var(--accent); }
+.lg-row.z-promote .r-rank { color: var(--good); }
+.lg-row.z-demote .r-rank { color: var(--warn); }
+
+/* 승급선·강등선 — 이 화면에서 가장 중요한 정보 */
+.lg-cut {
+  position: absolute; left: 0; right: 0; height: 0; display: flex; align-items: center;
+  gap: 8px; padding: 0 14px; pointer-events: none;
+}
+.lg-cut::before, .lg-cut::after { content: ""; height: 0; flex: 1; border-top: 2px dashed currentColor; opacity: .5; }
+.lg-cut span {
+  flex: none; font-size: 10.5px; font-weight: 800; letter-spacing: .08em;
+  padding: 2px 8px; border-radius: 99px; background: currentColor;
+}
+.lg-cut span i { font-style: normal; color: #fff; }
+.lg-cut.promote { color: var(--good); }
+.lg-cut.demote { color: var(--warn); }
+
+.lg-cap { font-size: 13px; color: var(--muted); font-weight: 500; }
+.lg-cap b { color: var(--text); font-variant-numeric: tabular-nums; }
+.lg-capbar { height: 6px; background: var(--surface-2); border-radius: 99px; margin-top: 8px; overflow: hidden; }
+.lg-capbar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .35s; }
+
+.lg-disclaimer { margin-top: 18px; padding: 0 4px; line-height: 1.6; }
+
+.lg-settle { margin-bottom: 14px; padding: 15px; border-radius: 12px; font-size: 14px; font-weight: 700; line-height: 1.5; }
+.lg-settle.promote { background: #e7f5ee; color: #166b4b; }
+.lg-settle.stay    { background: var(--surface-2); color: #3d4e6b; }
+.lg-settle.demote  { background: #fbf2df; color: #8a6a15; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-row { transition: none; }
+  .lg-capbar i { transition: none; }
+}
+
+@media (max-width: 560px) {
+  .lg-rail { gap: 4px; }
+  .lg-rail button { font-size: 12px; padding: 8px 0; }
+  .lg-mine-rank b { font-size: 46px; }
+  .lg-row { padding: 0 12px; gap: 9px; }
+  .lg-row .r-name { font-size: 13.5px; }
+  .lg-row .r-total { font-size: 13px; }
+  .lg-board-head { font-size: 11.5px; flex-direction: column; align-items: flex-start; gap: 3px; }
+}
+
 /* =============================================== 관리자 대시보드 스타일 */
 .admin-stats {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;
@@ -873,10 +984,35 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .aus-label { color: var(--muted); font-size: 10px; }
 .aus-value { font-weight: 600; color: var(--text); margin-top: 2px; }
 
-.admin-chart {
-  min-height: 300px; background: var(--surface-2); border-radius: var(--r-sm);
-  padding: 20px; display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: var(--muted);
+/* 활동 타임라인 */
+.adm-timeline { display: flex; flex-direction: column; gap: 2px; }
+.adm-day {
+  display: grid; grid-template-columns: 78px 1fr auto; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: var(--r-sm);
+}
+.adm-day:nth-child(odd) { background: var(--surface-2); }
+.adm-day.empty { opacity: .5; }
+.adm-day .d-date { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.adm-day .d-date small { display: block; font-weight: 500; color: var(--muted); font-size: 10.5px; }
+.adm-day .d-bar { height: 8px; background: var(--surface-3); border-radius: 99px; overflow: hidden; }
+.adm-day .d-bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.adm-day .d-subs { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+.adm-day .d-min { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.adm-day .d-score { display: block; font-size: 10.5px; font-weight: 600; color: var(--muted); text-align: right; }
+
+/* 최근 활동 로그 */
+.adm-feed { display: flex; flex-direction: column; gap: 8px; }
+.adm-ev { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: start; font-size: 13px; }
+.adm-ev .e-ic { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; background: var(--surface-2); font-size: 13px; }
+.adm-ev .e-txt b { font-weight: 700; }
+.adm-ev .e-sub { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.adm-ev .e-ago { font-size: 11px; color: var(--dim); white-space: nowrap; }
+.adm-empty { padding: 22px; text-align: center; color: var(--muted); font-size: 13px; }
+
+.adm-scope { margin-top: 18px; padding: 0 4px; line-height: 1.6; }
+
+@media (max-width: 560px) {
+  .adm-day { grid-template-columns: 62px 1fr auto; gap: 9px; padding: 9px 10px; }
 }
 
 @media (max-width: 1024px) {

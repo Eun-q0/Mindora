@@ -17,7 +17,7 @@ $html = ReadUtf8 (Join-Path $src 'index.html')
 $css = ReadUtf8 (Join-Path $src 'css\styles.css')
 
 # 로드 순서 = 의존 순서. src/index.html 의 script 태그와 반드시 일치해야 한다.
-$jsFiles = @('engine.js', 'planner.js', 'storage.js', 'studylog.js', 'group.js', 'neis.js', 'kids.js', 'sound.js', 'report.js', 'pomodoro.js', 'app.js')
+$jsFiles = @('engine.js', 'planner.js', 'storage.js', 'studylog.js', 'group.js', 'league.js', 'neis.js', 'kids.js', 'sound.js', 'report.js', 'pomodoro.js', 'app.js')
 $js = ($jsFiles | ForEach-Object {
         "/* ===== src/js/$_ ===== */`r`n" + (ReadUtf8 (Join-Path $src "js\$_"))
     }) -join "`r`n`r`n"

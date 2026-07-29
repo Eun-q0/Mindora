@@ -115,6 +115,7 @@
     { id: 'secTimer', num: '4', label: '타이머', hash: 'timer', needAnalysis: true },
     { id: 'secKids', num: '★', label: '내 성장', hash: 'grow', kidsOnly: true },
     { id: 'secGroup', num: '5', label: '랭킹', hash: 'rank' },
+    { id: 'secLeague', num: '🏆', label: '리그', hash: 'league' },
     { id: 'secReport', num: '6', label: '리포트', hash: 'report' },
     { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' },
     { id: 'secAdmin', num: '👑', label: '관리자', hash: 'admin' }
@@ -203,6 +204,10 @@
     state.page = id;
     setActiveStep(id);
     renderPageNav();
+
+    // 들어올 때마다 최신 값으로 다시 그린다
+    if (id === 'secLeague') renderLeague();
+    if (id === 'secAdmin' && adminState.authenticated) renderAdminAll();
 
     var pg = pageBy(id);
     if (!skipHash && pg) {
@@ -561,6 +566,7 @@
     renderProfileChip();
     unlockApp();
     renderGroup();
+    renderLeague();
     renderReport();
     renderKids();
     renderSettingsPage();
@@ -979,6 +985,7 @@
         }
         renderLiveTotal();
         renderGroup();
+        renderLeague();
         if (block && block.kind === 'study') setTimeout(awardKids, 1200);
       },
       onFinishAll: function () {
@@ -988,7 +995,7 @@
         setTimeout(renderSoundNow, 320);
         toast(kidsOn() ? '🏁 오늘 계획한 공부를 다 끝냈어요. 정말 대단해요!' : '🎉 오늘의 학습 플랜을 모두 완료했습니다!');
         $('btnStart').textContent = '▶ 시작';
-        renderLiveTotal(); renderGroup(); renderReport();
+        renderLiveTotal(); renderGroup(); renderLeague(); renderReport();
         setTimeout(awardKids, 1200);
       }
     });
@@ -1733,6 +1740,7 @@
 
     renderLiveTotal();
     renderGroup();
+    renderLeague();
     renderReport();
     renderKids();
     renderSoundNow();
@@ -1781,6 +1789,116 @@
     }, 1400);
   }
 
+  /* ================================================================= 학교 리그
+   * 티어는 골라 들어가는 게 아니라 매주 정산으로 오르내린다.
+   * 그래서 레일은 고를 수 있는 탭이 아니라 진행 상황을 보여 주는 눈금으로 쓴다. */
+
+  var LG_ROW_H = 56;
+
+  function renderLeague() {
+    if (!$('lgBoard')) return;
+
+    var b = League.board();
+    if (!b) return;                        // 프로필 전에는 그릴 게 없다
+
+    /* 티어 눈금 */
+    $('lgRail').innerHTML = b.tiers.map(function (t, i) {
+      return '<button type="button" role="tab" disabled aria-selected="' + (i === b.tierIdx) + '"' +
+        ' class="' + (i === b.tierIdx ? 'on' : '') + '">' + esc(t.name) + '</button>';
+    }).join('');
+
+    /* 내 학교 카드 */
+    $('lgTierLabel').textContent = b.tier.name + ' 리그 · ' + b.size + '개교';
+    $('lgDaysLeft').textContent = b.daysLeft > 0 ? (b.daysLeft + '일 남음') : '오늘 마감';
+    $('lgSchoolName').textContent = b.me.schoolName;
+    $('lgMyRank').textContent = b.me.rank;
+    $('lgMyTotal').textContent = b.me.total.toLocaleString();
+    $('lgMyActive').textContent = b.me.active;
+    $('lgMySteady').textContent = b.me.steady;
+
+    var gapTxt;
+    if (b.myZone === 'promote') {
+      gapTxt = '승급권 안에 있어요. ' + (b.promote + 1) + '위와 ' + b.gap.toLocaleString() + '분 차이';
+    } else if (b.myZone === 'demote') {
+      gapTxt = '강등권이에요. ' + b.gap.toLocaleString() + '분 더 모으면 안전해져요';
+    } else if (b.promote > 0) {
+      gapTxt = '승급까지 ' + b.gap.toLocaleString() + '분 남았어요';
+    } else {
+      gapTxt = '최상위 리그예요. 자리를 지키는 중';
+    }
+    $('lgGapNote').textContent = gapTxt;
+    $('lgGapNote').className = 'lg-gap ' + b.myZone;
+
+    /* 승강 안내 */
+    $('lgZoneNote').textContent =
+      (b.tier.promote > 0 ? '상위 ' + b.promote + '개교 승급' : '최상위 리그') +
+      (b.tier.demote > 0 ? ' · 하위 ' + b.demote + '개교 강등' : ' · 강등 없음');
+
+    /* 순위표 — 각 행을 제 순위 자리로 옮긴다 */
+    var rows = b.ranked.map(function (s) {
+      var zone = League.getZone(s.rank, b.tier, b.size);
+      var isMe = s.schoolCode === League.MY_CODE;
+      var d = b.deltas[s.schoolCode];
+      var deltaCls = d > 0 ? ' up' : (d < 0 ? ' down' : '');
+      var deltaTxt = d ? (d > 0 ? '▲' + d : '▼' + (-d)) : '·';
+
+      return '<div class="lg-row z-' + zone + (isMe ? ' is-me' : '') + '"' +
+        ' style="transform:translateY(' + ((s.rank - 1) * LG_ROW_H + 6) + 'px)">' +
+        '<span class="r-rank">' + s.rank + '</span>' +
+        '<span class="r-name">' + esc(s.schoolName) +
+          '<span class="r-sub">참여 ' + s.active + '명 · 꾸준 ' + s.steady + '명</span>' +
+        '</span>' +
+        '<span class="r-total">' + s.total.toLocaleString() + '분</span>' +
+        '<span class="r-delta' + deltaCls + '">' + deltaTxt + '</span>' +
+      '</div>';
+    }).join('');
+
+    var cuts = '';
+    if (b.promote > 0) {
+      cuts += '<div class="lg-cut promote" style="transform:translateY(' +
+        (b.promote * LG_ROW_H + 6) + 'px)"><span><i>승급선</i></span></div>';
+    }
+    if (b.demote > 0) {
+      cuts += '<div class="lg-cut demote" style="transform:translateY(' +
+        ((b.size - b.demote) * LG_ROW_H + 6) + 'px)"><span><i>강등선</i></span></div>';
+    }
+
+    $('lgBoard').style.height = (b.size * LG_ROW_H + 12) + 'px';
+    $('lgBoard').innerHTML = rows + cuts;
+
+    /* 오늘 인정된 시간 */
+    var used = Math.round(b.todayMin);
+    var cap = League.DAILY_CAP_MINUTES;
+    $('lgCapText').innerHTML = '오늘 인정된 시간 <b>' + used + '</b> / ' + cap + '분' +
+      (b.capLeft <= 0 ? ' — 오늘 상한을 채웠어요. 내일 또 만나요' : '');
+    $('lgCapBar').style.width = Math.min(100, (used / cap) * 100) + '%';
+
+    League.snapshot(b.ranked);
+  }
+
+  /** 주가 바뀌었으면 승급·강등을 정산하고 결과를 한 번 보여 준다 */
+  function leagueSettle() {
+    League.settleIfNeeded();
+
+    var b = League.board();
+    if (!b || !b.lastResult) return;
+
+    var r = b.lastResult;
+    var el = document.createElement('div');
+    el.className = 'lg-settle ' + r.result;
+    el.textContent = r.result === 'promote'
+      ? '지난주 ' + r.rank + '위 — ' + r.toTier + ' 리그로 올라갔어요!'
+      : r.result === 'demote'
+        ? '지난주 ' + r.rank + '위 — ' + r.toTier + ' 리그로 내려갔어요. 이번 주에 다시 올라가요'
+        : '지난주 ' + r.rank + '위 — ' + r.toTier + ' 리그를 지켰어요';
+
+    var host = $('secLeague');
+    if (host) host.insertBefore(el, $('lgRail'));
+
+    if (r.result === 'promote') toast('🏆 ' + r.toTier + ' 리그로 승급했습니다!', 'party');
+    League.clearResult();
+  }
+
   /* ================================================================ 관리자 모드 */
 
   var adminPin = 'eun031';  // 관리자 PIN — 변경해주세요!
@@ -1794,10 +1912,14 @@
     var hist = Store.history();
 
     if (prof) {
-      var totalMinutes = 0;
+      /* sessions 는 { 날짜: { 과목: {t: 유형, m: 분} } } 구조라
+       * 과목 객체의 m 을 꺼내야 한다. */
+      var totalMinutes = 0, activeDays = 0;
       Object.keys(sess).forEach(function (date) {
-        var dayData = sess[date];
-        Object.keys(dayData).forEach(function (subj) { totalMinutes += dayData[subj]; });
+        var dayData = sess[date], dayMin = 0;
+        Object.keys(dayData).forEach(function (subj) { dayMin += (dayData[subj].m || 0); });
+        totalMinutes += dayMin;
+        if (dayMin > 0) activeDays++;
       });
 
       var avgScore = 0;
@@ -1807,35 +1929,44 @@
         avgScore = Math.round(sum / hist.length);
       }
 
+      /* 마지막 활동 = 공부 기록과 컨디션 기록 중 더 최근 날짜 */
+      var lastStudy = Object.keys(sess).sort().pop() || '';
+      var lastHist = hist.length ? hist[hist.length - 1].date : '';
+      var last = lastStudy > lastHist ? lastStudy : lastHist;
+
       users.push({
         id: Group.memberId(prof),
-        name: prof.name,
+        name: prof.nick,
         school: prof.school,
-        grade: prof.grade,
+        badge: prof.level,           // 학년은 groupLabel 에 이미 들어 있다
         groupId: Group.groupId(prof),
         groupLabel: Group.groupLabel(prof),
         totalMinutes: totalMinutes,
         totalHours: Math.round(totalMinutes / 60),
-        sessionCount: Object.keys(sess).length,
+        sessionCount: activeDays,
         avgScore: avgScore,
-        lastActive: hist.length ? hist[hist.length - 1].date : 'N/A'
+        lastActive: last || 'N/A',
+        self: true
       });
     }
 
     grp.members.forEach(function (m) {
-      if (!users.find(function (u) { return u.id === m.id; })) {
+      var dup = users.filter(function (u) { return u.id === m.id; }).length > 0;
+      if (!dup) {
         users.push({
           id: m.id,
           name: m.nick,
           school: m.school || 'N/A',
-          grade: m.grade || 'N/A',
+          badge: m.level || '기타',
           groupId: m.groupId,
           groupLabel: Group.groupLabel(m),
-          totalMinutes: m.todayTotal || 0,
-          totalHours: Math.round((m.todayTotal || 0) / 60),
-          sessionCount: 0,
-          avgScore: 0,
-          lastActive: m.ts ? Store.key(new Date(m.ts)) : 'N/A'
+          /* 공유 코드에는 누적 기록이 없다. 받은 시점의 주간 합계가 최선이다. */
+          totalMinutes: m.weekMin || 0,
+          totalHours: Math.round((m.weekMin || 0) / 60),
+          sessionCount: m.streak || 0,
+          avgScore: m.overall || 0,
+          lastActive: m.date || (m.ts ? Store.key(new Date(m.ts)) : 'N/A'),
+          self: false
         });
       }
     });
@@ -1869,10 +2000,11 @@
 
   function renderAdminStats() {
     var stats = calculateAdminStats();
+    var m = Math.round(stats.totalMinutes);
     $('totalUsers').textContent = stats.totalUsers;
     $('activeToday').textContent = stats.activeToday;
-    $('totalStudyHours').textContent = Math.floor(stats.totalMinutes / 60) + 'h ' + (stats.totalMinutes % 60) + 'm';
-    $('avgScore').textContent = stats.avgScore;
+    $('totalStudyHours').textContent = Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+    $('avgScore').textContent = stats.avgScore || '—';
   }
 
   function renderAdminUsersList() {
@@ -1881,28 +2013,113 @@
       return (u.name + u.school + u.groupLabel).toLowerCase().indexOf(searchTerm) >= 0;
     });
 
-    var html = '';
-    filtered.forEach(function (u) {
-      html += '<div class="admin-user-card">' +
+    var html = filtered.map(function (u) {
+      /* 내 기록은 누적 전체, 그룹원은 코드를 받은 시점의 주간 합계다.
+       * 같은 칸에 다른 뜻을 넣으면 헷갈리므로 라벨을 나눈다. */
+      return '<div class="admin-user-card">' +
         '<div class="auc-header">' +
           '<div>' +
-            '<div class="auc-name">' + esc(u.name) + '</div>' +
-            '<div class="auc-group">' + esc(u.groupLabel) + ' • ' + esc(u.school) + '</div>' +
+            '<div class="auc-name">' + esc(u.name) + (u.self ? ' (나)' : '') + '</div>' +
+            '<div class="auc-group">' + esc(u.groupLabel) + '</div>' +
           '</div>' +
-          '<div class="auc-badge">' + u.grade + '</div>' +
+          '<div class="auc-badge">' + esc(u.badge) + '</div>' +
         '</div>' +
         '<div class="auc-stats">' +
-          '<div class="aus-item"><div class="aus-label">공부 시간</div><div class="aus-value">' + u.totalHours + 'h</div></div>' +
-          '<div class="aus-item"><div class="aus-label">평균 점수</div><div class="aus-value">' + u.avgScore + '점</div></div>' +
+          '<div class="aus-item"><div class="aus-label">' + (u.self ? '누적 공부' : '이번 주') + '</div>' +
+            '<div class="aus-value">' + fmtDur(u.totalMinutes) + '</div></div>' +
+          '<div class="aus-item"><div class="aus-label">' + (u.self ? '평균 컨디션' : '최근 컨디션') + '</div>' +
+            '<div class="aus-value">' + (u.avgScore ? u.avgScore + '점' : '—') + '</div></div>' +
         '</div>' +
         '<div class="auc-stats">' +
-          '<div class="aus-item"><div class="aus-label">기록 수</div><div class="aus-value">' + u.sessionCount + '</div></div>' +
-          '<div class="aus-item"><div class="aus-label">마지막 활동</div><div class="aus-value">' + u.lastActive + '</div></div>' +
+          '<div class="aus-item"><div class="aus-label">' + (u.self ? '공부한 날' : '연속 학습') + '</div>' +
+            '<div class="aus-value">' + u.sessionCount + '일</div></div>' +
+          '<div class="aus-item"><div class="aus-label">마지막 활동</div>' +
+            '<div class="aus-value">' + esc(u.lastActive) + '</div></div>' +
         '</div>' +
       '</div>';
+    }).join('');
+
+    $('adminUsersList').innerHTML = html || '<div class="adm-empty">조건에 맞는 사용자가 없습니다.</div>';
+  }
+
+  /** 날짜별로 무엇을 얼마나 했는지 — 내 실제 기록이 근거다 */
+  function renderAdminTimeline() {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var from = Store.addDays(today, -13);
+    var days = StudyLog.rangeDays(from, today);
+    var max = Math.max.apply(null, days.map(function (d) { return d.min; }).concat([1]));
+
+    var html = days.slice().reverse().map(function (d) {
+      var subs = StudyLog.daySubjects(d.date);
+      var rec = Store.recordOn(d.date);
+      var md = d.date.slice(5).replace('-', '.');
+
+      return '<div class="adm-day' + (d.min > 0 ? '' : ' empty') + '">' +
+        '<div class="d-date">' + md + '<small>' + d.dow + '요일' + (d.isToday ? ' · 오늘' : '') + '</small></div>' +
+        '<div>' +
+          '<div class="d-bar"><i style="width:' + (d.min > 0 ? Math.max(3, (d.min / max) * 100) : 0) + '%"></i></div>' +
+          '<div class="d-subs">' + (subs.length
+            ? subs.map(function (s) { return esc(s.name) + ' ' + Math.round(s.min) + '분'; }).join(' · ')
+            : '기록 없음') + '</div>' +
+        '</div>' +
+        '<div><span class="d-min">' + (d.min > 0 ? fmtDur(d.min) : '—') + '</span>' +
+          '<span class="d-score">' + (rec ? '컨디션 ' + rec.overall + '점' : '&nbsp;') + '</span></div>' +
+      '</div>';
+    }).join('');
+
+    $('adminTimeline').innerHTML = html;
+  }
+
+  /** 최근에 무슨 일이 있었는지 시간순으로 */
+  function renderAdminFeed() {
+    var events = [];
+    var p = Store.profile();
+    var meId = p ? Group.memberId(p) : null;
+
+    // 내 뇌 컨디션 기록
+    Store.history().forEach(function (h) {
+      events.push({
+        ts: h.ts, icon: '🧠',
+        text: '<b>' + esc(p ? p.nick : '나') + '</b> 님이 컨디션을 분석했습니다',
+        sub: '종합 ' + h.overall + '점 · 수면 ' + h.sleep + '시간 · 스트레스 ' + h.stress
+      });
     });
 
-    $('adminUsersList').innerHTML = html || '<div style="padding:20px; text-align:center; color: var(--muted)">사용자가 없습니다.</div>';
+    // 그룹원이 코드를 넘겨준 시점의 스냅숏
+    Group.members().forEach(function (m) {
+      if (m.id === meId) return;
+      events.push({
+        ts: m.ts, icon: '👤',
+        text: '<b>' + esc(m.nick) + '</b> 님의 기록이 들어왔습니다',
+        sub: Group.groupLabel(m) + ' · 오늘 ' + fmtDur(m.todayMin || 0) +
+             ' · 이번 주 ' + fmtDur(m.weekMin || 0) +
+             (m.streak ? ' · ' + m.streak + '일 연속' : '')
+      });
+    });
+
+    events.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+
+    if (!events.length) {
+      $('adminFeed').innerHTML = '<div class="adm-empty">아직 기록된 활동이 없습니다.</div>';
+      return;
+    }
+
+    $('adminFeed').innerHTML = events.slice(0, 30).map(function (e) {
+      return '<div class="adm-ev">' +
+        '<span class="e-ic">' + e.icon + '</span>' +
+        '<span class="e-txt">' + e.text + '<span class="e-sub">' + esc(e.sub) + '</span></span>' +
+        '<span class="e-ago">' + agoText(e.ts) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  var ADMIN_CARDS = '#adminStatsCard, #adminUsersCard, #adminActivityCard, #adminFeedCard, #adminScopeNote';
+
+  function renderAdminAll() {
+    renderAdminStats();
+    renderAdminUsersList();
+    renderAdminTimeline();
+    renderAdminFeed();
   }
 
   function authAdmin() {
@@ -1911,11 +2128,8 @@
       adminState.authenticated = true;
       $('adminAuthSection').classList.add('is-hidden');
       $('adminContent').classList.remove('is-hidden');
-      $$('#adminStatsCard, #adminUsersCard, #adminGraphCard, #adminCapacityCard').forEach(function (el) {
-        el.classList.remove('is-hidden');
-      });
-      renderAdminStats();
-      renderAdminUsersList();
+      $$(ADMIN_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
+      renderAdminAll();
       toast('관리자 인증 완료');
     } else {
       toast('PIN 코드가 맞지 않습니다.', true);
@@ -1927,9 +2141,7 @@
     adminState.authenticated = false;
     $('adminAuthSection').classList.remove('is-hidden');
     $('adminContent').classList.add('is-hidden');
-    $$('#adminStatsCard, #adminUsersCard, #adminGraphCard, #adminCapacityCard').forEach(function (el) {
-      el.classList.add('is-hidden');
-    });
+    $$(ADMIN_CARDS).forEach(function (el) { el.classList.add('is-hidden'); });
     $('adminPin').value = '';
     toast('관리자 로그아웃 완료');
   }
@@ -2039,6 +2251,7 @@
         Group.upsert(m);
         $('joinCode').value = '';
         renderGroup();
+        renderLeague();
         toast(m.nick + ' 님을 그룹에 추가했습니다.');
       } catch (e) {
         toast(e.message || '코드를 읽을 수 없습니다.', true);
@@ -2060,7 +2273,9 @@
       if (!confirm('학습 기록·뇌 컨디션 기록·그룹원을 모두 삭제할까요?\n모은 배지와 경험치도 함께 사라지며 되돌릴 수 없습니다.')) return;
       Store.clearAll();
       Kids.reset();
+      League.reset();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
+      renderLeague();
       toast('모든 기록을 삭제했습니다.');
     });
 
@@ -2085,6 +2300,7 @@
     renderGroup();
     renderReport();
     renderKids();
+    if (Store.profile()) { leagueSettle(); renderLeague(); }
     weeklyNotice();
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);

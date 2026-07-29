@@ -531,6 +531,57 @@
     </div>
   </section>
 
+  <!-- ══════════════════════════════ 5-1. 학교 리그 ══════════════════════════════ -->
+  <section id="secLeague" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">🏆</span> 학교 리그</h2>
+      <p>우리 학교 전체가 다른 학교와 이번 주 순공 시간을 겨룹니다. 매주 월요일에 승급·강등이 정해집니다.</p>
+    </div>
+
+    <div class="lg-rail" id="lgRail" role="tablist" aria-label="리그 티어"></div>
+
+    <div class="card wide lg-mine">
+      <div class="card-body">
+        <div class="lg-mine-top">
+          <span id="lgTierLabel">—</span>
+          <span id="lgDaysLeft">—</span>
+        </div>
+        <div class="lg-mine-name" id="lgSchoolName">—</div>
+        <div class="lg-mine-rank"><b id="lgMyRank">—</b><span>위</span></div>
+        <div class="lg-mine-meta">
+          <span>누적 <b id="lgMyTotal">0</b>분</span>
+          <span>참여 <b id="lgMyActive">0</b>명</span>
+          <span>꾸준 <b id="lgMySteady">0</b>명</span>
+        </div>
+        <div class="lg-gap" id="lgGapNote">—</div>
+      </div>
+    </div>
+
+    <div class="lg-board-head">
+      <span>이번 주 순위</span>
+      <span id="lgZoneNote">—</span>
+    </div>
+    <div class="lg-board" id="lgBoard"></div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">⏱️</span><h3>오늘 인정된 시간</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 12px">한 사람이 하루에 리그에 반영할 수 있는 순공 시간은 <b>최대 5시간</b>입니다.
+          몰아서 하는 하루보다 매일 쌓는 편이 팀에 도움이 됩니다.</p>
+        <div class="lg-cap" id="lgCapText">—</div>
+        <div class="lg-capbar"><i id="lgCapBar" style="width:0%"></i></div>
+        <div class="actions" style="margin-top:16px">
+          <button type="button" class="btn" data-goto="secTimer">▶ 타이머로 시간 쌓기</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="tiny lg-disclaimer">🔒 이 앱은 서버 없이 브라우저에서만 동작합니다.
+      <b>우리 학교의 누적 시간은 실제 기록</b>(내 순공 시간 + 공유 코드로 받은 같은 학교 그룹원)이지만,
+      <b>상대 학교는 실재하는 학교가 아니라 연습용으로 만들어 낸 상대</b>입니다.
+      같은 주 안에서는 상대와 기록이 바뀌지 않습니다.</p>
+  </section>
+
   <!-- ══════════════════════════════ 6. 주간 리포트 ══════════════════════════════ -->
   <section id="secReport" class="section is-hidden">
     <div class="sec-head">
@@ -715,19 +766,27 @@
       </div>
     </div>
 
-    <div class="card wide is-hidden" id="adminGraphCard">
-      <div class="card-head"><span class="ci">📈</span><h3>그룹별 순공시간</h3></div>
+    <div class="card wide is-hidden" id="adminActivityCard">
+      <div class="card-head"><span class="ci">📈</span><h3>활동 타임라인</h3></div>
       <div class="card-body">
-        <div id="adminGroupChart" class="admin-chart"></div>
+        <p class="tiny" style="margin:0 0 14px">최근 14일 동안 날짜별로 무엇을 얼마나 공부했는지, 그날 뇌 컨디션은 몇 점이었는지 보여 줍니다.</p>
+        <div id="adminTimeline" class="adm-timeline"></div>
       </div>
     </div>
 
-    <div class="card wide is-hidden" id="adminCapacityCard">
-      <div class="card-head"><span class="ci">🧠</span><h3>뇌 컨디션 분포</h3></div>
+    <div class="card wide is-hidden" id="adminFeedCard">
+      <div class="card-head"><span class="ci">🕒</span><h3>최근 활동 로그</h3></div>
       <div class="card-body">
-        <div id="adminCapacityChart" class="admin-chart"></div>
+        <div id="adminFeed" class="adm-feed"></div>
       </div>
     </div>
+
+    <p class="tiny adm-scope is-hidden" id="adminScopeNote">🔒 <b>이 대시보드가 볼 수 있는 범위</b> —
+      이 앱은 서버가 없어 모든 기록이 각자의 브라우저에만 저장됩니다.
+      따라서 여기 보이는 것은 <b>이 브라우저에 있는 데이터</b>, 즉 <b>내 기록</b>과
+      <b>공유 코드로 직접 추가한 그룹원의 기록</b>뿐입니다.
+      그룹원 수치는 코드를 받은 시점의 스냅숏이라 실시간이 아니며,
+      코드를 주지 않은 사용자의 활동은 원리상 볼 수 없습니다.</p>
   </section>
 
   <nav class="page-nav" id="pageNav"></nav>
@@ -773,6 +832,7 @@
 <script src="js/storage.js"></script>
 <script src="js/studylog.js"></script>
 <script src="js/group.js"></script>
+<script src="js/league.js"></script>
 <script src="js/neis.js"></script>
 <script src="js/kids.js"></script>
 <script src="js/sound.js"></script>
