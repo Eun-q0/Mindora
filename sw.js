@@ -16,7 +16,8 @@
  * ========================================================================= */
 'use strict';
 
-var VERSION = 'neurostudy-v1';
+/* 정책을 바꿀 때마다 올린다. activate 에서 옛 버전 캐시를 통째로 지운다. */
+var VERSION = 'neurostudy-v2';
 var SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-maskable.svg'];
 
 self.addEventListener('install', function (e) {
@@ -72,7 +73,28 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
-  // 그 외 같은 출처 자원: 캐시 우선 → 없으면 네트워크
+  /* 코드(js·css)는 캐시 우선으로 두면 안 된다.
+   * 배포본은 index.html 에 전부 인라인돼 있어 문서만 갱신하면 되지만,
+   * 개발 서버(src/)는 파일이 분리돼 있어 한 번 캐시되면 코드를 고쳐도
+   * 옛 버전이 계속 돌아간다 — 실제로 이 함정에 빠져 한참 헤맸다.
+   * 그래서 코드는 "네트워크 먼저, 실패하면 캐시" 로 뒤집는다.
+   * 아이콘·매니페스트 같은 정적 자원만 캐시 우선을 유지한다. */
+  var isCode = /\.(?:js|css)(?:$|\?)/.test(url.pathname);
+
+  if (isCode) {
+    e.respondWith(
+      fetch(req).then(function (res) {
+        if (res && res.status === 200 && res.type === 'basic') {
+          var copy = res.clone();
+          caches.open(VERSION).then(function (c) { c.put(req, copy); });
+        }
+        return res;
+      })['catch'](function () { return caches.match(req); })
+    );
+    return;
+  }
+
+  // 그 외 같은 출처 자원(아이콘 등): 캐시 우선 → 없으면 네트워크
   e.respondWith(
     caches.match(req).then(function (hit) {
       return hit || fetch(req).then(function (res) {

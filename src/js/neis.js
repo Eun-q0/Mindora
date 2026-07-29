@@ -45,14 +45,22 @@
 
   /* --------------------------------------------------------------- 호출 */
 
+  /* 나이스는 인증키가 없어도 응답한다 (요청당 5건 제한).
+   * 그래서 KEY 파라미터는 값이 있을 때만 붙인다 —
+   * 빈 KEY= 를 보내도 통과하지만, 아예 빼는 편이 의도가 분명하다.
+   * 키를 넣으면 제한이 풀려 한 번에 더 많이 받아 온다. */
   function url(path, params) {
-    var q = ['KEY=' + encodeURIComponent(key()), 'Type=json'];
+    var q = ['Type=json'];
+    if (hasKey()) q.unshift('KEY=' + encodeURIComponent(key()));
     Object.keys(params).forEach(function (k) {
       if (params[k] === undefined || params[k] === null || params[k] === '') return;
       q.push(k + '=' + encodeURIComponent(params[k]));
     });
     return BASE + path + '?' + q.join('&');
   }
+
+  /** 키 없이 한 번에 받을 수 있는 최대 건수 (페이지네이션은 무시된다) */
+  var FREE_LIMIT = 5;
 
   /**
    * 나이스 응답은 두 가지 모양으로 온다.
@@ -61,8 +69,6 @@
    * 어느 쪽이든 행 배열로 정리해서 돌려준다.
    */
   function call(path, params, service) {
-    if (!hasKey()) return Promise.reject(new Error('NEIS_NO_KEY'));
-
     return fetch(url(path, params)).then(function (res) {
       if (!res.ok) throw new Error('NEIS_HTTP_' + res.status);
       return res.json();
@@ -155,7 +161,32 @@
     }).slice(0, 30);
   }
 
-  /** 학교 이름 일부로 검색 - 먼저 로컬에서, API 키 있으면 온라인도 시도 */
+  function mapRow(r) {
+    return {
+      name: r.SCHUL_NM,
+      eduCode: r.ATPT_OFCDC_SC_CODE,
+      eduName: r.ATPT_OFCDC_SC_NM,
+      schoolCode: r.SD_SCHUL_CODE,
+      region: r.LCTN_SC_NM,
+      kind: r.SCHUL_KND_SC_NM,
+      level: KIND_TO_LEVEL[r.SCHUL_KND_SC_NM] || '기타',
+      address: r.ORG_RDNMA || ''
+    };
+  }
+
+  /**
+   * 학교 이름 일부로 나이스에서 검색한다.
+   *
+   * 인증키가 없어도 동작한다. 대신 요청당 5건으로 잘리고 페이지네이션이 무시되므로,
+   * 그 5칸을 최대한 쓸모 있게 채우는 게 관건이다.
+   *   1) 사용자가 고른 학교급으로 좁힌 질의 — 대개 이게 정답을 담고 있다
+   *   2) 학교급 없는 질의 — 학교급을 잘못 골랐거나 특수학교인 경우를 건진다
+   * 두 결과를 합치면 무키로도 최대 10건까지 볼 수 있다.
+   *
+   * 키를 넣으면 한 번에 30건을 받아 오므로 1)만으로 충분하다.
+   *
+   * 인터넷이 없거나 나이스가 죽었을 때만 내장 목록으로 떨어진다.
+   */
   function searchSchools(query, kind) {
     var q = String(query || '').trim();
     if (q.length < 1) return Promise.resolve([]);
@@ -163,47 +194,55 @@
     var ck = q + '|' + (kind || '');
     if (searchCache[ck]) return Promise.resolve(searchCache[ck]);
 
-    // 로컬 데이터에서 먼저 검색
-    var localResults = searchSchoolsLocal(q, kind);
+    var narrow = (kind && kind !== '기타') ? kind : '';
+    var size = hasKey() ? 30 : FREE_LIMIT;
 
-    // API 키가 없으면 로컬 결과만 반환
-    if (!hasKey()) {
-      searchCache[ck] = localResults;
-      return Promise.resolve(localResults);
+    var queries = [call('schoolInfo', {
+      pIndex: 1, pSize: size, SCHUL_NM: q, SCHUL_KND_SC_NM: narrow
+    }, 'schoolInfo')];
+
+    // 무키 + 학교급 지정 상태라면 넓은 질의를 한 번 더 걸어 5칸을 늘린다
+    if (!hasKey() && narrow) {
+      queries.push(call('schoolInfo', {
+        pIndex: 1, pSize: FREE_LIMIT, SCHUL_NM: q
+      }, 'schoolInfo')['catch'](function () { return []; }));
     }
 
-    // API 키가 있으면 온라인에서도 검색 시도 (로컬과 병합)
-    return call('schoolInfo', {
-      pIndex: 1, pSize: 30,
-      SCHUL_NM: q,
-      SCHUL_KND_SC_NM: (kind && kind !== '기타') ? kind : ''
-    }, 'schoolInfo').then(function (rows) {
-      var onlineList = rows.map(function (r) {
-        return {
-          name: r.SCHUL_NM,
-          eduCode: r.ATPT_OFCDC_SC_CODE,
-          eduName: r.ATPT_OFCDC_SC_NM,
-          schoolCode: r.SD_SCHUL_CODE,
-          region: r.LCTN_SC_NM,
-          kind: r.SCHUL_KND_SC_NM,
-          level: KIND_TO_LEVEL[r.SCHUL_KND_SC_NM] || '기타',
-          address: r.ORG_RDNMA || ''
-        };
+    return Promise.all(queries).then(function (results) {
+      var seen = {}, list = [];
+      results.forEach(function (rows) {
+        (rows || []).forEach(function (r) {
+          var s = mapRow(r);
+          // 같은 학교가 두 질의에 다 걸리므로 학교 코드로 중복을 없앤다
+          var k = s.schoolCode || (s.name + '|' + s.kind);
+          if (seen[k]) return;
+          seen[k] = true;
+          list.push(s);
+        });
       });
-      // 로컬과 온라인 결과 병합 (중복 제거)
-      var merged = localResults.concat(onlineList);
-      var seen = {};
-      var list = [];
-      merged.forEach(function (s) {
-        var key = s.name + '|' + s.kind;
-        if (!seen[key]) { seen[key] = true; list.push(s); }
+
+      if (!list.length) {
+        // 나이스가 "자료 없음" 을 준 경우 — 내장 목록으로 한 번 더 본다
+        list = searchSchoolsLocal(q, kind);
+      }
+
+      // 고른 학교급과 일치하는 학교를 위로, 그다음 검색어로 시작하는 이름 순
+      list.sort(function (a, b) {
+        if (narrow) {
+          var ak = a.kind === narrow ? 0 : 1, bk = b.kind === narrow ? 0 : 1;
+          if (ak !== bk) return ak - bk;
+        }
+        var as = a.name.indexOf(q) === 0 ? 0 : 1;
+        var bs = b.name.indexOf(q) === 0 ? 0 : 1;
+        if (as !== bs) return as - bs;
+        return a.name.length - b.name.length;
       });
+
       searchCache[ck] = list;
       return list;
-    }).catch(function (e) {
-      // 온라인 오류시 로컬 결과만 반환
-      searchCache[ck] = localResults;
-      return localResults;
+    })['catch'](function () {
+      // 오프라인 — 내장 목록으로 떨어진다. 캐시에는 넣지 않는다(연결되면 다시 시도).
+      return searchSchoolsLocal(q, kind);
     });
   }
 
@@ -248,45 +287,10 @@
 
   var ORDER = { '조식': 0, '중식': 1, '석식': 2 };
 
-  /* 로컬 급식 샘플 데이터 - 학교별 */
-  var LOCAL_MEALS = {
-    '강남고등학교': {
-      '중식': [
-        {name:'쌀밥',allergens:[]},
-        {name:'소고기미역국',allergens:[16]},
-        {name:'돈까스/타르타르소스',allergens:[1,6,10]},
-        {name:'깻잎지',allergens:[5]},
-        {name:'배추김치',allergens:[]},
-        {name:'초코에몬크림빵',allergens:[1,2,6]}
-      ],
-      '석식': [
-        {name:'보리밥',allergens:[]},
-        {name:'된장찌개',allergens:[5,6,10]},
-        {name:'계란말이',allergens:[1]},
-        {name:'배추김치',allergens:[]}
-      ]
-    },
-    '한빛중학교': {
-      '중식': [
-        {name:'찰보리밥',allergens:[]},
-        {name:'미역국',allergens:[]},
-        {name:'제육볶음',allergens:[5,10]},
-        {name:'어묵볶음',allergens:[9]},
-        {name:'깍두기',allergens:[]},
-        {name:'수수팥떡',allergens:[]}
-      ]
-    },
-    '한빛초등학교': {
-      '중식': [
-        {name:'흰쌀밥',allergens:[]},
-        {name:'계란국',allergens:[1]},
-        {name:'불고기',allergens:[10,16]},
-        {name:'야채튀김',allergens:[6]},
-        {name:'배추김치',allergens:[]},
-        {name:'딸기우유',allergens:[2]}
-      ]
-    }
-  };
+  /* 예전에는 인증키가 없으면 급식을 못 불러와서, 학교 몇 곳의 예시 식단을
+   * 코드에 넣어 두고 그걸 보여 줬다. 지금은 키 없이도 실제 급식이 오므로
+   * 그 예시 데이터는 지웠다 — 남겨 두면 이름이 우연히 겹치는 학교에
+   * 실제 급식 대신 지어낸 식단을 보여 주게 된다. */
 
   /* 하루 단위 캐시 — 같은 날 같은 학교를 반복 호출하지 않는다 */
   function cacheRead() {
@@ -294,29 +298,6 @@
   }
   function cacheWrite(o) {
     try { localStorage.setItem(MEAL_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
-  }
-
-  /** 로컬 급식 데이터 반환 */
-  function getMealsLocal(schoolName) {
-    var meals = LOCAL_MEALS[schoolName];
-    if (!meals) return {};
-
-    var today = ymd(new Date());
-    var byDate = {};
-    byDate[today] = [];
-
-    Object.keys(meals).forEach(function (type) {
-      byDate[today].push({
-        date: today,
-        type: type,
-        dishes: meals[type] || [],
-        kcal: '약 600kcal',
-        nutrients: [],
-        origin: '국내산'
-      });
-    });
-
-    return byDate;
   }
 
   /** from~to 구간의 급식을 날짜별로 묶어 돌려준다 */
@@ -332,21 +313,12 @@
       return Promise.resolve(cache[ck].data);
     }
 
-    // 먼저 로컬 데이터에서 찾기
-    var localData = getMealsLocal(school.name);
-    if (Object.keys(localData).length > 0) {
-      var c = cacheRead();
-      c[ck] = { at: Date.now(), data: localData };
-      cacheWrite(c);
-      return Promise.resolve(localData);
-    }
-
-    // API 키가 없으면 빈 결과 반환
-    if (!hasKey() || !school.eduCode || !school.schoolCode) {
+    // 학교 코드가 없으면 조회할 수 없다 (목록에서 고르지 않고 직접 입력한 경우)
+    if (!school.eduCode || !school.schoolCode) {
       return Promise.resolve({});
     }
 
-    // API 키가 있으면 온라인에서 조회
+    // 나이스에서 조회 — 키가 없어도 동작한다
     return call('mealServiceDietInfo', {
       pIndex: 1, pSize: 100,
       ATPT_OFCDC_SC_CODE: school.eduCode,

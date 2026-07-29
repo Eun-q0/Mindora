@@ -479,8 +479,11 @@
     var level = $('pfLevel').value;
     var offline = Group.schoolSuggestions(q, level);
 
-    // 오프라인 후보를 먼저 띄우고, 나이스 결과가 오면 갈아 끼운다
-    var useNeis = Neis.hasKey() && q.trim().length >= 2;
+    /* 나이스는 인증키가 없어도 실제 학교를 돌려준다.
+     * 예전에는 키가 있을 때만 물어봐서, 키 없는 사용자에게는
+     * "직접 입력한 학교 + 접미사 붙인 추측" 만 보였다.
+     * 이제 두 글자만 쳐도 실제 학교 목록을 받아 온다. */
+    var useNeis = q.trim().length >= 2;
     paintAc(offline, useNeis);
     if (!useNeis) return;
 
@@ -1613,12 +1616,8 @@
     if (!box) return;
     var p = Store.profile();
 
-    if (!Neis.hasKey()) {
-      box.innerHTML = '<div class="meal-empty">나이스 연동이 꺼져 있습니다. ' +
-        '<button type="button" class="btn ghost sm" data-goto="secSettings">설정에서 켜기</button></div>';
-      bindGotoIn(box);
-      return;
-    }
+    /* 나이스는 키가 없어도 급식을 준다. 그래서 더 이상 "연동을 켜라" 고 막지 않는다.
+     * 대신 학교를 목록에서 골라야 학교 코드를 알 수 있으므로 그건 그대로 요구한다. */
     if (!p || !p.neis || !p.neis.schoolCode) {
       box.innerHTML = '<div class="meal-empty">급식을 보려면 프로필에서 <b>학교를 검색해 목록에서 선택</b>해 주세요. ' +
         '직접 입력한 이름만으로는 학교를 특정할 수 없습니다. ' +
@@ -1694,20 +1693,22 @@
       Neis.clearCache();
       renderMeals();
       renderSettingsPage();
-      if (!Neis.hasKey()) neisStatus('연동을 껐습니다. 학교 검색은 오프라인 자동완성으로만 동작합니다.', 'info');
+      if (!Neis.hasKey()) neisStatus('키를 비웠습니다. 학교 검색과 급식은 계속 되지만 한 번에 5건까지만 받아 옵니다.', 'info');
     };
     $('neisKey').addEventListener('change', save);
     $('neisKey').addEventListener('blur', save);
 
     $('neisTest').addEventListener('click', function () {
       Neis.setKey($('neisKey').value);
-      if (!Neis.hasKey()) { neisStatus('키가 비어 있습니다. 연동이 꺼진 상태입니다.', 'info'); return; }
       neisStatus('확인 중…', 'info');
-      Neis.testKey().then(function () {
-        neisStatus('✅ 정상 연결됐습니다. 학교 검색과 급식을 쓸 수 있어요.', 'ok');
+      Neis.testKey().then(function (r) {
+        neisStatus(Neis.hasKey()
+          ? '✅ 키가 정상입니다. 한 번에 30건까지 받아 옵니다.'
+          : '✅ 키 없이도 연결됩니다. 한 번에 5건까지 받아 오며, 키를 넣으면 30건으로 늘어납니다.', 'ok');
         renderMeals();
       }).catch(function (e) {
-        neisStatus('❌ 연결 실패 — ' + esc(String(e.message || e)) + '<br>키가 맞는지, 인터넷이 연결돼 있는지 확인해 주세요.', 'bad');
+        neisStatus('❌ 연결 실패 — ' + esc(String(e.message || e)) +
+          '<br>키가 맞는지, 인터넷이 연결돼 있는지 확인해 주세요.', 'bad');
       });
     });
 
