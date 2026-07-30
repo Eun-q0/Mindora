@@ -146,6 +146,11 @@
             </div>
           </div>
           <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
+
+          <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
+          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 이름·학년·반·시험·수면 같은 개인 기록은 전송되지 않습니다.
+            <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
+
           <div class="actions">
             <button type="button" class="btn primary lg" id="saveProfile">저장하고 시작하기</button>
             <button type="button" class="btn ghost" id="cancelProfile">취소</button>
@@ -247,6 +252,27 @@
               <output id="hoursSinceMealOut" class="out">2시간</output>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🗓️</span><h3>학급 시간표</h3></div>
+        <div class="card-body">
+          <div class="two-col">
+            <div class="field">
+              <label for="ttGrade">학년</label>
+              <select id="ttGrade" class="input"></select>
+            </div>
+            <div class="field">
+              <label for="ttClass">반</label>
+              <input type="text" id="ttClass" class="input" maxlength="8" placeholder="예) 3">
+            </div>
+          </div>
+          <div class="field" id="ttField">
+            <label>오늘 시간표 <em>나이스 교육정보 개방포털</em></label>
+            <div id="ttToday" class="meal-box"></div>
+          </div>
+          <p class="tiny">반을 바꾸면 그 반의 시간표를 바로 볼 수 있습니다. 비워 두면 내 프로필의 반으로 조회합니다.</p>
         </div>
       </div>
     </div>
@@ -796,7 +822,8 @@
           <div class="cl-no">
             <p class="cl-h">🚫 전송되지 않는 것</p>
             <ul>
-              <li>이름 · 학년 · 반</li>
+              <li>이름</li>
+              <li>학년 · 반 <em>— 아래 학급 대항전을 따로 켠 경우에만 전송</em></li>
               <li>과목 · 시험 일정</li>
               <li>뇌 컨디션 점수와 수면 · 스트레스 입력값</li>
               <li>배지 · 사운드 설정 · 나이스 인증키</li>
@@ -808,6 +835,16 @@
 
         <p class="tiny" id="cloudMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b>
           학교명과 학습 시간이 외부 서버에 저장됩니다.</p>
+
+        <!-- 학교 리그와 별개 동의. 기존 참가자는 "학년·반은 전송하지 않는다" 는
+             조건으로 동의했으므로, 여기서 다시 묻지 않고 켜면 안 된다. -->
+        <div class="cl-event" id="classEventBox">
+          <p class="cl-h" style="margin:0 0 6px">🍗 학급 대항전</p>
+          <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>도 함께 전송해야 합니다.
+            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 학년·반도 다음 동기화에서 지워집니다.</p>
+          <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반 전송에 동의합니다</span></label>
+          <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반에서 <b>5명 이상</b>이 참가해야 순위에 집계됩니다.</p>
+        </div>
 
         <div class="file-row" style="margin-top:14px">
           <button type="button" class="btn sm" id="cloudTest">연결 확인</button>
@@ -1022,7 +1059,8 @@
 
 <footer class="foot">
   <p><b>Mindora</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
-    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, 이름·개인 기록은 전송되지 않습니다.</p>
+    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, <b>학급 대항전</b>을 따로 켜면 학년·반이 함께 전송됩니다.
+    이름과 개인 기록(과목·시험·수면·컨디션 점수)은 어느 경우에도 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 

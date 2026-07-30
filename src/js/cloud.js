@@ -51,13 +51,17 @@
   /* --------------------------------------------------------------- 상태 */
 
   function load() {
-    var d = { enabled: false, deviceId: '', lastSync: 0, lastPush: 0, lastError: '' };
+    var d = { enabled: false, classOn: false, deviceId: '', lastSync: 0, lastPush: 0, lastError: '' };
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (!raw) return d;
       var o = JSON.parse(raw);
       return {
         enabled: !!o.enabled,
+        // 학급 대항전은 학교 리그와 별개 동의다. 기본은 꺼짐이며,
+        // 기존 참가자가 자동으로 켜지지 않는다 — 동의 시점의 약속이
+        // "학년·반은 전송하지 않는다" 였기 때문이다.
+        classOn: !!o.classOn,
         deviceId: o.deviceId || '',
         lastSync: o.lastSync || 0,
         lastPush: o.lastPush || 0,
@@ -108,7 +112,23 @@
     var st = load();
     st.enabled = !!on;
     if (st.enabled && !st.deviceId) st.deviceId = uuid();
-    if (!st.enabled) st.lastError = '';
+    if (!st.enabled) {
+      st.lastError = '';
+      // 리그를 끄면 학급 동의도 함께 내린다. 남겨 두면 나중에 리그를 다시 켤 때
+      // 학년·반이 묻지도 않고 다시 올라간다.
+      st.classOn = false;
+    }
+    save(st);
+  }
+
+  /** 학급 대항전 동의 — 학교 리그(enabled)를 켠 상태에서만 의미가 있다 */
+  function classEnabled() { return enabled() && load().classOn; }
+
+  function setClassEnabled(on) {
+    var st = load();
+    st.classOn = !!on;
+    st.lastPush = 0;   // 다음 동기화를 미루지 않고 바로 반영(또는 삭제)되게 한다
+    st.lastSig = '';
     save(st);
   }
 
@@ -117,6 +137,7 @@
     return {
       configured: configured(),
       enabled: configured() && st.enabled,
+      classOn: configured() && st.enabled && st.classOn,
       deviceId: st.deviceId,
       lastSync: st.lastSync,
       lastError: st.lastError
@@ -172,7 +193,7 @@
    * 내 주간 순공 시간을 올린다.
    * 값이 그대로면 굳이 다시 보내지 않는다.
    */
-  function push(school, weekKey, minutes, force) {
+  function push(school, weekKey, minutes, force, cls) {
     if (!enabled()) return Promise.resolve(false);
 
     school = String(school || '').trim();
@@ -180,7 +201,21 @@
 
     var st = load();
     var mins = Math.max(0, Math.min(2100, Math.round(minutes || 0)));
-    var sig = school + '|' + weekKey + '|' + mins;
+
+    /* 학급 대항전에 동의한 경우에만 학년·반이 실린다.
+     * 동의하지 않았을 때도 빈 값으로 항상 함께 보낸다 — 그래야 동의를 끈
+     * 순간 서버에 남아 있던 학년·반이 다음 동기화에서 지워진다.
+     * (schema.sql 의 7-인자 함수는 coalesce 로 붙들지 않고 그대로 덮어쓴다) */
+    var useClass = !!(st.classOn && cls && cls.grade && cls.klass);
+    var body = {
+      p_device: deviceId(), p_week: weekKey, p_school: school, p_minutes: mins,
+      p_level: useClass ? String(cls.level || '') : '',
+      p_grade: useClass ? String(cls.grade || '') : '',
+      p_klass: useClass ? String(cls.klass || '') : ''
+    };
+
+    var sig = school + '|' + weekKey + '|' + mins + '|' +
+              body.p_level + '/' + body.p_grade + '/' + body.p_klass;
 
     if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
       return Promise.resolve(false);
@@ -188,7 +223,7 @@
 
     return req('/rest/v1/rpc/report_league', {
       method: 'POST',
-      body: { p_device: deviceId(), p_week: weekKey, p_school: school, p_minutes: mins }
+      body: body
     }).then(function () {
       var s = load();
       s.lastPush = Date.now();
@@ -406,6 +441,7 @@
   global.Cloud = {
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
+    classEnabled: classEnabled, setClassEnabled: setClassEnabled,
     deviceId: deviceId, resetDeviceId: resetDeviceId, forget: forget,
     push: push, fetchWeek: fetchWeek, test: test,
 

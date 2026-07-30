@@ -874,6 +874,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .meal-empty b { color: var(--muted); }
 .meal-loading { font-size: 12px; color: var(--dim); padding: 12px 13px; }
 
+/* ==================================================== 시간표 (NEIS) ==== */
+.tt-list { display: flex; flex-direction: column; }
+.tt-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.tt-row:last-child { border-bottom: none; }
+.tt-period { flex: none; width: 40px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tt-subject { flex: 1; color: var(--text); }
+.tt-room { flex: none; font-size: 11px; color: var(--dim); }
+
 .neis-status { font-size: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; display: none; line-height: 1.6; }
 .neis-status.show { display: block; }
 .neis-status.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-ink); }
@@ -1161,6 +1169,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .cl-what ul { margin: 0; padding-left: 17px; }
 .cl-what li { font-size: 12.5px; line-height: 1.65; color: var(--muted); }
 .cl-what li b { color: var(--text); }
+
+/* 학급 대항전 — 리그 동의와 별개라는 게 눈에 보여야 해서 따로 묶어 둔다 */
+.cl-event {
+  margin-top: 14px; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.cl-event.is-off { opacity: 0.5; }
 
 #cloudMinorNote, #studentShareMinorNote {
   margin-top: 12px; padding: 10px 13px; border-radius: var(--r-sm);
@@ -1498,6 +1514,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
             </div>
           </div>
           <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
+
+          <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
+          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 이름·학년·반·시험·수면 같은 개인 기록은 전송되지 않습니다.
+            <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
+
           <div class="actions">
             <button type="button" class="btn primary lg" id="saveProfile">저장하고 시작하기</button>
             <button type="button" class="btn ghost" id="cancelProfile">취소</button>
@@ -1599,6 +1620,27 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
               <output id="hoursSinceMealOut" class="out">2시간</output>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ci">🗓️</span><h3>학급 시간표</h3></div>
+        <div class="card-body">
+          <div class="two-col">
+            <div class="field">
+              <label for="ttGrade">학년</label>
+              <select id="ttGrade" class="input"></select>
+            </div>
+            <div class="field">
+              <label for="ttClass">반</label>
+              <input type="text" id="ttClass" class="input" maxlength="8" placeholder="예) 3">
+            </div>
+          </div>
+          <div class="field" id="ttField">
+            <label>오늘 시간표 <em>나이스 교육정보 개방포털</em></label>
+            <div id="ttToday" class="meal-box"></div>
+          </div>
+          <p class="tiny">반을 바꾸면 그 반의 시간표를 바로 볼 수 있습니다. 비워 두면 내 프로필의 반으로 조회합니다.</p>
         </div>
       </div>
     </div>
@@ -2148,7 +2190,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           <div class="cl-no">
             <p class="cl-h">🚫 전송되지 않는 것</p>
             <ul>
-              <li>이름 · 학년 · 반</li>
+              <li>이름</li>
+              <li>학년 · 반 <em>— 아래 학급 대항전을 따로 켠 경우에만 전송</em></li>
               <li>과목 · 시험 일정</li>
               <li>뇌 컨디션 점수와 수면 · 스트레스 입력값</li>
               <li>배지 · 사운드 설정 · 나이스 인증키</li>
@@ -2160,6 +2203,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
         <p class="tiny" id="cloudMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b>
           학교명과 학습 시간이 외부 서버에 저장됩니다.</p>
+
+        <!-- 학교 리그와 별개 동의. 기존 참가자는 "학년·반은 전송하지 않는다" 는
+             조건으로 동의했으므로, 여기서 다시 묻지 않고 켜면 안 된다. -->
+        <div class="cl-event" id="classEventBox">
+          <p class="cl-h" style="margin:0 0 6px">🍗 학급 대항전</p>
+          <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>도 함께 전송해야 합니다.
+            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 학년·반도 다음 동기화에서 지워집니다.</p>
+          <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반 전송에 동의합니다</span></label>
+          <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반에서 <b>5명 이상</b>이 참가해야 순위에 집계됩니다.</p>
+        </div>
 
         <div class="file-row" style="margin-top:14px">
           <button type="button" class="btn sm" id="cloudTest">연결 확인</button>
@@ -2374,7 +2427,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 <footer class="foot">
   <p><b>Mindora</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
-    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, 이름·개인 기록은 전송되지 않습니다.</p>
+    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, <b>학급 대항전</b>을 따로 켜면 학년·반이 함께 전송됩니다.
+    이름과 개인 기록(과목·시험·수면·컨디션 점수)은 어느 경우에도 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 
@@ -4283,13 +4337,17 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* --------------------------------------------------------------- 상태 */
 
   function load() {
-    var d = { enabled: false, deviceId: '', lastSync: 0, lastPush: 0, lastError: '' };
+    var d = { enabled: false, classOn: false, deviceId: '', lastSync: 0, lastPush: 0, lastError: '' };
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (!raw) return d;
       var o = JSON.parse(raw);
       return {
         enabled: !!o.enabled,
+        // 학급 대항전은 학교 리그와 별개 동의다. 기본은 꺼짐이며,
+        // 기존 참가자가 자동으로 켜지지 않는다 — 동의 시점의 약속이
+        // "학년·반은 전송하지 않는다" 였기 때문이다.
+        classOn: !!o.classOn,
         deviceId: o.deviceId || '',
         lastSync: o.lastSync || 0,
         lastPush: o.lastPush || 0,
@@ -4340,7 +4398,23 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var st = load();
     st.enabled = !!on;
     if (st.enabled && !st.deviceId) st.deviceId = uuid();
-    if (!st.enabled) st.lastError = '';
+    if (!st.enabled) {
+      st.lastError = '';
+      // 리그를 끄면 학급 동의도 함께 내린다. 남겨 두면 나중에 리그를 다시 켤 때
+      // 학년·반이 묻지도 않고 다시 올라간다.
+      st.classOn = false;
+    }
+    save(st);
+  }
+
+  /** 학급 대항전 동의 — 학교 리그(enabled)를 켠 상태에서만 의미가 있다 */
+  function classEnabled() { return enabled() && load().classOn; }
+
+  function setClassEnabled(on) {
+    var st = load();
+    st.classOn = !!on;
+    st.lastPush = 0;   // 다음 동기화를 미루지 않고 바로 반영(또는 삭제)되게 한다
+    st.lastSig = '';
     save(st);
   }
 
@@ -4349,6 +4423,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return {
       configured: configured(),
       enabled: configured() && st.enabled,
+      classOn: configured() && st.enabled && st.classOn,
       deviceId: st.deviceId,
       lastSync: st.lastSync,
       lastError: st.lastError
@@ -4404,7 +4479,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
    * 내 주간 순공 시간을 올린다.
    * 값이 그대로면 굳이 다시 보내지 않는다.
    */
-  function push(school, weekKey, minutes, force) {
+  function push(school, weekKey, minutes, force, cls) {
     if (!enabled()) return Promise.resolve(false);
 
     school = String(school || '').trim();
@@ -4412,7 +4487,21 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     var st = load();
     var mins = Math.max(0, Math.min(2100, Math.round(minutes || 0)));
-    var sig = school + '|' + weekKey + '|' + mins;
+
+    /* 학급 대항전에 동의한 경우에만 학년·반이 실린다.
+     * 동의하지 않았을 때도 빈 값으로 항상 함께 보낸다 — 그래야 동의를 끈
+     * 순간 서버에 남아 있던 학년·반이 다음 동기화에서 지워진다.
+     * (schema.sql 의 7-인자 함수는 coalesce 로 붙들지 않고 그대로 덮어쓴다) */
+    var useClass = !!(st.classOn && cls && cls.grade && cls.klass);
+    var body = {
+      p_device: deviceId(), p_week: weekKey, p_school: school, p_minutes: mins,
+      p_level: useClass ? String(cls.level || '') : '',
+      p_grade: useClass ? String(cls.grade || '') : '',
+      p_klass: useClass ? String(cls.klass || '') : ''
+    };
+
+    var sig = school + '|' + weekKey + '|' + mins + '|' +
+              body.p_level + '/' + body.p_grade + '/' + body.p_klass;
 
     if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
       return Promise.resolve(false);
@@ -4420,7 +4509,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     return req('/rest/v1/rpc/report_league', {
       method: 'POST',
-      body: { p_device: deviceId(), p_week: weekKey, p_school: school, p_minutes: mins }
+      body: body
     }).then(function () {
       var s = load();
       s.lastPush = Date.now();
@@ -4638,6 +4727,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   global.Cloud = {
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
+    classEnabled: classEnabled, setClassEnabled: setClassEnabled,
     deviceId: deviceId, resetDeviceId: resetDeviceId, forget: forget,
     push: push, fetchWeek: fetchWeek, test: test,
 
@@ -4881,7 +4971,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var wk = weekKey(0);
     var school = norm(p.school);
 
-    return C.push(school, wk, myCappedWeek(), force)
+    // 학급 정보는 Cloud 쪽에서 동의 여부를 보고 실을지 결정한다
+    var cls = { level: p.level, grade: p.grade, klass: norm(p.klass) };
+
+    return C.push(school, wk, myCappedWeek(), force, cls)
       .catch(function () { return false; })          // 못 올려도 읽기는 시도한다
       .then(function () { return C.fetchWeek(wk); })
       .then(function (rows) {
@@ -5044,6 +5137,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
  *
  *   · 학교 검색 (schoolInfo)
  *   · 급식 식단 (mealServiceDietInfo)
+ *   · 학급 시간표 (elsTimetable / misTimetable / hisTimetable)
  *
  * 브라우저에서 직접 호출한다. 확인 결과 file:// 에서도 CORS 없이 응답한다.
  * 인터넷이 없거나 키가 없으면 호출하지 않고 오프라인 자동완성으로 되돌아간다.
@@ -5059,6 +5153,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   var BASE = 'https://open.neis.go.kr/hub/';
   var KEY_STORE = 'neurostudy.neiskey.v1';
   var MEAL_CACHE = 'neurostudy.mealcache.v1';
+  var TIMETABLE_CACHE = 'neurostudy.ttcache.v1';
   // 소스에는 키를 두지 않는다. 사용자가 설정 화면에서 직접 넣는다.
   var DEFAULT_KEY = '';
 
@@ -5416,6 +5511,95 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   function clearCache() { try { localStorage.removeItem(MEAL_CACHE); } catch (e) { /* 무시 */ } }
 
+  /* ----------------------------------------------------------- 시간표 */
+
+  /* 학교급마다 API가 다르고, 응답 컬럼 이름도 조금씩 다르다 */
+  var TIMETABLE_ENDPOINT = {
+    '초등학교': 'elsTimetable',
+    '중학교': 'misTimetable',
+    '고등학교': 'hisTimetable'
+  };
+
+  function timetableCacheRead() {
+    try { return JSON.parse(localStorage.getItem(TIMETABLE_CACHE) || '{}'); } catch (e) { return {}; }
+  }
+  function timetableCacheWrite(o) {
+    try { localStorage.setItem(TIMETABLE_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  /** from~to 구간, 특정 학년·반의 시간표를 날짜별로 묶어 돌려준다.
+   *  대학교·기타는 나이스에 시간표 API가 없어 빈 결과를 준다. */
+  function timetable(school, grade, klass, from, to) {
+    if (!school) return Promise.resolve({});
+
+    var endpoint = TIMETABLE_ENDPOINT[school.level];
+    if (!endpoint || !school.eduCode || !school.schoolCode || !grade) {
+      return Promise.resolve({});
+    }
+
+    var f = from || ymd(new Date());
+    var t = to || f;
+    var ck = endpoint + '|' + (school.schoolCode || school.name) + '|' + grade + '|' + (klass || '') + '|' + f + '|' + t;
+
+    var cache = timetableCacheRead();
+    if (cache[ck] && (Date.now() - cache[ck].at) < 6 * 3600 * 1000) {
+      return Promise.resolve(cache[ck].data);
+    }
+
+    return call(endpoint, {
+      pIndex: 1, pSize: 100,
+      ATPT_OFCDC_SC_CODE: school.eduCode,
+      SD_SCHUL_CODE: school.schoolCode,
+      GRADE: grade,
+      CLASS_NM: klass || '',
+      TI_FROM_YMD: f,
+      TI_TO_YMD: t
+    }, endpoint).then(function (rows) {
+      var byDate = {};
+      rows.forEach(function (r) {
+        var d = r.ALL_TI_YMD;
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push({
+          date: d,
+          period: parseInt(r.PERIO, 10) || 0,
+          subject: (r.ITRT_CNTNT || '').trim(),
+          classroom: (r.CLRM_NM || '').trim()
+        });
+      });
+      Object.keys(byDate).forEach(function (d) {
+        byDate[d].sort(function (a, b) { return a.period - b.period; });
+      });
+
+      var c = timetableCacheRead();
+      c[ck] = { at: Date.now(), data: byDate };
+      var keys = Object.keys(c);
+      if (keys.length > 40) {
+        keys.sort(function (a, b) { return c[a].at - c[b].at; });
+        keys.slice(0, keys.length - 40).forEach(function (k) { delete c[k]; });
+      }
+      timetableCacheWrite(c);
+      return byDate;
+    }).catch(function () {
+      return {};
+    });
+  }
+
+  function todayTimetable(school, grade, klass) {
+    var k = ymd(new Date());
+    return timetable(school, grade, klass, k, k).then(function (m) { return m[k] || []; });
+  }
+
+  /** 이번 주(월~금) 시간표 */
+  function weekTimetable(school, grade, klass) {
+    var d = new Date(); d.setHours(0, 0, 0, 0);
+    var dow = (d.getDay() + 6) % 7;
+    var mon = new Date(d.getTime()); mon.setDate(mon.getDate() - dow);
+    var fri = new Date(mon.getTime()); fri.setDate(fri.getDate() + 4);
+    return timetable(school, grade, klass, ymd(mon), ymd(fri));
+  }
+
+  function clearTimetableCache() { try { localStorage.removeItem(TIMETABLE_CACHE); } catch (e) { /* 무시 */ } }
+
   /** 설정 화면에서 키가 살아 있는지 확인할 때 쓴다 */
   function testKey() {
     return call('schoolInfo', { pIndex: 1, pSize: 1, SCHUL_NM: '서울' }, 'schoolInfo')
@@ -5427,6 +5611,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     searchSchools: searchSchools,
     meals: meals, todayMeals: todayMeals, weekMeals: weekMeals,
     clearCache: clearCache, testKey: testKey,
+    timetable: timetable, todayTimetable: todayTimetable, weekTimetable: weekTimetable,
+    clearTimetableCache: clearTimetableCache, hasTimetable: function (level) { return !!TIMETABLE_ENDPOINT[level]; },
     ALLERGENS: ALLERGENS, ymd: ymd
   };
 
@@ -7511,6 +7697,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     } else {
       fillGradeOptions();
     }
+    renderCloudSettings(); // pfLeague 체크박스를 지금의 Cloud 상태로 맞춘다
     $('cancelProfile').style.display = p ? '' : 'none';
     goPage('secProfile');
   }
@@ -7549,6 +7736,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     renderKids();
     renderSettingsPage();
     renderMeals();
+    fillTtGradeOptions(p.grade);
+    $('ttClass').value = p.klass || '';
+    renderTimetable();
+    // 리그 참가를 프로필이 없던 시점(첫 화면)에 이미 켰다면 그때는 보낼 학교가 없어
+    // 조용히 넘어갔었다 — 이제 프로필이 생겼으니 한 번 밀어 준다.
+    if (Cloud.enabled()) leagueSync(true);
     toast(Group.groupLabel(p) + ' 그룹으로 설정했습니다.');
     goPage(prev ? 'secSettings' : 'secInput');
   }
@@ -8634,6 +8827,73 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     });
   }
 
+  /* ============================================================ 시간표 == */
+
+  function fillTtGradeOptions(keepValue) {
+    var p = Store.profile();
+    var level = p ? p.level : $('pfLevel').value;
+    var list = Group.GRADES[level] || Group.GRADES['고등학교'];
+    $('ttGrade').innerHTML = list.map(function (g) {
+      return '<option value="' + esc(g) + '">' + esc(g === '해당 없음' ? g : g + '학년') + '</option>';
+    }).join('');
+    if (keepValue && list.indexOf(keepValue) >= 0) $('ttGrade').value = keepValue;
+  }
+
+  function renderTimetable() {
+    var box = $('ttToday');
+    if (!box) return;
+    var p = Store.profile();
+    if (!p) return;
+
+    if (!Neis.hasTimetable(p.level)) {
+      box.innerHTML = '<div class="meal-empty">' + esc(p.level) + '은(는) 나이스 시간표 조회를 지원하지 않습니다.</div>';
+      return;
+    }
+
+    if (!p.neis || !p.neis.schoolCode) {
+      box.innerHTML = '<div class="meal-empty">시간표를 보려면 프로필에서 <b>학교를 검색해 목록에서 선택</b>해 주세요. ' +
+        '직접 입력한 이름만으로는 학교를 특정할 수 없습니다. ' +
+        '<button type="button" class="btn ghost sm" id="ttGoProfile">학교 다시 고르기</button></div>';
+      var b = $('ttGoProfile');
+      if (b) b.addEventListener('click', function () { openProfile(true); });
+      return;
+    }
+
+    var grade = $('ttGrade').value || p.grade;
+    var klass = $('ttClass').value.trim() || p.klass;
+    if (!klass) {
+      box.innerHTML = '<div class="meal-empty">반을 입력하면 그 반의 시간표를 볼 수 있습니다. 위에 <b>반</b>을 입력해 주세요.</div>';
+      return;
+    }
+
+    box.innerHTML = '<div class="meal-loading">🗓️ 시간표를 불러오는 중…</div>';
+
+    Neis.todayTimetable(p.neis, grade, klass).then(function (list) {
+      if (!list.length) {
+        box.innerHTML = '<div class="meal-empty">오늘(' + Store.key() + ') ' + esc(grade) + '학년 ' + esc(klass) + '반은 등록된 시간표가 없습니다. ' +
+          '주말이거나 방학·재량휴업일일 수 있어요.</div>';
+        return;
+      }
+
+      box.innerHTML = '<div class="meal-card"><div class="mc-body"><div class="tt-list">' +
+        list.map(function (t) {
+          return '<div class="tt-row"><span class="tt-period">' + esc(t.period || '') + '교시</span>' +
+            '<span class="tt-subject">' + esc(t.subject || '-') + '</span>' +
+            (t.classroom ? '<span class="tt-room">' + esc(t.classroom) + '</span>' : '') + '</div>';
+        }).join('') + '</div></div></div>';
+    }).catch(function (err) {
+      var msg = String(err && err.message || err);
+      box.innerHTML = '<div class="meal-empty">시간표를 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
+        '<b>인터넷 연결이나 설정의 API 키를 확인해 주세요.</b></div>';
+    });
+  }
+
+  function initTimetable() {
+    fillTtGradeOptions();
+    $('ttGrade').addEventListener('change', renderTimetable);
+    $('ttClass').addEventListener('change', renderTimetable);
+  }
+
   function bindGotoIn(root) {
     $$('[data-goto]', root).forEach(function (b) {
       b.addEventListener('click', function () { goPage(b.dataset.goto); });
@@ -8654,7 +8914,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var save = function () {
       Neis.setKey($('neisKey').value);
       Neis.clearCache();
+      Neis.clearTimetableCache();
       renderMeals();
+      renderTimetable();
       renderSettingsPage();
       if (!Neis.hasKey()) neisStatus('키를 비웠습니다. 학교 검색과 급식은 계속 되지만 한 번에 5건까지만 받아 옵니다.', 'info');
     };
@@ -8669,6 +8931,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           ? '✅ 키가 정상입니다. 한 번에 30건까지 받아 옵니다.'
           : '✅ 키 없이도 연결됩니다. 한 번에 5건까지 받아 오며, 키를 넣으면 30건으로 늘어납니다.', 'ok');
         renderMeals();
+        renderTimetable();
       }).catch(function (e) {
         neisStatus('❌ 연결 실패 — ' + esc(String(e.message || e)) +
           '<br>키가 맞는지, 인터넷이 연결돼 있는지 확인해 주세요.', 'bad');
@@ -8677,8 +8940,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     $('neisClearCache').addEventListener('click', function () {
       Neis.clearCache();
+      Neis.clearTimetableCache();
       renderMeals();
-      toast('급식 캐시를 비웠습니다.');
+      renderTimetable();
+      toast('급식·시간표 캐시를 비웠습니다.');
     });
   }
 
@@ -9176,18 +9441,41 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* ------------------------------------------------------- 리그 서버 연동 */
 
+  /* 리그 참가 스위치는 두 곳에 있다 — 첫 프로필 작성 화면(pfLeague)과
+   * 설정 화면(cloudOn). 둘 다 같은 Cloud 상태를 반영해야 하므로
+   * 여기서 한 번에 그린다. */
   function renderCloudSettings() {
-    if (!$('cloudOn')) return;
+    if (!$('cloudOn') && !$('pfLeague')) return;
     var s = Cloud.status();
 
-    $('cloudOn').checked = s.enabled;
-    $('cloudOn').disabled = !s.configured;
+    ['cloudOn', 'pfLeague'].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.checked = s.enabled;
+      el.disabled = !s.configured;
+    });
+
+    if ($('pfLeagueNote')) {
+      $('pfLeagueNote').innerHTML = s.configured
+        ? '학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 이름·시험·수면 같은 개인 기록은 전송되지 않습니다. ' +
+          '학년·반은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송됩니다. ' +
+          '<b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.'
+        : '서버가 아직 연결돼 있지 않아 지금은 켤 수 없습니다. 나중에 <b>설정</b> 화면에서 다시 시도해 주세요.';
+    }
+
+    // 학급 대항전은 학교 리그가 켜져 있을 때만 켤 수 있다
+    if ($('classEventOn')) {
+      $('classEventOn').checked = s.classOn;
+      $('classEventOn').disabled = !s.configured || !s.enabled;
+    }
+    if ($('classEventBox')) $('classEventBox').classList.toggle('is-off', !s.enabled);
 
     ['cloudTest', 'cloudSync', 'cloudReset'].forEach(function (id) {
-      $(id).disabled = !s.configured;
+      if ($(id)) $(id).disabled = !s.configured;
     });
 
     var el = $('cloudStatus');
+    if (!el) return;
     if (!s.configured) {
       el.className = 'neis-status show warn';
       el.innerHTML = '서버가 아직 연결돼 있지 않습니다. ' +
@@ -9218,10 +9506,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     });
   }
 
-  function initCloud() {
-    if (!$('cloudOn')) return;
-
-    $('cloudOn').addEventListener('change', function () {
+  /* pfLeague(프로필 화면)·cloudOn(설정 화면) 둘 다 이 로직을 그대로 쓴다.
+   * 프로필을 처음 쓰는 중이라 Store.profile() 이 아직 없어도 안전하다 —
+   * leagueSync 내부의 League.syncNow/studentShareSync 는 프로필이 없으면
+   * 조용히 아무것도 하지 않고, saveProfile() 이 저장 직후 한 번 더 불러 준다. */
+  function wireLeagueToggle(id) {
+    var el = $(id);
+    if (!el) return;
+    el.addEventListener('change', function () {
       if (this.checked) {
         if (!confirm('학교명과 주간 학습 시간이 외부 서버로 전송됩니다.\n' +
                      '이름·학년·반과 개인 기록은 전송되지 않습니다.\n\n' +
@@ -9234,12 +9526,59 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         toast('학교 리그에 참가합니다. 동기화를 시작합니다.');
         leagueSync(true);
       } else {
-        Cloud.setEnabled(false);
-        Cloud.forget();
-        League.setCloudRows([], '');
+        /* 학급 대항전을 켜 둔 상태였다면, 리그를 끄기 전에 학년·반을 지우는
+         * 요청을 한 번 보낸다. 그냥 끄면 기기 번호만 버려질 뿐 서버에는
+         * 학년·반이 남아 정리(60일) 때까지 떠 있게 된다. */
+        var offNow = function () {
+          Cloud.setEnabled(false);
+          Cloud.forget();
+          League.setCloudRows([], '');
+          renderCloudSettings();
+          renderLeague();
+          toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
+        };
+
+        if (Cloud.classEnabled()) {
+          Cloud.setClassEnabled(false);
+          League.syncNow(true).then(offNow, offNow);   // 실패해도 끄는 건 그대로 진행한다
+        } else {
+          offNow();
+        }
+      }
+    });
+  }
+
+  function initCloud() {
+    if (!$('cloudOn') && !$('pfLeague')) return;
+
+    wireLeagueToggle('cloudOn');
+    wireLeagueToggle('pfLeague');
+
+    if (!$('cloudOn')) { renderCloudSettings(); return; }
+
+    $('classEventOn').addEventListener('change', function () {
+      if (this.checked) {
+        if (!Cloud.enabled()) {
+          this.checked = false;
+          toast('학교 리그를 먼저 켜 주세요.', true);
+          return;
+        }
+        if (!confirm('학년·반이 학교명과 함께 서버로 전송됩니다.\n' +
+                     '학급 순위를 집계하기 위한 것이며, 이름은 전송되지 않습니다.\n\n' +
+                     '만 14세 미만이라면 보호자와 함께 결정하세요.\n\n참가할까요?')) {
+          this.checked = false;
+          return;
+        }
+        Cloud.setClassEnabled(true);
         renderCloudSettings();
-        renderLeague();
-        toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
+        toast('학급 대항전에 참가합니다.');
+        leagueSync(true);
+      } else {
+        Cloud.setClassEnabled(false);
+        renderCloudSettings();
+        // 끄는 것으로 끝내지 않는다. 빈 값을 올려 서버에 남은 학년·반을 지운다.
+        leagueSync(true);
+        toast('학급 대항전을 껐습니다. 서버에 저장된 학년·반도 지웁니다.');
       }
     });
 
@@ -9784,7 +10123,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   }
 
   function init() {
-    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud();
+    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable();
 
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
@@ -9944,6 +10283,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     renderSettingsPage();
     renderMeals();
+    if (Store.profile()) { fillTtGradeOptions(Store.profile().grade); $('ttClass').value = Store.profile().klass || ''; }
+    renderTimetable();
     renderQuickNote();
     updateDetailSummary();
     updateCurfewHint();

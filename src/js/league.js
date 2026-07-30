@@ -225,7 +225,10 @@
     var wk = weekKey(0);
     var school = norm(p.school);
 
-    return C.push(school, wk, myCappedWeek(), force)
+    // 학급 정보는 Cloud 쪽에서 동의 여부를 보고 실을지 결정한다
+    var cls = { level: p.level, grade: p.grade, klass: norm(p.klass) };
+
+    return C.push(school, wk, myCappedWeek(), force, cls)
       .catch(function () { return false; })          // 못 올려도 읽기는 시도한다
       .then(function () { return C.fetchWeek(wk); })
       .then(function (rows) {

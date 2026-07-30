@@ -3,6 +3,7 @@
  *
  *   · 학교 검색 (schoolInfo)
  *   · 급식 식단 (mealServiceDietInfo)
+ *   · 학급 시간표 (elsTimetable / misTimetable / hisTimetable)
  *
  * 브라우저에서 직접 호출한다. 확인 결과 file:// 에서도 CORS 없이 응답한다.
  * 인터넷이 없거나 키가 없으면 호출하지 않고 오프라인 자동완성으로 되돌아간다.
@@ -18,6 +19,7 @@
   var BASE = 'https://open.neis.go.kr/hub/';
   var KEY_STORE = 'neurostudy.neiskey.v1';
   var MEAL_CACHE = 'neurostudy.mealcache.v1';
+  var TIMETABLE_CACHE = 'neurostudy.ttcache.v1';
   // 소스에는 키를 두지 않는다. 사용자가 설정 화면에서 직접 넣는다.
   var DEFAULT_KEY = '';
 
@@ -375,6 +377,95 @@
 
   function clearCache() { try { localStorage.removeItem(MEAL_CACHE); } catch (e) { /* 무시 */ } }
 
+  /* ----------------------------------------------------------- 시간표 */
+
+  /* 학교급마다 API가 다르고, 응답 컬럼 이름도 조금씩 다르다 */
+  var TIMETABLE_ENDPOINT = {
+    '초등학교': 'elsTimetable',
+    '중학교': 'misTimetable',
+    '고등학교': 'hisTimetable'
+  };
+
+  function timetableCacheRead() {
+    try { return JSON.parse(localStorage.getItem(TIMETABLE_CACHE) || '{}'); } catch (e) { return {}; }
+  }
+  function timetableCacheWrite(o) {
+    try { localStorage.setItem(TIMETABLE_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  /** from~to 구간, 특정 학년·반의 시간표를 날짜별로 묶어 돌려준다.
+   *  대학교·기타는 나이스에 시간표 API가 없어 빈 결과를 준다. */
+  function timetable(school, grade, klass, from, to) {
+    if (!school) return Promise.resolve({});
+
+    var endpoint = TIMETABLE_ENDPOINT[school.level];
+    if (!endpoint || !school.eduCode || !school.schoolCode || !grade) {
+      return Promise.resolve({});
+    }
+
+    var f = from || ymd(new Date());
+    var t = to || f;
+    var ck = endpoint + '|' + (school.schoolCode || school.name) + '|' + grade + '|' + (klass || '') + '|' + f + '|' + t;
+
+    var cache = timetableCacheRead();
+    if (cache[ck] && (Date.now() - cache[ck].at) < 6 * 3600 * 1000) {
+      return Promise.resolve(cache[ck].data);
+    }
+
+    return call(endpoint, {
+      pIndex: 1, pSize: 100,
+      ATPT_OFCDC_SC_CODE: school.eduCode,
+      SD_SCHUL_CODE: school.schoolCode,
+      GRADE: grade,
+      CLASS_NM: klass || '',
+      TI_FROM_YMD: f,
+      TI_TO_YMD: t
+    }, endpoint).then(function (rows) {
+      var byDate = {};
+      rows.forEach(function (r) {
+        var d = r.ALL_TI_YMD;
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push({
+          date: d,
+          period: parseInt(r.PERIO, 10) || 0,
+          subject: (r.ITRT_CNTNT || '').trim(),
+          classroom: (r.CLRM_NM || '').trim()
+        });
+      });
+      Object.keys(byDate).forEach(function (d) {
+        byDate[d].sort(function (a, b) { return a.period - b.period; });
+      });
+
+      var c = timetableCacheRead();
+      c[ck] = { at: Date.now(), data: byDate };
+      var keys = Object.keys(c);
+      if (keys.length > 40) {
+        keys.sort(function (a, b) { return c[a].at - c[b].at; });
+        keys.slice(0, keys.length - 40).forEach(function (k) { delete c[k]; });
+      }
+      timetableCacheWrite(c);
+      return byDate;
+    }).catch(function () {
+      return {};
+    });
+  }
+
+  function todayTimetable(school, grade, klass) {
+    var k = ymd(new Date());
+    return timetable(school, grade, klass, k, k).then(function (m) { return m[k] || []; });
+  }
+
+  /** 이번 주(월~금) 시간표 */
+  function weekTimetable(school, grade, klass) {
+    var d = new Date(); d.setHours(0, 0, 0, 0);
+    var dow = (d.getDay() + 6) % 7;
+    var mon = new Date(d.getTime()); mon.setDate(mon.getDate() - dow);
+    var fri = new Date(mon.getTime()); fri.setDate(fri.getDate() + 4);
+    return timetable(school, grade, klass, ymd(mon), ymd(fri));
+  }
+
+  function clearTimetableCache() { try { localStorage.removeItem(TIMETABLE_CACHE); } catch (e) { /* 무시 */ } }
+
   /** 설정 화면에서 키가 살아 있는지 확인할 때 쓴다 */
   function testKey() {
     return call('schoolInfo', { pIndex: 1, pSize: 1, SCHUL_NM: '서울' }, 'schoolInfo')
@@ -386,6 +477,8 @@
     searchSchools: searchSchools,
     meals: meals, todayMeals: todayMeals, weekMeals: weekMeals,
     clearCache: clearCache, testKey: testKey,
+    timetable: timetable, todayTimetable: todayTimetable, weekTimetable: weekTimetable,
+    clearTimetableCache: clearTimetableCache, hasTimetable: function (level) { return !!TIMETABLE_ENDPOINT[level]; },
     ALLERGENS: ALLERGENS, ymd: ymd
   };
 

@@ -834,6 +834,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .meal-empty b { color: var(--muted); }
 .meal-loading { font-size: 12px; color: var(--dim); padding: 12px 13px; }
 
+/* ==================================================== 시간표 (NEIS) ==== */
+.tt-list { display: flex; flex-direction: column; }
+.tt-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.tt-row:last-child { border-bottom: none; }
+.tt-period { flex: none; width: 40px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tt-subject { flex: 1; color: var(--text); }
+.tt-room { flex: none; font-size: 11px; color: var(--dim); }
+
 .neis-status { font-size: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; display: none; line-height: 1.6; }
 .neis-status.show { display: block; }
 .neis-status.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-ink); }
@@ -1121,6 +1129,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .cl-what ul { margin: 0; padding-left: 17px; }
 .cl-what li { font-size: 12.5px; line-height: 1.65; color: var(--muted); }
 .cl-what li b { color: var(--text); }
+
+/* 학급 대항전 — 리그 동의와 별개라는 게 눈에 보여야 해서 따로 묶어 둔다 */
+.cl-event {
+  margin-top: 14px; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.cl-event.is-off { opacity: 0.5; }
 
 #cloudMinorNote, #studentShareMinorNote {
   margin-top: 12px; padding: 10px 13px; border-radius: var(--r-sm);
