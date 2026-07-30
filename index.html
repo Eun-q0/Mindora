@@ -3,12 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NeuroStudy — 뇌 컨디션 기반 학습 코치</title>
+<title>Mindora — 뇌 컨디션 기반 학습 코치</title>
+
+<!-- Google AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
+     crossorigin="anonymous"></script>
 
 <!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
 <meta name="description" content="수면·스트레스·피로를 넣으면 오늘 내 뇌가 어떤 공부에 맞는지 5가지 능력으로 계산하고, 과목별 공부 시간까지 짜 줍니다. 설치 없이 링크만 열면 됩니다.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="NeuroStudy — 뇌 컨디션 기반 학습 코치">
+<meta property="og:title" content="Mindora — 뇌 컨디션 기반 학습 코치">
 <meta property="og:description" content="오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱. 친구들과 순공 시간으로 겨루는 학교 리그도 있어요.">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary">
@@ -19,12 +23,12 @@
 <meta name="theme-color" content="#151827" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="NeuroStudy">
+<meta name="apple-mobile-web-app-title" content="Mindora">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <style>
 /* =========================================================================
- * NeuroStudy — styles
+ * Mindora — styles
  *
  * 라이트가 기본이고, 다크는 파일 맨 아래 @media (prefers-color-scheme: dark)
  * 블록에서 아래 변수들을 덮어쓴다. 새 색을 넣을 때는 되도록 변수를 쓰고,
@@ -128,12 +132,12 @@ body {
 .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .brand-mark {
-  width: 38px; height: 38px; display: grid; place-items: center; font-size: 20px;
-  border-radius: 11px; background: linear-gradient(140deg, #7c5cff, #22b8d8);
-  box-shadow: 0 6px 16px -6px rgba(109, 74, 255, 0.7);
+  width: 38px; height: 38px; display: block; object-fit: cover;
+  border-radius: 11px;
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
-.brand-text strong { font-size: 15px; letter-spacing: -0.02em; }
+/* h1 이지만 로고 자리라 크기는 그대로 둔다 — 의미만 h1, 모양은 기존과 동일 */
+.brand-text h1 { font-size: 15px; letter-spacing: -0.02em; font-weight: 700; margin: 0; }
 .brand-text span { font-size: 11px; color: var(--muted); }
 
 .steps {
@@ -1331,8 +1335,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .is-hidden { display: none !important; }
 
 </style>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%236d4aff'/><text x='50' y='72' font-size='58' text-anchor='middle'>🧠</text></svg>">
+<link rel="icon" type="image/png" href="icon-192.png">
+<!-- iOS 는 apple-touch-icon 에 SVG 를 쓰지 못한다. PNG 여야 홈 화면에 아이콘이 붙는다. -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 </head>
 <body>
 
@@ -1341,9 +1346,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <div class="brand-mark">🧠</div>
+      <img class="brand-mark" src="icon-192.png" alt="" aria-hidden="true">
       <div class="brand-text">
-        <strong>NeuroStudy</strong>
+        <!-- 화면마다 h2 로 제목이 붙으므로, 문서 전체를 대표하는 h1 은 여기 하나만 둔다 -->
+        <h1>Mindora</h1>
         <span>뇌 컨디션 기반 학습 코치</span>
       </div>
     </div>
@@ -1896,7 +1902,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <p class="tiny" style="margin:0 0 16px">함께 쓸수록 랭킹과 리그가 재미있어집니다.
           아래 버튼으로 <b>앱 주소</b>를 바로 보낼 수 있어요. 설치 없이 링크만 열면 됩니다.</p>
         <div class="invite-row">
-          <input type="text" id="shareUrl" class="input code" readonly>
+          <input type="text" id="shareUrl" class="input code" readonly aria-label="앱 주소">
           <button type="button" class="btn primary" id="shareApp">📤 공유하기</button>
           <button type="button" class="btn" id="copyUrl">복사</button>
         </div>
@@ -2204,7 +2210,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <p class="tiny" style="margin:0 0 14px"><b>관리자에게 내 기록 보이기</b>를 켠 학생만 여기 뜹니다.
           켜지 않은 학생은 공부를 해도 이 목록에 나타나지 않습니다 — 감춰진 게 아니라 애초에 전송되지 않은 것입니다.</p>
         <div class="search-box">
-          <input type="text" id="adminStudentSearch" class="input" placeholder="닉네임, 학교 검색...">
+          <input type="text" id="adminStudentSearch" class="input" placeholder="닉네임, 학교 검색..." aria-label="학생 검색">
         </div>
         <button type="button" class="btn ghost sm" id="adminStudentRefresh" style="margin:10px 0">↻ 새로고침</button>
         <div id="adminStudentsList" class="admin-users-list"></div>
@@ -2261,7 +2267,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       <div class="card-head"><span class="ci">👥</span><h3>사용자 목록</h3></div>
       <div class="card-body">
         <div class="search-box">
-          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색...">
+          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색..." aria-label="사용자 검색">
         </div>
         <div id="adminUsersList" class="admin-users-list"></div>
       </div>
@@ -2294,37 +2300,37 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 </main>
 
 <footer class="foot">
-  <p><b>NeuroStudy</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
+  <p><b>Mindora</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
     <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, 이름·개인 기록은 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 
 <template id="subjectRowTpl">
   <div class="subject-row">
-    <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20">
-    <select class="input s-type">
+    <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20" aria-label="과목명">
+    <select class="input s-type" aria-label="과목 유형">
       <option value="memorize">📚 암기형</option>
       <option value="calculate">🔢 계산형</option>
       <option value="reading">📖 독해형</option>
       <option value="creative">✍️ 창의·서술형</option>
       <option value="mixed">🧩 혼합형</option>
     </select>
-    <input type="date" class="input s-date">
-    <select class="input s-imp">
+    <input type="date" class="input s-date" aria-label="시험일">
+    <select class="input s-imp" aria-label="중요도 (1~5)">
       <option value="1">1 · 낮음</option>
       <option value="2">2</option>
       <option value="3" selected>3 · 보통</option>
       <option value="4">4</option>
       <option value="5">5 · 매우 높음</option>
     </select>
-    <select class="input s-ready">
+    <select class="input s-ready" aria-label="준비도 (1~5)">
       <option value="1">1 · 거의 안 됨</option>
       <option value="2">2</option>
       <option value="3" selected>3 · 보통</option>
       <option value="4">4</option>
       <option value="5">5 · 충분함</option>
     </select>
-    <button type="button" class="icon-btn s-del" title="삭제">✕</button>
+    <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
   </div>
 </template>
 
@@ -3679,7 +3685,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   function exportAll() {
     var out = {
-      app: 'NeuroStudy', version: EXPORT_VERSION,
+      app: 'Mindora', version: EXPORT_VERSION,
       exportedAt: new Date().toISOString(), data: {}
     };
     if (!ok) return out;
@@ -3691,8 +3697,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   }
 
   function importAll(obj) {
-    if (!obj || obj.app !== 'NeuroStudy' || !obj.data) {
-      throw new Error('NeuroStudy 백업 파일이 아닙니다.');
+    if (!obj || (obj.app !== 'Mindora' && obj.app !== 'NeuroStudy') || !obj.data) {
+      throw new Error('Mindora 백업 파일이 아닙니다.');
     }
     if (obj.version > EXPORT_VERSION) {
       throw new Error('더 최신 버전에서 만든 백업입니다. 앱을 업데이트해 주세요.');
@@ -3702,7 +3708,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var n = 0;
     Object.keys(obj.data).forEach(function (k) {
       if (BACKUP_KEYS.indexOf(k) < 0) return;   // 모르는 키는 건드리지 않는다
-      localStorage.setItem(k, obj.data[k]);
+      var v = obj.data[k];
+      try { JSON.parse(v); } catch (e) { return; }  // 깨진 값은 기존 데이터를 지우지 않고 건너뛴다
+      localStorage.setItem(k, v);
       n++;
     });
     return n;
@@ -3746,11 +3754,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   function all() { return S.sessions(); }
 
-  /** 순공 시간 누적 (분 단위, 소수 허용) */
-  function add(subject, type, minutes) {
+  /** 순공 시간 누적 (분 단위, 소수 허용)
+   * atDate 를 넘기면 그 날짜에 기록한다 (기본은 오늘) — 자정을 걸친 구간을
+   * 나눠 기록할 때 쓴다. 넘기지 않으면 항상 "지금"의 날짜로 기록된다. */
+  function add(subject, type, minutes, atDate) {
     if (!subject || !(minutes > 0)) return;
     var data = all();
-    var k = S.key();
+    var k = S.key(atDate);
     if (!data[k]) data[k] = {};
     if (!data[k][subject]) data[k][subject] = { t: type || 'mixed', m: 0 };
     data[k][subject].m = Math.round((data[k][subject].m + minutes) * 100) / 100;
@@ -3984,7 +3994,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   function decode(code) {
     var raw = String(code || '').trim().replace(/\s+/g, '');
     if (!raw) throw new Error('코드가 비어 있습니다.');
-    if (raw.indexOf(PREFIX) !== 0) throw new Error('NeuroStudy 공유 코드 형식이 아닙니다.');
+    if (raw.indexOf(PREFIX) !== 0) throw new Error('Mindora 공유 코드 형식이 아닙니다.');
     var obj;
     try {
       obj = JSON.parse(b64decode(raw.slice(PREFIX.length)));
@@ -3992,7 +4002,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       throw new Error('코드가 손상되었습니다. 전체를 다시 복사해 주세요.');
     }
     if (!obj || !obj.nick || !obj.groupId) throw new Error('코드에 필요한 정보가 없습니다.');
+    // 코드는 손으로 고쳐 만들 수 있으므로, 학교 리그와 같은 상한을 걸어
+    // 부풀린 값이 반 랭킹을 흔들지 못하게 한다.
+    var cap = global.League ? global.League.DAILY_CAP_MINUTES : 300;
+    obj.todayMin = clampMin(obj.todayMin, cap);
+    obj.weekMin = clampMin(obj.weekMin, cap * 7);
+    obj.streak = clampMin(obj.streak, 400);
     return obj;
+  }
+
+  function clampMin(v, max) {
+    var n = Number(v);
+    if (!isFinite(n) || n < 0) return 0;
+    return Math.min(n, max);
   }
 
   /* ------------------------------------------------------------- 랭킹 */
@@ -7927,9 +7949,20 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   function commitSpan(close) {
     if (!state.span) return;
     var now = Date.now();
-    var ms = Math.max(0, Math.min(now - state.span.since, state.span.cap));
+    var since = state.span.since;
+    var ms = Math.max(0, Math.min(now - since, state.span.cap));
     if (ms > 1000) {
-      StudyLog.add(state.span.subject, state.span.type, ms / 60000);
+      var end = since + ms;
+      var sinceDate = new Date(since);
+      // 탭이 백그라운드에서 오래 멈춰 있다 자정을 넘겨 돌아온 경우,
+      // 흐른 시간을 자정 기준으로 어제·오늘 몫으로 나눠 기록한다.
+      var nextMidnight = new Date(sinceDate.getFullYear(), sinceDate.getMonth(), sinceDate.getDate() + 1).getTime();
+      if (end > nextMidnight) {
+        StudyLog.add(state.span.subject, state.span.type, (nextMidnight - since) / 60000, sinceDate);
+        StudyLog.add(state.span.subject, state.span.type, (end - nextMidnight) / 60000, new Date(nextMidnight));
+      } else {
+        StudyLog.add(state.span.subject, state.span.type, ms / 60000, sinceDate);
+      }
       Group.syncSelf();
       renderLiveTotal();
       if (kidsOn()) renderKids();
@@ -8241,7 +8274,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         ? '<div class="sm-warn">⚠ 가사 있는 음악은 글 읽기·암기와 뇌의 언어 영역이 겹쳐 방해가 됩니다. 가사 없는 소리를 권합니다.</div>' : '';
       return '<div class="sm-row">' +
         '<span class="sm-label">' + esc(Sound.TYPE_LABEL[type]) + '</span>' +
-        '<select class="input sm-sel" data-type="' + type + '">' + trackOptions(sel, true) + '</select>' +
+        '<select class="input sm-sel" data-type="' + type + '"' +
+          ' aria-label="' + esc(Sound.TYPE_LABEL[type]) + ' 과목에 재생할 사운드">' +
+          trackOptions(sel, true) + '</select>' +
         '</div>' + warn;
     }).join('');
 
@@ -9166,7 +9201,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return location.origin + location.pathname.replace(/index\.html$/, '');
   }
 
-  var SHARE_TEXT = '🧠 NeuroStudy — 오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱이야.\n' +
+  var SHARE_TEXT = '🧠 Mindora — 오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱이야.\n' +
                    '순공 시간으로 친구들이랑 겨루는 학교 리그도 있어. 설치 없이 링크만 열면 돼!';
 
   /** execCommand 는 사라지는 중이고 clipboard 는 권한이 필요하다 — 둘 다 시도한다 */
@@ -9214,7 +9249,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     $('shareApp').addEventListener('click', function () {
       if (canShare) {
-        navigator.share({ title: 'NeuroStudy', text: SHARE_TEXT, url: url })
+        navigator.share({ title: 'Mindora', text: SHARE_TEXT, url: url })
           .catch(function () { /* 사용자가 취소한 경우 — 아무 말도 하지 않는다 */ });
       } else {
         copyText(SHARE_TEXT + '\n' + url, '초대 메시지를 복사했어요!');
@@ -9850,6 +9885,72 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     navigator.serviceWorker.register('sw.js')['catch'](function () {
       // 등록에 실패해도 앱 동작에는 지장이 없다 — 설치·오프라인만 빠진다
     });
+  }
+
+  /* ============================================================ 홈 화면 설치
+   *
+   * 매일 여는 앱은 홈 화면 아이콘이 있어야 실제로 매일 열린다.
+   * 안드로이드·크롬은 beforeinstallprompt 로 설치 창을 띄울 수 있지만,
+   * iOS 사파리는 그 이벤트가 없어서 "공유 → 홈 화면에 추가" 를 직접 안내해야 한다.
+   * 이미 설치해서 standalone 으로 열었다면 아무것도 보여 주지 않는다. */
+
+  var deferredInstall = null;
+  var INSTALL_DISMISS_KEY = 'neurostudy.installDismissed.v1';
+
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
+  }
+
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  function installDismissed() {
+    try { return localStorage.getItem(INSTALL_DISMISS_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function dismissInstall() {
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, '1'); } catch (e) { /* 무시 */ }
+    var el = $('installBar');
+    if (el) el.classList.add('is-hidden');
+  }
+
+  function showInstallBar(mode) {
+    var el = $('installBar');
+    if (!el || isStandalone() || installDismissed()) return;
+
+    $('installText').innerHTML = mode === 'ios'
+      ? '홈 화면에 추가하면 앱처럼 바로 열 수 있어요 — 아래 <b>공유 <span aria-hidden="true">⎋</span></b> 를 누르고 <b>“홈 화면에 추가”</b>를 고르세요.'
+      : '홈 화면에 추가하면 앱처럼 바로 열 수 있어요.';
+
+    $('installGo').classList.toggle('is-hidden', mode === 'ios');
+    el.classList.remove('is-hidden');
+  }
+
+  function initInstallPrompt() {
+    if (!$('installBar')) return;
+
+    $('installClose').addEventListener('click', dismissInstall);
+    $('installGo').addEventListener('click', function () {
+      if (!deferredInstall) return;
+      deferredInstall.prompt();
+      deferredInstall.userChoice.then(function (r) {
+        if (r && r.outcome === 'accepted') dismissInstall();
+        deferredInstall = null;
+      });
+    });
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();          // 크롬 기본 배너 대신 우리 배너를 쓴다
+      deferredInstall = e;
+      showInstallBar('prompt');
+    });
+
+    window.addEventListener('appinstalled', function () { dismissInstall(); });
+
+    // iOS 는 beforeinstallprompt 가 없다 — 안내만 띄운다
+    if (isIOS() && !isStandalone()) setTimeout(function () { showInstallBar('ios'); }, 2500);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

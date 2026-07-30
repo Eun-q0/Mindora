@@ -14,11 +14,13 @@
 
   function all() { return S.sessions(); }
 
-  /** 순공 시간 누적 (분 단위, 소수 허용) */
-  function add(subject, type, minutes) {
+  /** 순공 시간 누적 (분 단위, 소수 허용)
+   * atDate 를 넘기면 그 날짜에 기록한다 (기본은 오늘) — 자정을 걸친 구간을
+   * 나눠 기록할 때 쓴다. 넘기지 않으면 항상 "지금"의 날짜로 기록된다. */
+  function add(subject, type, minutes, atDate) {
     if (!subject || !(minutes > 0)) return;
     var data = all();
-    var k = S.key();
+    var k = S.key(atDate);
     if (!data[k]) data[k] = {};
     if (!data[k][subject]) data[k][subject] = { t: type || 'mixed', m: 0 };
     data[k][subject].m = Math.round((data[k][subject].m + minutes) * 100) / 100;

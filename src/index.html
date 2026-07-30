@@ -3,12 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NeuroStudy — 뇌 컨디션 기반 학습 코치</title>
+<title>Mindora — 뇌 컨디션 기반 학습 코치</title>
+
+<!-- Google AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
+     crossorigin="anonymous"></script>
 
 <!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
 <meta name="description" content="수면·스트레스·피로를 넣으면 오늘 내 뇌가 어떤 공부에 맞는지 5가지 능력으로 계산하고, 과목별 공부 시간까지 짜 줍니다. 설치 없이 링크만 열면 됩니다.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="NeuroStudy — 뇌 컨디션 기반 학습 코치">
+<meta property="og:title" content="Mindora — 뇌 컨디션 기반 학습 코치">
 <meta property="og:description" content="오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱. 친구들과 순공 시간으로 겨루는 학교 리그도 있어요.">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary">
@@ -19,12 +23,13 @@
 <meta name="theme-color" content="#151827" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="NeuroStudy">
+<meta name="apple-mobile-web-app-title" content="Mindora">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <link rel="stylesheet" href="css/styles.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%236d4aff'/><text x='50' y='72' font-size='58' text-anchor='middle'>🧠</text></svg>">
+<link rel="icon" type="image/png" href="icon-192.png">
+<!-- iOS 는 apple-touch-icon 에 SVG 를 쓰지 못한다. PNG 여야 홈 화면에 아이콘이 붙는다. -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 </head>
 <body>
 
@@ -33,9 +38,10 @@
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <div class="brand-mark">🧠</div>
+      <img class="brand-mark" src="icon-192.png" alt="" aria-hidden="true">
       <div class="brand-text">
-        <strong>NeuroStudy</strong>
+        <!-- 화면마다 h2 로 제목이 붙으므로, 문서 전체를 대표하는 h1 은 여기 하나만 둔다 -->
+        <h1>Mindora</h1>
         <span>뇌 컨디션 기반 학습 코치</span>
       </div>
     </div>
@@ -588,7 +594,7 @@
         <p class="tiny" style="margin:0 0 16px">함께 쓸수록 랭킹과 리그가 재미있어집니다.
           아래 버튼으로 <b>앱 주소</b>를 바로 보낼 수 있어요. 설치 없이 링크만 열면 됩니다.</p>
         <div class="invite-row">
-          <input type="text" id="shareUrl" class="input code" readonly>
+          <input type="text" id="shareUrl" class="input code" readonly aria-label="앱 주소">
           <button type="button" class="btn primary" id="shareApp">📤 공유하기</button>
           <button type="button" class="btn" id="copyUrl">복사</button>
         </div>
@@ -896,7 +902,7 @@
         <p class="tiny" style="margin:0 0 14px"><b>관리자에게 내 기록 보이기</b>를 켠 학생만 여기 뜹니다.
           켜지 않은 학생은 공부를 해도 이 목록에 나타나지 않습니다 — 감춰진 게 아니라 애초에 전송되지 않은 것입니다.</p>
         <div class="search-box">
-          <input type="text" id="adminStudentSearch" class="input" placeholder="닉네임, 학교 검색...">
+          <input type="text" id="adminStudentSearch" class="input" placeholder="닉네임, 학교 검색..." aria-label="학생 검색">
         </div>
         <button type="button" class="btn ghost sm" id="adminStudentRefresh" style="margin:10px 0">↻ 새로고침</button>
         <div id="adminStudentsList" class="admin-users-list"></div>
@@ -953,7 +959,7 @@
       <div class="card-head"><span class="ci">👥</span><h3>사용자 목록</h3></div>
       <div class="card-body">
         <div class="search-box">
-          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색...">
+          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색..." aria-label="사용자 검색">
         </div>
         <div id="adminUsersList" class="admin-users-list"></div>
       </div>
@@ -986,37 +992,37 @@
 </main>
 
 <footer class="foot">
-  <p><b>NeuroStudy</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
+  <p><b>Mindora</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
     <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, 이름·개인 기록은 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 
 <template id="subjectRowTpl">
   <div class="subject-row">
-    <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20">
-    <select class="input s-type">
+    <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20" aria-label="과목명">
+    <select class="input s-type" aria-label="과목 유형">
       <option value="memorize">📚 암기형</option>
       <option value="calculate">🔢 계산형</option>
       <option value="reading">📖 독해형</option>
       <option value="creative">✍️ 창의·서술형</option>
       <option value="mixed">🧩 혼합형</option>
     </select>
-    <input type="date" class="input s-date">
-    <select class="input s-imp">
+    <input type="date" class="input s-date" aria-label="시험일">
+    <select class="input s-imp" aria-label="중요도 (1~5)">
       <option value="1">1 · 낮음</option>
       <option value="2">2</option>
       <option value="3" selected>3 · 보통</option>
       <option value="4">4</option>
       <option value="5">5 · 매우 높음</option>
     </select>
-    <select class="input s-ready">
+    <select class="input s-ready" aria-label="준비도 (1~5)">
       <option value="1">1 · 거의 안 됨</option>
       <option value="2">2</option>
       <option value="3" selected>3 · 보통</option>
       <option value="4">4</option>
       <option value="5">5 · 충분함</option>
     </select>
-    <button type="button" class="icon-btn s-del" title="삭제">✕</button>
+    <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
   </div>
 </template>
 

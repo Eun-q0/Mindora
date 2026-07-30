@@ -1082,9 +1082,20 @@
   function commitSpan(close) {
     if (!state.span) return;
     var now = Date.now();
-    var ms = Math.max(0, Math.min(now - state.span.since, state.span.cap));
+    var since = state.span.since;
+    var ms = Math.max(0, Math.min(now - since, state.span.cap));
     if (ms > 1000) {
-      StudyLog.add(state.span.subject, state.span.type, ms / 60000);
+      var end = since + ms;
+      var sinceDate = new Date(since);
+      // 탭이 백그라운드에서 오래 멈춰 있다 자정을 넘겨 돌아온 경우,
+      // 흐른 시간을 자정 기준으로 어제·오늘 몫으로 나눠 기록한다.
+      var nextMidnight = new Date(sinceDate.getFullYear(), sinceDate.getMonth(), sinceDate.getDate() + 1).getTime();
+      if (end > nextMidnight) {
+        StudyLog.add(state.span.subject, state.span.type, (nextMidnight - since) / 60000, sinceDate);
+        StudyLog.add(state.span.subject, state.span.type, (end - nextMidnight) / 60000, new Date(nextMidnight));
+      } else {
+        StudyLog.add(state.span.subject, state.span.type, ms / 60000, sinceDate);
+      }
       Group.syncSelf();
       renderLiveTotal();
       if (kidsOn()) renderKids();
@@ -1396,7 +1407,9 @@
         ? '<div class="sm-warn">⚠ 가사 있는 음악은 글 읽기·암기와 뇌의 언어 영역이 겹쳐 방해가 됩니다. 가사 없는 소리를 권합니다.</div>' : '';
       return '<div class="sm-row">' +
         '<span class="sm-label">' + esc(Sound.TYPE_LABEL[type]) + '</span>' +
-        '<select class="input sm-sel" data-type="' + type + '">' + trackOptions(sel, true) + '</select>' +
+        '<select class="input sm-sel" data-type="' + type + '"' +
+          ' aria-label="' + esc(Sound.TYPE_LABEL[type]) + ' 과목에 재생할 사운드">' +
+          trackOptions(sel, true) + '</select>' +
         '</div>' + warn;
     }).join('');
 
@@ -2321,7 +2334,7 @@
     return location.origin + location.pathname.replace(/index\.html$/, '');
   }
 
-  var SHARE_TEXT = '🧠 NeuroStudy — 오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱이야.\n' +
+  var SHARE_TEXT = '🧠 Mindora — 오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱이야.\n' +
                    '순공 시간으로 친구들이랑 겨루는 학교 리그도 있어. 설치 없이 링크만 열면 돼!';
 
   /** execCommand 는 사라지는 중이고 clipboard 는 권한이 필요하다 — 둘 다 시도한다 */
@@ -2369,7 +2382,7 @@
 
     $('shareApp').addEventListener('click', function () {
       if (canShare) {
-        navigator.share({ title: 'NeuroStudy', text: SHARE_TEXT, url: url })
+        navigator.share({ title: 'Mindora', text: SHARE_TEXT, url: url })
           .catch(function () { /* 사용자가 취소한 경우 — 아무 말도 하지 않는다 */ });
       } else {
         copyText(SHARE_TEXT + '\n' + url, '초대 메시지를 복사했어요!');
@@ -3005,6 +3018,72 @@
     navigator.serviceWorker.register('sw.js')['catch'](function () {
       // 등록에 실패해도 앱 동작에는 지장이 없다 — 설치·오프라인만 빠진다
     });
+  }
+
+  /* ============================================================ 홈 화면 설치
+   *
+   * 매일 여는 앱은 홈 화면 아이콘이 있어야 실제로 매일 열린다.
+   * 안드로이드·크롬은 beforeinstallprompt 로 설치 창을 띄울 수 있지만,
+   * iOS 사파리는 그 이벤트가 없어서 "공유 → 홈 화면에 추가" 를 직접 안내해야 한다.
+   * 이미 설치해서 standalone 으로 열었다면 아무것도 보여 주지 않는다. */
+
+  var deferredInstall = null;
+  var INSTALL_DISMISS_KEY = 'neurostudy.installDismissed.v1';
+
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
+  }
+
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  function installDismissed() {
+    try { return localStorage.getItem(INSTALL_DISMISS_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function dismissInstall() {
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, '1'); } catch (e) { /* 무시 */ }
+    var el = $('installBar');
+    if (el) el.classList.add('is-hidden');
+  }
+
+  function showInstallBar(mode) {
+    var el = $('installBar');
+    if (!el || isStandalone() || installDismissed()) return;
+
+    $('installText').innerHTML = mode === 'ios'
+      ? '홈 화면에 추가하면 앱처럼 바로 열 수 있어요 — 아래 <b>공유 <span aria-hidden="true">⎋</span></b> 를 누르고 <b>“홈 화면에 추가”</b>를 고르세요.'
+      : '홈 화면에 추가하면 앱처럼 바로 열 수 있어요.';
+
+    $('installGo').classList.toggle('is-hidden', mode === 'ios');
+    el.classList.remove('is-hidden');
+  }
+
+  function initInstallPrompt() {
+    if (!$('installBar')) return;
+
+    $('installClose').addEventListener('click', dismissInstall);
+    $('installGo').addEventListener('click', function () {
+      if (!deferredInstall) return;
+      deferredInstall.prompt();
+      deferredInstall.userChoice.then(function (r) {
+        if (r && r.outcome === 'accepted') dismissInstall();
+        deferredInstall = null;
+      });
+    });
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();          // 크롬 기본 배너 대신 우리 배너를 쓴다
+      deferredInstall = e;
+      showInstallBar('prompt');
+    });
+
+    window.addEventListener('appinstalled', function () { dismissInstall(); });
+
+    // iOS 는 beforeinstallprompt 가 없다 — 안내만 띄운다
+    if (isIOS() && !isStandalone()) setTimeout(function () { showInstallBar('ios'); }, 2500);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

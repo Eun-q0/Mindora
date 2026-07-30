@@ -41,7 +41,8 @@ $outPath = Join-Path $root 'index.html'
 # PWA 자원은 인라인할 수 없으므로(브라우저가 별도 URL로 받아 가야 한다) 그대로 복사한다.
 # src/ 를 원본으로 두는 이유: 개발 서버(src/)와 배포본(루트)이 같은 파일을 보게 해야
 # "로컬에선 되는데 배포하면 안 되는" 상황을 막을 수 있다.
-$assets = @('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-maskable.svg')
+$assets = @('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-maskable.svg',
+            'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png')
 foreach ($a in $assets) {
     $from = Join-Path $src $a
     if (Test-Path $from) { Copy-Item $from (Join-Path $root $a) -Force }

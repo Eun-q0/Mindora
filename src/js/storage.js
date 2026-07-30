@@ -142,7 +142,7 @@
 
   function exportAll() {
     var out = {
-      app: 'NeuroStudy', version: EXPORT_VERSION,
+      app: 'Mindora', version: EXPORT_VERSION,
       exportedAt: new Date().toISOString(), data: {}
     };
     if (!ok) return out;
@@ -154,8 +154,8 @@
   }
 
   function importAll(obj) {
-    if (!obj || obj.app !== 'NeuroStudy' || !obj.data) {
-      throw new Error('NeuroStudy 백업 파일이 아닙니다.');
+    if (!obj || (obj.app !== 'Mindora' && obj.app !== 'NeuroStudy') || !obj.data) {
+      throw new Error('Mindora 백업 파일이 아닙니다.');
     }
     if (obj.version > EXPORT_VERSION) {
       throw new Error('더 최신 버전에서 만든 백업입니다. 앱을 업데이트해 주세요.');
@@ -165,7 +165,9 @@
     var n = 0;
     Object.keys(obj.data).forEach(function (k) {
       if (BACKUP_KEYS.indexOf(k) < 0) return;   // 모르는 키는 건드리지 않는다
-      localStorage.setItem(k, obj.data[k]);
+      var v = obj.data[k];
+      try { JSON.parse(v); } catch (e) { return; }  // 깨진 값은 기존 데이터를 지우지 않고 건너뛴다
+      localStorage.setItem(k, v);
       n++;
     });
     return n;

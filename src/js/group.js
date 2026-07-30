@@ -132,7 +132,7 @@
   function decode(code) {
     var raw = String(code || '').trim().replace(/\s+/g, '');
     if (!raw) throw new Error('코드가 비어 있습니다.');
-    if (raw.indexOf(PREFIX) !== 0) throw new Error('NeuroStudy 공유 코드 형식이 아닙니다.');
+    if (raw.indexOf(PREFIX) !== 0) throw new Error('Mindora 공유 코드 형식이 아닙니다.');
     var obj;
     try {
       obj = JSON.parse(b64decode(raw.slice(PREFIX.length)));
@@ -140,7 +140,19 @@
       throw new Error('코드가 손상되었습니다. 전체를 다시 복사해 주세요.');
     }
     if (!obj || !obj.nick || !obj.groupId) throw new Error('코드에 필요한 정보가 없습니다.');
+    // 코드는 손으로 고쳐 만들 수 있으므로, 학교 리그와 같은 상한을 걸어
+    // 부풀린 값이 반 랭킹을 흔들지 못하게 한다.
+    var cap = global.League ? global.League.DAILY_CAP_MINUTES : 300;
+    obj.todayMin = clampMin(obj.todayMin, cap);
+    obj.weekMin = clampMin(obj.weekMin, cap * 7);
+    obj.streak = clampMin(obj.streak, 400);
     return obj;
+  }
+
+  function clampMin(v, max) {
+    var n = Number(v);
+    if (!isFinite(n) || n < 0) return 0;
+    return Math.min(n, max);
   }
 
   /* ------------------------------------------------------------- 랭킹 */
