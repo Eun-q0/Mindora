@@ -12,10 +12,18 @@
 <!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
 <meta name="description" content="수면·스트레스·피로를 넣으면 오늘 내 뇌가 어떤 공부에 맞는지 5가지 능력으로 계산하고, 과목별 공부 시간까지 짜 줍니다. 설치 없이 링크만 열면 됩니다.">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Mindora">
 <meta property="og:title" content="Mindora — 뇌 컨디션 기반 학습 코치">
 <meta property="og:description" content="오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱. 친구들과 순공 시간으로 겨루는 학교 리그도 있어요.">
 <meta property="og:locale" content="ko_KR">
+<!-- 대표 주소는 www. apex 는 여기로 308 리다이렉트된다. 두 주소가 섞이면 미리보기 캐시도 갈린다. -->
+<meta property="og:url" content="https://www.mindora.co.kr/">
+<meta property="og:image" content="https://www.mindora.co.kr/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="Mindora 앱 아이콘">
 <meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://www.mindora.co.kr/">
 
 <!-- 홈 화면에 추가했을 때 앱처럼 보이게 -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -1383,10 +1391,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   <div class="intro-card">
     <img class="intro-logo" src="icon-512.png" alt="" aria-hidden="true">
     <h2 class="intro-title" id="introTitle">Mindora</h2>
-    <p class="intro-lead">공부를 더 똑똑하게, 기억을 더 오래.</p>
-    <p class="intro-body">Mindora는 AI를 활용해 공부하고 싶은 내용을 쉽고 효율적으로 학습할 수 있도록 도와주는 스마트 학습 앱입니다.</p>
-    <p class="intro-body">복잡한 공부 내용을 정리하고, 핵심을 파악하고, 반복해서 학습하면서 단순히 읽는 공부에서 <b>기억하는 공부</b>로 바꿔보세요.</p>
-    <p class="intro-tag">Learn smarter. Remember longer.</p>
+    <p class="intro-lead">무작정 오래 앉아 있는 공부는 그만.</p>
+    <p class="intro-body">어젯밤 몇 시간 잤는지, 지금 얼마나 피곤한지만 알려 주세요.
+      오늘 <b>내 뇌가 어떤 공부에 강한지</b> 숫자로 보여주고, 거기에 맞춰
+      무엇부터 몇 분 할지 정해 드릴게요.</p>
+    <p class="intro-body">친구들과 순공 시간으로 등수를 겨루다 보면,
+      책상에 앉아 있는 시간은 저절로 늘어납니다.</p>
+    <p class="intro-tag">잘 되는 공부부터, 순서대로.</p>
     <button type="button" class="btn primary intro-go" id="introGo">시작하기</button>
   </div>
 </div>
@@ -2368,16 +2379,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     <input type="date" class="input s-date" aria-label="시험일">
     <select class="input s-imp" aria-label="중요도 (1~5)">
       <option value="1">1 · 낮음</option>
-      <option value="2">2</option>
+      <option value="2">2 · 조금 낮음</option>
       <option value="3" selected>3 · 보통</option>
-      <option value="4">4</option>
+      <option value="4">4 · 높음</option>
       <option value="5">5 · 매우 높음</option>
     </select>
     <select class="input s-ready" aria-label="준비도 (1~5)">
       <option value="1">1 · 거의 안 됨</option>
-      <option value="2">2</option>
+      <option value="2">2 · 부족함</option>
       <option value="3" selected>3 · 보통</option>
-      <option value="4">4</option>
+      <option value="4">4 · 잘 됨</option>
       <option value="5">5 · 충분함</option>
     </select>
     <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
