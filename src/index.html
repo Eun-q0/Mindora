@@ -336,10 +336,12 @@
       </div>
       <div class="card-body">
         <div class="subject-head">
-          <span>과목명</span><span>유형</span><span>시험일</span><span>중요도</span><span>준비도</span><span></span>
+          <span>과목명</span><span>유형</span><span>시험일 <em>D-day 반영</em></span><span>중요도</span><span>준비도</span><span></span>
         </div>
         <div id="subjectList" class="subject-list"></div>
-        <p class="tiny">유형에 따라 어떤 뇌 능력과 매칭할지가 결정됩니다. 시험일을 비워 두면 긴급도는 기본값으로 계산됩니다.</p>
+        <p class="tiny">유형에 따라 어떤 뇌 능력과 매칭할지가 결정됩니다.
+          <b>📅 시험일을 넣으면 날짜가 가까운 과목에 시간이 더 배분됩니다</b> — 우선순위에서 가장 비중이 큰 항목입니다.
+          비워 두어도 되고, 그때는 긴급도가 기본값으로 계산됩니다.</p>
       </div>
     </div>
 
@@ -1026,15 +1028,22 @@
 
 <template id="subjectRowTpl">
   <div class="subject-row">
-    <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20" aria-label="과목명">
-    <select class="input s-type" aria-label="과목 유형">
-      <option value="memorize">📚 암기형</option>
-      <option value="calculate">🔢 계산형</option>
-      <option value="reading">📖 독해형</option>
-      <option value="creative">✍️ 창의·서술형</option>
-      <option value="mixed">🧩 혼합형</option>
-    </select>
-    <input type="date" class="input s-date" aria-label="시험일">
+    <label class="s-cell s-cell-name"><span class="s-cap">과목명</span>
+      <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20" aria-label="과목명">
+    </label>
+    <label class="s-cell"><span class="s-cap">유형</span>
+      <select class="input s-type" aria-label="과목 유형">
+        <option value="memorize">📚 암기형</option>
+        <option value="calculate">🔢 계산형</option>
+        <option value="reading">📖 독해형</option>
+        <option value="creative">✍️ 창의·서술형</option>
+        <option value="mixed">🧩 혼합형</option>
+      </select>
+    </label>
+    <label class="s-cell"><span class="s-cap">시험일 <em>D-day 반영</em></span>
+      <input type="date" class="input s-date" aria-label="시험일 (선택 — 넣으면 D-day가 가까울수록 우선 배치)">
+    </label>
+    <label class="s-cell"><span class="s-cap">중요도</span>
     <select class="input s-imp" aria-label="중요도 (1~5)">
       <option value="1">1 · 낮음</option>
       <option value="2">2 · 조금 낮음</option>
@@ -1042,13 +1051,16 @@
       <option value="4">4 · 높음</option>
       <option value="5">5 · 매우 높음</option>
     </select>
-    <select class="input s-ready" aria-label="준비도 (1~5)">
-      <option value="1">1 · 거의 안 됨</option>
-      <option value="2">2 · 부족함</option>
-      <option value="3" selected>3 · 보통</option>
-      <option value="4">4 · 잘 됨</option>
-      <option value="5">5 · 충분함</option>
-    </select>
+    </label>
+    <label class="s-cell"><span class="s-cap">준비도</span>
+      <select class="input s-ready" aria-label="준비도 (1~5)">
+        <option value="1">1 · 거의 안 됨</option>
+        <option value="2">2 · 부족함</option>
+        <option value="3" selected>3 · 보통</option>
+        <option value="4">4 · 잘 됨</option>
+        <option value="5">5 · 충분함</option>
+      </select>
+    </label>
     <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
   </div>
 </template>

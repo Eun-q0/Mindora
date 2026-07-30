@@ -287,6 +287,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   gap: 8px; align-items: center;
 }
 .subject-head { font-size: 11px; color: var(--dim); font-weight: 600; padding: 0 2px 8px; }
+.subject-head em, .s-cap em { font-style: normal; font-weight: 400; color: var(--accent); font-size: 10px; margin-left: 4px; }
+/* 각 칸을 라벨로 감싼다. 넓은 화면에서는 .subject-head 가 제목을 대신하므로 캡션을 숨기고,
+   좁은 화면에서는 .subject-head 가 사라지므로 캡션을 대신 띄운다.
+   (특히 시험일은 빈 date 입력이라 라벨이 없으면 무슨 칸인지 알 수 없다) */
+.s-cell { display: grid; gap: 4px; min-width: 0; }
+.s-cap { display: none; }
 .subject-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .subject-row { animation: pop 0.22s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
@@ -933,8 +939,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .clock { display: none; }
   .sec-head h2 { font-size: 21px; }
   .subject-head { display: none; }
-  .subject-row { grid-template-columns: 1fr 1fr; gap: 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
-  .subject-row .s-name { grid-column: 1 / -1; }
+  .subject-row { grid-template-columns: 1fr 1fr; gap: 10px 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
+  .subject-row .s-cell-name { grid-column: 1 / -1; padding-right: 34px; }
+  .s-cap { display: block; font-size: 11px; color: var(--dim); font-weight: 600; padding-left: 2px; }
   .subject-row .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
   .two-col { grid-template-columns: 1fr; }
   .ct { grid-template-columns: 100px 1fr 54px; gap: 7px; }

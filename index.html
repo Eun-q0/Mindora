@@ -327,6 +327,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   gap: 8px; align-items: center;
 }
 .subject-head { font-size: 11px; color: var(--dim); font-weight: 600; padding: 0 2px 8px; }
+.subject-head em, .s-cap em { font-style: normal; font-weight: 400; color: var(--accent); font-size: 10px; margin-left: 4px; }
+/* 각 칸을 라벨로 감싼다. 넓은 화면에서는 .subject-head 가 제목을 대신하므로 캡션을 숨기고,
+   좁은 화면에서는 .subject-head 가 사라지므로 캡션을 대신 띄운다.
+   (특히 시험일은 빈 date 입력이라 라벨이 없으면 무슨 칸인지 알 수 없다) */
+.s-cell { display: grid; gap: 4px; min-width: 0; }
+.s-cap { display: none; }
 .subject-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .subject-row { animation: pop 0.22s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
@@ -973,8 +979,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .clock { display: none; }
   .sec-head h2 { font-size: 21px; }
   .subject-head { display: none; }
-  .subject-row { grid-template-columns: 1fr 1fr; gap: 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
-  .subject-row .s-name { grid-column: 1 / -1; }
+  .subject-row { grid-template-columns: 1fr 1fr; gap: 10px 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
+  .subject-row .s-cell-name { grid-column: 1 / -1; padding-right: 34px; }
+  .s-cap { display: block; font-size: 11px; color: var(--dim); font-weight: 600; padding-left: 2px; }
   .subject-row .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
   .two-col { grid-template-columns: 1fr; }
   .ct { grid-template-columns: 100px 1fr 54px; gap: 7px; }
@@ -1681,10 +1688,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       </div>
       <div class="card-body">
         <div class="subject-head">
-          <span>과목명</span><span>유형</span><span>시험일</span><span>중요도</span><span>준비도</span><span></span>
+          <span>과목명</span><span>유형</span><span>시험일 <em>D-day 반영</em></span><span>중요도</span><span>준비도</span><span></span>
         </div>
         <div id="subjectList" class="subject-list"></div>
-        <p class="tiny">유형에 따라 어떤 뇌 능력과 매칭할지가 결정됩니다. 시험일을 비워 두면 긴급도는 기본값으로 계산됩니다.</p>
+        <p class="tiny">유형에 따라 어떤 뇌 능력과 매칭할지가 결정됩니다.
+          <b>📅 시험일을 넣으면 날짜가 가까운 과목에 시간이 더 배분됩니다</b> — 우선순위에서 가장 비중이 큰 항목입니다.
+          비워 두어도 되고, 그때는 긴급도가 기본값으로 계산됩니다.</p>
       </div>
     </div>
 
@@ -2371,15 +2380,22 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 <template id="subjectRowTpl">
   <div class="subject-row">
-    <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20" aria-label="과목명">
-    <select class="input s-type" aria-label="과목 유형">
-      <option value="memorize">📚 암기형</option>
-      <option value="calculate">🔢 계산형</option>
-      <option value="reading">📖 독해형</option>
-      <option value="creative">✍️ 창의·서술형</option>
-      <option value="mixed">🧩 혼합형</option>
-    </select>
-    <input type="date" class="input s-date" aria-label="시험일">
+    <label class="s-cell s-cell-name"><span class="s-cap">과목명</span>
+      <input type="text" class="input s-name" placeholder="예) 미적분" maxlength="20" aria-label="과목명">
+    </label>
+    <label class="s-cell"><span class="s-cap">유형</span>
+      <select class="input s-type" aria-label="과목 유형">
+        <option value="memorize">📚 암기형</option>
+        <option value="calculate">🔢 계산형</option>
+        <option value="reading">📖 독해형</option>
+        <option value="creative">✍️ 창의·서술형</option>
+        <option value="mixed">🧩 혼합형</option>
+      </select>
+    </label>
+    <label class="s-cell"><span class="s-cap">시험일 <em>D-day 반영</em></span>
+      <input type="date" class="input s-date" aria-label="시험일 (선택 — 넣으면 D-day가 가까울수록 우선 배치)">
+    </label>
+    <label class="s-cell"><span class="s-cap">중요도</span>
     <select class="input s-imp" aria-label="중요도 (1~5)">
       <option value="1">1 · 낮음</option>
       <option value="2">2 · 조금 낮음</option>
@@ -2387,13 +2403,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       <option value="4">4 · 높음</option>
       <option value="5">5 · 매우 높음</option>
     </select>
-    <select class="input s-ready" aria-label="준비도 (1~5)">
-      <option value="1">1 · 거의 안 됨</option>
-      <option value="2">2 · 부족함</option>
-      <option value="3" selected>3 · 보통</option>
-      <option value="4">4 · 잘 됨</option>
-      <option value="5">5 · 충분함</option>
-    </select>
+    </label>
+    <label class="s-cell"><span class="s-cap">준비도</span>
+      <select class="input s-ready" aria-label="준비도 (1~5)">
+        <option value="1">1 · 거의 안 됨</option>
+        <option value="2">2 · 부족함</option>
+        <option value="3" selected>3 · 보통</option>
+        <option value="4">4 · 잘 됨</option>
+        <option value="5">5 · 충분함</option>
+      </select>
+    </label>
     <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
   </div>
 </template>
