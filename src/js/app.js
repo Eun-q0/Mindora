@@ -3006,6 +3006,8 @@
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);
 
+    initIntro();
+    initInstallPrompt();
     registerServiceWorker();
   }
 
@@ -3059,6 +3061,40 @@
 
     $('installGo').classList.toggle('is-hidden', mode === 'ios');
     el.classList.remove('is-hidden');
+  }
+
+  /* ================================================================= 인트로
+   *
+   * 앱 화면에 들어가기 전에 소개를 한 번 보여 준다.
+   * 매번 뜨면 매일 쓰는 사람에게는 방해가 되므로, 이미 본 사람에게는
+   * 건너뛴다. (다시 보게 하려면 아래 키를 지우면 된다) */
+
+  var INTRO_SEEN_KEY = 'neurostudy.introSeen.v1';
+
+  function introSeen() {
+    try { return localStorage.getItem(INTRO_SEEN_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function closeIntro() {
+    var el = $('intro');
+    if (!el || el.hidden) return;
+    try { localStorage.setItem(INTRO_SEEN_KEY, '1'); } catch (e) { /* 무시 */ }
+    el.classList.add('is-out');
+    document.body.classList.remove('intro-open');
+    var done = function () { el.hidden = true; el.classList.remove('is-out'); };
+    // transitionend 가 오지 않는 환경(모션 축소 등)에서도 반드시 닫히게 한다
+    var t = setTimeout(done, 400);
+    el.addEventListener('transitionend', function () { clearTimeout(t); done(); }, { once: true });
+  }
+
+  function initIntro() {
+    var el = $('intro');
+    if (!el) return;
+    $('introGo').addEventListener('click', closeIntro);
+    if (introSeen()) return;
+    el.hidden = false;
+    document.body.classList.add('intro-open');
+    $('introGo').focus();
   }
 
   function initInstallPrompt() {

@@ -93,6 +93,40 @@ body {
 .aurora span:nth-child(2) { width: 540px; height: 540px; background: #9fe4f5; top: 16%; right: -200px; opacity: 0.42; }
 .aurora span:nth-child(3) { width: 640px; height: 640px; background: #ffc9e4; bottom: -320px; left: 34%; opacity: 0.34; }
 
+/* ---------------------------------------------------------------- intro
+ * 앱에 들어가기 전 한 번 보여 주는 소개 화면.
+ * 뒤 화면이 스크롤되지 않게 body 에 .intro-open 을 걸어 잠근다. */
+.intro {
+  position: fixed; inset: 0; z-index: 200;
+  display: grid; place-items: center; padding: 24px;
+  background: linear-gradient(150deg, #f7f2ff, #eef6ff 55%, #fdf1f8);
+  overflow-y: auto;
+}
+.intro[hidden] { display: none; }
+.intro.is-out { opacity: 0; transition: opacity 0.32s ease; }
+.intro-card {
+  width: 100%; max-width: 420px; text-align: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line); border-radius: 22px;
+  padding: 34px 26px 28px;
+  box-shadow: 0 24px 60px -30px rgba(60, 40, 130, 0.45);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.intro-logo { width: 84px; height: 84px; display: block; margin: 0 auto 16px; }
+.intro-title { font-size: 27px; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 6px; }
+.intro-lead { font-size: 15px; font-weight: 700; color: var(--accent); margin: 0 0 18px; }
+.intro-body { font-size: 14px; color: var(--muted); margin: 0 0 12px; text-align: left; }
+.intro-tag {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--muted); margin: 18px 0 22px;
+}
+.intro-go { width: 100%; }
+body.intro-open { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro.is-out { transition: none; }
+}
+
 /* --------------------------------------------------------------- topbar */
 .topbar {
   position: sticky; top: 0; z-index: 50;
@@ -102,10 +136,9 @@ body {
 }
 .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.brand-mark {
-  width: 38px; height: 38px; display: block; object-fit: cover;
-  border-radius: 11px;
-}
+/* 아이콘 PNG 가 이미 둥근 모서리를 품고 있다(모서리 밖은 투명).
+ * 여기서 또 border-radius 를 걸면 이중으로 깎여 모서리가 지저분해진다. */
+.brand-mark { width: 38px; height: 38px; display: block; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 /* h1 이지만 로고 자리라 크기는 그대로 둔다 — 의미만 h1, 모양은 기존과 동일 */
 .brand-text h1 { font-size: 15px; letter-spacing: -0.02em; font-weight: 700; margin: 0; }
@@ -1273,6 +1306,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* 상단바 반투명 배경도 어두운 쪽으로 */
   .topbar { background: rgba(15, 18, 32, 0.84); }
+
+  /* 인트로 배경은 라이트용 파스텔 그라데이션이라 어두운 톤으로 다시 잡는다 */
+  .intro { background: linear-gradient(150deg, #171a2b, #12151f 55%, #1d1726); }
+  .intro-card { background: rgba(24, 28, 44, 0.76); }
 
   /* 컬러 배경 위 흰 글자는 그대로 두되, 흰 면 위 검은 글자는 뒤집어야 한다 */
   .toast { background: #e9ecf5; color: #12151f; }

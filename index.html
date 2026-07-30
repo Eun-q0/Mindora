@@ -122,6 +122,40 @@ body {
 .aurora span:nth-child(2) { width: 540px; height: 540px; background: #9fe4f5; top: 16%; right: -200px; opacity: 0.42; }
 .aurora span:nth-child(3) { width: 640px; height: 640px; background: #ffc9e4; bottom: -320px; left: 34%; opacity: 0.34; }
 
+/* ---------------------------------------------------------------- intro
+ * 앱에 들어가기 전 한 번 보여 주는 소개 화면.
+ * 뒤 화면이 스크롤되지 않게 body 에 .intro-open 을 걸어 잠근다. */
+.intro {
+  position: fixed; inset: 0; z-index: 200;
+  display: grid; place-items: center; padding: 24px;
+  background: linear-gradient(150deg, #f7f2ff, #eef6ff 55%, #fdf1f8);
+  overflow-y: auto;
+}
+.intro[hidden] { display: none; }
+.intro.is-out { opacity: 0; transition: opacity 0.32s ease; }
+.intro-card {
+  width: 100%; max-width: 420px; text-align: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line); border-radius: 22px;
+  padding: 34px 26px 28px;
+  box-shadow: 0 24px 60px -30px rgba(60, 40, 130, 0.45);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.intro-logo { width: 84px; height: 84px; display: block; margin: 0 auto 16px; }
+.intro-title { font-size: 27px; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 6px; }
+.intro-lead { font-size: 15px; font-weight: 700; color: var(--accent); margin: 0 0 18px; }
+.intro-body { font-size: 14px; color: var(--muted); margin: 0 0 12px; text-align: left; }
+.intro-tag {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--muted); margin: 18px 0 22px;
+}
+.intro-go { width: 100%; }
+body.intro-open { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro.is-out { transition: none; }
+}
+
 /* --------------------------------------------------------------- topbar */
 .topbar {
   position: sticky; top: 0; z-index: 50;
@@ -131,10 +165,9 @@ body {
 }
 .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.brand-mark {
-  width: 38px; height: 38px; display: block; object-fit: cover;
-  border-radius: 11px;
-}
+/* 아이콘 PNG 가 이미 둥근 모서리를 품고 있다(모서리 밖은 투명).
+ * 여기서 또 border-radius 를 걸면 이중으로 깎여 모서리가 지저분해진다. */
+.brand-mark { width: 38px; height: 38px; display: block; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 /* h1 이지만 로고 자리라 크기는 그대로 둔다 — 의미만 h1, 모양은 기존과 동일 */
 .brand-text h1 { font-size: 15px; letter-spacing: -0.02em; font-weight: 700; margin: 0; }
@@ -1303,6 +1336,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 상단바 반투명 배경도 어두운 쪽으로 */
   .topbar { background: rgba(15, 18, 32, 0.84); }
 
+  /* 인트로 배경은 라이트용 파스텔 그라데이션이라 어두운 톤으로 다시 잡는다 */
+  .intro { background: linear-gradient(150deg, #171a2b, #12151f 55%, #1d1726); }
+  .intro-card { background: rgba(24, 28, 44, 0.76); }
+
   /* 컬러 배경 위 흰 글자는 그대로 두되, 흰 면 위 검은 글자는 뒤집어야 한다 */
   .toast { background: #e9ecf5; color: #12151f; }
   .toast.party { color: #fff; }
@@ -1340,6 +1377,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 </head>
 <body>
+
+<!-- 앱에 들어가기 전 인트로. JS 가 막히면 갇히지 않도록 CSS 로 숨기고 JS 가 켠다. -->
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle" hidden>
+  <div class="intro-card">
+    <img class="intro-logo" src="icon-512.png" alt="" aria-hidden="true">
+    <h2 class="intro-title" id="introTitle">Mindora</h2>
+    <p class="intro-lead">공부를 더 똑똑하게, 기억을 더 오래.</p>
+    <p class="intro-body">Mindora는 AI를 활용해 공부하고 싶은 내용을 쉽고 효율적으로 학습할 수 있도록 도와주는 스마트 학습 앱입니다.</p>
+    <p class="intro-body">복잡한 공부 내용을 정리하고, 핵심을 파악하고, 반복해서 학습하면서 단순히 읽는 공부에서 <b>기억하는 공부</b>로 바꿔보세요.</p>
+    <p class="intro-tag">Learn smarter. Remember longer.</p>
+    <button type="button" class="btn primary intro-go" id="introGo">시작하기</button>
+  </div>
+</div>
 
 <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
 
@@ -9873,6 +9923,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);
 
+    initIntro();
+    initInstallPrompt();
     registerServiceWorker();
   }
 
@@ -9926,6 +9978,40 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     $('installGo').classList.toggle('is-hidden', mode === 'ios');
     el.classList.remove('is-hidden');
+  }
+
+  /* ================================================================= 인트로
+   *
+   * 앱 화면에 들어가기 전에 소개를 한 번 보여 준다.
+   * 매번 뜨면 매일 쓰는 사람에게는 방해가 되므로, 이미 본 사람에게는
+   * 건너뛴다. (다시 보게 하려면 아래 키를 지우면 된다) */
+
+  var INTRO_SEEN_KEY = 'neurostudy.introSeen.v1';
+
+  function introSeen() {
+    try { return localStorage.getItem(INTRO_SEEN_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function closeIntro() {
+    var el = $('intro');
+    if (!el || el.hidden) return;
+    try { localStorage.setItem(INTRO_SEEN_KEY, '1'); } catch (e) { /* 무시 */ }
+    el.classList.add('is-out');
+    document.body.classList.remove('intro-open');
+    var done = function () { el.hidden = true; el.classList.remove('is-out'); };
+    // transitionend 가 오지 않는 환경(모션 축소 등)에서도 반드시 닫히게 한다
+    var t = setTimeout(done, 400);
+    el.addEventListener('transitionend', function () { clearTimeout(t); done(); }, { once: true });
+  }
+
+  function initIntro() {
+    var el = $('intro');
+    if (!el) return;
+    $('introGo').addEventListener('click', closeIntro);
+    if (introSeen()) return;
+    el.hidden = false;
+    document.body.classList.add('intro-open');
+    $('introGo').focus();
   }
 
   function initInstallPrompt() {

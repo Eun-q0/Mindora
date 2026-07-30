@@ -33,6 +33,19 @@
 </head>
 <body>
 
+<!-- 앱에 들어가기 전 인트로. JS 가 막히면 갇히지 않도록 CSS 로 숨기고 JS 가 켠다. -->
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle" hidden>
+  <div class="intro-card">
+    <img class="intro-logo" src="icon-512.png" alt="" aria-hidden="true">
+    <h2 class="intro-title" id="introTitle">Mindora</h2>
+    <p class="intro-lead">공부를 더 똑똑하게, 기억을 더 오래.</p>
+    <p class="intro-body">Mindora는 AI를 활용해 공부하고 싶은 내용을 쉽고 효율적으로 학습할 수 있도록 도와주는 스마트 학습 앱입니다.</p>
+    <p class="intro-body">복잡한 공부 내용을 정리하고, 핵심을 파악하고, 반복해서 학습하면서 단순히 읽는 공부에서 <b>기억하는 공부</b>로 바꿔보세요.</p>
+    <p class="intro-tag">Learn smarter. Remember longer.</p>
+    <button type="button" class="btn primary intro-go" id="introGo">시작하기</button>
+  </div>
+</div>
+
 <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
 
 <header class="topbar">
