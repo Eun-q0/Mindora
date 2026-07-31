@@ -15,9 +15,11 @@
     memorize: '암기형', calculate: '계산형', reading: '독해형',
     creative: '창의·서술형', mixed: '혼합형'
   };
+  /* 과목 유형 색 — 서로 구분은 되어야 하지만 앱 전체 색과 따로 놀면 안 된다.
+   * 파랑·초록·주황·분홍이 섞여 있던 걸 보라를 축으로 한 차가운 계열로 모았다. */
   var TYPE_COLOR = {
-    memorize: '#0284c7', calculate: '#0f9d6e', reading: '#d97706',
-    creative: '#db2777', mixed: '#6d4aff'
+    memorize: '#6d4aff', calculate: '#4f8ef7', reading: '#17a08a',
+    creative: '#a36bff', mixed: '#8b93a8'
   };
 
   function fmtDur(min) {

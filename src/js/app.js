@@ -605,6 +605,13 @@
     fillTtGradeOptions(p.grade);
     $('ttClass').value = p.klass || '';
     renderTimetable();
+    // 계획표 제목을 손대지 않았다면 새 이름을 따라가게 한다
+    if (state.vacplan && state.vacplan.titleAuto !== false) {
+      state.vacplan.title = nick + '의 계획표';
+      vpSave();
+      if ($('vpTitle')) $('vpTitle').value = state.vacplan.title;
+      vpRenderPreview();
+    }
     // 리그 참가를 프로필이 없던 시점(첫 화면)에 이미 켰다면 그때는 보낼 학교가 없어
     // 조용히 넘어갔었다 — 이제 프로필이 생겼으니 한 번 밀어 준다.
     if (Cloud.enabled()) leagueSync(true);
@@ -817,9 +824,10 @@
   /* ---------------------------------------------------------- 능력 카드 */
 
   function levelTag(level) {
-    if (level === 'high') return { t: '우수', c: '#067a55', b: '#e2f8ef' };
-    if (level === 'mid') return { t: '보통', c: '#0670a1', b: '#e2f4fd' };
-    return { t: '저하', c: '#a35c05', b: '#fdf1de' };
+    // 앱 전체 색과 같은 계열로 — 예전 하늘색·주황은 다른 화면과 따로 놀았다
+    if (level === 'high') return { t: '우수', c: '#0e6b5c', b: '#e8f7f3' };
+    if (level === 'mid') return { t: '보통', c: '#3f5bc4', b: '#eaeeff' };
+    return { t: '저하', c: '#7d5c1d', b: '#f9f2e4' };
   }
 
   function renderCapBars(a) {
@@ -1276,7 +1284,7 @@
         ? s.block.subject + ' · ' + s.block.minutes + '분 블록'
         : '화면에서 눈을 떼고 몸을 움직이세요';
       dial.style.strokeDashoffset = C * (1 - (s.totalMs ? s.remainingMs / s.totalMs : 0));
-      dial.style.stroke = isStudy ? (s.block.color || '#6d4aff') : '#0f9d6e';
+      dial.style.stroke = isStudy ? (s.block.color || '#6d4aff') : '#17a08a';
     }
 
     $('btnStart').textContent = s.running ? '⏸ 일시정지' : '▶ 시작';
@@ -1797,44 +1805,45 @@
    *   colors : 과목에 처음 나온 순서대로 배정되는 칸 색
    *
    * 글자를 #2f2f2f 로 얹으므로 칸 색은 모두 밝게 잡았다.
-   * 뒤쪽 조합들은 일부러 채도를 낮춰 뒀다 — 참고한 계획표들 중에도
-   * 무채색에 가깝게 맞춘 게 많아서, 그 분위기도 고를 수 있어야 한다. */
+   *
+   * 순서는 많이 쓸 것 같은 순이다 — 맨 앞이 새로 만들 때의 기본값이 된다.
+   * 참고한 계획표들도 채도 낮은 쪽이 많아서 무채색·차분한 조합을 앞에 뒀다. */
   var VP_PALETTES = [
     {
-      id: 'candy', name: '파스텔 사탕', head: '#bae1ff',
-      colors: ['#ffe3e3', '#ffefd6', '#fdf8d3', '#e2f6da', '#d9f1f0', '#dde9fb', '#e7dffb', '#fbdfee', '#eeeeee', '#e6ded5']
-    },
-    {
-      id: 'spring', name: '봄 소풍', head: '#b7e4c7',
-      colors: ['#d8f3dc', '#fdf8dc', '#ffe5d4', '#d7ecfa', '#e8ddf7', '#e4f0d9', '#fde2e4', '#f6f2e7']
-    },
-    {
-      id: 'peach', name: '피치 크림', head: '#ffb5a7',
-      colors: ['#ffe5d9', '#fcd5ce', '#fae1dd', '#ffeadd', '#f8edeb', '#fde2c8', '#f4dcd6', '#f0efeb']
-    },
-    {
-      id: 'sea', name: '바다 유리', head: '#a7d8de',
-      colors: ['#d6f0f2', '#dcecfa', '#e2e8f8', '#d4eae6', '#e6f4f1', '#dde7f0', '#eaf2f8', '#e9e4dc']
-    },
-    {
-      id: 'milk', name: '딸기 우유', head: '#f8bbd0',
-      colors: ['#fde3ec', '#fbe0e0', '#fdeee4', '#f7e2f0', '#f4e6f7', '#fdf0e6', '#f0e4e8', '#f7f1f0']
-    },
-    {
-      id: 'autumn', name: '가을 산책', head: '#e0b1a0',
-      colors: ['#f8ddd0', '#fbeacd', '#f0e6c8', '#dfe5d0', '#e9dcd2', '#f5d9d2', '#e3dbc9', '#f6f0e8']
-    },
-    {
-      id: 'forest', name: '숲속 아침', head: '#a3c9a8',
-      colors: ['#dceccd', '#e8f2dc', '#d6e8d5', '#eef1dd', '#dfe9de', '#e6ecd9', '#f0f2e4', '#e5e0d2']
+      id: 'mono', name: '모노 그레이', head: '#cfd4da',
+      colors: ['#f0f1f3', '#e4e7ea', '#eceae7', '#dcdfe2', '#f2efec', '#e8eaec', '#d6d9dc', '#f5f5f5']
     },
     {
       id: 'night', name: '밤하늘', head: '#aab8d8',
       colors: ['#e0e5f2', '#e6e2f0', '#dde6ef', '#e9e9f3', '#d9e2ee', '#e4dfec', '#eef0f6', '#e2e6ea']
     },
     {
-      id: 'mono', name: '모노 그레이', head: '#cfd4da',
-      colors: ['#f0f1f3', '#e4e7ea', '#eceae7', '#dcdfe2', '#f2efec', '#e8eaec', '#d6d9dc', '#f5f5f5']
+      id: 'berrymatcha', name: '딸기 말차', head: '#c3d9a8',
+      colors: ['#fbdce2', '#e8f0d8', '#f7c9d3', '#d5e3bd', '#fdf3e7', '#f0dde1', '#dfe9cd', '#f6ece0']
+    },
+    {
+      id: 'peach', name: '피치 크림', head: '#ffb5a7',
+      colors: ['#ffe5d9', '#fcd5ce', '#fae1dd', '#ffeadd', '#f8edeb', '#fde2c8', '#f4dcd6', '#f0efeb']
+    },
+    {
+      id: 'milk', name: '딸기 우유', head: '#f8bbd0',
+      colors: ['#fde3ec', '#fbe0e0', '#fdeee4', '#f7e2f0', '#f4e6f7', '#fdf0e6', '#f0e4e8', '#f7f1f0']
+    },
+    {
+      id: 'sea', name: '바다 유리', head: '#a7d8de',
+      colors: ['#d6f0f2', '#dcecfa', '#e2e8f8', '#d4eae6', '#e6f4f1', '#dde7f0', '#eaf2f8', '#e9e4dc']
+    },
+    {
+      id: 'forest', name: '숲속 아침', head: '#a3c9a8',
+      colors: ['#dceccd', '#e8f2dc', '#d6e8d5', '#eef1dd', '#dfe9de', '#e6ecd9', '#f0f2e4', '#e5e0d2']
+    },
+    {
+      id: 'autumn', name: '가을 산책', head: '#e0b1a0',
+      colors: ['#f8ddd0', '#fbeacd', '#f0e6c8', '#dfe5d0', '#e9dcd2', '#f5d9d2', '#e3dbc9', '#f6f0e8']
+    },
+    {
+      id: 'spring', name: '봄 소풍', head: '#b7e4c7',
+      colors: ['#d8f3dc', '#fdf8dc', '#ffe5d4', '#d7ecfa', '#e8ddf7', '#e4f0d9', '#fde2e4', '#f6f2e7']
     }
   ];
 
@@ -1867,9 +1876,13 @@
   }
 
   function vpDefaultModel() {
+    // 프로필에 적어 둔 이름을 그대로 써서 "지민의 계획표" 처럼 만들어 준다
+    var p = Store.profile();
+    var nick = p && String(p.nick || '').trim();
     return {
       subtitle: '여름방학',
-      title: '일일 계획표',
+      title: nick ? nick + '의 계획표' : '나의 계획표',
+      titleAuto: true,   // 사용자가 제목을 직접 고치면 false 가 된다
       font: 'sans',
       palette: VP_PALETTES[0].id,
       color: VP_PALETTES[0].head,
@@ -2366,6 +2379,7 @@
 
     $('vpTitle').addEventListener('input', function () {
       state.vacplan.title = $('vpTitle').value;
+      state.vacplan.titleAuto = false;   // 직접 고쳤으니 이름이 바뀌어도 건드리지 않는다
       vpSave();
       vpRefresh();
     });

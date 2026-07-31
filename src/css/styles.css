@@ -20,28 +20,32 @@
   --dim: #8b93a8;
   --track: #e6eaf4;          /* 게이지·막대의 빈 구간 */
 
+  /* 색은 보라(--accent)를 축으로 모아 둔다.
+   * 예전에는 청록·에메랄드·주황이 제각각 섞여 화면이 산만했다.
+   * 보조색은 보라 옆의 인디고로 옮기고, 상태색(성공·주의·오류)도
+   * 채도를 낮춰 보라와 같은 온도로 맞췄다. 새 색을 넣을 때도 이 범위를 지킬 것. */
   --accent: #6d4aff;
   --accent-soft: #f0ecff;
   --accent-line: #ddd4ff;
   --accent-ink: #45338f;
-  --accent-2: #0891b2;
-  --good: #0f9d6e;
-  --warn: #c2740a;
-  --bad: #dc3d55;
+  --accent-2: #5b7cff;       /* 보조색 — 보라 옆 인디고 (예전엔 청록이라 튀었다) */
+  --good: #17a08a;           /* 초록도 푸른 쪽으로 당겨 보라와 부딪히지 않게 */
+  --warn: #b07d2e;           /* 노랑기를 빼고 차분한 앰버로 */
+  --bad: #d4506a;            /* 붉은색도 보라와 이어지는 로즈로 */
 
   /* 상태 배지·알림에 쓰는 틴트 3종 (배경 / 테두리 / 글자) */
-  --ok-bg: #eafaf3;   --ok-line: #a5e0c6;   --ok-ink: #0b6b4c;
-  --warn-bg: #fbf2df; --warn-line: #efd9a3; --warn-ink: #8a6a15;
-  --bad-bg: #fff0f2;  --bad-line: #f6bcc5;  --bad-ink: #a81f38;
+  --ok-bg: #e8f7f3;   --ok-line: #a9ded2;   --ok-ink: #0e6b5c;
+  --warn-bg: #f9f2e4; --warn-line: #e6d5ae; --warn-ink: #7d5c1d;
+  --bad-bg: #fdeff2;  --bad-line: #f2bfca;  --bad-ink: #a3324a;
 
   /* 큰 카드 배경에 쓰는 은은한 그라데이션 */
-  --hero-grad: linear-gradient(135deg, #ffffff 0%, #f5f2ff 55%, #eef9fc 100%);
-  --ob-grad: linear-gradient(135deg, #ffffff 0%, #f3efff 60%, #e9f7fb 100%);
-  --gh-grad: linear-gradient(135deg, #ffffff 0%, #eef9fc 100%);
+  --hero-grad: linear-gradient(135deg, #ffffff 0%, #f5f2ff 55%, #eef1ff 100%);
+  --ob-grad: linear-gradient(135deg, #ffffff 0%, #f3efff 60%, #edf0ff 100%);
+  --gh-grad: linear-gradient(135deg, #ffffff 0%, #f0f1ff 100%);
 
-  --gold: #e0a010;
-  --silver: #8e9bb3;
-  --bronze: #bd7842;
+  --gold: #c9962e;
+  --silver: #8b93a8;
+  --bronze: #b07a54;
 
   --r: 16px;
   --r-sm: 10px;
@@ -90,8 +94,8 @@ body {
 .aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
 .aurora span { position: absolute; border-radius: 50%; filter: blur(80px); }
 .aurora span:nth-child(1) { width: 620px; height: 620px; background: #c9b8ff; top: -260px; left: -150px; opacity: 0.55; }
-.aurora span:nth-child(2) { width: 540px; height: 540px; background: #9fe4f5; top: 16%; right: -200px; opacity: 0.42; }
-.aurora span:nth-child(3) { width: 640px; height: 640px; background: #ffc9e4; bottom: -320px; left: 34%; opacity: 0.34; }
+.aurora span:nth-child(2) { width: 540px; height: 540px; background: #aebcff; top: 16%; right: -200px; opacity: 0.42; }
+.aurora span:nth-child(3) { width: 640px; height: 640px; background: #dcc4ff; bottom: -320px; left: 34%; opacity: 0.34; }
 
 /* ---------------------------------------------------------------- intro
  * 앱에 들어가기 전 한 번 보여 주는 소개 화면.
@@ -99,7 +103,7 @@ body {
 .intro {
   position: fixed; inset: 0; z-index: 200;
   display: grid; place-items: center; padding: 24px;
-  background: linear-gradient(150deg, #f7f2ff, #eef6ff 55%, #fdf1f8);
+  background: linear-gradient(150deg, #f7f2ff, #eef0ff 55%, #f8f0fd);
   overflow-y: auto;
 }
 .intro[hidden] { display: none; }
@@ -163,8 +167,8 @@ body.intro-open { overflow: hidden; }
 }
 .step:hover { color: var(--text); background: var(--surface-2); }
 .step.is-active { color: var(--text); background: var(--surface); border-color: var(--line-2); box-shadow: var(--shadow-sm); }
-.step.is-active i { background: linear-gradient(140deg, #7c5cff, #22b8d8); color: #fff; }
-.step.is-done i { background: #d6f5e8; color: var(--good); }
+.step.is-active i { background: linear-gradient(140deg, #7c5cff, #5b7cff); color: #fff; }
+.step.is-done i { background: var(--ok-bg); color: var(--good); }
 
 .clock { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); flex-shrink: 0; }
 
@@ -176,7 +180,7 @@ body.intro-open { overflow: hidden; }
 }
 .profile-chip:hover { border-color: var(--accent); }
 .profile-chip.is-hidden { display: none; }
-.pc-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0; background: linear-gradient(140deg, #7c5cff, #22b8d8); }
+.pc-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0; background: linear-gradient(140deg, #7c5cff, #5b7cff); }
 .pc-txt { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
 .pc-txt b { font-size: 12.5px; font-weight: 700; }
 .pc-txt span { font-size: 10.5px; color: var(--muted); }
@@ -327,7 +331,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .g-state { margin-top: 9px; font-size: 12.5px; font-weight: 700; padding: 4px 13px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-2); }
 .g-state.excellent { color: #6d28d9; background: #f3ebff; border-color: #d8c5ff; }
 .g-state.good { color: var(--ok-ink); background: var(--ok-bg); border-color: var(--ok-line); }
-.g-state.fair { color: #0670a1; background: #e2f4fd; border-color: #97d4ee; }
+.g-state.fair { color: #3f5bc4; background: #eaeeff; border-color: #b9c6f5; }
 .g-state.low { color: var(--warn-ink); background: var(--warn-bg); border-color: var(--warn-line); }
 .g-state.critical { color: var(--bad-ink); background: var(--bad-bg); border-color: var(--bad-line); }
 
@@ -393,7 +397,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .ct-mid { position: relative; height: 16px; }
 .ct-mid::before { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--line-2); }
 .ct-bar { position: absolute; top: 3px; height: 10px; border-radius: 3px; }
-.ct-bar.pos { left: 50%; background: linear-gradient(90deg, #7fdcb8, var(--good)); }
+.ct-bar.pos { left: 50%; background: linear-gradient(90deg, #8fddcd, var(--good)); }
 .ct-bar.neg { right: 50%; background: linear-gradient(270deg, #f5a3af, var(--bad)); }
 .ct-val { font-size: 12px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .ct-val.pos { color: var(--good); }
@@ -409,7 +413,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .pm-k { font-size: 11px; color: var(--dim); margin-bottom: 5px; }
 .pm-v { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .pm-v small { font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 2px; }
-.pm.hi { background: linear-gradient(140deg, #f3efff, #e8f7fb); border-color: var(--accent-line); }
+.pm.hi { background: linear-gradient(140deg, #f3efff, #edf0ff); border-color: var(--accent-line); }
 .pom-note { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); padding: 12px 15px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line); line-height: 1.7; }
 
 /* ------------------------------------------------------------ allocation */
@@ -495,7 +499,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .live-total {
   display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center;
   padding: 16px 18px; border-radius: var(--r); border: 1px solid var(--accent-line);
-  background: linear-gradient(135deg, #f6f3ff, #eef9fc); box-shadow: var(--shadow-sm);
+  background: linear-gradient(135deg, #f6f3ff, #eef1ff); box-shadow: var(--shadow-sm);
 }
 .lt-k { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
 .lt-v { font-size: 30px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--accent-ink); }
@@ -503,7 +507,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .lt-goal { min-width: 0; }
 .lt-goal-top { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
 .lt-track { height: 9px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
-.lt-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #22b8d8); width: 0; transition: width 0.6s cubic-bezier(0.22,1,0.36,1); }
+.lt-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #5b7cff); width: 0; transition: width 0.6s cubic-bezier(0.22,1,0.36,1); }
 .rec-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--bad); margin-right: 6px; vertical-align: 1px; }
 .rec-dot.live { animation: blink 1.4s ease-in-out infinite; }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
@@ -619,7 +623,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .rep-nav .wk { font-size: 14px; font-weight: 700; min-width: 190px; text-align: center; }
 .rep-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
 .rs { padding: 16px 17px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
-.rs.hi { background: linear-gradient(140deg, #f3efff, #e8f7fb); border-color: var(--accent-line); }
+.rs.hi { background: linear-gradient(140deg, #f3efff, #edf0ff); border-color: var(--accent-line); }
 .rs-k { font-size: 11px; color: var(--dim); margin-bottom: 4px; }
 .rs-v { font-size: 25px; font-weight: 800; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .rs-v small { font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 2px; }
@@ -633,7 +637,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .wb-col { width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; flex: 1; }
 .wb-val { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .wb-bar { width: 100%; max-width: 42px; border-radius: 7px 7px 3px 3px; background: linear-gradient(180deg, #8b6dff, #6d4aff); min-height: 3px; transition: height 0.7s cubic-bezier(0.22,1,0.36,1); }
-.wb.today .wb-bar { background: linear-gradient(180deg, #22c9e8, #0891b2); }
+.wb.today .wb-bar { background: linear-gradient(180deg, #8b6dff, #5b7cff); }
 .wb.zero .wb-bar { background: var(--surface-2); }
 .wb-day { font-size: 11.5px; color: var(--muted); font-weight: 600; }
 .wb.today .wb-day { color: var(--accent-2); font-weight: 800; }
@@ -663,13 +667,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 .kid-hero {
   display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: center;
-  padding: 24px 28px; border-radius: var(--r); border: 1px solid #ffdca8;
-  background: linear-gradient(135deg, #fff9ec 0%, #f6f0ff 55%, #eaf9fd 100%);
+  padding: 24px 28px; border-radius: var(--r); border: 1px solid var(--accent-line);
+  background: linear-gradient(135deg, #faf7ff 0%, #f3efff 55%, #edf0ff 100%);
   box-shadow: var(--shadow); margin-bottom: 16px;
 }
 .kh-char {
   width: 104px; height: 104px; border-radius: 26px; display: grid; place-items: center;
-  font-size: 52px; background: var(--surface); border: 2px solid #ffe2b5;
+  font-size: 52px; background: var(--surface); border: 2px solid var(--accent-line);
   box-shadow: 0 10px 26px -12px rgba(224, 160, 16, 0.6);
   animation: bob 3.2s ease-in-out infinite;
 }
@@ -679,8 +683,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .kh-lv { font-size: 12px; font-weight: 800; padding: 3px 11px; border-radius: 999px; background: var(--accent); color: #fff; }
 .kh-line { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
 .xp-top { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
-.xp-track { height: 13px; border-radius: 999px; background: var(--surface); border: 1px solid #ffe2b5; overflow: hidden; }
-.xp-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ffb020, #ff7a45 55%, #f24b8f); width: 0; transition: width 0.9s cubic-bezier(0.22,1,0.36,1); }
+.xp-track { height: 13px; border-radius: 999px; background: var(--surface); border: 1px solid var(--accent-line); overflow: hidden; }
+.xp-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #8b6dff 55%, #a36bff); width: 0; transition: width 0.9s cubic-bezier(0.22,1,0.36,1); }
 .kh-stats { display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap; }
 .kh-stats span { font-size: 12px; color: var(--muted); }
 .kh-stats b { font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -697,7 +701,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .mission.done .ms-text { color: var(--ok-ink); }
 .ms-track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .ms-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #8b6dff, #6d4aff); transition: width 0.7s cubic-bezier(0.22,1,0.36,1); }
-.mission.done .ms-fill { background: linear-gradient(90deg, #4fd6a4, #0f9d6e); }
+.mission.done .ms-fill { background: linear-gradient(90deg, #5fd3bd, var(--good)); }
 .ms-num { font-size: 10.5px; color: var(--dim); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .ms-state { font-size: 20px; }
 .ms-state small { display: block; font-size: 9.5px; color: var(--good); font-weight: 800; text-align: center; }
@@ -723,13 +727,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .badge .bi { font-size: 27px; line-height: 1.25; filter: grayscale(1); opacity: 0.35; transition: 0.18s; }
 .badge .bn { font-size: 12.5px; font-weight: 700; margin-top: 5px; color: var(--dim); }
 .badge .bd { font-size: 10.5px; color: var(--dim); line-height: 1.5; margin-top: 3px; }
-.badge.got { background: linear-gradient(140deg, #fffaf0, #fff5ff); border-color: #ffd89a; }
+.badge.got { background: linear-gradient(140deg, #faf7ff, #f3efff); border-color: var(--accent-line); }
 .badge.got .bi { filter: none; opacity: 1; }
 .badge.got .bn { color: var(--text); }
 .badge.got .bd { color: var(--muted); }
 
 /* 축하 토스트 */
-.toast.party { background: linear-gradient(120deg, #7c5cff, #f24b8f); font-size: 14px; padding: 13px 24px; }
+.toast.party { background: linear-gradient(120deg, #7c5cff, #a36bff); font-size: 14px; padding: 13px 24px; }
 
 /* ==================================================== 집중 사운드 ==== */
 .snd-bar { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: center; margin-bottom: 14px; }
@@ -738,14 +742,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .snd-now {
   display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 14px; align-items: center;
   padding: 15px 16px; border-radius: var(--r-sm);
-  background: linear-gradient(135deg, #f3f0ff, #e9f7fb); border: 1px solid var(--accent-line);
+  background: linear-gradient(135deg, #f3f0ff, #edf0ff); border: 1px solid var(--accent-line);
 }
 .sn-icon { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; background: var(--surface); border: 1px solid var(--line); }
 .sn-icon.on { animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(109, 74, 255, 0.30); } 50% { box-shadow: 0 0 0 9px rgba(109, 74, 255, 0); } }
 .sn-name { font-size: 15px; font-weight: 750; letter-spacing: -0.02em; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .sn-tag { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 5px; background: var(--accent); color: #fff; }
-.sn-tag.auto { background: #0f9d6e; }
+.sn-tag.auto { background: var(--good); }
 .sn-reason { font-size: 12px; color: var(--muted); margin: 5px 0 0; line-height: 1.6; }
 
 .snd-picker { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -819,7 +823,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 }
 .mc-type { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 6px; }
 .mc-type.조식 { background: var(--warn-bg); color: var(--warn-ink); }
-.mc-type.중식 { background: #e6f5ff; color: #0670a1; }
+.mc-type.중식 { background: #eaeeff; color: #3f5bc4; }
 .mc-type.석식 { background: #f1ebff; color: #6d28d9; }
 .mc-kcal { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .mc-body { padding: 10px 12px; }
@@ -1372,22 +1376,22 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     --accent-soft: #262244;
     --accent-line: #453c78;
     --accent-ink: #cabfff;
-    --accent-2: #22b8d8;
-    --good: #3ecf9a;
-    --warn: #e5a44b;
-    --bad: #ff7089;
+    --accent-2: #8fa5ff;
+    --good: #4bd0b4;
+    --warn: #d9a95e;
+    --bad: #ff7f95;
 
-    --ok-bg: #16302a;   --ok-line: #2a5a4a;   --ok-ink: #7ee2b8;
-    --warn-bg: #332a17;  --warn-line: #5c4a26; --warn-ink: #f0cd85;
-    --bad-bg: #351d24;   --bad-line: #5e2f3b;  --bad-ink: #ff9aab;
+    --ok-bg: #14302b;   --ok-line: #275a51;   --ok-ink: #7fe0cd;
+    --warn-bg: #322a1a;  --warn-line: #5a4b2c; --warn-ink: #e8c98f;
+    --bad-bg: #331e26;   --bad-line: #5c2f3d;  --bad-ink: #ff98ac;
 
-    --hero-grad: linear-gradient(135deg, #1b2033 0%, #201c38 55%, #16283a 100%);
-    --ob-grad: linear-gradient(135deg, #1b2033 0%, #221d3b 60%, #152736 100%);
-    --gh-grad: linear-gradient(135deg, #1b2033 0%, #16283a 100%);
+    --hero-grad: linear-gradient(135deg, #1b2033 0%, #201c38 55%, #1a1f3d 100%);
+    --ob-grad: linear-gradient(135deg, #1b2033 0%, #221d3b 60%, #191d38 100%);
+    --gh-grad: linear-gradient(135deg, #1b2033 0%, #1a1f3d 100%);
 
-    --gold: #f0bc45;
+    --gold: #dcb054;
     --silver: #aab5cb;
-    --bronze: #d6935a;
+    --bronze: #c98f62;
 
     /* 어두운 면 위에서는 그림자가 거의 안 보인다. 더 진하게 깔아 층을 만든다. */
     --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.4), 0 12px 32px -12px rgba(0, 0, 0, 0.6);
@@ -1410,13 +1414,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* 급식 종류 배지 — 라이트용 파스텔이라 어두운 톤으로 다시 잡는다 */
   .mc-type.조식 { background: var(--warn-bg); color: var(--warn-ink); }
-  .mc-type.중식 { background: #16293a; color: #8fd0f0; }
+  .mc-type.중식 { background: #1c2140; color: #aebcff; }
   .mc-type.석식 { background: var(--accent-soft); color: var(--accent-ink); }
 
   /* 종합 컨디션 배지 */
   .g-state.excellent { color: #cbb2ff; background: #251d3f; border-color: #453270; }
   .g-state.good { color: var(--ok-ink); background: var(--ok-bg); border-color: var(--ok-line); }
-  .g-state.fair { color: #8fd0f0; background: #16293a; border-color: #27506e; }
+  .g-state.fair { color: #aebcff; background: #1c2140; border-color: #33407a; }
 
   /* 도장판 — 밝은 노랑 배경을 어둡게 */
   .stamp.got .sc { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
