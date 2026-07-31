@@ -918,6 +918,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 }
 .vp-del:hover { color: var(--bad); background: var(--bad-bg); }
 
+.vp-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
+.vp-pal {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+  border: 1.5px solid var(--line); border-radius: 11px; padding: 8px;
+  background: var(--surface-3); cursor: pointer; text-align: left;
+  transition: border-color .12s ease, transform .1s ease;
+}
+.vp-pal:hover { border-color: var(--line-2); transform: translateY(-1px); }
+.vp-pal.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.vp-pal-chips { display: flex; gap: 0; border-radius: 6px; overflow: hidden; height: 22px; }
+.vp-pal-chips i { flex: 1; display: block; }
+.vp-pal-name { font-size: 12px; font-weight: 600; color: var(--text); }
+
 .vp-legend { display: flex; flex-wrap: wrap; gap: 7px; }
 .vp-lg {
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
@@ -2017,6 +2030,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
             <input type="text" id="vpTitle" class="input" maxlength="30" placeholder="예) 일일 계획표">
           </div>
         </div>
+        <div class="field">
+          <label>색 조합 <em>고르면 과목 색이 한 번에 바뀝니다</em></label>
+          <div class="vp-palettes" id="vpPalettes"></div>
+        </div>
         <div class="two-col">
           <div class="field">
             <label for="vpFont">글씨체</label>
@@ -2028,7 +2045,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           </div>
         </div>
         <div class="field">
-          <label>과목별 색상 <em>같은 과목은 같은 색으로 칠해집니다</em></label>
+          <label>과목별 색상 <em>하나씩 따로 바꾸고 싶을 때</em></label>
           <div class="vp-legend" id="vpLegend"></div>
         </div>
       </div>
@@ -9057,12 +9074,56 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 머리글(요일 줄) 파스텔톤 8색 */
   var VP_COLORS = ['#ffb3ba', '#ffdfba', '#fdf5ba', '#baffc9', '#bae1ff', '#d0baff', '#ffbae5', '#c4fff0'];
 
-  /* 칸 채우기용 파스텔 — 같은 과목끼리 같은 색이 되도록 자동 배정한다.
-   * 인스타에 올라오는 계획표들이 과목마다 색을 달리 칠하는 걸 따라간 것. */
-  var VP_CELL_COLORS = [
-    '#ffe3e3', '#ffefd6', '#fdf8d3', '#e2f6da', '#d9f1f0',
-    '#dde9fb', '#e7dffb', '#fbdfee', '#eeeeee', '#e6ded5'
+  /* 색 조합(팔레트) — 하나를 고르면 과목 색이 한꺼번에 바뀐다.
+   *
+   *   head   : 요일 줄 색
+   *   colors : 과목에 처음 나온 순서대로 배정되는 칸 색
+   *
+   * 글자를 #2f2f2f 로 얹으므로 칸 색은 모두 밝게 잡았다.
+   * 뒤쪽 조합들은 일부러 채도를 낮춰 뒀다 — 참고한 계획표들 중에도
+   * 무채색에 가깝게 맞춘 게 많아서, 그 분위기도 고를 수 있어야 한다. */
+  var VP_PALETTES = [
+    {
+      id: 'candy', name: '파스텔 사탕', head: '#bae1ff',
+      colors: ['#ffe3e3', '#ffefd6', '#fdf8d3', '#e2f6da', '#d9f1f0', '#dde9fb', '#e7dffb', '#fbdfee', '#eeeeee', '#e6ded5']
+    },
+    {
+      id: 'spring', name: '봄 소풍', head: '#b7e4c7',
+      colors: ['#d8f3dc', '#fdf8dc', '#ffe5d4', '#d7ecfa', '#e8ddf7', '#e4f0d9', '#fde2e4', '#f6f2e7']
+    },
+    {
+      id: 'peach', name: '피치 크림', head: '#ffb5a7',
+      colors: ['#ffe5d9', '#fcd5ce', '#fae1dd', '#ffeadd', '#f8edeb', '#fde2c8', '#f4dcd6', '#f0efeb']
+    },
+    {
+      id: 'sea', name: '바다 유리', head: '#a7d8de',
+      colors: ['#d6f0f2', '#dcecfa', '#e2e8f8', '#d4eae6', '#e6f4f1', '#dde7f0', '#eaf2f8', '#e9e4dc']
+    },
+    {
+      id: 'milk', name: '딸기 우유', head: '#f8bbd0',
+      colors: ['#fde3ec', '#fbe0e0', '#fdeee4', '#f7e2f0', '#f4e6f7', '#fdf0e6', '#f0e4e8', '#f7f1f0']
+    },
+    {
+      id: 'autumn', name: '가을 산책', head: '#e0b1a0',
+      colors: ['#f8ddd0', '#fbeacd', '#f0e6c8', '#dfe5d0', '#e9dcd2', '#f5d9d2', '#e3dbc9', '#f6f0e8']
+    },
+    {
+      id: 'forest', name: '숲속 아침', head: '#a3c9a8',
+      colors: ['#dceccd', '#e8f2dc', '#d6e8d5', '#eef1dd', '#dfe9de', '#e6ecd9', '#f0f2e4', '#e5e0d2']
+    },
+    {
+      id: 'night', name: '밤하늘', head: '#aab8d8',
+      colors: ['#e0e5f2', '#e6e2f0', '#dde6ef', '#e9e9f3', '#d9e2ee', '#e4dfec', '#eef0f6', '#e2e6ea']
+    },
+    {
+      id: 'mono', name: '모노 그레이', head: '#cfd4da',
+      colors: ['#f0f1f3', '#e4e7ea', '#eceae7', '#dcdfe2', '#f2efec', '#e8eaec', '#d6d9dc', '#f5f5f5']
+    }
   ];
+
+  function vpPalette(id) {
+    return VP_PALETTES.filter(function (p) { return p.id === id; })[0] || VP_PALETTES[0];
+  }
 
   function vpFont(id) {
     return VP_FONTS.filter(function (x) { return x.id === id; })[0] || VP_FONTS[0];
@@ -9093,7 +9154,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       subtitle: '여름방학',
       title: '일일 계획표',
       font: 'sans',
-      color: VP_COLORS[4],
+      palette: VP_PALETTES[0].id,
+      color: VP_PALETTES[0].head,
       days: ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'],
       colors: {},
       rows: [
@@ -9127,23 +9189,61 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       // 옛 저장본에는 없던 항목들을 채워 준다
       if (typeof m.subtitle !== 'string') m.subtitle = '';
       if (!m.colors || typeof m.colors !== 'object') m.colors = {};
+      if (!VP_PALETTES.some(function (p) { return p.id === m.palette; })) m.palette = VP_PALETTES[0].id;
       // 목록에서 사라진 글씨체를 저장해 뒀다면 기본값으로 되돌린다
       if (!VP_FONTS.some(function (f) { return f.id === m.font; })) m.font = VP_FONTS[0].id;
       return m;
     } catch (e) { return vpDefaultModel(); }
   }
 
-  /** 새로 등장한 과목에 파스텔 색을 차례로 배정한다 (이미 정해진 색은 건드리지 않는다) */
+  /** 새로 등장한 과목에 지금 팔레트의 색을 차례로 배정한다 (이미 정해진 색은 건드리지 않는다) */
   function vpEnsureColors(m) {
     if (!m.colors) m.colors = {};
+    var pal = vpPalette(m.palette).colors;
     var idx = Object.keys(m.colors).length;
     m.rows.forEach(function (r) {
       r.cells.forEach(function (c) {
         var t = String(c || '').trim();
         if (!t || m.colors[t]) return;
-        m.colors[t] = VP_CELL_COLORS[idx % VP_CELL_COLORS.length];
+        m.colors[t] = pal[idx % pal.length];
         idx++;
       });
+    });
+  }
+
+  /** 색 조합을 고르면 요일 줄 색과 과목 색을 그 조합으로 전부 다시 칠한다 */
+  function vpApplyPalette(id) {
+    var m = state.vacplan;
+    var p = vpPalette(id);
+    m.palette = p.id;
+    m.color = p.head;
+    m.colors = {};          // 비워 두면 vpEnsureColors 가 새 조합으로 다시 배정한다
+    vpEnsureColors(m);
+    vpSave();
+
+    renderVpPalettes();
+    paintVpSwatches();
+    buildVpTable();
+    renderVpLegend();
+    vpRenderPreview();
+  }
+
+  function renderVpPalettes() {
+    var wrap = $('vpPalettes');
+    if (!wrap) return;
+    var m = state.vacplan;
+
+    wrap.innerHTML = VP_PALETTES.map(function (p) {
+      var chips = [p.head].concat(p.colors.slice(0, 5)).map(function (c) {
+        return '<i style="background:' + c + '"></i>';
+      }).join('');
+      return '<button type="button" class="vp-pal' + (p.id === m.palette ? ' on' : '') + '">' +
+        '<span class="vp-pal-chips">' + chips + '</span>' +
+        '<span class="vp-pal-name">' + esc(p.name) + '</span></button>';
+    }).join('');
+
+    $$('.vp-pal', wrap).forEach(function (b, i) {
+      b.addEventListener('click', function () { vpApplyPalette(VP_PALETTES[i].id); });
     });
   }
 
@@ -9533,6 +9633,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('vpTitle').value = m.title || '';
     $('vpSubtitle').value = m.subtitle || '';
     $('vpFont').value = m.font;
+    renderVpPalettes();
     paintVpSwatches();
     buildVpTable();
     renderVpLegend();
