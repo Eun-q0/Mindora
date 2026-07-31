@@ -59,33 +59,6 @@ create or replace view public.school_week as
 
 grant select on public.school_week to anon, authenticated;
 
--- ────────────────────────────────────────────────── 유일한 쓰기 통로
--- security definer 라서 RLS 를 우회한다. 그만큼 입력 검증을 여기서 다 한다.
--- 옛 앱(서비스 워커 캐시)이 부르는 4-인자 버전. 검증을 여기에 따로 두면
--- 두 통로의 규칙이 어긋나고, 공격자는 느슨한 쪽만 골라 쓴다.
--- 그래서 학급 정보를 비운 채 7-인자 본체로 넘기기만 한다.
---
--- 이 경로로 들어오면 그 기기의 학년·반은 지워진다. 학급 대항전에 동의한
--- 사람이 캐시된 옛 화면을 열어 두면 잠깐 빠졌다가, 새 앱이 다음 동기화에서
--- 다시 채운다. 덜 보내는 쪽으로 틀리는 것이라 이대로 둔다.
-create or replace function public.report_league(
-  p_device  uuid,
-  p_week    date,
-  p_school  text,
-  p_minutes integer
-) returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  perform public.report_league(p_device, p_week, p_school, p_minutes, null, null, null);
-end;
-$$;
-
-revoke all on function public.report_league(uuid, date, text, integer) from public;
-grant execute on function public.report_league(uuid, date, text, integer) to anon, authenticated;
-
 -- =========================================================================
 -- 학급 대항전 (이벤트용)
 --
@@ -240,6 +213,35 @@ $$;
 
 revoke all on function public.report_league(uuid, date, text, integer, text, text, text) from public;
 grant execute on function public.report_league(uuid, date, text, integer, text, text, text) to anon, authenticated;
+
+-- ────────────────────────────────── 옛 앱이 부르는 4-인자 버전 (호환용)
+-- 서비스 워커에 캐시된 옛 앱은 아직 이 이름으로 부른다.
+-- 검증을 여기에 한 벌 더 두면 두 통로의 규칙이 어긋나고, 공격자는 느슨한
+-- 쪽만 골라 쓴다. 그래서 학급 정보를 비운 채 위 본체로 넘기기만 한다.
+-- (위 함수가 반드시 먼저 만들어져 있어야 하므로 순서를 바꾸지 말 것)
+--
+-- 이 경로로 들어오면 그 기기의 학년·반은 지워진다. 학급 대항전에 동의한
+-- 사람이 캐시된 옛 화면을 열어 두면 잠깐 빠졌다가, 새 앱이 다음 동기화에서
+-- 다시 채운다. 덜 보내는 쪽으로 틀리는 것이라 이대로 둔다.
+create or replace function public.report_league(
+  p_device  uuid,
+  p_week    date,
+  p_school  text,
+  p_minutes integer
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- 명시적 캐스트를 붙여 어느 오버로드를 부르는지 모호해지지 않게 한다
+  perform public.report_league(p_device, p_week, p_school, p_minutes,
+                               null::text, null::text, null::text);
+end;
+$$;
+
+revoke all on function public.report_league(uuid, date, text, integer) from public;
+grant execute on function public.report_league(uuid, date, text, integer) to anon, authenticated;
 
 -- =========================================================================
 -- 이벤트 정산 — 막는 게 아니라 걸러내는 쪽으로 설계한다
