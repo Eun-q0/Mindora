@@ -16,6 +16,7 @@
     queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
     page: 'secInput',
     pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
+    vacplan: null,      // 방학 계획표 모델
     span: null,        // 진행 중인 순공 구간
     lastFlush: 0,
     lastSoundKey: null // 같은 상태에서 사운드를 다시 트는 것을 막는다
@@ -119,6 +120,7 @@
     { id: 'secResult', num: '2', label: '뇌 분석', hash: 'result', needAnalysis: true },
     { id: 'secPlan', num: '3', label: '학습 플랜', hash: 'plan', needAnalysis: true },
     { id: 'secTimer', num: '4', label: '타이머', hash: 'timer', needAnalysis: true },
+    { id: 'secVacPlan', num: '📅', label: '계획표', hash: 'vacplan' },
     { id: 'secKids', num: '★', label: '내 성장', hash: 'grow', kidsOnly: true },
     { id: 'secGroup', num: '5', label: '랭킹', hash: 'rank' },
     { id: 'secLeague', num: '🏆', label: '리그', hash: 'league' },
@@ -1772,6 +1774,300 @@
     $('ttClass').addEventListener('change', renderTimetable);
   }
 
+  /* ====================================================== 방학 계획표 == */
+
+  var VP_KEY = 'neurostudy.vacplan.v1';
+
+  var VP_FONTS = [
+    { id: 'sans', label: '기본 고딕', css: "'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif" },
+    { id: 'round', label: '둥근 고딕', css: "Dotum,'돋움','Apple SD Gothic Neo',sans-serif" },
+    { id: 'serif', label: '명조체', css: "Batang,'바탕','Apple SD Gothic Neo',serif" },
+    { id: 'gungseo', label: '궁서체', css: "Gungsuh,'궁서',serif" },
+    { id: 'mono', label: '타자기', css: "'D2Coding',Consolas,monospace" }
+  ];
+
+  var VP_COLORS = ['#6d4aff', '#0284c7', '#0f9d6e', '#db2777', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
+
+  function vpFontCss(id) {
+    var f = VP_FONTS.filter(function (x) { return x.id === id; })[0];
+    return f ? f.css : VP_FONTS[0].css;
+  }
+
+  function vpDefaultModel() {
+    return {
+      title: '나의 방학 생활계획표',
+      font: 'sans',
+      color: '#6d4aff',
+      days: ['월', '화', '수', '목', '금', '토', '일'],
+      rows: [
+        { time: '07:00', cells: Array(7).fill('기상') },
+        { time: '08:00', cells: Array(7).fill('아침식사') },
+        { time: '09:00~11:00', cells: ['자기주도학습', '자기주도학습', '자기주도학습', '자기주도학습', '자기주도학습', '자유시간', '자유시간'] },
+        { time: '12:00', cells: Array(7).fill('점심식사') },
+        { time: '14:00~16:00', cells: ['독서 · 취미', '독서 · 취미', '독서 · 취미', '독서 · 취미', '독서 · 취미', '운동', '가족시간'] },
+        { time: '19:00', cells: Array(7).fill('저녁식사') },
+        { time: '22:30', cells: Array(7).fill('취침 준비') }
+      ]
+    };
+  }
+
+  function vpLoad() {
+    try {
+      var raw = localStorage.getItem(VP_KEY);
+      if (!raw) return vpDefaultModel();
+      var m = JSON.parse(raw);
+      if (!m || !m.rows || !m.days || !m.rows.length || !m.days.length) return vpDefaultModel();
+      return m;
+    } catch (e) { return vpDefaultModel(); }
+  }
+
+  function vpSave() {
+    try { localStorage.setItem(VP_KEY, JSON.stringify(state.vacplan)); } catch (e) { /* 무시 */ }
+  }
+
+  function vpHexToRgb(hex) {
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || ''));
+    return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 109, g: 74, b: 255 };
+  }
+
+  function vpContrast(hex) {
+    var c = vpHexToRgb(hex);
+    var lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+    return lum > 150 ? '#141414' : '#ffffff';
+  }
+
+  function vpTint(hex, alpha) {
+    var c = vpHexToRgb(hex);
+    return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + alpha + ')';
+  }
+
+  function buildVpTable() {
+    var table = $('vpTable');
+    if (!table) return;
+    var m = state.vacplan;
+    var acc = m.color || '#6d4aff';
+    var fg = vpContrast(acc);
+    var tint = vpTint(acc, 0.12);
+
+    table.innerHTML =
+      '<thead><tr><th class="vp-corner"></th>' +
+      m.days.map(function (d, i) {
+        return '<th class="vp-day" data-day="' + i + '" contenteditable="true" spellcheck="false"></th>';
+      }).join('') + '<th class="vp-corner"></th></tr></thead>' +
+      '<tbody>' + m.rows.map(function (r, ri) {
+        return '<tr data-row="' + ri + '">' +
+          '<td class="vp-time" contenteditable="true" spellcheck="false"></td>' +
+          r.cells.map(function (c, ci) {
+            return '<td class="vp-cell" data-col="' + ci + '" contenteditable="true" spellcheck="false"></td>';
+          }).join('') +
+          '<td class="vp-rowdel"><button type="button" class="vp-del" data-row="' + ri + '" title="시간대 삭제">✕</button></td></tr>';
+      }).join('') + '</tbody>';
+
+    $$('.vp-day', table).forEach(function (th, i) {
+      th.textContent = m.days[i] || '';
+      th.style.background = acc;
+      th.style.color = fg;
+      th.addEventListener('input', function () { m.days[i] = th.textContent.trim(); vpSave(); });
+    });
+    $$('.vp-time', table).forEach(function (td, i) {
+      td.textContent = m.rows[i].time || '';
+      td.style.background = tint;
+      td.addEventListener('input', function () { m.rows[i].time = td.textContent.trim(); vpSave(); });
+    });
+    $$('.vp-cell', table).forEach(function (td) {
+      var tr = td.closest('tr'); var ri = parseInt(tr.dataset.row, 10);
+      var ci = parseInt(td.dataset.col, 10);
+      td.textContent = m.rows[ri].cells[ci] || '';
+      td.addEventListener('input', function () { m.rows[ri].cells[ci] = td.textContent.trim(); vpSave(); });
+    });
+    $$('.vp-del', table).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (m.rows.length <= 1) { toast('시간대는 최소 1개가 필요합니다.', true); return; }
+        m.rows.splice(parseInt(btn.dataset.row, 10), 1);
+        vpSave();
+        buildVpTable();
+      });
+    });
+
+    table.style.fontFamily = vpFontCss(m.font);
+    table.style.setProperty('--vp-accent', acc);
+  }
+
+  function paintVpSwatches() {
+    var wrap = $('vpSwatches');
+    if (!wrap) return;
+    var m = state.vacplan;
+    wrap.innerHTML = VP_COLORS.map(function (c) {
+      return '<button type="button" class="vp-swatch' + (c === m.color ? ' on' : '') + '" style="background:' +
+        c + '" data-c="' + c + '" title="' + c + '" aria-label="' + c + '"></button>';
+    }).join('') +
+      '<input type="color" id="vpColorCustom" class="vp-swatch vp-swatch-custom" value="' + (m.color || '#6d4aff') + '" title="직접 선택">';
+
+    $$('.vp-swatch[data-c]', wrap).forEach(function (b) {
+      b.addEventListener('click', function () {
+        m.color = b.dataset.c;
+        vpSave();
+        paintVpSwatches();
+        buildVpTable();
+      });
+    });
+    $('vpColorCustom').addEventListener('input', function () {
+      m.color = this.value;
+      vpSave();
+      buildVpTable();
+      $$('.vp-swatch[data-c]', wrap).forEach(function (b) { b.classList.toggle('on', b.dataset.c === m.color); });
+    });
+  }
+
+  /** 캔버스 안에서 가운데 정렬로 여러 줄에 걸쳐 텍스트를 그린다 (너무 길면 말줄임) */
+  function vpWrapText(ctx, text, cx, cy, maxWidth, lineHeight) {
+    if (!text) return;
+    var words = String(text).split(/\s+/).filter(Boolean);
+    var lines = [];
+    var cur = '';
+    words.forEach(function (w) {
+      var test = cur ? cur + ' ' + w : w;
+      if (cur && ctx.measureText(test).width > maxWidth) { lines.push(cur); cur = w; }
+      else { cur = test; }
+      while (ctx.measureText(cur).width > maxWidth && cur.length > 1) {
+        var i = cur.length - 1;
+        while (i > 1 && ctx.measureText(cur.slice(0, i)).width > maxWidth) i--;
+        lines.push(cur.slice(0, i));
+        cur = cur.slice(i);
+      }
+    });
+    if (cur) lines.push(cur);
+    if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].slice(0, Math.max(1, lines[2].length - 1)) + '…'; }
+    var startY = cy - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach(function (l, i) { ctx.fillText(l, cx, startY + i * lineHeight); });
+  }
+
+  function exportVacPlanImage() {
+    var m = state.vacplan;
+    var acc = m.color || '#6d4aff';
+    var fontCss = vpFontCss(m.font);
+    var days = m.days, rows = m.rows;
+
+    var leftW = 110, colW = 128, rowH = 68, headH = 54, titleH = 66, pad = 24;
+    var width = pad * 2 + leftW + days.length * colW;
+    var height = pad * 2 + titleH + headH + rows.length * rowH;
+
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = '#141414';
+    ctx.font = "700 24px " + fontCss;
+    ctx.fillText(m.title || '나의 계획표', width / 2, pad + titleH / 2);
+
+    var gridLeft = pad, gridTop = pad + titleH;
+    var gridW = leftW + days.length * colW;
+
+    ctx.fillStyle = acc;
+    ctx.fillRect(gridLeft, gridTop, gridW, headH);
+    ctx.fillStyle = vpContrast(acc);
+    ctx.font = "700 15px " + fontCss;
+    days.forEach(function (d, i) {
+      ctx.fillText(d, gridLeft + leftW + i * colW + colW / 2, gridTop + headH / 2);
+    });
+
+    var y = gridTop + headH;
+    rows.forEach(function (r, ri) {
+      ctx.fillStyle = vpTint(acc, 0.12);
+      ctx.fillRect(gridLeft, y, leftW, rowH);
+      ctx.fillStyle = '#1f1f1f';
+      ctx.font = "700 13px " + fontCss;
+      vpWrapText(ctx, r.time || '', gridLeft + leftW / 2, y + rowH / 2, leftW - 12, 16);
+
+      r.cells.forEach(function (c, ci) {
+        var x = gridLeft + leftW + ci * colW;
+        ctx.fillStyle = ri % 2 === 0 ? '#ffffff' : '#fafafa';
+        ctx.fillRect(x, y, colW, rowH);
+        ctx.fillStyle = '#333333';
+        ctx.font = "500 13px " + fontCss;
+        vpWrapText(ctx, c || '', x + colW / 2, y + rowH / 2, colW - 14, 16);
+      });
+      y += rowH;
+    });
+
+    ctx.strokeStyle = '#d8d8d8';
+    ctx.lineWidth = 1;
+    for (var i = 0; i <= days.length + 1; i++) {
+      var x = gridLeft + (i === 0 ? 0 : leftW + (i - 1) * colW);
+      ctx.beginPath(); ctx.moveTo(x, gridTop); ctx.lineTo(x, y); ctx.stroke();
+    }
+    var hy = gridTop;
+    ctx.beginPath(); ctx.moveTo(gridLeft, hy); ctx.lineTo(gridLeft + gridW, hy); ctx.stroke();
+    hy += headH;
+    ctx.beginPath(); ctx.moveTo(gridLeft, hy); ctx.lineTo(gridLeft + gridW, hy); ctx.stroke();
+    rows.forEach(function () {
+      hy += rowH;
+      ctx.beginPath(); ctx.moveTo(gridLeft, hy); ctx.lineTo(gridLeft + gridW, hy); ctx.stroke();
+    });
+
+    ctx.strokeStyle = acc;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(gridLeft, gridTop, gridW, y - gridTop);
+
+    var url = canvas.toDataURL('image/png');
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (m.title || '방학계획표').replace(/[\\/:*?"<>|]/g, '').trim() + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast('이미지로 저장했습니다.');
+  }
+
+  function renderVacPlanPage() {
+    var m = state.vacplan;
+    $('vpTitle').value = m.title;
+    $('vpFont').value = m.font;
+    paintVpSwatches();
+    buildVpTable();
+  }
+
+  function initVacPlan() {
+    state.vacplan = vpLoad();
+
+    $('vpFont').innerHTML = VP_FONTS.map(function (f) {
+      return '<option value="' + f.id + '">' + esc(f.label) + '</option>';
+    }).join('');
+
+    $('vpTitle').addEventListener('input', function () {
+      state.vacplan.title = $('vpTitle').value;
+      vpSave();
+    });
+    $('vpFont').addEventListener('change', function () {
+      state.vacplan.font = $('vpFont').value;
+      vpSave();
+      buildVpTable();
+    });
+    $('vpAddRow').addEventListener('click', function () {
+      state.vacplan.rows.push({ time: '', cells: state.vacplan.days.map(function () { return ''; }) });
+      vpSave();
+      buildVpTable();
+    });
+    $('vpDownload').addEventListener('click', exportVacPlanImage);
+    $('vpReset').addEventListener('click', function () {
+      if (!confirm('계획표를 기본값으로 되돌릴까요? 지금까지 입력한 내용이 사라집니다.')) return;
+      state.vacplan = vpDefaultModel();
+      vpSave();
+      renderVacPlanPage();
+      toast('기본값으로 되돌렸습니다.');
+    });
+
+    renderVacPlanPage();
+  }
+
   function bindGotoIn(root) {
     $$('[data-goto]', root).forEach(function (b) {
       b.addEventListener('click', function () { goPage(b.dataset.goto); });
@@ -3001,7 +3297,7 @@
   }
 
   function init() {
-    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable();
+    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
 
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {

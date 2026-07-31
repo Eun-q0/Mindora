@@ -843,6 +843,36 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .tt-room { flex: none; font-size: 11px; color: var(--dim); }
 .tt-today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 
+/* ================================================== 방학 계획표 ==== */
+.vp-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.vp-swatch {
+  width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--line-2);
+  cursor: pointer; padding: 0; box-sizing: border-box; transition: transform .1s ease;
+}
+.vp-swatch:hover { transform: scale(1.08); }
+.vp-swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--text); }
+.vp-swatch-custom { background: conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red); padding: 2px; }
+
+.vp-wrap { overflow-x: auto; border-radius: var(--r-sm); }
+.vp-table { border-collapse: collapse; width: 100%; min-width: 760px; table-layout: fixed; }
+.vp-table th, .vp-table td {
+  border: 1px solid var(--line); padding: 9px 8px; text-align: center;
+  font-size: 13px; vertical-align: middle;
+}
+.vp-table thead th.vp-corner { background: var(--surface-3); border: 1px solid var(--line); width: 100px; }
+.vp-table th.vp-day { font-weight: 700; outline: none; }
+.vp-table th.vp-day:focus, .vp-table td.vp-cell:focus, .vp-table td.vp-time:focus {
+  outline: 2px solid var(--vp-accent, var(--accent)); outline-offset: -2px;
+}
+.vp-table td.vp-time { font-weight: 700; outline: none; width: 100px; }
+.vp-table td.vp-cell { outline: none; min-height: 40px; line-height: 1.4; }
+.vp-table td.vp-rowdel { border: none; padding: 0 0 0 6px; width: 30px; text-align: left; }
+.vp-del {
+  border: none; background: none; color: var(--dim); cursor: pointer; font-size: 13px;
+  padding: 4px; border-radius: 6px; line-height: 1;
+}
+.vp-del:hover { color: var(--bad); background: var(--bad-bg); }
+
 .neis-status { font-size: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; display: none; line-height: 1.6; }
 .neis-status.show { display: block; }
 .neis-status.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-ink); }

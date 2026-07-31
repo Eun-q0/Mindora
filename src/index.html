@@ -567,6 +567,52 @@
     </div>
   </section>
 
+  <!-- ══════════════════════════ 📅 방학 계획표 ══════════════════════════ -->
+  <section id="secVacPlan" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">📅</span> 나만의 방학 계획표</h2>
+      <p>요일별로 자유롭게 채우고, 색상과 글씨체를 골라 이미지로 저장하세요.</p>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🎨</span><h3>꾸미기</h3></div>
+      <div class="card-body">
+        <div class="field">
+          <label for="vpTitle">제목</label>
+          <input type="text" id="vpTitle" class="input" maxlength="30" placeholder="예) 지민이의 여름방학 생활계획표">
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <label for="vpFont">글씨체</label>
+            <select id="vpFont" class="input"></select>
+          </div>
+          <div class="field">
+            <label>테마 색상 <em>직접 선택도 가능</em></label>
+            <div class="vp-swatches" id="vpSwatches"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head">
+        <span class="ci">🗓️</span><h3>시간표</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="vpAddRow">+ 시간대 추가</button></span>
+      </div>
+      <div class="card-body">
+        <div class="vp-wrap">
+          <table class="vp-table" id="vpTable"></table>
+        </div>
+        <p class="tiny">칸을 눌러 바로 내용을 적을 수 있습니다. 요일 이름도 눌러서 바꿀 수 있고, 시간대는 자유롭게 추가·삭제할 수 있습니다.</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary lg" id="vpDownload">🖼️ 이미지로 저장</button>
+      <button type="button" class="btn ghost" id="vpReset">기본값으로 되돌리기</button>
+    </div>
+  </section>
+
   <!-- ══════════════════════ ★ 내 성장 (초·중 전용) ══════════════════════ -->
   <section id="secKids" class="section is-hidden">
     <div class="sec-head">
