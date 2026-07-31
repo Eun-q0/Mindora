@@ -115,23 +115,28 @@
    * 한 번에 한 페이지만 보여 준다. 길게 스크롤할 필요가 없도록
    * 상단 탭으로 전환하고 주소창 해시(#timer 등)로도 이동할 수 있게 한다. */
 
+  /* 상단 탭은 두 묶음이다.
+   *   번호가 붙은 앞의 넷 — 순서대로 밟는 실제 단계 (입력 → 분석 → 플랜 → 타이머)
+   *   tool 로 표시한 뒤쪽   — 아무 때나 열어 보는 기능들 (번호도 이모지도 안 붙인다)
+   * 예전에는 숫자와 이모지가 1 2 3 4 📅 ★ 5 🏆 6 ⚙ 처럼 섞여 있어서
+   * 무엇이 순서고 무엇이 기능인지 한눈에 들어오지 않았다. */
   var PAGES = [
     { id: 'secInput', num: '1', label: '입력', hash: 'input' },
     { id: 'secResult', num: '2', label: '뇌 분석', hash: 'result', needAnalysis: true },
     { id: 'secPlan', num: '3', label: '학습 플랜', hash: 'plan', needAnalysis: true },
     { id: 'secTimer', num: '4', label: '타이머', hash: 'timer', needAnalysis: true },
-    { id: 'secVacPlan', num: '📅', label: '계획표', hash: 'vacplan' },
-    { id: 'secKids', num: '★', label: '내 성장', hash: 'grow', kidsOnly: true },
-    { id: 'secGroup', num: '5', label: '랭킹', hash: 'rank' },
-    { id: 'secLeague', num: '🏆', label: '리그', hash: 'league' },
-    { id: 'secReport', num: '6', label: '리포트', hash: 'report' },
-    { id: 'secSettings', num: '⚙', label: '설정', hash: 'settings' }
+    { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true },
+    { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true },
+    { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true },
+    { id: 'secLeague', label: '리그', hash: 'league', tool: true },
+    { id: 'secReport', label: '리포트', hash: 'report', tool: true },
+    { id: 'secSettings', label: '설정', hash: 'settings', tool: true }
   ];
 
   /* 상단 탭에는 없지만 이동은 되는 페이지들.
    * 관리자 화면은 학생이 쓸 일이 없어 탭에서 빼고 [설정] 맨 아래에서만 들어간다. */
   var HIDDEN_PAGES = [
-    { id: 'secAdmin', num: '👑', label: '관리자', hash: 'admin' }
+    { id: 'secAdmin', label: '관리자', hash: 'admin', tool: true }
   ];
 
   var ALL_PAGES = PAGES.concat(HIDDEN_PAGES);
@@ -152,8 +157,15 @@
 
   function renderNav() {
     var open = openPages();
+    var dividerDone = false;
+
     $('stepNav').innerHTML = open.map(function (p) {
-      return '<button type="button" class="step" data-go="' + p.id + '"><i>' + p.num + '</i><span>' + esc(p.label) + '</span></button>';
+      // 단계와 기능 사이에 한 번만 선을 그어 두 묶음을 구분한다
+      var div = '';
+      if (p.tool && !dividerDone) { div = '<span class="step-div" aria-hidden="true"></span>'; dividerDone = true; }
+      return div + '<button type="button" class="step' + (p.tool ? ' is-tool' : '') + '" data-go="' + p.id + '">' +
+        (p.tool ? '' : '<i>' + p.num + '</i>') +
+        '<span>' + esc(p.label) + '</span></button>';
     }).join('');
     $$('.step').forEach(function (b) {
       b.addEventListener('click', function () { goPage(b.dataset.go); });

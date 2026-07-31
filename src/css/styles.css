@@ -170,6 +170,12 @@ body.intro-open { overflow: hidden; }
 .step.is-active i { background: linear-gradient(140deg, #7c5cff, #5b7cff); color: #fff; }
 .step.is-done i { background: var(--ok-bg); color: var(--good); }
 
+/* 번호 없는 기능 탭 — 동그란 번호가 빠진 만큼 좌우 여백을 조금 더 준다 */
+.step.is-tool { padding: 7px 13px; }
+.step.is-tool.is-active { font-weight: 600; }
+/* 단계와 기능을 가르는 세로선 */
+.step-div { flex-shrink: 0; align-self: center; width: 1px; height: 17px; margin: 0 6px; background: var(--line-2); }
+
 .clock { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); flex-shrink: 0; }
 
 .profile-chip {
@@ -1007,8 +1013,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .wrap { padding: 24px 14px 60px; }
   .topbar-inner { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
   .steps { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
+  /* 좁은 화면에서는 번호만 남겨 폭을 아낀다.
+   * 다만 번호가 없는 기능 탭은 이름을 지우면 빈 칸이 되므로 이름을 남긴다. */
   .step span { display: none; }
+  .step.is-tool span { display: inline; }
   .step { padding: 7px 10px; }
+  .step.is-tool { padding: 7px 11px; }
   .profile-chip { margin-left: auto; }
   .clock { display: none; }
   .sec-head h2 { font-size: 21px; }
