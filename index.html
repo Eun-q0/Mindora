@@ -881,6 +881,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .tt-period { flex: none; width: 40px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .tt-subject { flex: 1; color: var(--text); }
 .tt-room { flex: none; font-size: 11px; color: var(--dim); }
+.tt-today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 
 .neis-status { font-size: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; display: none; line-height: 1.6; }
 .neis-status.show { display: block; }
@@ -1638,7 +1639,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
             </div>
           </div>
           <div class="field" id="ttField">
-            <label>오늘 시간표 <em>나이스 교육정보 개방포털</em></label>
+            <label>이번 주 시간표 <em>나이스 교육정보 개방포털</em></label>
             <div id="ttToday" class="meal-box"></div>
           </div>
           <p class="tiny">반을 바꾸면 그 반의 시간표를 바로 볼 수 있습니다. 비워 두면 내 프로필의 반으로 조회합니다.</p>
@@ -8767,6 +8768,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* ============================================================ 급식 == */
 
   var MEAL_FIELD = { '조식': 'mealBreakfast', '중식': 'mealLunch', '석식': 'mealDinner' };
+  var DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
   function renderMeals() {
     var box = $('mealToday');
@@ -8867,21 +8869,34 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       return;
     }
 
-    box.innerHTML = '<div class="meal-loading">🗓️ 시간표를 불러오는 중…</div>';
+    box.innerHTML = '<div class="meal-loading">🗓️ 이번 주 시간표를 불러오는 중…</div>';
 
-    Neis.todayTimetable(p.neis, grade, klass).then(function (list) {
-      if (!list.length) {
-        box.innerHTML = '<div class="meal-empty">오늘(' + Store.key() + ') ' + esc(grade) + '학년 ' + esc(klass) + '반은 등록된 시간표가 없습니다. ' +
-          '주말이거나 방학·재량휴업일일 수 있어요.</div>';
+    Neis.weekTimetable(p.neis, grade, klass).then(function (byDate) {
+      var dates = Object.keys(byDate).sort();
+      if (!dates.length) {
+        box.innerHTML = '<div class="meal-empty">이번 주 ' + esc(grade) + '학년 ' + esc(klass) + '반은 등록된 시간표가 없습니다. ' +
+          '방학·재량휴업일일 수 있어요.</div>';
         return;
       }
 
-      box.innerHTML = '<div class="meal-card"><div class="mc-body"><div class="tt-list">' +
-        list.map(function (t) {
-          return '<div class="tt-row"><span class="tt-period">' + esc(t.period || '') + '교시</span>' +
-            '<span class="tt-subject">' + esc(t.subject || '-') + '</span>' +
-            (t.classroom ? '<span class="tt-room">' + esc(t.classroom) + '</span>' : '') + '</div>';
-        }).join('') + '</div></div></div>';
+      var todayKey = Store.key();
+      box.innerHTML = dates.map(function (d) {
+        var list = byDate[d];
+        if (!list.length) return '';
+        var ymdKey = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+        var dow = DOW_KO[new Date(d.slice(0, 4), d.slice(4, 6) - 1, d.slice(6, 8)).getDay()];
+        var label = (d.slice(4, 6).replace(/^0/, '')) + '/' + (d.slice(6, 8).replace(/^0/, '')) + '(' + dow + ')' +
+          (ymdKey === todayKey ? ' · 오늘' : '');
+
+        return '<div class="meal-card' + (ymdKey === todayKey ? ' tt-today' : '') + '">' +
+          '<div class="mc-head"><span class="mc-type 중식">' + esc(label) + '</span></div>' +
+          '<div class="mc-body"><div class="tt-list">' +
+          list.map(function (t) {
+            return '<div class="tt-row"><span class="tt-period">' + esc(t.period || '') + '교시</span>' +
+              '<span class="tt-subject">' + esc(t.subject || '-') + '</span>' +
+              (t.classroom ? '<span class="tt-room">' + esc(t.classroom) + '</span>' : '') + '</div>';
+          }).join('') + '</div></div></div>';
+      }).join('');
     }).catch(function (err) {
       var msg = String(err && err.message || err);
       box.innerHTML = '<div class="meal-empty">시간표를 불러오지 못했습니다 — ' + esc(msg) + '<br>' +

@@ -1630,6 +1630,7 @@
   /* ============================================================ 급식 == */
 
   var MEAL_FIELD = { '조식': 'mealBreakfast', '중식': 'mealLunch', '석식': 'mealDinner' };
+  var DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
   function renderMeals() {
     var box = $('mealToday');
@@ -1730,21 +1731,34 @@
       return;
     }
 
-    box.innerHTML = '<div class="meal-loading">🗓️ 시간표를 불러오는 중…</div>';
+    box.innerHTML = '<div class="meal-loading">🗓️ 이번 주 시간표를 불러오는 중…</div>';
 
-    Neis.todayTimetable(p.neis, grade, klass).then(function (list) {
-      if (!list.length) {
-        box.innerHTML = '<div class="meal-empty">오늘(' + Store.key() + ') ' + esc(grade) + '학년 ' + esc(klass) + '반은 등록된 시간표가 없습니다. ' +
-          '주말이거나 방학·재량휴업일일 수 있어요.</div>';
+    Neis.weekTimetable(p.neis, grade, klass).then(function (byDate) {
+      var dates = Object.keys(byDate).sort();
+      if (!dates.length) {
+        box.innerHTML = '<div class="meal-empty">이번 주 ' + esc(grade) + '학년 ' + esc(klass) + '반은 등록된 시간표가 없습니다. ' +
+          '방학·재량휴업일일 수 있어요.</div>';
         return;
       }
 
-      box.innerHTML = '<div class="meal-card"><div class="mc-body"><div class="tt-list">' +
-        list.map(function (t) {
-          return '<div class="tt-row"><span class="tt-period">' + esc(t.period || '') + '교시</span>' +
-            '<span class="tt-subject">' + esc(t.subject || '-') + '</span>' +
-            (t.classroom ? '<span class="tt-room">' + esc(t.classroom) + '</span>' : '') + '</div>';
-        }).join('') + '</div></div></div>';
+      var todayKey = Store.key();
+      box.innerHTML = dates.map(function (d) {
+        var list = byDate[d];
+        if (!list.length) return '';
+        var ymdKey = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+        var dow = DOW_KO[new Date(d.slice(0, 4), d.slice(4, 6) - 1, d.slice(6, 8)).getDay()];
+        var label = (d.slice(4, 6).replace(/^0/, '')) + '/' + (d.slice(6, 8).replace(/^0/, '')) + '(' + dow + ')' +
+          (ymdKey === todayKey ? ' · 오늘' : '');
+
+        return '<div class="meal-card' + (ymdKey === todayKey ? ' tt-today' : '') + '">' +
+          '<div class="mc-head"><span class="mc-type 중식">' + esc(label) + '</span></div>' +
+          '<div class="mc-body"><div class="tt-list">' +
+          list.map(function (t) {
+            return '<div class="tt-row"><span class="tt-period">' + esc(t.period || '') + '교시</span>' +
+              '<span class="tt-subject">' + esc(t.subject || '-') + '</span>' +
+              (t.classroom ? '<span class="tt-room">' + esc(t.classroom) + '</span>' : '') + '</div>';
+          }).join('') + '</div></div></div>';
+      }).join('');
     }).catch(function (err) {
       var msg = String(err && err.message || err);
       box.innerHTML = '<div class="meal-empty">시간표를 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
