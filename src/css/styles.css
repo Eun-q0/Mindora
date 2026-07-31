@@ -873,6 +873,24 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 }
 .vp-del:hover { color: var(--bad); background: var(--bad-bg); }
 
+.vp-legend { display: flex; flex-wrap: wrap; gap: 7px; }
+.vp-lg {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px 4px 5px;
+  background: var(--surface-3); font-size: 12px; color: var(--text);
+}
+.vp-lg:hover { border-color: var(--line-2); }
+.vp-lg input[type="color"] {
+  width: 20px; height: 20px; border: 1px solid var(--line-2); border-radius: 50%;
+  padding: 0; cursor: pointer; background: none; flex: none;
+}
+/* 색상 입력의 기본 테두리·여백을 없애 동그란 점처럼 보이게 한다 */
+.vp-lg input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.vp-lg input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+.vp-preview { display: block; border-radius: var(--r-sm); }
+/* 계획표 이미지는 항상 흰 바탕이라 다크모드에서도 그대로 둔다 */
+
 .neis-status { font-size: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; display: none; line-height: 1.6; }
 .neis-status.show { display: block; }
 .neis-status.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-ink); }

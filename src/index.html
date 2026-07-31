@@ -9,10 +9,10 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
      crossorigin="anonymous"></script>
 
-<!-- 방학 계획표의 귀여운 손글씨체 (구글 폰트, 무료·상업적 사용 가능) -->
+<!-- 방학 계획표 글씨체 (구글 폰트, 무료·상업적 사용 가능) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&family=Poor+Story&family=Do+Hyeon&family=Gamja+Flower&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Do+Hyeon&family=Jua&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
 
 <!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
 <meta name="description" content="수면·스트레스·피로를 넣으면 오늘 내 뇌가 어떤 공부에 맞는지 5가지 능력으로 계산하고, 과목별 공부 시간까지 짜 줍니다. 설치 없이 링크만 열면 됩니다.">
@@ -582,9 +582,15 @@
     <div class="card wide">
       <div class="card-head"><span class="ci">🎨</span><h3>꾸미기</h3></div>
       <div class="card-body">
-        <div class="field">
-          <label for="vpTitle">제목</label>
-          <input type="text" id="vpTitle" class="input" maxlength="30" placeholder="예) 지민이의 여름방학 생활계획표">
+        <div class="two-col">
+          <div class="field">
+            <label for="vpSubtitle">작은 제목 <em>제목 위에 작게</em></label>
+            <input type="text" id="vpSubtitle" class="input" maxlength="20" placeholder="예) 여름방학">
+          </div>
+          <div class="field">
+            <label for="vpTitle">제목</label>
+            <input type="text" id="vpTitle" class="input" maxlength="30" placeholder="예) 일일 계획표">
+          </div>
         </div>
         <div class="two-col">
           <div class="field">
@@ -592,9 +598,13 @@
             <select id="vpFont" class="input"></select>
           </div>
           <div class="field">
-            <label>테마 색상 <em>직접 선택도 가능</em></label>
+            <label>요일 줄 색상 <em>직접 선택도 가능</em></label>
             <div class="vp-swatches" id="vpSwatches"></div>
           </div>
+        </div>
+        <div class="field">
+          <label>과목별 색상 <em>같은 과목은 같은 색으로 칠해집니다</em></label>
+          <div class="vp-legend" id="vpLegend"></div>
         </div>
       </div>
     </div>
@@ -608,7 +618,18 @@
         <div class="vp-wrap">
           <table class="vp-table" id="vpTable"></table>
         </div>
-        <p class="tiny">칸을 눌러 바로 내용을 적을 수 있습니다. 요일 이름도 눌러서 바꿀 수 있고, 시간대는 자유롭게 추가·삭제할 수 있습니다.</p>
+        <p class="tiny">칸을 눌러 바로 내용을 적을 수 있습니다. 요일 이름도 눌러서 바꿀 수 있고, 시간대는 자유롭게 추가·삭제할 수 있습니다.
+          <b>위아래·양옆으로 같은 내용을 적으면 저장할 때 하나의 큰 칸으로 합쳐집니다.</b></p>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🖼️</span><h3>미리보기</h3></div>
+      <div class="card-body">
+        <div class="vp-wrap">
+          <canvas id="vpPreview" class="vp-preview"></canvas>
+        </div>
+        <p class="tiny">저장되는 이미지와 똑같은 모습입니다.</p>
       </div>
     </div>
 

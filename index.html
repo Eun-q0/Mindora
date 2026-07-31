@@ -9,10 +9,10 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
      crossorigin="anonymous"></script>
 
-<!-- 방학 계획표의 귀여운 손글씨체 (구글 폰트, 무료·상업적 사용 가능) -->
+<!-- 방학 계획표 글씨체 (구글 폰트, 무료·상업적 사용 가능) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&family=Poor+Story&family=Do+Hyeon&family=Gamja+Flower&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Do+Hyeon&family=Jua&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
 
 <!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
 <meta name="description" content="수면·스트레스·피로를 넣으면 오늘 내 뇌가 어떤 공부에 맞는지 5가지 능력으로 계산하고, 과목별 공부 시간까지 짜 줍니다. 설치 없이 링크만 열면 됩니다.">
@@ -917,6 +917,24 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   padding: 4px; border-radius: 6px; line-height: 1;
 }
 .vp-del:hover { color: var(--bad); background: var(--bad-bg); }
+
+.vp-legend { display: flex; flex-wrap: wrap; gap: 7px; }
+.vp-lg {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px 4px 5px;
+  background: var(--surface-3); font-size: 12px; color: var(--text);
+}
+.vp-lg:hover { border-color: var(--line-2); }
+.vp-lg input[type="color"] {
+  width: 20px; height: 20px; border: 1px solid var(--line-2); border-radius: 50%;
+  padding: 0; cursor: pointer; background: none; flex: none;
+}
+/* 색상 입력의 기본 테두리·여백을 없애 동그란 점처럼 보이게 한다 */
+.vp-lg input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.vp-lg input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+.vp-preview { display: block; border-radius: var(--r-sm); }
+/* 계획표 이미지는 항상 흰 바탕이라 다크모드에서도 그대로 둔다 */
 
 .neis-status { font-size: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; display: none; line-height: 1.6; }
 .neis-status.show { display: block; }
@@ -1981,9 +1999,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     <div class="card wide">
       <div class="card-head"><span class="ci">🎨</span><h3>꾸미기</h3></div>
       <div class="card-body">
-        <div class="field">
-          <label for="vpTitle">제목</label>
-          <input type="text" id="vpTitle" class="input" maxlength="30" placeholder="예) 지민이의 여름방학 생활계획표">
+        <div class="two-col">
+          <div class="field">
+            <label for="vpSubtitle">작은 제목 <em>제목 위에 작게</em></label>
+            <input type="text" id="vpSubtitle" class="input" maxlength="20" placeholder="예) 여름방학">
+          </div>
+          <div class="field">
+            <label for="vpTitle">제목</label>
+            <input type="text" id="vpTitle" class="input" maxlength="30" placeholder="예) 일일 계획표">
+          </div>
         </div>
         <div class="two-col">
           <div class="field">
@@ -1991,9 +2015,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
             <select id="vpFont" class="input"></select>
           </div>
           <div class="field">
-            <label>테마 색상 <em>직접 선택도 가능</em></label>
+            <label>요일 줄 색상 <em>직접 선택도 가능</em></label>
             <div class="vp-swatches" id="vpSwatches"></div>
           </div>
+        </div>
+        <div class="field">
+          <label>과목별 색상 <em>같은 과목은 같은 색으로 칠해집니다</em></label>
+          <div class="vp-legend" id="vpLegend"></div>
         </div>
       </div>
     </div>
@@ -2007,7 +2035,18 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <div class="vp-wrap">
           <table class="vp-table" id="vpTable"></table>
         </div>
-        <p class="tiny">칸을 눌러 바로 내용을 적을 수 있습니다. 요일 이름도 눌러서 바꿀 수 있고, 시간대는 자유롭게 추가·삭제할 수 있습니다.</p>
+        <p class="tiny">칸을 눌러 바로 내용을 적을 수 있습니다. 요일 이름도 눌러서 바꿀 수 있고, 시간대는 자유롭게 추가·삭제할 수 있습니다.
+          <b>위아래·양옆으로 같은 내용을 적으면 저장할 때 하나의 큰 칸으로 합쳐집니다.</b></p>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🖼️</span><h3>미리보기</h3></div>
+      <div class="card-body">
+        <div class="vp-wrap">
+          <canvas id="vpPreview" class="vp-preview"></canvas>
+        </div>
+        <p class="tiny">저장되는 이미지와 똑같은 모습입니다.</p>
       </div>
     </div>
 
@@ -9001,20 +9040,21 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
    * family 가 있으면 이미지로 저장하기 전에 그 폰트가 실제로 로드됐는지 기다린다 —
    * 안 그러면 캔버스가 폰트 로드 전에 그려져 기본 서체로 찍히는 경우가 있다. */
   var VP_FONTS = [
-    { id: 'sans', label: '기본 고딕', css: "'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif" },
-    { id: 'cute1', label: '🐣 말랑 손글씨', family: 'Gaegu', css: "'Gaegu','Malgun Gothic',cursive" },
-    { id: 'cute2', label: '🍬 동글동글체', family: 'Jua', css: "'Jua','Malgun Gothic',sans-serif" },
-    { id: 'cute3', label: '🎀 깜찍 손글씨', family: 'Poor Story', css: "'Poor Story','Malgun Gothic',cursive" },
-    { id: 'cute4', label: '🧸 통통체', family: 'Do Hyeon', css: "'Do Hyeon','Malgun Gothic',sans-serif" },
-    { id: 'cute5', label: '🌷 봄바람체', family: 'Gamja Flower', css: "'Gamja Flower','Malgun Gothic',cursive" },
-    { id: 'round', label: '둥근 고딕', css: "Dotum,'돋움','Apple SD Gothic Neo',sans-serif" },
-    { id: 'serif', label: '명조체', css: "Batang,'바탕','Apple SD Gothic Neo',serif" },
-    { id: 'gungseo', label: '궁서체', css: "Gungsuh,'궁서',serif" },
-    { id: 'mono', label: '타자기', css: "'D2Coding',Consolas,monospace" }
+    { id: 'sans', label: '기본 고딕 — 깔끔한 기본', family: 'Noto Sans KR', css: "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif" },
+    { id: 'cute4', label: '통통체 — 또렷하고 진한', family: 'Do Hyeon', css: "'Do Hyeon','Malgun Gothic',sans-serif" },
+    { id: 'cute2', label: '동글동글체 — 귀여운', family: 'Jua', css: "'Jua','Malgun Gothic',sans-serif" },
+    { id: 'cute1', label: '말랑 손글씨 — 손으로 쓴', family: 'Gaegu', css: "'Gaegu','Malgun Gothic',cursive" }
   ];
 
-  /* 파스텔톤 8색 */
+  /* 머리글(요일 줄) 파스텔톤 8색 */
   var VP_COLORS = ['#ffb3ba', '#ffdfba', '#fdf5ba', '#baffc9', '#bae1ff', '#d0baff', '#ffbae5', '#c4fff0'];
+
+  /* 칸 채우기용 파스텔 — 같은 과목끼리 같은 색이 되도록 자동 배정한다.
+   * 인스타에 올라오는 계획표들이 과목마다 색을 달리 칠하는 걸 따라간 것. */
+  var VP_CELL_COLORS = [
+    '#ffe3e3', '#ffefd6', '#fdf8d3', '#e2f6da', '#d9f1f0',
+    '#dde9fb', '#e7dffb', '#fbdfee', '#eeeeee', '#e6ded5'
+  ];
 
   function vpFont(id) {
     return VP_FONTS.filter(function (x) { return x.id === id; })[0] || VP_FONTS[0];
@@ -9026,26 +9066,46 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   function vpEnsureFontLoaded(id) {
     var f = vpFont(id);
     if (!f.family || !document.fonts || !document.fonts.load) return Promise.resolve();
+    // 캔버스에서 실제로 쓰는 굵기·크기를 모두 미리 받아 둔다
     return Promise.all([
-      document.fonts.load("700 24px '" + f.family + "'"),
-      document.fonts.load("500 13px '" + f.family + "'")
+      document.fonts.load("700 27px '" + f.family + "'"),
+      document.fonts.load("700 12.5px '" + f.family + "'"),
+      document.fonts.load("600 11.5px '" + f.family + "'")
     ]).catch(function () { /* 폰트 서버에 연결 안 되면 기본 서체로 대체된다 */ });
+  }
+
+  /** 평일 5칸 + 주말 2칸을 한 줄로 만든다 (주말을 안 주면 7일 모두 같은 값) */
+  function vpRow(time, weekday, weekend) {
+    var wknd = weekend === undefined ? weekday : weekend;
+    return { time: time, cells: [weekday, weekday, weekday, weekday, weekday, wknd, wknd] };
   }
 
   function vpDefaultModel() {
     return {
-      title: '나의 방학 생활계획표',
+      subtitle: '여름방학',
+      title: '일일 계획표',
       font: 'sans',
       color: VP_COLORS[4],
-      days: ['월', '화', '수', '목', '금', '토', '일'],
+      days: ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'],
+      colors: {},
       rows: [
-        { time: '07:00', cells: Array(7).fill('기상') },
-        { time: '08:00', cells: Array(7).fill('아침식사') },
-        { time: '09:00~11:00', cells: ['자기주도학습', '자기주도학습', '자기주도학습', '자기주도학습', '자기주도학습', '자유시간', '자유시간'] },
-        { time: '12:00', cells: Array(7).fill('점심식사') },
-        { time: '14:00~16:00', cells: ['독서 · 취미', '독서 · 취미', '독서 · 취미', '독서 · 취미', '독서 · 취미', '운동', '가족시간'] },
-        { time: '19:00', cells: Array(7).fill('저녁식사') },
-        { time: '22:30', cells: Array(7).fill('취침 준비') }
+        vpRow('07:00', '기상 및 아침식사'),
+        vpRow('08:00', '국어', '자유시간'),
+        vpRow('09:00', '국어', '자유시간'),
+        vpRow('10:00', '수학', '자유시간'),
+        vpRow('11:00', '수학', '자유시간'),
+        vpRow('12:00', '점심식사'),
+        vpRow('13:00', '영어', '자유시간'),
+        vpRow('14:00', '영어', '자유시간'),
+        vpRow('15:00', '자율 / 보충', '운동'),
+        vpRow('16:00', '자율 / 보충', '운동'),
+        vpRow('17:00', '휴식'),
+        vpRow('18:00', '저녁식사'),
+        vpRow('19:00', '자기주도학습'),
+        vpRow('20:00', '자기주도학습'),
+        vpRow('21:00', '독서'),
+        vpRow('22:00', '하루 정리'),
+        vpRow('23:00', '취침')
       ]
     };
   }
@@ -9056,8 +9116,80 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       if (!raw) return vpDefaultModel();
       var m = JSON.parse(raw);
       if (!m || !m.rows || !m.days || !m.rows.length || !m.days.length) return vpDefaultModel();
+      // 옛 저장본에는 없던 항목들을 채워 준다
+      if (typeof m.subtitle !== 'string') m.subtitle = '';
+      if (!m.colors || typeof m.colors !== 'object') m.colors = {};
+      // 목록에서 사라진 글씨체를 저장해 뒀다면 기본값으로 되돌린다
+      if (!VP_FONTS.some(function (f) { return f.id === m.font; })) m.font = VP_FONTS[0].id;
       return m;
     } catch (e) { return vpDefaultModel(); }
+  }
+
+  /** 새로 등장한 과목에 파스텔 색을 차례로 배정한다 (이미 정해진 색은 건드리지 않는다) */
+  function vpEnsureColors(m) {
+    if (!m.colors) m.colors = {};
+    var idx = Object.keys(m.colors).length;
+    m.rows.forEach(function (r) {
+      r.cells.forEach(function (c) {
+        var t = String(c || '').trim();
+        if (!t || m.colors[t]) return;
+        m.colors[t] = VP_CELL_COLORS[idx % VP_CELL_COLORS.length];
+        idx++;
+      });
+    });
+  }
+
+  /** 표에 쓰인 과목을 처음 나온 순서대로 (중복 없이) 모은다 */
+  function vpActivities(m) {
+    var seen = {}, list = [];
+    m.rows.forEach(function (r) {
+      r.cells.forEach(function (c) {
+        var t = String(c || '').trim();
+        if (!t || seen[t]) return;
+        seen[t] = true;
+        list.push(t);
+      });
+    });
+    return list;
+  }
+
+  /**
+   * 붙어 있는 같은 내용의 칸을 하나의 큰 블록으로 합친다.
+   * 인스타 계획표들이 "국어" 를 세 시간짜리 한 칸으로 그리는 그 모양을 만드는 부분이다.
+   * 가로로 먼저 늘리고, 그 폭 그대로 아래로 늘려서 직사각형만 만든다.
+   * 빈 칸은 합치지 않는다 — 합쳐 버리면 개별로 채워 넣을 수 없다.
+   */
+  function vpMergeRects(m) {
+    var rows = m.rows;
+    var R = rows.length, C = m.days.length;
+    var used = [], r, c;
+    for (r = 0; r < R; r++) { used.push([]); for (c = 0; c < C; c++) used[r].push(false); }
+
+    var txtAt = function (rr, cc) { return String(rows[rr].cells[cc] || '').trim(); };
+    var rects = [];
+
+    for (r = 0; r < R; r++) {
+      for (c = 0; c < C; c++) {
+        if (used[r][c]) continue;
+        var txt = txtAt(r, c);
+        if (!txt) { used[r][c] = true; rects.push({ r: r, c: c, rs: 1, cs: 1, text: '' }); continue; }
+
+        var cs = 1;
+        while (c + cs < C && !used[r][c + cs] && txtAt(r, c + cs) === txt) cs++;
+
+        var rs = 1, canGrow = true;
+        while (canGrow && r + rs < R) {
+          for (var k = 0; k < cs; k++) {
+            if (used[r + rs][c + k] || txtAt(r + rs, c + k) !== txt) { canGrow = false; break; }
+          }
+          if (canGrow) rs++;
+        }
+
+        for (var a = 0; a < rs; a++) for (var b = 0; b < cs; b++) used[r + a][c + b] = true;
+        rects.push({ r: r, c: c, rs: rs, cs: cs, text: txt });
+      }
+    }
+    return rects;
   }
 
   function vpSave() {
@@ -9113,11 +9245,18 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       td.style.background = tint;
       td.addEventListener('input', function () { m.rows[i].time = td.textContent.trim(); vpSave(); });
     });
+    vpEnsureColors(m);
     $$('.vp-cell', table).forEach(function (td) {
       var tr = td.closest('tr'); var ri = parseInt(tr.dataset.row, 10);
       var ci = parseInt(td.dataset.col, 10);
-      td.textContent = m.rows[ri].cells[ci] || '';
-      td.addEventListener('input', function () { m.rows[ri].cells[ci] = td.textContent.trim(); vpSave(); });
+      var val = m.rows[ri].cells[ci] || '';
+      td.textContent = val;
+      td.style.background = val ? (m.colors[val.trim()] || '#ffffff') : '#ffffff';
+      td.addEventListener('input', function () {
+        m.rows[ri].cells[ci] = td.textContent.trim();
+        vpSave();
+        vpRefresh();
+      });
     });
     $$('.vp-del', table).forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -9125,11 +9264,52 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         m.rows.splice(parseInt(btn.dataset.row, 10), 1);
         vpSave();
         buildVpTable();
+        vpRenderPreview();
+        renderVpLegend();
       });
     });
 
     table.style.fontFamily = vpFontCss(m.font);
     table.style.setProperty('--vp-accent', acc);
+  }
+
+  /* 칸을 고칠 때마다 표 전체를 다시 만들면 입력 중 커서가 튄다.
+   * 그래서 편집 중에는 미리보기와 색상 목록만 다시 그린다. */
+  var vpRefreshTimer = null;
+  function vpRefresh() {
+    clearTimeout(vpRefreshTimer);
+    vpRefreshTimer = setTimeout(function () {
+      vpRenderPreview();
+      renderVpLegend();
+    }, 260);
+  }
+
+  function renderVpLegend() {
+    var wrap = $('vpLegend');
+    if (!wrap) return;
+    var m = state.vacplan;
+    vpEnsureColors(m);
+    var list = vpActivities(m);
+
+    if (!list.length) {
+      wrap.innerHTML = '<p class="tiny" style="margin:0">칸을 채우면 과목별 색상을 여기서 고를 수 있습니다.</p>';
+      return;
+    }
+
+    wrap.innerHTML = list.map(function (t) {
+      return '<label class="vp-lg"><input type="color" value="' + esc(m.colors[t]) + '">' +
+        '<span>' + esc(t) + '</span></label>';
+    }).join('');
+
+    // 과목 이름을 속성에 넣으면 따옴표·꺾쇠 때문에 깨질 수 있어 순서(index)로 잇는다
+    $$('input[type="color"]', wrap).forEach(function (inp, i) {
+      inp.addEventListener('input', function () {
+        m.colors[list[i]] = inp.value;
+        vpSave();
+        buildVpTable();
+        vpRenderPreview();
+      });
+    });
   }
 
   function paintVpSwatches() {
@@ -9148,22 +9328,25 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         vpSave();
         paintVpSwatches();
         buildVpTable();
+        vpRenderPreview();
       });
     });
     $('vpColorCustom').addEventListener('input', function () {
       m.color = this.value;
       vpSave();
       buildVpTable();
+      vpRenderPreview();
       $$('.vp-swatch[data-c]', wrap).forEach(function (b) { b.classList.toggle('on', b.dataset.c === m.color); });
     });
   }
 
-  /** 캔버스 안에서 가운데 정렬로 여러 줄에 걸쳐 텍스트를 그린다 (너무 길면 말줄임) */
-  function vpWrapText(ctx, text, cx, cy, maxWidth, lineHeight) {
+  /** 칸 안에 가운데 정렬로 줄바꿈해 그린다. 넘치면 마지막 줄을 말줄임 처리한다. */
+  function vpWrapText(ctx, text, cx, cy, maxWidth, lineHeight, maxLines) {
     if (!text) return;
+    var limit = maxLines || 3;
     var words = String(text).split(/\s+/).filter(Boolean);
-    var lines = [];
-    var cur = '';
+    var lines = [], cur = '';
+
     words.forEach(function (w) {
       var test = cur ? cur + ' ' + w : w;
       if (cur && ctx.measureText(test).width > maxWidth) { lines.push(cur); cur = w; }
@@ -9176,111 +9359,176 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       }
     });
     if (cur) lines.push(cur);
-    if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].slice(0, Math.max(1, lines[2].length - 1)) + '…'; }
+
+    if (lines.length > limit) {
+      lines = lines.slice(0, limit);
+      var last = lines[limit - 1];
+      while (last.length > 1 && ctx.measureText(last + '…').width > maxWidth) last = last.slice(0, -1);
+      lines[limit - 1] = last + '…';
+    }
+
     var startY = cy - ((lines.length - 1) * lineHeight) / 2;
     lines.forEach(function (l, i) { ctx.fillText(l, cx, startY + i * lineHeight); });
   }
 
-  function vpDrawAndDownload() {
+  /**
+   * 계획표를 캔버스에 그린다. 화면 미리보기와 저장되는 이미지가 같은 함수를 쓰므로
+   * 미리보기에 보이는 그대로가 파일로 나간다.
+   */
+  function vpDraw(canvas) {
     var m = state.vacplan;
-    var acc = m.color || '#6d4aff';
+    vpEnsureColors(m);
+
+    var acc = m.color || VP_COLORS[4];
     var fontCss = vpFontCss(m.font);
     var days = m.days, rows = m.rows;
 
-    var leftW = 110, colW = 128, rowH = 68, headH = 54, titleH = 66, pad = 24;
-    var width = pad * 2 + leftW + days.length * colW;
-    var height = pad * 2 + titleH + headH + rows.length * rowH;
+    var leftW = 76, colW = 112, rowH = 30, headH = 32;
+    var padX = 26, padTop = 20, padBottom = 26, gap = 14;
+    var sub = String(m.subtitle || '').trim();
+    var subH = sub ? 22 : 0;
+    var titleH = 40;
 
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var canvas = document.createElement('canvas');
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+    var gridW = leftW + days.length * colW;
+    var gridH = headH + rows.length * rowH;
+    var W = padX * 2 + gridW;
+    var H = padTop + subH + titleH + gap + gridH + padBottom;
+
+    var dpr = 2;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+
     var ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = '#141414';
-    ctx.font = "700 24px " + fontCss;
-    ctx.fillText(m.title || '나의 계획표', width / 2, pad + titleH / 2);
-
-    var gridLeft = pad, gridTop = pad + titleH;
-    var gridW = leftW + days.length * colW;
-
-    ctx.fillStyle = acc;
-    ctx.fillRect(gridLeft, gridTop, gridW, headH);
-    ctx.fillStyle = vpContrast(acc);
-    ctx.font = "700 15px " + fontCss;
-    days.forEach(function (d, i) {
-      ctx.fillText(d, gridLeft + leftW + i * colW + colW / 2, gridTop + headH / 2);
-    });
-
-    var y = gridTop + headH;
-    rows.forEach(function (r, ri) {
-      ctx.fillStyle = vpTint(acc, 0.12);
-      ctx.fillRect(gridLeft, y, leftW, rowH);
-      ctx.fillStyle = '#1f1f1f';
-      ctx.font = "700 13px " + fontCss;
-      vpWrapText(ctx, r.time || '', gridLeft + leftW / 2, y + rowH / 2, leftW - 12, 16);
-
-      r.cells.forEach(function (c, ci) {
-        var x = gridLeft + leftW + ci * colW;
-        ctx.fillStyle = ri % 2 === 0 ? '#ffffff' : '#fafafa';
-        ctx.fillRect(x, y, colW, rowH);
-        ctx.fillStyle = '#333333';
-        ctx.font = "500 13px " + fontCss;
-        vpWrapText(ctx, c || '', x + colW / 2, y + rowH / 2, colW - 14, 16);
-      });
-      y += rowH;
-    });
-
-    ctx.strokeStyle = '#d8d8d8';
-    ctx.lineWidth = 1;
-    for (var i = 0; i <= days.length + 1; i++) {
-      var x = gridLeft + (i === 0 ? 0 : leftW + (i - 1) * colW);
-      ctx.beginPath(); ctx.moveTo(x, gridTop); ctx.lineTo(x, y); ctx.stroke();
+    /* 머리말 — 작은 부제 위, 큰 제목 아래 */
+    if (sub) {
+      ctx.fillStyle = '#8a8a8a';
+      ctx.font = '700 14px ' + fontCss;
+      ctx.fillText(sub, W / 2, padTop + subH / 2);
     }
-    var hy = gridTop;
-    ctx.beginPath(); ctx.moveTo(gridLeft, hy); ctx.lineTo(gridLeft + gridW, hy); ctx.stroke();
-    hy += headH;
-    ctx.beginPath(); ctx.moveTo(gridLeft, hy); ctx.lineTo(gridLeft + gridW, hy); ctx.stroke();
-    rows.forEach(function () {
-      hy += rowH;
-      ctx.beginPath(); ctx.moveTo(gridLeft, hy); ctx.lineTo(gridLeft + gridW, hy); ctx.stroke();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '700 27px ' + fontCss;
+    ctx.fillText(String(m.title || '일일 계획표'), W / 2, padTop + subH + titleH / 2);
+
+    var gx = padX, gy = padTop + subH + titleH + gap;
+
+    /* 요일 머리줄 */
+    ctx.fillStyle = acc;
+    ctx.fillRect(gx, gy, gridW, headH);
+    ctx.fillStyle = vpContrast(acc);
+    ctx.font = '700 12.5px ' + fontCss;
+    days.forEach(function (d, i) {
+      vpWrapText(ctx, d, gx + leftW + i * colW + colW / 2, gy + headH / 2, colW - 8, 13, 1);
+    });
+    ctx.fillStyle = vpContrast(acc);
+    ctx.font = '700 12.5px ' + fontCss;
+    ctx.fillText('시간', gx + leftW / 2, gy + headH / 2);
+
+    /* 시간 열 */
+    var bodyTop = gy + headH;
+    ctx.fillStyle = '#f4f4f4';
+    ctx.fillRect(gx, bodyTop, leftW, rows.length * rowH);
+    ctx.fillStyle = '#4a4a4a';
+    ctx.font = '600 11.5px ' + fontCss;
+    rows.forEach(function (r, ri) {
+      vpWrapText(ctx, r.time || '', gx + leftW / 2, bodyTop + ri * rowH + rowH / 2, leftW - 8, 12, 2);
     });
 
-    ctx.strokeStyle = acc;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(gridLeft, gridTop, gridW, y - gridTop);
+    /* 본문 — 붙어 있는 같은 내용은 하나의 블록으로 */
+    var rects = vpMergeRects(m);
+    rects.forEach(function (rc) {
+      var x = gx + leftW + rc.c * colW;
+      var y = bodyTop + rc.r * rowH;
+      var w = rc.cs * colW, h = rc.rs * rowH;
 
-    var url = canvas.toDataURL('image/png');
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = (m.title || '방학계획표').replace(/[\\/:*?"<>|]/g, '').trim() + '.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    toast('이미지로 저장했습니다.');
+      ctx.fillStyle = rc.text ? (m.colors[rc.text] || '#ffffff') : '#ffffff';
+      ctx.fillRect(x, y, w, h);
+
+      if (rc.text) {
+        ctx.fillStyle = '#2f2f2f';
+        ctx.font = '600 11.5px ' + fontCss;
+        vpWrapText(ctx, rc.text, x + w / 2, y + h / 2, w - 10, 13, Math.max(1, Math.floor(h / 13)));
+      }
+    });
+
+    /* 격자 — 합쳐진 블록은 테두리를 그리지 않아 하나로 보인다 */
+    ctx.strokeStyle = '#cfcfcf';
+    ctx.lineWidth = 1;
+    var line = function (x1, y1, x2, y2) {
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x1) + 0.5, Math.round(y1) + 0.5);
+      ctx.lineTo(Math.round(x2) + 0.5, Math.round(y2) + 0.5);
+      ctx.stroke();
+    };
+
+    rects.forEach(function (rc) {
+      var x = gx + leftW + rc.c * colW;
+      var y = bodyTop + rc.r * rowH;
+      ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, rc.cs * colW, rc.rs * rowH);
+    });
+    rows.forEach(function (r, ri) {
+      line(gx, bodyTop + ri * rowH, gx + leftW, bodyTop + ri * rowH);
+    });
+    line(gx, bodyTop + rows.length * rowH, gx + leftW, bodyTop + rows.length * rowH);
+    line(gx + leftW, gy, gx + leftW, bodyTop + rows.length * rowH);
+    days.forEach(function (d, i) {
+      var x = gx + leftW + (i + 1) * colW;
+      line(x, gy, x, gy + headH);
+    });
+
+    /* 바깥 테두리 */
+    ctx.strokeStyle = '#9a9a9a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(gx, gy, gridW, gridH);
+
+    return canvas;
+  }
+
+  function vpRenderPreview() {
+    var canvas = $('vpPreview');
+    if (!canvas) return;
+    vpDraw(canvas);
   }
 
   function exportVacPlanImage() {
     var btn = $('vpDownload');
     if (btn) { btn.disabled = true; btn.textContent = '이미지 준비 중…'; }
+
     vpEnsureFontLoaded(state.vacplan.font).then(function () {
-      vpDrawAndDownload();
+      var canvas = vpDraw($('vpPreview') || document.createElement('canvas'));
+      var m = state.vacplan;
+      var name = [String(m.subtitle || '').trim(), String(m.title || '계획표').trim()]
+        .filter(Boolean).join(' ').replace(/[\\/:*?"<>|]/g, '').trim() || '계획표';
+
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = name + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      toast('이미지로 저장했습니다.');
       if (btn) { btn.disabled = false; btn.textContent = '🖼️ 이미지로 저장'; }
     });
   }
 
   function renderVacPlanPage() {
     var m = state.vacplan;
-    $('vpTitle').value = m.title;
+    $('vpTitle').value = m.title || '';
+    $('vpSubtitle').value = m.subtitle || '';
     $('vpFont').value = m.font;
     paintVpSwatches();
     buildVpTable();
+    renderVpLegend();
+    vpRenderPreview();
   }
 
   function initVacPlan() {
@@ -9293,16 +9541,25 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('vpTitle').addEventListener('input', function () {
       state.vacplan.title = $('vpTitle').value;
       vpSave();
+      vpRefresh();
+    });
+    $('vpSubtitle').addEventListener('input', function () {
+      state.vacplan.subtitle = $('vpSubtitle').value;
+      vpSave();
+      vpRefresh();
     });
     $('vpFont').addEventListener('change', function () {
       state.vacplan.font = $('vpFont').value;
       vpSave();
       buildVpTable();
+      // 웹폰트는 처음 고를 때 아직 안 받아졌을 수 있어 로드를 기다린 뒤 다시 그린다
+      vpEnsureFontLoaded(state.vacplan.font).then(vpRenderPreview);
     });
     $('vpAddRow').addEventListener('click', function () {
       state.vacplan.rows.push({ time: '', cells: state.vacplan.days.map(function () { return ''; }) });
       vpSave();
       buildVpTable();
+      vpRenderPreview();
     });
     $('vpDownload').addEventListener('click', exportVacPlanImage);
     $('vpReset').addEventListener('click', function () {
@@ -9314,6 +9571,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     });
 
     renderVacPlanPage();
+    // 저장된 글씨체가 웹폰트면 로드된 뒤 미리보기를 한 번 더 그린다
+    vpEnsureFontLoaded(state.vacplan.font).then(vpRenderPreview);
   }
 
   function bindGotoIn(root) {
