@@ -1318,6 +1318,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
  * 기기에서는 아래쪽 요소가 가려질 수 있다. env() 로 그만큼 비워 준다.
  * 안전 영역이 없는 기기에서는 env() 가 0 이라 아무 영향이 없다. */
 
+/* 홈 화면에 설치해 PWA 로 열면 상태 표시줄(시계·배터리) 아래까지 화면이 그려져
+ * 상단 바 글자와 겹친다. 그만큼 위를 비운다.
+ * padding 자리에도 배경이 칠해지므로 상태 표시줄 뒤로 반투명 바가 이어져 보인다.
+ * 브라우저 탭에서는 이 값이 0 이라 예전과 똑같다. */
+.topbar { padding-top: env(safe-area-inset-top); }
+/* 인트로는 화면 전체를 덮으므로 같은 이유로 위를 비워 준다 */
+.intro { padding-top: max(24px, env(safe-area-inset-top)); }
+
 .topbar-inner { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
 .wrap { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
 .foot { padding-bottom: calc(46px + env(safe-area-inset-bottom)); }
