@@ -81,16 +81,33 @@ as $$
 declare
   v_school   text := btrim(p_school);
   v_nickname text := btrim(p_nickname);
+  -- 주차 키는 앱이 한국 시간 기준으로 만든다 (schema.sql 의 report_league 와 동일)
+  v_today    date := (now() at time zone 'Asia/Seoul')::date;
+  v_wkstart  date;
+  v_days     int;
+  v_min      int := p_minutes;
 begin
   if p_device is null or v_school = '' or v_nickname = '' then return; end if;
   if char_length(v_school) > 40 or char_length(v_nickname) > 24 then return; end if;
-  if p_minutes is null or p_minutes < 0 or p_minutes > 2100 then return; end if;
-  if p_week < current_date - interval '35 days' or p_week > current_date + interval '7 days' then
+  if v_min is null or v_min < 0 then return; end if;
+  if p_week < v_today - interval '35 days' or p_week > v_today + interval '7 days' then
     return;
   end if;
 
+  -- 리그와 같은 진행형 상한. 관리자 화면도 정산 근거로 쓰이므로,
+  -- 한쪽만 느슨하면 그쪽 숫자를 들고 와 우기는 일이 생긴다.
+  v_wkstart := (v_today - ((extract(isodow from v_today)::int - 1) || ' days')::interval)::date;
+  if p_week > v_wkstart then
+    v_days := 0;
+  elsif p_week = v_wkstart then
+    v_days := extract(isodow from v_today)::int;
+  else
+    v_days := 7;
+  end if;
+  if v_min > v_days * 300 then v_min := v_days * 300; end if;
+
   insert into public.student_report as r (device_id, week, nickname, school, minutes, updated_at)
-  values (p_device, p_week, v_nickname, v_school, p_minutes, now())
+  values (p_device, p_week, v_nickname, v_school, v_min, now())
   on conflict (device_id, week) do update
     set
       minutes    = greatest(r.minutes, excluded.minutes),  -- 되감기 방지
