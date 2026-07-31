@@ -1778,26 +1778,46 @@
 
   var VP_KEY = 'neurostudy.vacplan.v1';
 
+  /* 귀여운 글씨체는 구글 폰트(무료·상업적 사용 가능)를 쓴다 — index.html <head> 에서 미리 불러온다.
+   * family 가 있으면 이미지로 저장하기 전에 그 폰트가 실제로 로드됐는지 기다린다 —
+   * 안 그러면 캔버스가 폰트 로드 전에 그려져 기본 서체로 찍히는 경우가 있다. */
   var VP_FONTS = [
     { id: 'sans', label: '기본 고딕', css: "'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif" },
+    { id: 'cute1', label: '🐣 말랑 손글씨', family: 'Gaegu', css: "'Gaegu','Malgun Gothic',cursive" },
+    { id: 'cute2', label: '🍬 동글동글체', family: 'Jua', css: "'Jua','Malgun Gothic',sans-serif" },
+    { id: 'cute3', label: '🎀 깜찍 손글씨', family: 'Poor Story', css: "'Poor Story','Malgun Gothic',cursive" },
+    { id: 'cute4', label: '🧸 통통체', family: 'Do Hyeon', css: "'Do Hyeon','Malgun Gothic',sans-serif" },
+    { id: 'cute5', label: '🌷 봄바람체', family: 'Gamja Flower', css: "'Gamja Flower','Malgun Gothic',cursive" },
     { id: 'round', label: '둥근 고딕', css: "Dotum,'돋움','Apple SD Gothic Neo',sans-serif" },
     { id: 'serif', label: '명조체', css: "Batang,'바탕','Apple SD Gothic Neo',serif" },
     { id: 'gungseo', label: '궁서체', css: "Gungsuh,'궁서',serif" },
     { id: 'mono', label: '타자기', css: "'D2Coding',Consolas,monospace" }
   ];
 
-  var VP_COLORS = ['#6d4aff', '#0284c7', '#0f9d6e', '#db2777', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
+  /* 파스텔톤 8색 */
+  var VP_COLORS = ['#ffb3ba', '#ffdfba', '#fdf5ba', '#baffc9', '#bae1ff', '#d0baff', '#ffbae5', '#c4fff0'];
 
-  function vpFontCss(id) {
-    var f = VP_FONTS.filter(function (x) { return x.id === id; })[0];
-    return f ? f.css : VP_FONTS[0].css;
+  function vpFont(id) {
+    return VP_FONTS.filter(function (x) { return x.id === id; })[0] || VP_FONTS[0];
+  }
+
+  function vpFontCss(id) { return vpFont(id).css; }
+
+  /** 귀여운 폰트를 고른 경우, 이미지를 그리기 전에 실제 로드를 기다린다 */
+  function vpEnsureFontLoaded(id) {
+    var f = vpFont(id);
+    if (!f.family || !document.fonts || !document.fonts.load) return Promise.resolve();
+    return Promise.all([
+      document.fonts.load("700 24px '" + f.family + "'"),
+      document.fonts.load("500 13px '" + f.family + "'")
+    ]).catch(function () { /* 폰트 서버에 연결 안 되면 기본 서체로 대체된다 */ });
   }
 
   function vpDefaultModel() {
     return {
       title: '나의 방학 생활계획표',
       font: 'sans',
-      color: '#6d4aff',
+      color: VP_COLORS[4],
       days: ['월', '화', '수', '목', '금', '토', '일'],
       rows: [
         { time: '07:00', cells: Array(7).fill('기상') },
@@ -1942,7 +1962,7 @@
     lines.forEach(function (l, i) { ctx.fillText(l, cx, startY + i * lineHeight); });
   }
 
-  function exportVacPlanImage() {
+  function vpDrawAndDownload() {
     var m = state.vacplan;
     var acc = m.color || '#6d4aff';
     var fontCss = vpFontCss(m.font);
@@ -2025,6 +2045,15 @@
     a.click();
     a.remove();
     toast('이미지로 저장했습니다.');
+  }
+
+  function exportVacPlanImage() {
+    var btn = $('vpDownload');
+    if (btn) { btn.disabled = true; btn.textContent = '이미지 준비 중…'; }
+    vpEnsureFontLoaded(state.vacplan.font).then(function () {
+      vpDrawAndDownload();
+      if (btn) { btn.disabled = false; btn.textContent = '🖼️ 이미지로 저장'; }
+    });
   }
 
   function renderVacPlanPage() {
