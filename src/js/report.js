@@ -18,7 +18,7 @@
   /* 과목 유형 색 — 서로 구분은 되어야 하지만 앱 전체 색과 따로 놀면 안 된다.
    * 파랑·초록·주황·분홍이 섞여 있던 걸 보라를 축으로 한 차가운 계열로 모았다. */
   var TYPE_COLOR = {
-    memorize: '#6d4aff', calculate: '#4f8ef7', reading: '#17a08a',
+    memorize: '#6d4aff', calculate: '#4f8ef7', reading: '#8a6fd8',
     creative: '#a36bff', mixed: '#8b93a8'
   };
 

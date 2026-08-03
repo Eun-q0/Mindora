@@ -836,10 +836,10 @@
   /* ---------------------------------------------------------- 능력 카드 */
 
   function levelTag(level) {
-    // 앱 전체 색과 같은 계열로 — 예전 하늘색·주황은 다른 화면과 따로 놀았다
-    if (level === 'high') return { t: '우수', c: '#0e6b5c', b: '#e8f7f3' };
+    // 앱 전체 색과 같은 계열로 — 초록·주황 대신 --good/--warn 토큰과 맞춘 파랑·로즈브라운
+    if (level === 'high') return { t: '우수', c: '#2a55a8', b: '#eaf1fc' };
     if (level === 'mid') return { t: '보통', c: '#3f5bc4', b: '#eaeeff' };
-    return { t: '저하', c: '#7d5c1d', b: '#f9f2e4' };
+    return { t: '저하', c: '#7a4f3b', b: '#f6efec' };
   }
 
   function renderCapBars(a) {
@@ -1296,7 +1296,7 @@
         ? s.block.subject + ' · ' + s.block.minutes + '분 블록'
         : '화면에서 눈을 떼고 몸을 움직이세요';
       dial.style.strokeDashoffset = C * (1 - (s.totalMs ? s.remainingMs / s.totalMs : 0));
-      dial.style.stroke = isStudy ? (s.block.color || '#6d4aff') : '#17a08a';
+      dial.style.stroke = isStudy ? (s.block.color || '#6d4aff') : '#3f6fd1';
     }
 
     $('btnStart').textContent = s.running ? '⏸ 일시정지' : '▶ 시작';
