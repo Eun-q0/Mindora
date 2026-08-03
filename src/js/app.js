@@ -662,12 +662,58 @@
       return '<div class="alert ' + x.level + '"><b>' + (x.level === 'bad' ? '⚠' : '!') + '</b><span>' + esc(x.text) + '</span></div>';
     }).join('') || '<div class="alert warn"><b>✓</b><span>특별한 위험 신호는 없습니다. 계획대로 진행하세요.</span></div>';
 
+    $('aiBriefingLine').textContent = buildAiBriefing(a);
+
     renderCapStrip(a);
     renderRadar(a);
     renderCapBars(a);
     renderCapDetails(a);
     collapseResultDetail();
   }
+
+  /* ------------------------------------------------------- AI 브리핑 한 줄
+   * 점수만 늘어놓지 않고, 어제 대비 변화 + 오늘 먼저/뒤로 할 과목 유형까지
+   * 한 문장으로 묶어 "AI가 나를 보고 말해준다"는 느낌을 준다. */
+
+  function bestTypeFor(capId) {
+    var best = null, bestW = -1;
+    Object.keys(BrainPlanner.TYPES).forEach(function (id) {
+      if (id === 'mixed') return;
+      var w = BrainPlanner.TYPES[id].affinity[capId] || 0;
+      if (w > bestW) { bestW = w; best = id; }
+    });
+    return best ? BrainPlanner.TYPES[best] : null;
+  }
+
+  function buildAiBriefing(a) {
+    var yKey = Store.key(new Date(Date.now() - 86400000));
+    var y = Store.recordOn(yKey);
+
+    var trend = '';
+    if (y) {
+      var sleepDiff = a.input.sleep.hours - y.sleep;
+      var overallDiff = a.overall - y.overall;
+      if (Math.abs(sleepDiff) >= 0.4) {
+        trend = '어제보다 수면이 ' + round1(Math.abs(sleepDiff)) + '시간 ' + (sleepDiff < 0 ? '부족합니다.' : '늘었습니다.') + ' ';
+      } else if (Math.abs(overallDiff) >= 5) {
+        trend = '어제보다 종합 컨디션이 ' + Math.abs(overallDiff) + '점 ' + (overallDiff < 0 ? '떨어졌습니다.' : '올라왔습니다.') + ' ';
+      }
+    }
+
+    var advice;
+    if (a.capMeaningful) {
+      var good = bestTypeFor(a.top.id);
+      var bad = bestTypeFor(a.bottom.id);
+      advice = '오늘은 ' + good.label + '(' + good.hint.split(' · ')[0] + ' 등)을 먼저 하고, ' +
+        bad.label + '은 뒤로 미루는 것이 좋습니다.';
+    } else {
+      advice = a.state.line;
+    }
+
+    return trend + advice;
+  }
+
+  function round1(n) { return Math.round(n * 10) / 10; }
 
   /* -------------------------------------------------- 결과 요약 스트립
    * 결과 화면이 길어 한눈에 안 들어온다는 이야기가 있어,

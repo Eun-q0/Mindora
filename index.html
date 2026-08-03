@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mindora — 뇌 컨디션 기반 학습 코치</title>
 
+<meta name="naver-site-verification" content="fa3d8aeb91cd3600bfaf8c486a86f00aba5d0cd7" />
+
 <!-- Google AdSense -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
      crossorigin="anonymous"></script>
@@ -370,6 +372,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .btn.lg { padding: 13px 26px; font-size: 15px; }
 .btn.sm { padding: 6px 12px; font-size: 12px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* ------------------------------------------------------------ AI 브리핑 */
+.ai-briefing { display: flex; gap: 12px; align-items: flex-start; padding: 16px 18px; margin-bottom: 14px; border-radius: var(--r); background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); box-shadow: var(--shadow); }
+.ab-badge { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.01em; color: #fff; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.ab-line { margin: 2px 0 0; font-size: 14.5px; line-height: 1.55; color: #fff; font-weight: 600; }
 
 /* ----------------------------------------------------------------- hero */
 .hero { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 26px; align-items: center; padding: 26px; border-radius: var(--r); box-shadow: var(--shadow); background: var(--hero-grad); border: 1px solid var(--line); }
@@ -1843,6 +1850,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     <div class="sec-head">
       <h2><span class="sec-num">02</span> 뇌 학습 능력 분석</h2>
       <p id="analyzedAt">—</p>
+    </div>
+
+    <div class="ai-briefing" id="aiBriefing">
+      <span class="ab-badge">🧠 Mindora AI</span>
+      <p class="ab-line" id="aiBriefingLine">—</p>
     </div>
 
     <div class="hero">
@@ -7965,12 +7977,58 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       return '<div class="alert ' + x.level + '"><b>' + (x.level === 'bad' ? '⚠' : '!') + '</b><span>' + esc(x.text) + '</span></div>';
     }).join('') || '<div class="alert warn"><b>✓</b><span>특별한 위험 신호는 없습니다. 계획대로 진행하세요.</span></div>';
 
+    $('aiBriefingLine').textContent = buildAiBriefing(a);
+
     renderCapStrip(a);
     renderRadar(a);
     renderCapBars(a);
     renderCapDetails(a);
     collapseResultDetail();
   }
+
+  /* ------------------------------------------------------- AI 브리핑 한 줄
+   * 점수만 늘어놓지 않고, 어제 대비 변화 + 오늘 먼저/뒤로 할 과목 유형까지
+   * 한 문장으로 묶어 "AI가 나를 보고 말해준다"는 느낌을 준다. */
+
+  function bestTypeFor(capId) {
+    var best = null, bestW = -1;
+    Object.keys(BrainPlanner.TYPES).forEach(function (id) {
+      if (id === 'mixed') return;
+      var w = BrainPlanner.TYPES[id].affinity[capId] || 0;
+      if (w > bestW) { bestW = w; best = id; }
+    });
+    return best ? BrainPlanner.TYPES[best] : null;
+  }
+
+  function buildAiBriefing(a) {
+    var yKey = Store.key(new Date(Date.now() - 86400000));
+    var y = Store.recordOn(yKey);
+
+    var trend = '';
+    if (y) {
+      var sleepDiff = a.input.sleep.hours - y.sleep;
+      var overallDiff = a.overall - y.overall;
+      if (Math.abs(sleepDiff) >= 0.4) {
+        trend = '어제보다 수면이 ' + round1(Math.abs(sleepDiff)) + '시간 ' + (sleepDiff < 0 ? '부족합니다.' : '늘었습니다.') + ' ';
+      } else if (Math.abs(overallDiff) >= 5) {
+        trend = '어제보다 종합 컨디션이 ' + Math.abs(overallDiff) + '점 ' + (overallDiff < 0 ? '떨어졌습니다.' : '올라왔습니다.') + ' ';
+      }
+    }
+
+    var advice;
+    if (a.capMeaningful) {
+      var good = bestTypeFor(a.top.id);
+      var bad = bestTypeFor(a.bottom.id);
+      advice = '오늘은 ' + good.label + '(' + good.hint.split(' · ')[0] + ' 등)을 먼저 하고, ' +
+        bad.label + '은 뒤로 미루는 것이 좋습니다.';
+    } else {
+      advice = a.state.line;
+    }
+
+    return trend + advice;
+  }
+
+  function round1(n) { return Math.round(n * 10) / 10; }
 
   /* -------------------------------------------------- 결과 요약 스트립
    * 결과 화면이 길어 한눈에 안 들어온다는 이야기가 있어,
