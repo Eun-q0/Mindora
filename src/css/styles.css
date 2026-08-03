@@ -308,6 +308,31 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .subject-row { animation: pop 0.22s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 
+.vpai-academy-row { grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) 34px; }
+/* 요일 칩 7개는 한 칸에 욱여넣으면 눌리므로 아랫줄을 통째로 쓴다 */
+.vpai-academy-row .va-days-cell { grid-column: 1 / -1; }
+.va-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.va-day input { position: absolute; opacity: 0; width: 0; height: 0; }
+.va-day span {
+  display: grid; place-items: center; min-width: 32px; padding: 6px 8px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  font-size: 12px; color: var(--dim); cursor: pointer; transition: 0.14s;
+}
+.va-day span:hover { border-color: var(--line-2); }
+.va-day input:checked + span {
+  background: var(--accent-soft); border-color: var(--accent-line);
+  color: var(--accent-ink); font-weight: 700;
+}
+.va-day input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+.vpai-subject-row, .vpai-subject-head { grid-template-columns: minmax(0,1.6fr) minmax(0,1.4fr) 34px; }
+.vs-hours-row { display: flex; align-items: center; gap: 7px; }
+.vs-hours-row .vs-hours { width: 78px; }
+.vs-hours-row span { font-size: 12.5px; color: var(--dim); }
+.vpai-meals { display: flex; gap: 16px; flex-wrap: wrap; }
+.vpai-meal { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.vpai-meal .input { width: 110px; }
+.vpai-rest { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; }
+
 .icon-btn { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line-2); color: var(--dim); cursor: pointer; font-size: 12px; transition: 0.16s; }
 .icon-btn:hover { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad); }
 
@@ -889,6 +914,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 }
 .vp-del:hover { color: var(--bad); background: var(--bad-bg); }
 
+@media (max-width: 640px) {
+  .vp-table { min-width: 560px; }
+  .vp-table th, .vp-table td { padding: 3px 4px; font-size: 10.5px; }
+  .vp-table thead th.vp-corner, .vp-table td.vp-time { width: 50px; }
+  .vp-table td.vp-cell { min-height: 20px; line-height: 1.15; }
+  .vp-table td.vp-rowdel { width: 18px; }
+  .vp-del { padding: 2px; font-size: 11px; }
+}
+
 .vp-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
 .vp-pal {
   display: flex; flex-direction: column; align-items: stretch; gap: 6px;
@@ -909,6 +943,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   background: var(--surface-3); font-size: 12px; color: var(--text);
 }
 .vp-lg:hover { border-color: var(--line-2); }
+.vp-lg-name { background: none; border: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
+.vp-lg-name:hover { text-decoration: underline; }
 .vp-lg input[type="color"] {
   width: 20px; height: 20px; border: 1px solid var(--line-2); border-radius: 50%;
   padding: 0; cursor: pointer; background: none; flex: none;

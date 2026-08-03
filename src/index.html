@@ -600,8 +600,12 @@
           </div>
         </div>
         <div class="field">
-          <label>색 조합 <em>고르면 과목 색이 한 번에 바뀝니다</em></label>
-          <div class="vp-palettes" id="vpPalettes"></div>
+          <button type="button" class="res-more" id="vpPaletteToggle" aria-expanded="false" aria-controls="vpPalettes">
+            <span class="rm-txt">색 조합</span>
+            <span class="rm-sub">고르면 과목 색이 한 번에 바뀝니다</span>
+            <span class="rm-arw">▾</span>
+          </button>
+          <div class="vp-palettes is-hidden" id="vpPalettes"></div>
         </div>
         <div class="two-col">
           <div class="field">
@@ -622,6 +626,67 @@
 
     <div class="card wide">
       <div class="card-head">
+        <span class="ci">🤖</span><h3>AI 계획표 세우기</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="vpAiToggle" aria-expanded="false" aria-controls="vpAiBody">펼치기</button></span>
+      </div>
+      <div class="card-body is-hidden" id="vpAiBody">
+        <p class="tiny" style="margin:0 0 12px">기상·취침·식사·학원처럼 <b>이미 정해진 일정</b>을 먼저 넣으면, 남는 시간을 과목별 주간 목표 시간에 맞춰 AI가 배분해 큰 틀을 세웁니다. 만들어진 뒤에는 아래 시간표에서 자유롭게 고칠 수 있습니다.</p>
+        <div class="two-col">
+          <div class="field">
+            <label for="vpAiWake">기상 시각</label>
+            <input type="time" id="vpAiWake" class="input" value="07:00">
+          </div>
+          <div class="field">
+            <label for="vpAiSleep">취침 시각</label>
+            <input type="time" id="vpAiSleep" class="input" value="23:00">
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label for="vpAiGradeNow">지금 등급</label>
+            <select id="vpAiGradeNow" class="input"></select>
+          </div>
+          <div class="field">
+            <label for="vpAiGradeGoal">목표 등급 <em>차이가 클수록 휴식이 줄어듭니다</em></label>
+            <select id="vpAiGradeGoal" class="input"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>식사 시간</label>
+          <div class="vpai-meals" id="vpAiMeals">
+            <label class="vpai-meal"><input type="checkbox" id="vpAiBreakfastOn" checked> 아침 <input type="time" id="vpAiBreakfastTime" class="input" value="08:00"></label>
+            <label class="vpai-meal"><input type="checkbox" id="vpAiLunchOn" checked> 점심 <input type="time" id="vpAiLunchTime" class="input" value="12:00"></label>
+            <label class="vpai-meal"><input type="checkbox" id="vpAiDinnerOn" checked> 저녁 <input type="time" id="vpAiDinnerTime" class="input" value="18:00"></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>학원 · 과외 일정 <em>있는 만큼만 추가하세요</em></label>
+          <div id="vpAiAcademyList"></div>
+          <button type="button" class="btn ghost sm" id="vpAiAcademyAdd" style="margin-top:8px">+ 학원 일정 추가</button>
+        </div>
+
+        <div class="field">
+          <label>공부할 과목 <em>일주일에 몇 시간 할지 정하세요</em></label>
+          <div class="subject-head vpai-subject-head"><span>과목명</span><span>일주일 목표</span><span></span></div>
+          <div id="vpAiSubjectList"></div>
+          <button type="button" class="btn ghost sm" id="vpAiSubjectAdd" style="margin-top:8px">+ 과목 추가</button>
+          <p class="tiny" id="vpAiSubjectTotal">—</p>
+        </div>
+
+        <label class="vpai-rest"><input type="checkbox" id="vpAiAutoRest" checked> 공부 사이에 휴식 자동 배치</label>
+        <p class="tiny" id="vpAiIntensity">—</p>
+
+        <div class="actions" style="margin-top:16px">
+          <button type="button" class="btn primary" id="vpAiGenerate">🤖 AI로 시간표 채우기</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head">
         <span class="ci">🗓️</span><h3>시간표</h3>
         <span class="right"><button type="button" class="btn ghost sm" id="vpAddRow">+ 시간대 추가</button></span>
       </div>
@@ -629,14 +694,17 @@
         <div class="vp-wrap">
           <table class="vp-table" id="vpTable"></table>
         </div>
-        <p class="tiny">칸을 눌러 바로 내용을 적을 수 있습니다. 요일 이름도 눌러서 바꿀 수 있고, 시간대는 자유롭게 추가·삭제할 수 있습니다.
+        <p class="tiny">위 <b>AI 계획표 세우기</b>로 큰 틀을 먼저 잡은 뒤 여기서 다듬는 순서를 권합니다. 칸을 눌러 바로 내용을 적을 수 있고, 요일 이름도 눌러서 바꿀 수 있으며, 시간대는 자유롭게 추가·삭제할 수 있습니다.
           <b>위아래·양옆으로 같은 내용을 적으면 저장할 때 하나의 큰 칸으로 합쳐집니다.</b></p>
       </div>
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">🖼️</span><h3>미리보기</h3></div>
-      <div class="card-body">
+      <div class="card-head">
+        <span class="ci">🖼️</span><h3>미리보기</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="vpPreviewToggle" aria-expanded="false" aria-controls="vpPreviewBody">펼치기</button></span>
+      </div>
+      <div class="card-body is-hidden" id="vpPreviewBody">
         <div class="vp-wrap">
           <canvas id="vpPreview" class="vp-preview"></canvas>
         </div>
@@ -1184,6 +1252,39 @@
       </select>
     </label>
     <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
+  </div>
+</template>
+
+<template id="vpAiAcademyRowTpl">
+  <div class="subject-row vpai-academy-row">
+    <label class="s-cell s-cell-name"><span class="s-cap">이름</span>
+      <input type="text" class="input va-name" placeholder="예) 수학학원" maxlength="20" aria-label="학원 이름">
+    </label>
+    <label class="s-cell"><span class="s-cap">시작</span>
+      <input type="time" class="input va-start" aria-label="시작 시각">
+    </label>
+    <label class="s-cell"><span class="s-cap">종료</span>
+      <input type="time" class="input va-end" aria-label="종료 시각">
+    </label>
+    <button type="button" class="icon-btn va-del" title="삭제" aria-label="이 일정 삭제">✕</button>
+    <div class="s-cell va-days-cell"><span class="s-cap">가는 요일</span>
+      <div class="va-days" role="group" aria-label="학원 가는 요일"></div>
+    </div>
+  </div>
+</template>
+
+<template id="vpAiSubjectRowTpl">
+  <div class="subject-row vpai-subject-row">
+    <label class="s-cell s-cell-name"><span class="s-cap">과목명</span>
+      <input type="text" class="input vs-name" placeholder="예) 수학" maxlength="20" aria-label="과목명">
+    </label>
+    <label class="s-cell"><span class="s-cap">일주일 목표</span>
+      <div class="vs-hours-row">
+        <input type="number" class="input vs-hours" min="0" max="80" step="1" value="5" aria-label="일주일 목표 시간">
+        <span>시간</span>
+      </div>
+    </label>
+    <button type="button" class="icon-btn vs-del" title="삭제" aria-label="이 과목 삭제">✕</button>
   </div>
 </template>
 

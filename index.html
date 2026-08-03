@@ -355,6 +355,31 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .subject-row { animation: pop 0.22s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 
+.vpai-academy-row { grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) 34px; }
+/* 요일 칩 7개는 한 칸에 욱여넣으면 눌리므로 아랫줄을 통째로 쓴다 */
+.vpai-academy-row .va-days-cell { grid-column: 1 / -1; }
+.va-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.va-day input { position: absolute; opacity: 0; width: 0; height: 0; }
+.va-day span {
+  display: grid; place-items: center; min-width: 32px; padding: 6px 8px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  font-size: 12px; color: var(--dim); cursor: pointer; transition: 0.14s;
+}
+.va-day span:hover { border-color: var(--line-2); }
+.va-day input:checked + span {
+  background: var(--accent-soft); border-color: var(--accent-line);
+  color: var(--accent-ink); font-weight: 700;
+}
+.va-day input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+.vpai-subject-row, .vpai-subject-head { grid-template-columns: minmax(0,1.6fr) minmax(0,1.4fr) 34px; }
+.vs-hours-row { display: flex; align-items: center; gap: 7px; }
+.vs-hours-row .vs-hours { width: 78px; }
+.vs-hours-row span { font-size: 12.5px; color: var(--dim); }
+.vpai-meals { display: flex; gap: 16px; flex-wrap: wrap; }
+.vpai-meal { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.vpai-meal .input { width: 110px; }
+.vpai-rest { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; }
+
 .icon-btn { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line-2); color: var(--dim); cursor: pointer; font-size: 12px; transition: 0.16s; }
 .icon-btn:hover { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad); }
 
@@ -936,6 +961,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 }
 .vp-del:hover { color: var(--bad); background: var(--bad-bg); }
 
+@media (max-width: 640px) {
+  .vp-table { min-width: 560px; }
+  .vp-table th, .vp-table td { padding: 3px 4px; font-size: 10.5px; }
+  .vp-table thead th.vp-corner, .vp-table td.vp-time { width: 50px; }
+  .vp-table td.vp-cell { min-height: 20px; line-height: 1.15; }
+  .vp-table td.vp-rowdel { width: 18px; }
+  .vp-del { padding: 2px; font-size: 11px; }
+}
+
 .vp-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
 .vp-pal {
   display: flex; flex-direction: column; align-items: stretch; gap: 6px;
@@ -956,6 +990,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   background: var(--surface-3); font-size: 12px; color: var(--text);
 }
 .vp-lg:hover { border-color: var(--line-2); }
+.vp-lg-name { background: none; border: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
+.vp-lg-name:hover { text-decoration: underline; }
 .vp-lg input[type="color"] {
   width: 20px; height: 20px; border: 1px solid var(--line-2); border-radius: 50%;
   padding: 0; cursor: pointer; background: none; flex: none;
@@ -2059,8 +2095,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           </div>
         </div>
         <div class="field">
-          <label>색 조합 <em>고르면 과목 색이 한 번에 바뀝니다</em></label>
-          <div class="vp-palettes" id="vpPalettes"></div>
+          <button type="button" class="res-more" id="vpPaletteToggle" aria-expanded="false" aria-controls="vpPalettes">
+            <span class="rm-txt">색 조합</span>
+            <span class="rm-sub">고르면 과목 색이 한 번에 바뀝니다</span>
+            <span class="rm-arw">▾</span>
+          </button>
+          <div class="vp-palettes is-hidden" id="vpPalettes"></div>
         </div>
         <div class="two-col">
           <div class="field">
@@ -2081,6 +2121,67 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     <div class="card wide">
       <div class="card-head">
+        <span class="ci">🤖</span><h3>AI 계획표 세우기</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="vpAiToggle" aria-expanded="false" aria-controls="vpAiBody">펼치기</button></span>
+      </div>
+      <div class="card-body is-hidden" id="vpAiBody">
+        <p class="tiny" style="margin:0 0 12px">기상·취침·식사·학원처럼 <b>이미 정해진 일정</b>을 먼저 넣으면, 남는 시간을 과목별 주간 목표 시간에 맞춰 AI가 배분해 큰 틀을 세웁니다. 만들어진 뒤에는 아래 시간표에서 자유롭게 고칠 수 있습니다.</p>
+        <div class="two-col">
+          <div class="field">
+            <label for="vpAiWake">기상 시각</label>
+            <input type="time" id="vpAiWake" class="input" value="07:00">
+          </div>
+          <div class="field">
+            <label for="vpAiSleep">취침 시각</label>
+            <input type="time" id="vpAiSleep" class="input" value="23:00">
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label for="vpAiGradeNow">지금 등급</label>
+            <select id="vpAiGradeNow" class="input"></select>
+          </div>
+          <div class="field">
+            <label for="vpAiGradeGoal">목표 등급 <em>차이가 클수록 휴식이 줄어듭니다</em></label>
+            <select id="vpAiGradeGoal" class="input"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>식사 시간</label>
+          <div class="vpai-meals" id="vpAiMeals">
+            <label class="vpai-meal"><input type="checkbox" id="vpAiBreakfastOn" checked> 아침 <input type="time" id="vpAiBreakfastTime" class="input" value="08:00"></label>
+            <label class="vpai-meal"><input type="checkbox" id="vpAiLunchOn" checked> 점심 <input type="time" id="vpAiLunchTime" class="input" value="12:00"></label>
+            <label class="vpai-meal"><input type="checkbox" id="vpAiDinnerOn" checked> 저녁 <input type="time" id="vpAiDinnerTime" class="input" value="18:00"></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>학원 · 과외 일정 <em>있는 만큼만 추가하세요</em></label>
+          <div id="vpAiAcademyList"></div>
+          <button type="button" class="btn ghost sm" id="vpAiAcademyAdd" style="margin-top:8px">+ 학원 일정 추가</button>
+        </div>
+
+        <div class="field">
+          <label>공부할 과목 <em>일주일에 몇 시간 할지 정하세요</em></label>
+          <div class="subject-head vpai-subject-head"><span>과목명</span><span>일주일 목표</span><span></span></div>
+          <div id="vpAiSubjectList"></div>
+          <button type="button" class="btn ghost sm" id="vpAiSubjectAdd" style="margin-top:8px">+ 과목 추가</button>
+          <p class="tiny" id="vpAiSubjectTotal">—</p>
+        </div>
+
+        <label class="vpai-rest"><input type="checkbox" id="vpAiAutoRest" checked> 공부 사이에 휴식 자동 배치</label>
+        <p class="tiny" id="vpAiIntensity">—</p>
+
+        <div class="actions" style="margin-top:16px">
+          <button type="button" class="btn primary" id="vpAiGenerate">🤖 AI로 시간표 채우기</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head">
         <span class="ci">🗓️</span><h3>시간표</h3>
         <span class="right"><button type="button" class="btn ghost sm" id="vpAddRow">+ 시간대 추가</button></span>
       </div>
@@ -2088,14 +2189,17 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <div class="vp-wrap">
           <table class="vp-table" id="vpTable"></table>
         </div>
-        <p class="tiny">칸을 눌러 바로 내용을 적을 수 있습니다. 요일 이름도 눌러서 바꿀 수 있고, 시간대는 자유롭게 추가·삭제할 수 있습니다.
+        <p class="tiny">위 <b>AI 계획표 세우기</b>로 큰 틀을 먼저 잡은 뒤 여기서 다듬는 순서를 권합니다. 칸을 눌러 바로 내용을 적을 수 있고, 요일 이름도 눌러서 바꿀 수 있으며, 시간대는 자유롭게 추가·삭제할 수 있습니다.
           <b>위아래·양옆으로 같은 내용을 적으면 저장할 때 하나의 큰 칸으로 합쳐집니다.</b></p>
       </div>
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">🖼️</span><h3>미리보기</h3></div>
-      <div class="card-body">
+      <div class="card-head">
+        <span class="ci">🖼️</span><h3>미리보기</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="vpPreviewToggle" aria-expanded="false" aria-controls="vpPreviewBody">펼치기</button></span>
+      </div>
+      <div class="card-body is-hidden" id="vpPreviewBody">
         <div class="vp-wrap">
           <canvas id="vpPreview" class="vp-preview"></canvas>
         </div>
@@ -2643,6 +2747,39 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       </select>
     </label>
     <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
+  </div>
+</template>
+
+<template id="vpAiAcademyRowTpl">
+  <div class="subject-row vpai-academy-row">
+    <label class="s-cell s-cell-name"><span class="s-cap">이름</span>
+      <input type="text" class="input va-name" placeholder="예) 수학학원" maxlength="20" aria-label="학원 이름">
+    </label>
+    <label class="s-cell"><span class="s-cap">시작</span>
+      <input type="time" class="input va-start" aria-label="시작 시각">
+    </label>
+    <label class="s-cell"><span class="s-cap">종료</span>
+      <input type="time" class="input va-end" aria-label="종료 시각">
+    </label>
+    <button type="button" class="icon-btn va-del" title="삭제" aria-label="이 일정 삭제">✕</button>
+    <div class="s-cell va-days-cell"><span class="s-cap">가는 요일</span>
+      <div class="va-days" role="group" aria-label="학원 가는 요일"></div>
+    </div>
+  </div>
+</template>
+
+<template id="vpAiSubjectRowTpl">
+  <div class="subject-row vpai-subject-row">
+    <label class="s-cell s-cell-name"><span class="s-cap">과목명</span>
+      <input type="text" class="input vs-name" placeholder="예) 수학" maxlength="20" aria-label="과목명">
+    </label>
+    <label class="s-cell"><span class="s-cap">일주일 목표</span>
+      <div class="vs-hours-row">
+        <input type="number" class="input vs-hours" min="0" max="80" step="1" value="5" aria-label="일주일 목표 시간">
+        <span>시간</span>
+      </div>
+    </label>
+    <button type="button" class="icon-btn vs-del" title="삭제" aria-label="이 과목 삭제">✕</button>
   </div>
 </template>
 
@@ -9242,10 +9379,21 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     ]).catch(function () { /* 폰트 서버에 연결 안 되면 기본 서체로 대체된다 */ });
   }
 
-  /** 평일 5칸 + 주말 2칸을 한 줄로 만든다 (주말을 안 주면 7일 모두 같은 값) */
-  function vpRow(time, weekday, weekend) {
-    var wknd = weekend === undefined ? weekday : weekend;
-    return { time: time, cells: [weekday, weekday, weekday, weekday, weekday, wknd, wknd] };
+  /** 07:00~23:00 빈 줄만 만든다.
+   *  예시 내용을 채워 두지 않는 이유는, AI 계획표가 먼저 큰 틀을 세우고
+   *  사용자가 그 위에서 다듬는 순서이기 때문이다. 남의 계획을 지우는 일부터
+   *  시키면 시작 문턱만 높아진다. */
+  function vpEmptyRows() {
+    var rows = [];
+    for (var h = 7; h <= 23; h++) rows.push({ time: pad(h) + ':00', cells: ['', '', '', '', '', '', ''] });
+    return rows;
+  }
+
+  /** 시간표에 사용자가 쓴 내용이 하나라도 있는지 */
+  function vpHasContent(m) {
+    return m.rows.some(function (r) {
+      return r.cells.some(function (c) { return String(c || '').trim(); });
+    });
   }
 
   function vpDefaultModel() {
@@ -9261,25 +9409,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       color: VP_PALETTES[0].head,
       days: ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'],
       colors: {},
-      rows: [
-        vpRow('07:00', '기상 및 아침식사'),
-        vpRow('08:00', '국어', '자유시간'),
-        vpRow('09:00', '국어', '자유시간'),
-        vpRow('10:00', '수학', '자유시간'),
-        vpRow('11:00', '수학', '자유시간'),
-        vpRow('12:00', '점심식사'),
-        vpRow('13:00', '영어', '자유시간'),
-        vpRow('14:00', '영어', '자유시간'),
-        vpRow('15:00', '자율 / 보충', '운동'),
-        vpRow('16:00', '자율 / 보충', '운동'),
-        vpRow('17:00', '휴식'),
-        vpRow('18:00', '저녁식사'),
-        vpRow('19:00', '자기주도학습'),
-        vpRow('20:00', '자기주도학습'),
-        vpRow('21:00', '독서'),
-        vpRow('22:00', '하루 정리'),
-        vpRow('23:00', '취침')
-      ]
+      rows: vpEmptyRows()
     };
   }
 
@@ -9472,6 +9602,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $$('.vp-del', table).forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (m.rows.length <= 1) { toast('시간대는 최소 1개가 필요합니다.', true); return; }
+        var row = m.rows[parseInt(btn.dataset.row, 10)];
+        var label = row && row.time ? row.time + ' 시간대' : '이 시간대';
+        if (!confirm(label + '를 삭제할까요? 되돌릴 수 없습니다.')) return;
         m.rows.splice(parseInt(btn.dataset.row, 10), 1);
         vpSave();
         buildVpTable();
@@ -9508,19 +9641,42 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     }
 
     wrap.innerHTML = list.map(function (t) {
-      return '<label class="vp-lg"><input type="color" value="' + esc(m.colors[t]) + '">' +
-        '<span>' + esc(t) + '</span></label>';
+      return '<span class="vp-lg"><input type="color" value="' + esc(m.colors[t]) + '" aria-label="' + esc(t) + ' 색상 고르기">' +
+        '<button type="button" class="vp-lg-name">' + esc(t) + '</button></span>';
     }).join('');
 
     // 과목 이름을 속성에 넣으면 따옴표·꺾쇠 때문에 깨질 수 있어 순서(index)로 잇는다
-    $$('input[type="color"]', wrap).forEach(function (inp, i) {
-      inp.addEventListener('input', function () {
-        m.colors[list[i]] = inp.value;
+    $$('.vp-lg', wrap).forEach(function (row, i) {
+      var name = list[i];
+      row.querySelector('input[type="color"]').addEventListener('input', function (e) {
+        m.colors[name] = e.target.value;
         vpSave();
         buildVpTable();
         vpRenderPreview();
       });
+      row.querySelector('.vp-lg-name').addEventListener('click', function () {
+        var next = prompt('과목명을 바꿉니다. 이 이름이 들어간 모든 칸이 함께 바뀝니다.', name);
+        if (next === null) return;
+        next = next.trim();
+        if (!next || next === name) return;
+        vpRenameActivity(name, next);
+      });
     });
+  }
+
+  /** 과목별 색상 목록에서 이름을 바꾸면, 시간표 안의 같은 이름을 쓰는 모든 칸을 한 번에 바꾼다 */
+  function vpRenameActivity(oldName, newName) {
+    var m = state.vacplan;
+    m.rows.forEach(function (r) {
+      r.cells = r.cells.map(function (c) { return c === oldName ? newName : c; });
+    });
+    if (m.colors[oldName] && !m.colors[newName]) m.colors[newName] = m.colors[oldName];
+    delete m.colors[oldName];
+    vpSave();
+    buildVpTable();
+    renderVpLegend();
+    vpRenderPreview();
+    toast('"' + oldName + '"을(를) "' + newName + '"(으)로 모두 바꿨습니다.');
   }
 
   function paintVpSwatches() {
@@ -9731,6 +9887,297 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     });
   }
 
+  /* ------------------------------------------------------- AI 계획표 자동 채우기 */
+
+  /* 요일 칩은 시간표의 열과 1:1로 맞아야 하므로 열 이름에서 직접 만든다.
+   * 사용자가 요일 이름을 고쳐 뒀다면 칩도 그 이름을 따라간다. */
+  var VP_DAY_SHORT = ['월', '화', '수', '목', '금', '토', '일'];
+
+  function vpDayShort(i) {
+    var d = String((state.vacplan && state.vacplan.days && state.vacplan.days[i]) || '').trim();
+    return d ? d.slice(0, 1) : (VP_DAY_SHORT[i] || String(i + 1));
+  }
+
+  function addVpAiAcademyRow(data) {
+    var row = $('vpAiAcademyRowTpl').content.cloneNode(true).querySelector('.vpai-academy-row');
+    var picked = (data && data.days) || [0, 1, 2, 3, 4];   // 기본은 평일
+    row.querySelector('.va-days').innerHTML = state.vacplan.days.map(function (d, i) {
+      return '<label class="va-day"><input type="checkbox"' + (picked.indexOf(i) >= 0 ? ' checked' : '') +
+        ' aria-label="' + esc(d) + '"><span>' + esc(vpDayShort(i)) + '</span></label>';
+    }).join('');
+    if (data) {
+      row.querySelector('.va-name').value = data.name || '';
+      row.querySelector('.va-start').value = data.start || '';
+      row.querySelector('.va-end').value = data.end || '';
+    }
+    row.querySelector('.va-del').addEventListener('click', function () { row.remove(); });
+    $('vpAiAcademyList').appendChild(row);
+    return row;
+  }
+
+  /** "HH:MM" → 시(소수). 못 읽으면 fallback */
+  function vpAiParseTime(str, fallback) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(str || '').trim());
+    if (!m) return fallback;
+    var h = Math.max(0, Math.min(23, parseInt(m[1], 10)));
+    return h + parseInt(m[2], 10) / 60;
+  }
+
+  function addVpAiSubjectRow(data) {
+    var row = $('vpAiSubjectRowTpl').content.cloneNode(true).querySelector('.vpai-subject-row');
+    if (data) {
+      row.querySelector('.vs-name').value = data.name || '';
+      row.querySelector('.vs-hours').value = String(data.hours || 5);
+    }
+    row.querySelector('.vs-del').addEventListener('click', function () {
+      row.remove();
+      renderVpAiSubjectTotal();
+    });
+    $('vpAiSubjectList').appendChild(row);
+    renderVpAiSubjectTotal();
+    return row;
+  }
+
+  function vpAiReadSubjects() {
+    return $$('.vpai-subject-row').map(function (row) {
+      var name = row.querySelector('.vs-name').value.trim();
+      var hours = Math.max(0, Math.min(80, parseInt(row.querySelector('.vs-hours').value, 10) || 0));
+      if (!name || !hours) return null;
+      return { name: name, hours: hours };
+    }).filter(Boolean);
+  }
+
+  function renderVpAiSubjectTotal() {
+    var el = $('vpAiSubjectTotal');
+    if (!el) return;
+    var total = vpAiReadSubjects().reduce(function (a, s) { return a + s.hours; }, 0);
+    el.innerHTML = total
+      ? '주간 목표 합계 <b>' + total + '시간</b>. 빈 시간이 남으면 자유 시간으로 두고, 모자라면 비율대로 줄여서 넣습니다.'
+      : '과목과 시간을 넣으면 고정 일정을 뺀 자리에 그만큼 배정합니다.';
+  }
+
+  /** 주간 목표 시간을 실제로 남은 칸 수(capacity)에 맞춰 확정한다.
+   *
+   *  요청이 넘치면 비율대로 줄이되 최대잔여법으로 합을 정확히 맞추고,
+   *  모자라면 남은 만큼을 '자유 시간' 으로 만들어 같은 저울에 올린다.
+   *  자유 시간을 따로 빼 두지 않고 함께 섞어야 특정 요일만 통째로 비지 않는다. */
+  function vpAiAllocate(subjects, capacity) {
+    var pool = subjects.map(function (s) { return { name: s.name, slots: s.hours }; });
+    var want = pool.reduce(function (a, p) { return a + p.slots; }, 0);
+    if (!pool.length || capacity <= 0) return { pool: [], want: want, capacity: capacity, scaled: false };
+
+    if (want > capacity) {
+      var exact = pool.map(function (p) { return p.slots / want * capacity; });
+      var base = exact.map(function (v) { return Math.floor(v); });
+      var used = base.reduce(function (a, b) { return a + b; }, 0);
+      var rem = exact.map(function (v, i) { return { i: i, f: v - base[i] }; })
+                     .sort(function (a, b) { return b.f - a.f; });
+      for (var k = 0; used < capacity; k++, used++) base[rem[k % rem.length].i]++;
+      pool.forEach(function (p, i) { p.slots = base[i]; });
+    } else if (want < capacity) {
+      pool.push({ name: '자유 시간', slots: capacity - want });
+    }
+    return {
+      pool: pool.filter(function (p) { return p.slots > 0; }),
+      want: want, capacity: capacity, scaled: want > capacity
+    };
+  }
+
+  /** 기상~취침을 뺀 나머지 = 실제로 잘 수 있는 시간 */
+  function vpAiSleepHours() {
+    var wake = vpAiParseTime($('vpAiWake').value, 7);
+    var bed = vpAiParseTime($('vpAiSleep').value, 23);
+    var h = ((wake - bed) % 24 + 24) % 24;
+    return h === 0 ? 24 : h;
+  }
+
+  /** 목표 등급 상승폭과 실제 수면 시간으로 "몇 시간 공부하고 한 시간 쉴지" 를 정한다.
+   *
+   *  올리려는 폭이 클수록 휴식을 줄이지만, 잠이 모자라면 다시 늘린다.
+   *  수면이 부족한 상태로 몰아붙이는 계획은 어차피 지켜지지 않고,
+   *  이 앱이 수면을 가장 큰 변수로 쓰는 이상 계획표만 예외일 수는 없다. */
+  function vpAiRestPlan() {
+    var now = parseInt($('vpAiGradeNow').value, 10) || 4;
+    var goal = parseInt($('vpAiGradeGoal').value, 10) || 2;
+    var gap = Math.max(0, now - goal);
+    var sleepH = vpAiSleepHours();
+
+    var run = gap >= 4 ? 4 : (gap >= 2 ? 3 : 2);
+    var why = gap >= 4 ? '등급을 ' + gap + '단계 올리는 목표라 휴식을 최소로 줄였습니다'
+            : gap >= 2 ? '등급을 ' + gap + '단계 올리는 목표라 휴식을 한 칸 줄였습니다'
+            : gap === 1 ? '한 단계 목표라 표준 리듬으로 잡았습니다'
+            : '지금 등급을 지키는 목표라 표준 리듬으로 잡았습니다';
+
+    // 수면은 목표보다 세게 잡는다. 잠이 모자란 채로 몰아붙이는 계획은 지켜지지 않는다.
+    // 반대로 늘려 주는 쪽은 9시간부터 — 8시간은 넉넉한 게 아니라 정상이라 기준이 될 수 없다.
+    if (sleepH < 6) {
+      run = Math.max(2, run - 1);
+      why += '. 다만 잘 수 있는 시간이 ' + fmtDur(sleepH * 60) + '뿐이라 휴식을 되돌렸습니다';
+    } else if (sleepH >= 9 && gap >= 2) {
+      run += 1;
+      why += '. 수면 ' + fmtDur(sleepH * 60) + '으로 넉넉해 더 몰아서 배치했습니다';
+    }
+
+    // 식사가 이미 하루를 3~4칸씩 토막 내 놓기 때문에, 4시간을 넘겨 잡으면
+    // 어차피 연속 공부가 그만큼 이어지지 않아 계획이 더 빡세지지도 않는다.
+    // 숫자만 커지고 결과가 같은 구간을 만들지 않으려고 여기서 끊는다.
+    run = Math.min(4, Math.max(2, run));
+    return { run: run, why: why, sleepH: sleepH, gap: gap };
+  }
+
+  function renderVpAiIntensity() {
+    var el = $('vpAiIntensity');
+    if (!el) return;
+    if (!$('vpAiAutoRest').checked) {
+      el.innerHTML = '휴식 자동 배치를 껐습니다. 고정 일정을 뺀 시간을 모두 공부로 채웁니다.';
+      return;
+    }
+    var p = vpAiRestPlan();
+    var tail = p.run >= 4
+      // 식사로 이미 끊기는 하루라, 4시간 기준에서는 쉬는 칸이 거의 안 생긴다.
+      // 그걸 숨기면 "휴식을 켰는데 왜 없냐" 는 말이 나온다.
+      ? ' 이 강도에서는 쉬는 칸이 거의 생기지 않고, 식사 시간이 사실상 유일한 휴식이 됩니다.'
+      : '';
+    el.innerHTML = '잘 수 있는 시간 <b>' + fmtDur(p.sleepH * 60) + '</b> · 목표 <b>' +
+      (p.gap ? p.gap + '단계 상승' : '현상 유지') + '</b> → <b>' + p.run +
+      '시간 공부마다 1시간 휴식</b>으로 배치합니다. ' + p.why + '.' + tail;
+  }
+
+  /** 기상·취침·식사·학원 시간을 입력받아 시간표 칸을 자동으로 채운다.
+   *  나머지 빈 칸은 입력한 과목을 돌아가며 채우고, 켜져 있으면 2시간마다 휴식을 끼워 넣는다. */
+  function vpAiGenerate() {
+    var wake = vpAiParseTime($('vpAiWake').value, 7);
+    var sleepRaw = vpAiParseTime($('vpAiSleep').value, 23);
+    var sleep = sleepRaw <= wake ? sleepRaw + 24 : sleepRaw;
+
+    // 취침 시각 자체가 마지막 줄이 된다. 23:00 취침이면 23:00 칸에 '취침' 이 적혀야
+    // 사용자가 입력한 시각과 계획표가 어긋나지 않는다.
+    var startH = Math.floor(wake);
+    var bedH = Math.floor(sleep);
+    if (bedH - startH < 1) { toast('기상 시각과 취침 시각을 확인해 주세요.', true); return; }
+    if (bedH - startH > 22) { toast('기상~취침 시간이 너무 깁니다. 시각을 확인해 주세요.', true); return; }
+
+    var meals = [];
+    if ($('vpAiBreakfastOn').checked) meals.push({ name: '아침식사', hour: Math.floor(vpAiParseTime($('vpAiBreakfastTime').value, 8)) });
+    if ($('vpAiLunchOn').checked) meals.push({ name: '점심식사', hour: Math.floor(vpAiParseTime($('vpAiLunchTime').value, 12)) });
+    if ($('vpAiDinnerOn').checked) meals.push({ name: '저녁식사', hour: Math.floor(vpAiParseTime($('vpAiDinnerTime').value, 18)) });
+
+    var academies = $$('.vpai-academy-row').map(function (row) {
+      var name = row.querySelector('.va-name').value.trim();
+      var s = row.querySelector('.va-start').value;
+      var e = row.querySelector('.va-end').value;
+      if (!name || !s || !e) return null;
+      var sh = vpAiParseTime(s, null), eh = vpAiParseTime(e, null);
+      if (sh === null || eh === null || eh <= sh) return null;
+      var cols = [];
+      $$('.va-day input', row).forEach(function (cb, i) { if (cb.checked) cols.push(i); });
+      if (!cols.length) return null;   // 요일을 하나도 안 고르면 없는 일정으로 본다
+      return { name: name, startHour: Math.floor(sh), endHour: Math.ceil(eh), cols: cols };
+    }).filter(Boolean);
+
+    var subjects = vpAiReadSubjects();
+    var autoRest = $('vpAiAutoRest').checked;
+    var restPlan = vpAiRestPlan();
+
+    // 빈 표라면 지울 것이 없으니 굳이 되묻지 않는다
+    if (vpHasContent(state.vacplan) &&
+        !confirm('지금 시간표 내용을 지우고 AI로 새로 세울까요? 되돌릴 수 없습니다.')) return;
+
+    var days = state.vacplan.days;
+    var hours = [];
+    for (var h = startH; h <= bedH; h++) hours.push(h);
+    var grid = hours.map(function () { return days.map(function () { return ''; }); });
+
+    function setCell(hourAbs, col, text) {
+      var idx = hourAbs - startH;
+      if (idx >= 0 && idx < grid.length) grid[idx][col] = text;
+    }
+
+    // 기상 / 취침
+    for (var c = 0; c < days.length; c++) {
+      setCell(startH, c, '기상');
+      setCell(bedH, c, '취침');
+    }
+
+    // 식사 (기상 시각과 겹치면 합쳐서 적는다)
+    meals.forEach(function (meal) {
+      var hourAbs = meal.hour < startH ? meal.hour + 24 : meal.hour;
+      var idx = hourAbs - startH;
+      var merged = (idx >= 0 && idx < grid.length && grid[idx][0] === '기상') ? '기상 및 ' + meal.name : meal.name;
+      for (var c2 = 0; c2 < days.length; c2++) setCell(hourAbs, c2, merged);
+    });
+
+    // 학원 · 과외 (식사보다 우선해서 그 위에 덮어쓴다)
+    academies.forEach(function (ac) {
+      var s2 = ac.startHour < startH ? ac.startHour + 24 : ac.startHour;
+      var e2 = ac.endHour <= s2 ? ac.endHour + 24 : ac.endHour;
+      for (var hh = s2; hh < e2; hh++) {
+        ac.cols.forEach(function (col) { setCell(hh, col, ac.name); });
+      }
+    });
+
+    /* 남는 칸을 과목별 "부족한 정도" 에 비례해 나눠 준다.
+     *
+     * 부드러운 가중 라운드로빈(각 칸마다 가중치만큼 저울에 얹고, 가장 무거운
+     * 과목을 뽑은 뒤 총합만큼 덜어 낸다). 단순히 순서대로 돌리면 5점짜리와
+     * 1점짜리가 같은 시간을 가져가고, 몫을 미리 세어 한 과목씩 몰아 넣으면
+     * 하루가 통째로 한 과목이 된다. 이 방식은 비율을 지키면서도 과목이
+     * 고르게 흩어지고, 열마다 저울을 새로 시작하므로 매일 아침 첫 빈칸은
+     * 가장 급한 과목이 가져간다 — 머리가 가장 맑은 시간대다. */
+    /* 1) 먼저 어느 칸이 휴식인지 정한다. 휴식은 과목과 무관하게 연속 공부 시간만으로
+     *    결정되므로 미리 계산할 수 있고, 그래야 "실제로 공부에 쓸 수 있는 칸" 이
+     *    몇 개인지 세어 주간 목표 시간과 맞출 수 있다. */
+    var studySlots = [];
+    for (var col = 0; col < days.length; col++) {
+      var streak = 0;
+      for (var r = 0; r < grid.length; r++) {
+        if (grid[r][col]) { streak = 0; continue; }          // 고정 일정은 연속 공부를 끊어 준다
+        if (autoRest && streak >= restPlan.run) { grid[r][col] = '휴식'; streak = 0; continue; }
+        studySlots.push([r, col]);
+        streak++;
+      }
+    }
+
+    // 2) 주간 목표 시간을 남은 칸 수에 맞춰 확정한다
+    var alloc = vpAiAllocate(subjects, studySlots.length);
+
+    /* 3) 부드러운 가중 라운드로빈으로 흩뿌린다.
+     *    몫을 세어 한 과목씩 몰아 넣으면 하루가 통째로 한 과목이 되고,
+     *    단순 순환은 시간 비율을 못 지킨다. 이 방식은 둘 다 피한다. */
+    var totalW = alloc.pool.reduce(function (a, p) { return a + p.slots; }, 0) || 1;
+    var credit = alloc.pool.map(function () { return 0; });
+    var left = alloc.pool.map(function (p) { return p.slots; });
+
+    studySlots.forEach(function (pos) {
+      var i, best = -1;
+      for (i = 0; i < alloc.pool.length; i++) if (left[i] > 0) credit[i] += alloc.pool[i].slots;
+      for (i = 0; i < alloc.pool.length; i++) {
+        if (left[i] <= 0) continue;
+        if (best < 0 || credit[i] > credit[best]) best = i;
+      }
+      // 과목을 하나도 안 넣었을 때만 여기로 온다
+      if (best < 0) { grid[pos[0]][pos[1]] = '자기주도학습'; return; }
+      credit[best] -= totalW;
+      left[best]--;
+      grid[pos[0]][pos[1]] = alloc.pool[best].name;
+    });
+
+    state.vacplan.rows = hours.map(function (h2, i) {
+      return { time: pad(h2 % 24) + ':00', cells: grid[i] };
+    });
+    state.vacplan.colors = {};   // 과목 구성이 바뀌었을 수 있으니 색은 새로 배정한다
+    vpSave();
+    renderVacPlanPage();
+
+    if (alloc.scaled) {
+      toast('목표 ' + alloc.want + '시간이 남는 ' + alloc.capacity + '시간을 넘어 비율대로 줄였습니다.', true);
+    } else if (alloc.want && alloc.want < alloc.capacity) {
+      toast('주 ' + alloc.want + '시간을 배치하고 남은 ' + (alloc.capacity - alloc.want) + '시간은 자유 시간으로 두었습니다.');
+    } else {
+      toast('큰 틀을 세웠습니다. 이제 칸을 눌러 자유롭게 다듬으세요.');
+    }
+  }
+
   function renderVacPlanPage() {
     var m = state.vacplan;
     $('vpTitle').value = m.title || '';
@@ -9774,16 +10221,57 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       buildVpTable();
       vpRenderPreview();
     });
+    var gradeOpts = '';
+    for (var g = 1; g <= 9; g++) gradeOpts += '<option value="' + g + '">' + g + '등급</option>';
+    $('vpAiGradeNow').innerHTML = gradeOpts;
+    $('vpAiGradeGoal').innerHTML = gradeOpts;
+    $('vpAiGradeNow').value = '4';
+    $('vpAiGradeGoal').value = '3';
+
+    addVpAiAcademyRow();
+    $('vpAiAcademyAdd').addEventListener('click', function () { addVpAiAcademyRow(); });
+    addVpAiSubjectRow(); addVpAiSubjectRow(); addVpAiSubjectRow();
+    $('vpAiSubjectAdd').addEventListener('click', function () { addVpAiSubjectRow(); });
+    $('vpAiSubjectList').addEventListener('input', renderVpAiSubjectTotal);
+    $('vpAiGenerate').addEventListener('click', vpAiGenerate);
+
+    ['vpAiWake', 'vpAiSleep', 'vpAiGradeNow', 'vpAiGradeGoal', 'vpAiAutoRest'].forEach(function (id) {
+      $(id).addEventListener('change', renderVpAiIntensity);
+    });
+    renderVpAiIntensity();
+
+    [
+      ['vpAiToggle', 'vpAiBody'],
+      ['vpPaletteToggle', 'vpPalettes'],
+      ['vpPreviewToggle', 'vpPreviewBody']
+    ].forEach(function (pair) {
+      var btn = $(pair[0]), body = $(pair[1]);
+      var txt = btn.querySelector('.rm-txt') ? null : btn; // res-more 버튼은 화살표 회전만으로 상태를 보여 준다
+      btn.addEventListener('click', function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        body.classList.toggle('is-hidden', open);
+        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        if (txt) txt.textContent = open ? '펼치기' : '접기';
+      });
+    });
+
     $('vpDownload').addEventListener('click', exportVacPlanImage);
     $('vpReset').addEventListener('click', function () {
-      if (!confirm('계획표를 기본값으로 되돌릴까요? 지금까지 입력한 내용이 사라집니다.')) return;
+      if (!confirm('계획표를 빈 표로 되돌릴까요? 지금까지 입력한 내용이 사라집니다.')) return;
       state.vacplan = vpDefaultModel();
       vpSave();
       renderVacPlanPage();
-      toast('기본값으로 되돌렸습니다.');
+      toast('빈 표로 되돌렸습니다. AI 계획표 세우기로 다시 시작해 보세요.');
     });
 
     renderVacPlanPage();
+    // 아직 아무것도 안 짠 상태라면 첫 화면에서 바로 AI 카드를 펼쳐 준다.
+    // 빈 표만 덩그러니 보여 주면 무엇부터 해야 할지 알 수 없다.
+    if (!vpHasContent(state.vacplan)) {
+      $('vpAiBody').classList.remove('is-hidden');
+      $('vpAiToggle').setAttribute('aria-expanded', 'true');
+      $('vpAiToggle').textContent = '접기';
+    }
     // 저장된 글씨체가 웹폰트면 로드된 뒤 미리보기를 한 번 더 그린다
     vpEnsureFontLoaded(state.vacplan.font).then(vpRenderPreview);
   }
