@@ -88,6 +88,10 @@
       klass: norm(p.klass),
       groupId: groupId(p),
       goal: p.goal || 25,
+      /* 랭킹에 캐릭터와 티어를 함께 띄우기 위해 꾸민 내용과 누적 순공 시간을 싣는다.
+       * lifeMin 이 없는 옛 코드는 티어 없이 기본 캐릭터로 보인다. */
+      avatar: global.Avatar ? global.Avatar.get() : null,
+      lifeMin: global.Avatar ? Math.round(global.Avatar.lifetimeMinutes()) : 0,
       todayMin: Math.round(global.StudyLog.todayTotal() * 10) / 10,
       weekMin: Math.round(global.StudyLog.weekTotal(0) * 10) / 10,
       streak: global.StudyLog.streak(),
@@ -148,6 +152,10 @@
     obj.todayMin = clampMin(obj.todayMin, cap);
     obj.weekMin = clampMin(obj.weekMin, cap * 7);
     obj.streak = clampMin(obj.streak, 400);
+    /* 누적 시간은 티어(테두리)를 정하므로 같은 상한을 씌운다.
+     * 하루 5시간 × 400일이 한 사람이 정직하게 쌓을 수 있는 현실적인 최대치다. */
+    obj.lifeMin = clampMin(obj.lifeMin, cap * 400);
+    if (global.Avatar) obj.avatar = global.Avatar.sanitize(obj.avatar, obj.lifeMin);
     return obj;
   }
 

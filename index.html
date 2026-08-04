@@ -233,7 +233,8 @@ body.intro-open { overflow: hidden; }
 }
 .profile-chip:hover { border-color: var(--accent); }
 .profile-chip.is-hidden { display: none; }
-.pc-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0; background: linear-gradient(140deg, #7c5cff, #5b7cff); }
+/* 안에 캐릭터(.av)가 들어간다 — 예전의 이니셜 원판은 avatar.js 로 대체됐다 */
+.pc-av { display: block; flex-shrink: 0; line-height: 0; }
 .pc-txt { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
 .pc-txt b { font-size: 12.5px; font-weight: 700; }
 .pc-txt span { font-size: 10.5px; color: var(--muted); }
@@ -396,6 +397,27 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .btn.lg { padding: 13px 26px; font-size: 15px; }
 .btn.sm { padding: 6px 12px; font-size: 12px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* 관리자 — 기록 삭제 */
+.auc-act { margin-top: 10px; display: flex; justify-content: flex-end; }
+.adm-ev .adm-del { flex: none; margin-left: 8px; }
+.auc-act .adm-del:hover, .adm-ev .adm-del:hover { color: var(--bad-ink); background: var(--bad-bg); border-color: var(--bad-line); }
+
+/* ------------------------------------------------------- 리그 판 고르기 */
+.lg-modes { display: flex; gap: 8px; margin-bottom: 12px; }
+.lg-mode { flex: 1; padding: 11px 10px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface); color: var(--muted); font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.lg-mode:hover { border-color: var(--accent); color: var(--accent); }
+.lg-mode.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.lg-filters { display: flex; gap: 10px; margin-bottom: 14px; }
+.lg-filters.is-hidden { display: none; }
+.lg-f { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lg-f > span { font-size: 11.5px; font-weight: 700; color: var(--dim); }
+.lg-f .input { padding: 8px 10px; font-size: 13px; }
+
+.lg-pending { margin-bottom: 14px; padding: 12px 14px; border-radius: var(--r-sm); border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); font-size: 13px; line-height: 1.6; }
+.lg-pending.is-hidden { display: none; }
+.lp-why { display: block; margin-top: 5px; font-size: 11.5px; color: var(--muted); }
 
 /* ------------------------------------------------------ 저장 상태 안내 */
 .store-status { margin: 12px 0 4px; padding: 11px 14px; border-radius: var(--r-sm); font-size: 12.5px; line-height: 1.6; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--muted); }
@@ -679,7 +701,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .rk-pos.m1 { color: var(--gold); }
 .rk-pos.m2 { color: var(--silver); }
 .rk-pos.m3 { color: var(--bronze); }
-.rk-av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 800; color: #fff; }
+/* 캐릭터(.av)가 그 자리를 차지한다. 크기만 잡아 주면 된다. */
+.rk-av { --av: 34px; }
 .rk-info { min-width: 0; }
 .rk-name { font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .rk-name .me-tag { font-size: 9.5px; padding: 1px 6px; border-radius: 5px; background: var(--accent); color: #fff; font-weight: 700; }
@@ -1436,6 +1459,122 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .admin-users-list { grid-template-columns: 1fr; }
 }
 
+/* ═══════════════════════════════════════════════════ 프로필 캐릭터 · 티어
+ *
+ * 캐릭터는 avatar.js 가 그 자리에서 만드는 SVG 다. 여기서는 크기와
+ * 테두리(링)만 맡는다. 링을 ::before 로 깔아 두는 이유는, 높은 티어의
+ * 회전 효과가 캐릭터까지 같이 돌리지 않게 하기 위해서다. */
+
+.av {
+  --av: 46px;
+  position: relative; display: inline-block; vertical-align: middle;
+  width: var(--av); height: var(--av); border-radius: 50%; flex-shrink: 0;
+}
+.av::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--line-2); }
+.av-in {
+  position: absolute; inset: 7.5%; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(160deg, #f5f1ff, #e8ecfd);
+}
+.av-svg { display: block; width: 100%; height: 100%; }
+/* 링 없이 캐릭터만 (꾸미기 화면의 피부·머리·옷 미리보기) */
+.av-plain::before { display: none; }
+.av-plain .av-in { inset: 0; border: 1px solid var(--line); }
+
+.av-xs { --av: 28px; }
+.av-sm { --av: 46px; }
+.av-lg { --av: 58px; }
+.av-xl { --av: 132px; }
+
+/* 테두리 10종 — 티어와 1:1 로 짝지어져 있다 (avatar.js 의 BORDERS) */
+.av-b1::before { background: var(--line-2); }
+.av-b2::before { background: linear-gradient(140deg, #e2ab7c, #9c5e2f); }
+.av-b3::before { background: linear-gradient(140deg, #e8edf7, #929cb3); }
+.av-b4::before { background: linear-gradient(140deg, #f3d791, #bd8c33); }
+.av-b5::before { background: linear-gradient(140deg, #eef2ff, #98a7dd); }
+.av-b5 { box-shadow: 0 0 10px -3px rgba(120, 140, 220, 0.8); }
+.av-b6::before { background: linear-gradient(140deg, #d5b4ff, #7440e0); }
+.av-b6 { box-shadow: 0 0 12px -3px rgba(140, 80, 235, 0.75); }
+.av-b7::before { background: linear-gradient(140deg, #a6c6ff, #3a58d4); }
+.av-b7 { box-shadow: 0 0 12px -3px rgba(70, 110, 230, 0.8); }
+.av-b8::before { background: conic-gradient(from 0deg, #9b83ff, #ff9ab5, #8fa9ff, #9b83ff); }
+.av-b8 { box-shadow: 0 0 15px -3px rgba(160, 120, 255, 0.85); }
+.av-b9::before { background: conic-gradient(from 0deg, #6d4aff, #c68bff, #ff9ab5, #6d4aff); animation: av-spin 7s linear infinite; }
+.av-b9 { box-shadow: 0 0 17px -2px rgba(150, 90, 255, 0.9); }
+.av-b10::before { background: conic-gradient(from 0deg, #6d4aff, #ff9ab5, #5b7cff, #c68bff, #6d4aff); animation: av-spin 4.5s linear infinite; }
+.av-b10 { box-shadow: 0 0 12px -4px rgba(255, 150, 190, 0.9), 0 0 24px -4px rgba(120, 90, 255, 0.9); }
+@keyframes av-spin { to { transform: rotate(360deg); } }
+
+/* 티어 배지 — 랭킹·프로필에 붙는다 */
+.tier-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10.5px; font-weight: 700; line-height: 1.7;
+  padding: 0 8px; border-radius: 999px; white-space: nowrap;
+  border: 1px solid var(--line-2); background: var(--surface-3); color: var(--muted);
+}
+.tier-chip.sm { font-size: 9.5px; padding: 0 6px; }
+.tc2 { border-color: #d7a97e; background: #f8efe6; color: #8a5326; }
+.tc3 { border-color: #bcc4d6; background: #f1f3f9; color: #5c667c; }
+.tc4 { border-color: #e0c184; background: #fbf3e0; color: #8a6516; }
+.tc5 { border-color: #b6c2ea; background: #eef1fc; color: #3f4f8c; }
+.tc6 { border-color: #cbb0f5; background: #f3ecff; color: #5b32a8; }
+.tc7 { border-color: #a9bdf2; background: #eaf0ff; color: #2c47a5; }
+.tc8 { border-color: #c4a6ff; background: #f1eaff; color: #5427ad; }
+.tc9 { border-color: #b98cff; background: linear-gradient(120deg, #f3eaff, #ffeef4); color: #4d1f9e; }
+.tc10 { border-color: #ff9ab5; background: linear-gradient(120deg, #f0e9ff, #ffe9f0); color: #a32456; }
+
+/* ------------------------------------------------------- 꾸미기 화면 */
+
+.av-stage {
+  display: flex; align-items: center; gap: 26px; flex-wrap: wrap;
+  padding: 24px 26px; margin-bottom: 18px;
+  border-radius: var(--r); border: 1px solid var(--line);
+  background: var(--hero-grad); box-shadow: var(--shadow-sm);
+}
+.av-stage-txt { flex: 1; min-width: 220px; }
+.av-stage-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.av-stage-sub { font-size: 13px; color: var(--muted); margin: 4px 0 14px; }
+.av-prog-top { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--dim); margin-bottom: 5px; }
+.av-prog-track { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.av-prog-track i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+
+.av-group + .av-group { margin-top: 22px; }
+.av-group-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.av-group-head b { font-size: 13.5px; font-weight: 700; }
+.av-group-head em { font-size: 11px; color: var(--dim); font-style: normal; }
+.av-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.av-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 6px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: var(--surface-3);
+  font: inherit; color: inherit; cursor: pointer; transition: 0.16s;
+}
+.av-opt:hover { border-color: var(--accent-line); background: var(--surface); }
+.av-opt.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.av-opt.locked { opacity: 0.5; cursor: not-allowed; }
+.av-opt-fig { position: relative; line-height: 0; }
+.av-lock { position: absolute; inset: 0; display: grid; place-items: center; font-size: 17px; }
+.av-opt-name { font-size: 11.5px; font-weight: 600; text-align: center; line-height: 1.35; }
+.av-opt-note { font-size: 10px; color: var(--dim); }
+
+.av-tiers { display: flex; flex-direction: column; gap: 7px; }
+.av-tier {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 10px 13px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: var(--surface-3);
+}
+.av-tier:not(.got) { opacity: 0.62; }
+.av-tier.now { border-color: var(--accent); background: var(--accent-soft); }
+.av-tier-ring { position: relative; width: 30px; height: 30px; border-radius: 50%; }
+.av-tier-ring i { position: absolute; inset: 5px; border-radius: 50%; background: var(--surface); display: block; }
+.av-tier-name { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.av-tier-sub { font-size: 11px; color: var(--dim); }
+.av-tier-state { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .av-stage { gap: 18px; padding: 18px; }
+  .av-xl { --av: 104px; }
+}
+
 /* ═══════════════════════════════════════════ iOS 안전 영역 (노치·홈 인디케이터)
  *
  * viewport-fit=cover 를 선언해 화면 끝까지 그리므로, 홈 인디케이터가 있는
@@ -1535,6 +1674,18 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 리그 순위표 · 정산 안내는 틴트 변수를 쓰므로 자동으로 따라온다.
    * 다만 컷라인 배지 안의 글자는 배경색이 currentColor 라 흰색을 유지해야 한다. */
   .lg-cut span i { color: #12151f; }
+
+  /* 티어 배지 — 라이트용 파스텔 배경이라 어두운 톤으로 다시 잡는다.
+   * 캐릭터가 앉는 원판(.av-in)은 밝은 채로 둔다 — 그래야 얼굴이 보인다. */
+  .tc2 { border-color: #7a4f2c; background: #2b201a; color: #dfab7d; }
+  .tc3 { border-color: #4a5266; background: #232838; color: #bfc7d8; }
+  .tc4 { border-color: #7d5f22; background: #2b2417; color: #e6c479; }
+  .tc5 { border-color: #45527f; background: #1e2436; color: #b6c4f0; }
+  .tc6 { border-color: #5b3f96; background: #262045; color: #d1b4ff; }
+  .tc7 { border-color: #35498c; background: #1b2340; color: #a8bfff; }
+  .tc8 { border-color: #5c3fa8; background: #271f47; color: #cdb0ff; }
+  .tc9 { border-color: #6b45b8; background: linear-gradient(120deg, #271f47, #3a2036); color: #dcbcff; }
+  .tc10 { border-color: #a34d72; background: linear-gradient(120deg, #2a2048, #3d2033); color: #ffadc6; }
 
   /* SVG 안에 하드코딩된 격자선 — 어두운 배경에서는 밝은 쪽으로 뒤집는다 */
   .radar polygon[stroke^="rgba(22"], .radar line[stroke^="rgba(22"] { stroke: rgba(233, 236, 245, 0.14) !important; }
@@ -2315,11 +2466,29 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   <!-- ══════════════════════════════ 5-1. 학교 리그 ══════════════════════════════ -->
   <section id="secLeague" class="section is-hidden">
     <div class="sec-head">
-      <h2><span class="sec-num">🏆</span> 학교 리그</h2>
-      <p>우리 학교 전체가 다른 학교와 이번 주 순공 시간을 겨룹니다. 매주 월요일에 승급·강등이 정해집니다.</p>
+      <h2><span class="sec-num">🏆</span> 리그</h2>
+      <p>같은 반이 한 팀입니다. 우리 반이 다른 반과 이번 주 순공 시간을 겨룹니다. 매주 월요일에 승급·강등이 정해집니다.</p>
+    </div>
+
+    <div class="lg-modes" id="lgModes" role="tablist" aria-label="리그 종류">
+      <button type="button" class="lg-mode on" data-mode="class" role="tab">🏫 반 대항</button>
+      <button type="button" class="lg-mode" data-mode="school" role="tab">🏛️ 학교 대항</button>
+    </div>
+
+    <div class="lg-filters" id="lgFilters">
+      <label class="lg-f">
+        <span>학교</span>
+        <select id="lgFilterSchool" class="input"></select>
+      </label>
+      <label class="lg-f">
+        <span>학년</span>
+        <select id="lgFilterGrade" class="input"></select>
+      </label>
     </div>
 
     <div class="lg-rail" id="lgRail" role="tablist" aria-label="리그 티어"></div>
+
+    <div class="lg-pending is-hidden" id="lgPending"></div>
 
     <div class="card wide lg-mine">
       <div class="card-body">
@@ -2407,6 +2576,40 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     </div>
   </section>
 
+  <!-- ══════════════════════════ 🎨 캐릭터 꾸미기 ══════════════════════════ -->
+  <section id="secAvatar" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">🎨</span> 캐릭터 꾸미기</h2>
+      <p>피부·머리·옷은 언제든 바꿀 수 있어요. <b>테두리는 지금까지 쌓은 순공 시간</b>으로 하나씩 열립니다.
+        내 캐릭터와 티어는 <b>그룹 랭킹</b>에 그대로 표시됩니다.</p>
+    </div>
+
+    <div class="av-stage" id="avStage"></div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🧑‍🎨</span><h3>꾸미기</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="avRandom">🎲 무작위</button></span>
+      </div>
+      <div class="card-body">
+        <div class="av-picks" id="avPicks"></div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🏅</span><h3>티어와 테두리</h3><span class="right" id="avTierCount"></span></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">티어는 <b>타이머로 실제 측정된 순공 시간</b>이 쌓이면 자동으로 오릅니다.
+          그냥 주어지는 티어는 없고, 한 번 오른 티어는 내려가지 않습니다.</p>
+        <div id="avTierList" class="av-tiers"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary lg" id="avSave">저장하기</button>
+      <button type="button" class="btn ghost" id="avRevert">되돌리기</button>
+    </div>
+  </section>
+
   <!-- ══════════════════════════════ ⚙ 설정 ══════════════════════════════ -->
   <section id="secSettings" class="section is-hidden">
     <div class="sec-head">
@@ -2421,6 +2624,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           <div id="profileSummary" class="prof-sum"></div>
           <div class="actions" style="margin-top:16px">
             <button type="button" class="btn" id="editProfile">프로필 · 그룹 수정</button>
+            <button type="button" class="btn" id="openAvatar">🎨 캐릭터 꾸미기</button>
           </div>
         </div>
       </div>
@@ -2497,13 +2701,22 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>도 함께 전송해야 합니다.
             학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 학년·반도 다음 동기화에서 지워집니다.</p>
           <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반 전송에 동의합니다</span></label>
-          <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반에서 <b>5명 이상</b>이 참가해야 순위에 집계됩니다.</p>
+          <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반이면 <b>따로 등록하지 않아도</b> 자동으로 같은 판에 들어갑니다.
+            서로에게는 <b>이름 없이</b> 주마다 바뀌는 짧은 표시(예: A1B2)로만 보입니다.
+            같은 반에서 <b>5명 이상</b>이 참가해야 순위가 공개됩니다.</p>
+        </div>
+
+        <div class="cl-event" style="margin-top:12px">
+          <p class="cl-h" style="margin:0 0 6px">🙈 내 랭킹 숨기기</p>
+          <p class="tiny" style="margin:0 0 10px">순위표에서 <b>내 줄만</b> 다른 사람에게 보이지 않게 합니다.
+            <b>우리 반 합계에는 그대로 들어갑니다</b> — 빠지면 우리 반이 손해를 보니까요.
+            내 화면에서는 계속 보이고, 언제든 다시 켤 수 있습니다.</p>
+          <label class="toggle"><input type="checkbox" id="cloudHidden"><span><b>순위표에서 내 기록 숨기기</b></span></label>
         </div>
 
         <div class="file-row" style="margin-top:14px">
           <button type="button" class="btn sm" id="cloudTest">연결 확인</button>
           <button type="button" class="btn ghost sm" id="cloudSync">지금 동기화</button>
-          <button type="button" class="btn ghost sm" id="cloudReset">기기 번호 새로 받기</button>
         </div>
         <div id="cloudStatus" class="neis-status"></div>
       </div>
@@ -4386,6 +4599,333 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 })(window);
 
 
+/* ===== src/js/avatar.js ===== */
+/* =========================================================================
+ * avatar.js — 프로필 캐릭터 꾸미기 + 누적 순공 시간 티어
+ *
+ * 캐릭터는 그림 파일이 아니라 그 자리에서 그리는 SVG 다.
+ * 이 앱은 index.html 한 장으로 배포되고 인터넷 없이도 돌아가야 하므로,
+ * 사운드(sound.js)가 음원을 합성하듯 캐릭터도 좌표로 만든다.
+ *
+ * 고르는 것 ─ 피부 3종 · 머리 8종(남 3 · 여 5) · 옷 10종(남 5 · 여 5)
+ *   남/여 표시는 분류일 뿐 잠금이 아니다. 누구나 아무거나 고를 수 있다.
+ *
+ * 받는 것 ─ 프로필 테두리 10종
+ *   지금까지 쌓은 순공 시간으로 티어가 오르고, 티어마다 테두리가 하나씩 열린다.
+ *   게임 티어처럼 랭킹에도 표시된다. 아직 못 연 테두리는 고를 수 없다.
+ *
+ * 보상 기준은 kids.js 의 배지와 같다 — 실제 기록(StudyLog)에서만 판정하고,
+ * 그냥 주는 것은 없다.
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var S = global.Store;
+
+  /* ------------------------------------------------------------- 피부 톤 */
+
+  var SKINS = [
+    { id: 'light',  name: '밝은 톤', base: '#f6d8bd', shade: '#e7bd9b' },
+    { id: 'medium', name: '중간 톤', base: '#dda87b', shade: '#c48d61' },
+    { id: 'deep',   name: '진한 톤', base: '#9c6644', shade: '#82533a' }
+  ];
+
+  /* ------------------------------------------------------------- 머리 모양
+   * 머리카락은 뒷머리(back)와 앞머리(front)로 나뉜다.
+   * 얼굴을 그리기 전에 back, 그린 뒤에 front 를 얹어야 앞머리가 이마를 덮는다. */
+
+  var HC = '#3b3048';   // 머리카락
+  var HT = '#4d3f60';   // 머리카락 밝은 면
+
+  var HAIRS = [
+    { id: 'm-crop', name: '숏컷', sex: 'm', back: '',
+      front: '<path d="M29 47 C29 27 39 20 50 20 C61 20 71 27 71 47 C70 39 66 34 60 33 C55 32 45 32 40 33 C34 34 30 39 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M40 25 C46 22 56 22 62 26" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round"/>' },
+
+    { id: 'm-part', name: '가르마', sex: 'm', back: '',
+      front: '<path d="M29 47 C29 27 39 20 50 20 C61 20 71 27 71 47 C70 38 67 33 62 32 C58 39 48 41 42 36 C36 37 31 41 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M60 24 C56 30 50 33 44 33" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round"/>' },
+
+    { id: 'm-curl', name: '곱슬', sex: 'm', back: '',
+      front: '<path d="M30 47 C30 29 39 22 50 22 C61 22 70 29 70 47 C68 39 64 34 58 33 C52 32 46 32 41 34 C35 36 32 41 30 47 Z" fill="' + HC + '"/>' +
+             '<circle cx="36" cy="30" r="7" fill="' + HC + '"/><circle cx="46" cy="25" r="8" fill="' + HC + '"/>' +
+             '<circle cx="57" cy="26" r="8" fill="' + HC + '"/><circle cx="65" cy="32" r="6.5" fill="' + HC + '"/>' },
+
+    { id: 'f-long', name: '긴 생머리', sex: 'f',
+      back: '<path d="M26 42 C26 19 74 19 74 42 L74 92 L62 92 L62 50 L38 50 L38 92 L26 92 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M31 92 L31 52" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".55"/>' +
+             '<path d="M69 92 L69 52" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".55"/>' },
+
+    { id: 'f-bob', name: '단발', sex: 'f',
+      back: '<path d="M27 43 C27 20 73 20 73 43 L73 68 Q73 72 68 71 L62 70 L62 50 L38 50 L38 70 L32 71 Q27 72 27 68 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M33 68 C31 60 31 54 32 50" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".55"/>' },
+
+    { id: 'f-pony', name: '포니테일', sex: 'f',
+      back: '<ellipse cx="77" cy="62" rx="9" ry="17" fill="' + HC + '"/>' +
+            '<path d="M28 44 C28 21 72 21 72 44 L72 58 L62 58 L62 50 L38 50 L38 58 L28 58 Z" fill="' + HC + '"/>' +
+            '<rect x="66" y="41" width="8" height="6" rx="3" fill="#8b5a9c"/>',
+      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M42 22 C50 20 60 22 66 28" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round"/>' },
+
+    { id: 'f-twin', name: '양갈래', sex: 'f',
+      back: '<ellipse cx="23" cy="66" rx="8" ry="15" fill="' + HC + '"/><ellipse cx="77" cy="66" rx="8" ry="15" fill="' + HC + '"/>' +
+            '<path d="M27 44 C27 21 73 21 73 44 L73 56 L62 56 L62 50 L38 50 L38 56 L27 56 Z" fill="' + HC + '"/>' +
+            '<rect x="20" y="46" width="7" height="6" rx="3" fill="#8b5a9c"/><rect x="73" y="46" width="7" height="6" rx="3" fill="#8b5a9c"/>',
+      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' },
+
+    { id: 'f-wave', name: '웨이브', sex: 'f',
+      back: '<path d="M26 42 C26 19 74 19 74 42 C74 52 79 58 74 66 C69 74 79 82 73 93 L61 93 L61 50 L39 50 L39 93 L27 93 C21 82 31 74 26 66 C21 58 26 52 26 42 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 65 33 58 33 C52 37 44 37 39 33 C34 35 30 39 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M32 56 C36 62 30 68 34 76" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".5"/>' +
+             '<path d="M68 56 C64 62 70 68 66 76" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".5"/>' }
+  ];
+
+  /* --------------------------------------------------------------- 옷
+   * sex 는 분류일 뿐이고 목록은 하나다 — 남녀가 같은 옷을 고를 수 있다. */
+
+  var BODY = 'M12 100 C12 79 29 69 50 69 C71 69 88 79 88 100 Z';
+
+  /** 옷깃 사이로 보이는 목·가슴 — 피부색은 고른 톤을 따라간다 */
+  function neckHole(skin) {
+    return '<path d="M41 69 C44 78 56 78 59 69 Z" fill="' + skin.base + '"/>';
+  }
+
+  var OUTFITS = [
+    { id: 'm-uniform', name: '교복 (넥타이)', sex: 'm', draw: function () {
+        return '<path d="' + BODY + '" fill="#2f3457"/>' +
+          '<path d="M39 70 L50 86 L61 70 L56 68.5 L50 79 L44 68.5 Z" fill="#f2f4fb"/>' +
+          '<path d="M50 82 L54.5 86 L52.5 100 L47.5 100 L45.5 86 Z" fill="#8f3a53"/>' +
+          '<path d="M22 100 C22 86 30 78 38 75" stroke="#3d4470" stroke-width="2" fill="none"/>' +
+          '<path d="M78 100 C78 86 70 78 62 75" stroke="#3d4470" stroke-width="2" fill="none"/>';
+      } },
+    { id: 'm-hoodie', name: '후드티', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#4a54a8"/>' + neckHole(skin) +
+          '<path d="M33 72 C36 86 64 86 67 72 C62 69 38 69 33 72 Z" fill="#3f489a"/>' +
+          '<path d="M45 82 L44 95" stroke="#e8ecfb" stroke-width="2" stroke-linecap="round"/>' +
+          '<path d="M55 82 L56 95" stroke="#e8ecfb" stroke-width="2" stroke-linecap="round"/>';
+      } },
+    { id: 'm-tee', name: '라운드 티셔츠', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#7c5cff"/>' + neckHole(skin) +
+          '<path d="M40 69 C44 79 56 79 60 69" stroke="#6a4ae6" stroke-width="2" fill="none"/>' +
+          '<path d="M24 100 C24 88 28 80 34 76" stroke="#6a4ae6" stroke-width="2" fill="none"/>' +
+          '<path d="M76 100 C76 88 72 80 66 76" stroke="#6a4ae6" stroke-width="2" fill="none"/>';
+      } },
+    { id: 'm-cardi', name: '셔츠 + 가디건', sex: 'm', draw: function () {
+        return '<path d="' + BODY + '" fill="#6b7186"/>' +
+          '<path d="M40 70 L50 84 L60 70 L56 68.5 L50 77 L44 68.5 Z" fill="#f4f6fb"/>' +
+          '<path d="M44 76 L50 84 L56 76 L56 100 L44 100 Z" fill="#f4f6fb"/>' +
+          '<path d="M43 74 L43 100" stroke="#5b6076" stroke-width="2" fill="none"/>' +
+          '<path d="M57 74 L57 100" stroke="#5b6076" stroke-width="2" fill="none"/>';
+      } },
+    { id: 'm-track', name: '체육복', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#39457e"/>' + neckHole(skin) +
+          '<path d="M41 69 C44 78 56 78 59 69" stroke="#f2f4fb" stroke-width="2.4" fill="none"/>' +
+          '<path d="M26 100 C26 88 30 80 35 76" stroke="#f2f4fb" stroke-width="3" fill="none"/>' +
+          '<path d="M74 100 C74 88 70 80 65 76" stroke="#f2f4fb" stroke-width="3" fill="none"/>';
+      } },
+
+    { id: 'f-uniform', name: '교복 (리본)', sex: 'f', draw: function () {
+        return '<path d="' + BODY + '" fill="#2f3457"/>' +
+          '<path d="M38 70 L50 88 L62 70 L57 68.5 L50 80 L43 68.5 Z" fill="#f2f4fb"/>' +
+          '<path d="M36 72 L44 78 L36 84 Z" fill="#4a5486" opacity=".9"/>' +
+          '<path d="M64 72 L56 78 L64 84 Z" fill="#4a5486" opacity=".9"/>' +
+          '<path d="M44 82 L50 86 L56 82 L54 90 L46 90 Z" fill="#b34a68"/>' +
+          '<circle cx="50" cy="85.5" r="2.4" fill="#8f3a53"/>';
+      } },
+    { id: 'f-cardi', name: '가디건', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#a89bd8"/>' + neckHole(skin) +
+          '<path d="M44 72 L50 82 L56 72 L56 100 L44 100 Z" fill="#f4f2fd"/>' +
+          '<path d="M43 71 L43 100" stroke="#9184c8" stroke-width="2" fill="none"/>' +
+          '<path d="M57 71 L57 100" stroke="#9184c8" stroke-width="2" fill="none"/>' +
+          '<circle cx="50" cy="90" r="1.6" fill="#9184c8"/><circle cx="50" cy="97" r="1.6" fill="#9184c8"/>';
+      } },
+    { id: 'f-dress', name: '카라 원피스', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#c4708c"/>' + neckHole(skin) +
+          '<path d="M39 70 L50 82 L61 70 L56 68 L50 75 L44 68 Z" fill="#fdf4f7"/>' +
+          '<path d="M34 74 C38 82 62 82 66 74" stroke="#ad5f7a" stroke-width="2" fill="none"/>' +
+          '<circle cx="50" cy="86" r="2" fill="#fdf4f7"/><circle cx="50" cy="94" r="2" fill="#fdf4f7"/>';
+      } },
+    { id: 'f-hoodie', name: '후드티', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#d1799a"/>' + neckHole(skin) +
+          '<path d="M33 72 C36 86 64 86 67 72 C62 69 38 69 33 72 Z" fill="#c26a8c"/>' +
+          '<path d="M45 82 L44 95" stroke="#fdf1f5" stroke-width="2" stroke-linecap="round"/>' +
+          '<path d="M55 82 L56 95" stroke="#fdf1f5" stroke-width="2" stroke-linecap="round"/>';
+      } },
+    { id: 'f-knit', name: '니트', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#9d8fd6"/>' + neckHole(skin) +
+          '<path d="M40 69 C44 79 56 79 60 69" stroke="#8a7bc6" stroke-width="3" fill="none"/>' +
+          '<path d="M30 84 C40 80 60 80 70 84" stroke="#8a7bc6" stroke-width="1.6" fill="none"/>' +
+          '<path d="M27 92 C40 88 60 88 73 92" stroke="#8a7bc6" stroke-width="1.6" fill="none"/>';
+      } }
+  ];
+
+  /* ---------------------------------------------------------------- 티어
+   * 기준은 "지금까지 쌓인 순공 시간" 하나뿐이다.
+   * 티어가 오르면 같은 번호의 테두리가 열린다 (티어 10개 = 테두리 10개). */
+
+  var TIERS = [
+    { id: 't1',  name: '새내기',     icon: '🔰', hours: 0,    border: '기본 테두리' },
+    { id: 't2',  name: '브론즈',     icon: '🥉', hours: 10,   border: '브론즈 링' },
+    { id: 't3',  name: '실버',       icon: '🥈', hours: 25,   border: '실버 링' },
+    { id: 't4',  name: '골드',       icon: '🥇', hours: 50,   border: '골드 링' },
+    { id: 't5',  name: '플래티넘',   icon: '💠', hours: 100,  border: '플래티넘 링' },
+    { id: 't6',  name: '자수정',     icon: '🔮', hours: 180,  border: '자수정 오라' },
+    { id: 't7',  name: '사파이어',   icon: '💎', hours: 300,  border: '사파이어 오라' },
+    { id: 't8',  name: '마스터',     icon: '🏅', hours: 500,  border: '마스터 글로우' },
+    { id: 't9',  name: '그랜드마스터', icon: '👑', hours: 750, border: '그랜드마스터 오라' },
+    { id: 't10', name: '레전드',     icon: '🌟', hours: 1000, border: '레전드 오라' }
+  ];
+
+  /** 테두리는 티어와 1:1 이다. cls 는 CSS 에 정의된 링 모양. */
+  var BORDERS = TIERS.map(function (t, i) {
+    return { id: 'b' + (i + 1), name: t.border, cls: 'av-b' + (i + 1), tier: i, hours: t.hours };
+  });
+
+  function byId(list, id) {
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  /* --------------------------------------------------- 누적 시간과 티어 */
+
+  /** 지금까지 기록된 순공 시간 전체(분) */
+  function lifetimeMinutes() {
+    var sess = global.StudyLog ? global.StudyLog.all() : {};
+    var sum = 0;
+    Object.keys(sess).forEach(function (day) {
+      Object.keys(sess[day]).forEach(function (sub) { sum += sess[day][sub].m || 0; });
+    });
+    return sum;
+  }
+
+  function tierIndexFor(minutes) {
+    var h = Math.max(0, minutes || 0) / 60, idx = 0;
+    for (var i = 0; i < TIERS.length; i++) if (h >= TIERS[i].hours) idx = i;
+    return idx;
+  }
+
+  /** 티어와 다음 티어까지 남은 양 */
+  function tierFor(minutes) {
+    var min = Math.max(0, minutes || 0);
+    var idx = tierIndexFor(min);
+    var cur = TIERS[idx], next = TIERS[idx + 1] || null;
+    var fromMin = cur.hours * 60;
+    var toMin = next ? next.hours * 60 : fromMin;
+    return {
+      idx: idx, tier: cur, next: next,
+      minutes: min, hours: min / 60,
+      remainMin: next ? Math.max(0, toMin - min) : 0,
+      pct: next ? Math.min(100, (min - fromMin) / (toMin - fromMin) * 100) : 100
+    };
+  }
+
+  /** 그 티어에서 열려 있는 테두리 목록 */
+  function unlockedBorders(minutes) {
+    var idx = tierIndexFor(minutes);
+    return BORDERS.filter(function (b) { return b.tier <= idx; });
+  }
+
+  /* ------------------------------------------------------------- 설정 값 */
+
+  function defaults() {
+    return { skin: SKINS[0].id, hair: HAIRS[0].id, outfit: OUTFITS[0].id, border: BORDERS[0].id };
+  }
+
+  /**
+   * 저장값을 믿지 않고 항상 통과시킨다.
+   * 모르는 항목은 기본값으로 되돌리고, 아직 못 연 테두리는 열린 것 중 가장 높은 것으로 낮춘다.
+   * (공유 코드로 받은 남의 설정도 같은 문을 지난다)
+   */
+  function sanitize(cfg, minutes) {
+    var d = defaults();
+    cfg = cfg || {};
+    var out = {
+      skin: byId(SKINS, cfg.skin) ? cfg.skin : d.skin,
+      hair: byId(HAIRS, cfg.hair) ? cfg.hair : d.hair,
+      outfit: byId(OUTFITS, cfg.outfit) ? cfg.outfit : d.outfit,
+      border: byId(BORDERS, cfg.border) ? cfg.border : d.border
+    };
+    var open = unlockedBorders(minutes === undefined ? lifetimeMinutes() : minutes);
+    var okBorder = false;
+    open.forEach(function (b) { if (b.id === out.border) okBorder = true; });
+    if (!okBorder) out.border = open[open.length - 1].id;
+    return out;
+  }
+
+  /** 내 설정 — 프로필 안에 함께 저장된다(백업에도 그대로 담긴다) */
+  function get() {
+    var p = S.profile();
+    return sanitize(p && p.avatar);
+  }
+
+  function save(cfg) {
+    var p = S.profile();
+    if (!p) return false;
+    p.avatar = sanitize(cfg);
+    return S.saveProfile(p);
+  }
+
+  /* --------------------------------------------------------------- 그리기 */
+
+  /** 캐릭터 SVG (100×100 좌표계, 크기는 CSS 가 정한다) */
+  function svg(cfg) {
+    var c = sanitize(cfg, Infinity);   // 그리기에서는 테두리 잠금을 따지지 않는다
+    var skin = byId(SKINS, c.skin), hair = byId(HAIRS, c.hair), fit = byId(OUTFITS, c.outfit);
+
+    var head =
+      '<ellipse cx="31.5" cy="47" rx="3.6" ry="4.6" fill="' + skin.shade + '"/>' +
+      '<ellipse cx="68.5" cy="47" rx="3.6" ry="4.6" fill="' + skin.shade + '"/>' +
+      '<path d="M43 55 h14 v13 q-7 5 -14 0 Z" fill="' + skin.shade + '"/>' +
+      '<ellipse cx="50" cy="44" rx="18.5" ry="20.5" fill="' + skin.base + '"/>';
+
+    var face =
+      '<path d="M38.5 39.5 C41 37.8 45.5 37.8 47.5 39.6" stroke="#4c3d5a" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+      '<path d="M52.5 39.6 C54.5 37.8 59 37.8 61.5 39.5" stroke="#4c3d5a" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+      '<ellipse cx="42.5" cy="46.5" rx="2.5" ry="3.2" fill="#2f2740"/>' +
+      '<ellipse cx="57.5" cy="46.5" rx="2.5" ry="3.2" fill="#2f2740"/>' +
+      '<circle cx="43.5" cy="45.3" r="0.9" fill="#fff" opacity=".85"/>' +
+      '<circle cx="58.5" cy="45.3" r="0.9" fill="#fff" opacity=".85"/>' +
+      '<ellipse cx="35.5" cy="52.5" rx="4" ry="2.4" fill="#e08a92" opacity=".35"/>' +
+      '<ellipse cx="64.5" cy="52.5" rx="4" ry="2.4" fill="#e08a92" opacity=".35"/>' +
+      '<path d="M46.5 55 C48.5 57.6 51.5 57.6 53.5 55" stroke="#a4535f" stroke-width="1.8" fill="none" stroke-linecap="round"/>';
+
+    return '<svg class="av-svg" viewBox="0 0 100 100" role="img" aria-label="프로필 캐릭터" focusable="false">' +
+      hair.back + head + face + hair.front + fit.draw(skin) +
+      '</svg>';
+  }
+
+  /**
+   * 링(테두리)까지 씌운 한 덩어리.
+   * minutes 를 주면 그 사람의 누적 시간으로 테두리 잠금을 판정한다.
+   */
+  function html(cfg, minutes, extraCls) {
+    var c = sanitize(cfg, minutes === undefined ? lifetimeMinutes() : minutes);
+    var b = byId(BORDERS, c.border);
+    return '<span class="av ' + b.cls + (extraCls ? ' ' + extraCls : '') + '">' +
+      '<span class="av-in">' + svg(c) + '</span></span>';
+  }
+
+  /** 랭킹에 붙는 티어 배지 */
+  function tierChip(minutes, small) {
+    var t = tierFor(minutes);
+    return '<span class="tier-chip tc' + (t.idx + 1) + (small ? ' sm' : '') + '">' +
+      t.tier.icon + ' ' + t.tier.name + '</span>';
+  }
+
+  global.Avatar = {
+    SKINS: SKINS, HAIRS: HAIRS, OUTFITS: OUTFITS, BORDERS: BORDERS, TIERS: TIERS,
+    byId: byId,
+    lifetimeMinutes: lifetimeMinutes,
+    tierIndexFor: tierIndexFor, tierFor: tierFor, unlockedBorders: unlockedBorders,
+    defaults: defaults, sanitize: sanitize, get: get, save: save,
+    svg: svg, html: html, tierChip: tierChip
+  };
+
+})(window);
+
+
 /* ===== src/js/group.js ===== */
 /* =========================================================================
  * group.js — 학교·학년 기반 스터디 그룹과 순공 시간 랭킹
@@ -4477,6 +5017,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       klass: norm(p.klass),
       groupId: groupId(p),
       goal: p.goal || 25,
+      /* 랭킹에 캐릭터와 티어를 함께 띄우기 위해 꾸민 내용과 누적 순공 시간을 싣는다.
+       * lifeMin 이 없는 옛 코드는 티어 없이 기본 캐릭터로 보인다. */
+      avatar: global.Avatar ? global.Avatar.get() : null,
+      lifeMin: global.Avatar ? Math.round(global.Avatar.lifetimeMinutes()) : 0,
       todayMin: Math.round(global.StudyLog.todayTotal() * 10) / 10,
       weekMin: Math.round(global.StudyLog.weekTotal(0) * 10) / 10,
       streak: global.StudyLog.streak(),
@@ -4537,6 +5081,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     obj.todayMin = clampMin(obj.todayMin, cap);
     obj.weekMin = clampMin(obj.weekMin, cap * 7);
     obj.streak = clampMin(obj.streak, 400);
+    /* 누적 시간은 티어(테두리)를 정하므로 같은 상한을 씌운다.
+     * 하루 5시간 × 400일이 한 사람이 정직하게 쌓을 수 있는 현실적인 최대치다. */
+    obj.lifeMin = clampMin(obj.lifeMin, cap * 400);
+    if (global.Avatar) obj.avatar = global.Avatar.sanitize(obj.avatar, obj.lifeMin);
     return obj;
   }
 
@@ -4740,6 +5288,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         // 기존 참가자가 자동으로 켜지지 않는다 — 동의 시점의 약속이
         // "학년·반은 전송하지 않는다" 였기 때문이다.
         classOn: !!o.classOn,
+        // 순위표에서 내 줄만 감춘다. 반 합계에는 그대로 들어간다 —
+        // 빠지면 우리 반이 손해를 보므로, 숨기는 것과 빠지는 것은 다른 선택이다.
+        hidden: !!o.hidden,
         deviceId: o.deviceId || '',
         lastSync: o.lastSync || 0,
         lastPush: o.lastPush || 0,
@@ -4773,14 +5324,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       st.deviceId = uuid();
       save(st);
     }
-    return st.deviceId;
-  }
-
-  function resetDeviceId() {
-    var st = load();
-    st.deviceId = uuid();
-    st.lastPush = 0;
-    save(st);
     return st.deviceId;
   }
 
@@ -4889,11 +5432,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       p_device: deviceId(), p_week: weekKey, p_school: school, p_minutes: mins,
       p_level: useClass ? String(cls.level || '') : '',
       p_grade: useClass ? String(cls.grade || '') : '',
-      p_klass: useClass ? String(cls.klass || '') : ''
+      p_klass: useClass ? String(cls.klass || '') : '',
+      p_hidden: !!st.hidden
     };
 
     var sig = school + '|' + weekKey + '|' + mins + '|' +
-              body.p_level + '/' + body.p_grade + '/' + body.p_klass;
+              body.p_level + '/' + body.p_grade + '/' + body.p_klass +
+              '|' + (body.p_hidden ? 'h' : '');
 
     if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
       return Promise.resolve(false);
@@ -5106,10 +5651,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (!s) return Promise.reject(Object.assign(new Error('로그인이 필요합니다.'), { status: 401 }));
 
     return req('/rest/v1/student_report?week=eq.' + encodeURIComponent(weekKey) +
-               '&select=nickname,school,minutes,updated_at&order=minutes.desc&limit=500', {}, s.accessToken)
+               '&select=device_id,nickname,school,minutes,updated_at&order=minutes.desc&limit=500', {}, s.accessToken)
       .then(function (rows) {
         return (rows || []).map(function (r) {
           return {
+            deviceId: String(r.device_id || ''),
             nickname: String(r.nickname || '').trim(),
             schoolName: String(r.school || '').trim(),
             minutes: Math.max(0, r.minutes | 0),
@@ -5120,6 +5666,108 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         if (e.status === 401) adminSessionSave(null);   // 세션이 만료·무효 — 다시 로그인해야 한다
         throw e;
       });
+  }
+
+  /* ------------------------------------------------------------ 반 대항 리그
+   * 5명 이상 모인 반만 내려온다(서버 뷰가 걸러 준다). 학교 10곳 × 25반이면
+   * 많아야 250행이라 한 번에 받아 클라이언트에서 줄 세워도 충분하다. */
+
+  function fetchClassWeek(weekKey) {
+    if (!enabled()) return Promise.resolve([]);
+
+    return req('/rest/v1/class_week?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=school,level,grade,klass,total_min,members,updated_at' +
+               '&order=total_min.desc&limit=500')
+      .then(function (rows) {
+        return (rows || []).map(function (r) {
+          return {
+            schoolName: String(r.school || '').trim(),
+            level: String(r.level || '').trim(),
+            grade: String(r.grade || '').trim(),
+            klass: String(r.klass || '').trim(),
+            total: Math.max(0, r.total_min | 0),
+            active: Math.max(0, r.members | 0),
+            updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0
+          };
+        });
+      }, function () { return []; });   // 권한 전이면 조용히 빈 판
+  }
+
+  /**
+   * 같은 반 사람들을 익명으로 받아 온다 — 공유 코드 없이 자동으로 묶인다.
+   *
+   * 이름은 오지 않는다. 주차마다 바뀌는 짧은 태그(A1B2)뿐이라 주가 넘어가면
+   * 같은 사람을 계속 따라갈 수 없다. 5명이 안 되는 반은 서버가 아무것도 주지 않는다.
+   */
+  function fetchClassMembers(cls, weekKey) {
+    if (!enabled() || !cls || !cls.school || !cls.grade || !cls.klass) {
+      return Promise.resolve([]);
+    }
+    return req('/rest/v1/rpc/class_members', {
+      method: 'POST',
+      body: {
+        p_school: String(cls.school || ''), p_level: String(cls.level || ''),
+        p_grade: String(cls.grade || ''), p_klass: String(cls.klass || ''),
+        p_week: weekKey, p_device: deviceId() || null
+      }
+    }).then(function (rows) {
+      return (rows || []).map(function (r) {
+        return {
+          tag: String(r.tag || '????'),
+          minutes: Math.max(0, r.minutes | 0),
+          updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0,
+          me: !!r.is_me,
+          hidden: !!r.is_hidden
+        };
+      });
+    }, function () { return []; });
+  }
+
+  function hiddenOn() { return !!load().hidden; }
+
+  function setHidden(on) {
+    var st = load();
+    st.hidden = !!on;
+    st.lastSig = '';   // 다음 동기화가 반드시 나가도록 서명을 지운다
+    save(st);
+  }
+
+  /** 아직 5명이 안 모여 순위표에 못 오른 반의 참여 인원 (합계는 오지 않는다) */
+  function fetchClassPending(weekKey) {
+    if (!enabled()) return Promise.resolve([]);
+
+    return req('/rest/v1/class_week_pending?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=school,level,grade,klass,members&limit=500')
+      .then(function (rows) {
+        return (rows || []).map(function (r) {
+          return {
+            schoolName: String(r.school || '').trim(),
+            level: String(r.level || '').trim(),
+            grade: String(r.grade || '').trim(),
+            klass: String(r.klass || '').trim(),
+            active: Math.max(0, r.members | 0)
+          };
+        });
+      }, function () { return []; });
+  }
+
+  /**
+   * 관리자가 잘못 올라온 기록을 지운다. 리그·학생 목록 양쪽에서 함께 사라진다.
+   * week 를 비우면 그 기기의 모든 주차를 지운다.
+   */
+  function adminDeleteDevice(deviceIdValue, weekKey) {
+    var s = adminSession();
+    if (!s) return Promise.reject(Object.assign(new Error('로그인이 필요합니다.'), { status: 401 }));
+
+    return req('/rest/v1/rpc/admin_delete_device', {
+      method: 'POST',
+      body: { p_device: deviceIdValue, p_week: weekKey || null }
+    }, s.accessToken).then(function (n) {
+      return typeof n === 'number' ? n : 0;
+    }, function (e) {
+      if (e.status === 401) adminSessionSave(null);
+      throw e;
+    });
   }
 
   /**
@@ -5157,7 +5805,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
     classEnabled: classEnabled, setClassEnabled: setClassEnabled,
-    deviceId: deviceId, resetDeviceId: resetDeviceId, forget: forget,
+    deviceId: deviceId, forget: forget,
     push: push, fetchWeek: fetchWeek, test: test,
 
     studentShareEnabled: studentShareEnabled, setStudentShareEnabled: setStudentShareEnabled,
@@ -5166,6 +5814,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     adminSession: adminSession, adminSignIn: adminSignIn, adminSignOut: adminSignOut,
     fetchStudentWeek: fetchStudentWeek,
     fetchLeagueMembers: fetchLeagueMembers,
+    fetchClassWeek: fetchClassWeek, fetchClassPending: fetchClassPending,
+    fetchClassMembers: fetchClassMembers,
+    hiddenOn: hiddenOn, setHidden: setHidden,
+    adminDeleteDevice: adminDeleteDevice,
 
     SUPABASE_URL: SUPABASE_URL
   };
@@ -5342,6 +5994,147 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return mergeCloud(local, myName);
   }
 
+  /* ============================================================ 반 대항 리그
+   *
+   * 판의 단위만 학교에서 반으로 바뀔 뿐, 줄 세우기·승급·강등 기계는 그대로 쓴다.
+   * 그래서 반 단위도 학교 단위와 똑같은 모양(schoolCode/schoolName/total/steady)
+   * 으로 만든다 — 화면도 같은 코드로 그린다.
+   *
+   * 다만 반은 학교보다 훨씬 좁은 단위라 두 가지를 지킨다.
+   *   1. 5명 미만인 반은 서버 뷰에서 아예 빠진다. 2명짜리 "반" 의 합계는
+   *      사실상 개인의 공부 시간이고, 상품이 걸리면 그 반이 1등을 먹는다.
+   *   2. 학년·반은 [학급 대항전] 에 따로 동의한 사람만 올라간다.
+   *      동의하지 않은 사람은 학교 합계에만 남는다. */
+
+  function classKey(school, level, grade, klass) {
+    return [norm(school), norm(level), norm(grade), norm(klass)].join('|');
+  }
+
+  /** "한빛고등학교 2학년 3반" — 학교급이 '기타'면 학년을 빼고 적는다 */
+  function classLabel(school, level, grade, klass) {
+    var g = (level === '기타' || !grade) ? '' : ' ' + grade + '학년';
+    var c = norm(klass) ? ' ' + norm(klass) + '반' : '';
+    return norm(school) + g + c;
+  }
+
+  /** 내 프로필이 반 대항에 참가할 수 있는 상태인가 (학년·반이 다 있어야 한다) */
+  function myClassId(p) {
+    p = p || S.profile();
+    if (!p) return null;
+    var klass = norm(p.klass), grade = norm(p.grade);
+    if (!klass || !grade) return null;
+    return {
+      key: classKey(p.school, p.level, grade, klass),
+      school: norm(p.school), level: norm(p.level), grade: grade, klass: klass,
+      label: classLabel(p.school, p.level, grade, klass)
+    };
+  }
+
+  var cloudClassRows = [];
+  var cloudClassWeek = '';
+  var cloudPendingRows = [];
+
+  function setCloudClassRows(rows, pending, wk) {
+    cloudClassRows = Array.isArray(rows) ? rows : [];
+    cloudPendingRows = Array.isArray(pending) ? pending : [];
+    cloudClassWeek = wk || '';
+  }
+
+  /** 이 브라우저가 아는 사람들(나 + 그룹원)을 반 단위로 접는다 */
+  function localClasses() {
+    var p = S.profile();
+    if (!p) return {};
+
+    var meId = global.Group.memberId(p);
+    var acc = {};
+
+    function bucket(school, level, grade, klass) {
+      if (!norm(klass) || !norm(grade)) return null;   // 반이 없으면 판에 못 오른다
+      var k = classKey(school, level, grade, klass);
+      if (!acc[k]) {
+        acc[k] = {
+          key: k, schoolOnly: norm(school), level: norm(level),
+          grade: norm(grade), klass: norm(klass),
+          schoolName: classLabel(school, level, grade, klass),
+          active: 0, steady: 0, total: 0, staleAt: 0
+        };
+      }
+      return acc[k];
+    }
+
+    var b = bucket(p.school, p.level, p.grade, p.klass);
+    if (b) {
+      b.active++;
+      b.total += myCappedWeek();
+      if (global.StudyLog.streak() >= 3) b.steady++;
+    }
+
+    global.Group.members().forEach(function (m) {
+      if (m.id === meId) return;
+      var bb = bucket(m.school, m.level, m.grade, m.klass);
+      if (!bb) return;
+      bb.active++;
+      bb.total += Math.min(m.weekMin || 0, DAILY_CAP_MINUTES * 7);
+      if ((m.streak || 0) >= 3) bb.steady++;
+      if (m.ts && m.ts > bb.staleAt) bb.staleAt = m.ts;
+    });
+
+    return acc;
+  }
+
+  /**
+   * 이번 주 반 순위. 서버 집계를 기본으로 하고, 이 브라우저만 아는 값이
+   * 더 크면 그쪽을 쓴다(양쪽 다 전부가 아니다 — 학교 리그와 같은 이유).
+   */
+  function classUnits() {
+    var mineId = myClassId();
+    var acc = localClasses();
+
+    if (cloudClassWeek === weekKey(0)) {
+      cloudClassRows.forEach(function (r) {
+        var k = classKey(r.schoolName, r.level, r.grade, r.klass);
+        var cur = acc[k];
+        var total = Math.round(r.total / 25) * 25;
+        if (!cur) {
+          acc[k] = {
+            key: k, schoolOnly: norm(r.schoolName), level: norm(r.level),
+            grade: norm(r.grade), klass: norm(r.klass),
+            schoolName: classLabel(r.schoolName, r.level, r.grade, r.klass),
+            active: r.active, steady: 0, total: total,
+            staleAt: r.updatedAt, fromCloud: true
+          };
+          return;
+        }
+        if (total > cur.total) cur.total = total;
+        if (r.active > cur.active) cur.active = r.active;
+        if (r.updatedAt > cur.staleAt) cur.staleAt = r.updatedAt;
+        cur.fromCloud = true;
+      });
+    }
+
+    return Object.keys(acc).map(function (k) {
+      var u = acc[k];
+      u.total = Math.round(u.total / 25) * 25;
+      u.mine = !!(mineId && k === mineId.key);
+      u.schoolCode = u.mine ? MY_CODE : 'C:' + k;
+      return u;
+    });
+  }
+
+  /** 아직 5명이 안 모여 순위표에 못 오른 내 반의 상태 */
+  function myPendingClass() {
+    var mineId = myClassId();
+    if (!mineId) return null;
+    if (cloudClassWeek !== weekKey(0)) return null;
+
+    var hit = null;
+    cloudPendingRows.forEach(function (r) {
+      if (classKey(r.schoolName, r.level, r.grade, r.klass) === mineId.key) hit = r;
+    });
+    if (!hit) return null;
+    return { label: mineId.label, active: hit.active, need: Math.max(0, 5 - hit.active) };
+  }
+
   /* ------------------------------------------------------------ 서버 병합
    * 리그를 켜면 다른 학교의 집계가 서버에서 내려온다.
    * 서버를 쓰지 않거나 아직 못 받았으면 cloudRows 가 비어 있고,
@@ -5406,18 +6199,33 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     return C.push(school, wk, myCappedWeek(), force, cls)
       .catch(function () { return false; })          // 못 올려도 읽기는 시도한다
-      .then(function () { return C.fetchWeek(wk); })
-      .then(function (rows) {
-        setCloudRows(rows, wk);
+      .then(function () {
+        return Promise.all([
+          C.fetchWeek(wk),
+          C.fetchClassWeek ? C.fetchClassWeek(wk) : [],
+          C.fetchClassPending ? C.fetchClassPending(wk) : []
+        ]);
+      })
+      .then(function (res) {
+        setCloudRows(res[0], wk);
+        setCloudClassRows(res[1], res[2], wk);
         return true;
       });
   }
 
   /* --------------------------------------------------------------- 조회 */
 
-  /** 이번 주 판 전체. 프로필이 없으면 null. */
-  function board() {
-    var list = schools();
+  /**
+   * 이번 주 판 전체. 프로필이 없으면 null.
+   *
+   * mode 'class'  — 반 대항 (기본). 같은 학교·학년·반이 한 팀이다.
+   * mode 'school' — 학교 대항. 예전 판으로, 반을 안 넣은 사람도 들어간다.
+   *
+   * 두 판은 단위만 다르고 줄 세우기·승급·강등은 완전히 같은 코드를 쓴다.
+   */
+  function board(mode) {
+    var isClass = mode !== 'school';
+    var list = isClass ? classUnits() : schools();
     if (!list.length) return null;
 
     var st = load();
@@ -5466,6 +6274,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var ahead = mine.rank > 1 ? ranked[mine.rank - 2] : null;
 
     return {
+      mode: isClass ? 'class' : 'school',
+      unit: isClass ? '반' : '학교',
+      pending: isClass ? myPendingClass() : null,
       tier: tier, tierIdx: tierIdx, tiers: TIERS,
       ranked: ranked, size: size,
       promote: z.promote, demote: z.demote,
@@ -5553,7 +6364,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     MIN_FIELD: MIN_FIELD,
     zoneSizes: zoneSizes, getZone: getZone, rankGroup: rankGroup,
     schools: schools, board: board, snapshot: snapshot,
-    syncNow: syncNow, setCloudRows: setCloudRows,
+    classUnits: classUnits, myClassId: myClassId, myPendingClass: myPendingClass,
+    classLabel: classLabel,
+    syncNow: syncNow, setCloudRows: setCloudRows, setCloudClassRows: setCloudClassRows,
     settleIfNeeded: settleIfNeeded, clearResult: clearResult, reset: reset,
     myCappedWeek: myCappedWeek, MY_CODE: MY_CODE
   };
@@ -7580,6 +8393,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     plan: null,
     timer: null,
     rankRange: 'today',
+    leagueMode: 'class',  // 기본 판은 반 대항
+    lgSchool: '', lgGrade: '',
     weekOffset: 0,
     queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
     page: 'secInput',
@@ -7704,7 +8519,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 상단 탭에는 없지만 이동은 되는 페이지들.
    * 관리자 화면은 학생이 쓸 일이 없어 탭에서 빼고 [설정] 맨 아래에서만 들어간다. */
   var HIDDEN_PAGES = [
-    { id: 'secAdmin', label: '관리자', hash: 'admin', tool: true }
+    { id: 'secAdmin', label: '관리자', hash: 'admin', tool: true },
+    // 캐릭터 꾸미기는 매일 열 화면이 아니라 [설정 → 내 프로필] 에서만 들어간다
+    { id: 'secAvatar', label: '캐릭터 꾸미기', hash: 'avatar', tool: true }
   ];
 
   var ALL_PAGES = PAGES.concat(HIDDEN_PAGES);
@@ -7806,6 +8623,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     // 들어올 때마다 최신 값으로 다시 그린다
     if (id === 'secLeague') { renderLeague(); leagueSync(false); }
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
+    if (id === 'secAvatar') openAvatarPage();
     // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
     if (id === 'secSettings') renderSettingsPage();
 
@@ -8126,8 +8944,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var chip = $('profileChip');
     if (!p) { chip.classList.add('is-hidden'); return; }
     chip.classList.remove('is-hidden');
-    $('pcAvatar').textContent = Group.initial(p.nick);
-    $('pcAvatar').style.background = Group.avatarColor(p.nick);
+    $('pcAvatar').innerHTML = Avatar.html(Avatar.get(), Avatar.lifetimeMinutes(), 'av-xs');
     $('pcName').textContent = p.nick;
     $('pcGroup').textContent = Group.groupLabel(p);
   }
@@ -8164,6 +8981,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       klass: $('pfClass').value.trim(),
       goal: parseInt($('pfGoal').value, 10)
     };
+
+    // 프로필 폼은 아바타를 다루지 않는다. 여기서 넘겨받지 않으면 저장할 때마다 꾸민 게 초기화된다.
+    if (prev && prev.avatar) p.avatar = prev.avatar;
 
     // 나이스에서 고른 학교면 급식 조회용 코드를 함께 저장한다.
     // 이름을 바꿨는데 코드가 그대로면 엉뚱한 학교 급식이 뜨므로 이름이 같을 때만 유지.
@@ -10466,9 +11286,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       ? ' · <span style="color:var(--good);font-weight:600">나이스 연결됨</span>'
       : ' · <span style="color:var(--warn)">학교 미선택 (급식 없음)</span>';
 
+    var myMin = Avatar.lifetimeMinutes();
     $('profileSummary').innerHTML =
-      '<div class="ps-av" style="background:' + Group.avatarColor(p.nick) + '">' + esc(Group.initial(p.nick)) + '</div>' +
-      '<div><div class="ps-name">' + esc(p.nick) + '</div>' +
+      Avatar.html(Avatar.get(), myMin, 'av-lg') +
+      '<div><div class="ps-name">' + esc(p.nick) + ' ' + Avatar.tierChip(myMin) + '</div>' +
       '<div class="ps-meta">' + esc(Group.groupLabel(p)) +
         (p.neis && p.neis.region ? ' <span style="color:var(--dim)">(' + esc(p.neis.region) + ')</span>' : '') + '</div>' +
       '<div class="ps-goal">주간 목표 ' + (p.goal || 25) + '시간' +
@@ -10522,6 +11343,157 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       el.innerHTML = line + '<br><span class="ss-backup' + (warn ? ' warn' : '') + '">' +
         (warn ? '📥 ' : '') + esc(backup) +
         (warn ? ' 지금 내려받아 두세요 — 기기를 잃어버리면 되돌릴 수 없습니다.' : '') + '</span>';
+    });
+  }
+
+  /* ================================================== 캐릭터 꾸미기 ==
+   *
+   * 고른 내용은 [저장하기] 를 눌러야 프로필에 들어간다.
+   * 그전까지는 avDraft 에만 있으므로, 이것저것 눌러 보다 나가도 원래대로 남는다. */
+
+  var avDraft = null;
+
+  function avMin() { return Avatar.lifetimeMinutes(); }
+
+  function openAvatarPage() {
+    avDraft = Avatar.get();
+    renderAvatar();
+  }
+
+  function renderAvatar() {
+    if (!avDraft) avDraft = Avatar.get();
+    renderAvatarStage();
+    renderAvatarPicks();
+    renderAvatarTiers();
+  }
+
+  function renderAvatarStage() {
+    var p = Store.profile() || {};
+    var min = avMin();
+    var t = Avatar.tierFor(min);
+
+    $('avStage').innerHTML =
+      '<div class="av-stage-fig">' + Avatar.html(avDraft, min, 'av-xl') + '</div>' +
+      '<div class="av-stage-txt">' +
+        '<div class="av-stage-name">' + esc(p.nick || '나') + ' ' + Avatar.tierChip(min) + '</div>' +
+        '<p class="av-stage-sub">지금까지 쌓은 순공 시간 <b>' + fmtDurFine(min) + '</b></p>' +
+        '<div class="av-prog">' +
+          '<div class="av-prog-top"><span>' + esc(t.tier.name) + '</span>' +
+            '<span>' + (t.next ? esc(t.next.name) + '까지 ' + fmtDurFine(t.remainMin) : '최고 티어 달성') + '</span></div>' +
+          '<div class="av-prog-track"><i style="width:' + t.pct.toFixed(1) + '%"></i></div>' +
+        '</div>' +
+        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다.</p>' +
+      '</div>';
+  }
+
+  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다 */
+  function avOption(kind, item, on, locked, note) {
+    var preview = {};
+    Object.keys(avDraft).forEach(function (k) { preview[k] = avDraft[k]; });
+    preview[kind] = item.id;
+
+    var fig = kind === 'border'
+      ? Avatar.html(preview, Infinity, 'av-sm')
+      : '<span class="av av-plain av-sm"><span class="av-in">' + Avatar.svg(preview) + '</span></span>';
+
+    return '<button type="button" class="av-opt' + (on ? ' on' : '') + (locked ? ' locked' : '') + '"' +
+      (locked ? ' aria-disabled="true"' : '') +
+      ' data-kind="' + kind + '" data-id="' + esc(item.id) + '">' +
+      '<span class="av-opt-fig">' + fig + (locked ? '<span class="av-lock">🔒</span>' : '') + '</span>' +
+      '<span class="av-opt-name">' + esc(item.name) + '</span>' +
+      (note ? '<span class="av-opt-note">' + esc(note) + '</span>' : '') +
+      '</button>';
+  }
+
+  function avGroup(title, hint, body) {
+    return '<div class="av-group"><div class="av-group-head"><b>' + esc(title) + '</b>' +
+      (hint ? '<em>' + esc(hint) + '</em>' : '') + '</div>' +
+      '<div class="av-opts">' + body + '</div></div>';
+  }
+
+  function renderAvatarPicks() {
+    var min = avMin();
+    var myTier = Avatar.tierIndexFor(min);
+
+    function bySex(list, sex) { return list.filter(function (x) { return x.sex === sex; }); }
+    function opts(kind, list) {
+      return list.map(function (it) { return avOption(kind, it, avDraft[kind] === it.id); }).join('');
+    }
+
+    var html =
+      avGroup('피부 톤', '3종', opts('skin', Avatar.SKINS)) +
+      avGroup('머리 — 남성형', '3종', opts('hair', bySex(Avatar.HAIRS, 'm'))) +
+      avGroup('머리 — 여성형', '5종', opts('hair', bySex(Avatar.HAIRS, 'f'))) +
+      avGroup('옷 — 남성형', '5종', opts('outfit', bySex(Avatar.OUTFITS, 'm'))) +
+      avGroup('옷 — 여성형', '5종', opts('outfit', bySex(Avatar.OUTFITS, 'f'))) +
+      avGroup('테두리', '순공 시간으로 열립니다', Avatar.BORDERS.map(function (b) {
+        var locked = b.tier > myTier;
+        return avOption('border', b, avDraft.border === b.id, locked,
+          locked ? '누적 ' + Avatar.TIERS[b.tier].hours + '시간' : Avatar.TIERS[b.tier].name);
+      }).join(''));
+
+    $('avPicks').innerHTML = html;
+
+    $$('#avPicks .av-opt').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.classList.contains('locked')) {
+          var need = Avatar.TIERS[Avatar.byId(Avatar.BORDERS, b.dataset.id).tier];
+          toast(need.icon + ' ' + need.name + ' 티어(누적 ' + need.hours + '시간)가 되면 열립니다.', true);
+          return;
+        }
+        avDraft[b.dataset.kind] = b.dataset.id;
+        renderAvatar();
+      });
+    });
+  }
+
+  function renderAvatarTiers() {
+    var min = avMin();
+    var myTier = Avatar.tierIndexFor(min);
+    $('avTierCount').innerHTML = '<span class="sp-chip">' + (myTier + 1) + ' / ' + Avatar.TIERS.length + ' 달성</span>';
+
+    $('avTierList').innerHTML = Avatar.TIERS.map(function (t, i) {
+      var got = i <= myTier;
+      var b = Avatar.BORDERS[i];
+      var remain = Math.max(0, t.hours * 60 - min);
+      return '<div class="av-tier' + (got ? ' got' : '') + (i === myTier ? ' now' : '') + '">' +
+        '<span class="av-tier-ring ' + b.cls + '"><i></i></span>' +
+        '<div class="av-tier-txt">' +
+          '<div class="av-tier-name">' + t.icon + ' ' + esc(t.name) +
+            (i === myTier ? '<span class="me-tag">지금</span>' : '') + '</div>' +
+          '<div class="av-tier-sub">' + esc(b.name) + ' · 누적 ' + t.hours + '시간</div>' +
+        '</div>' +
+        '<div class="av-tier-state">' + (got ? '✅ 획득' : '남은 ' + fmtDurFine(remain)) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function initAvatarPage() {
+    $('openAvatar').addEventListener('click', function () { goPage('secAvatar'); });
+
+    $('avRandom').addEventListener('click', function () {
+      function pick(list) { return list[Math.floor(Math.random() * list.length)].id; }
+      avDraft.skin = pick(Avatar.SKINS);
+      avDraft.hair = pick(Avatar.HAIRS);
+      avDraft.outfit = pick(Avatar.OUTFITS);
+      renderAvatar();
+    });
+
+    $('avSave').addEventListener('click', function () {
+      if (!Avatar.save(avDraft)) { toast('저장에 실패했습니다.', true); return; }
+      avDraft = Avatar.get();
+      Group.syncSelf();            // 공유 코드에도 바뀐 모습이 실리도록
+      renderAvatar();
+      renderProfileChip();
+      renderSettingsPage();
+      renderGroup();
+      toast('캐릭터를 저장했습니다.');
+    });
+
+    $('avRevert').addEventListener('click', function () {
+      avDraft = Avatar.get();
+      renderAvatar();
+      toast('저장된 모습으로 되돌렸습니다.');
     });
   }
 
@@ -10601,6 +11573,65 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* ========================================================== 그룹 랭킹 == */
 
+  /* ------------------------------------------------- 같은 반 자동 랭킹
+   *
+   * 공유 코드를 주고받는 방식은 번거로워서 결국 아무도 안 쓴다.
+   * 같은 학교·학년·반이면 등록 없이 같은 판에 놓되, 서로에게는 익명으로만 보인다.
+   * 태그(A1B2)는 주마다 바뀌므로 주가 넘어가면 같은 사람을 계속 따라갈 수 없다.
+   *
+   * 서버가 꺼져 있거나 5명이 안 모였으면 아무것도 그리지 않고,
+   * 예전처럼 이 브라우저가 아는 그룹원 목록이 그대로 남는다. */
+  function renderClassRank() {
+    var p = Store.profile();
+    if (!p || !Cloud.enabled() || !Cloud.classEnabled()) return;
+
+    var cid = League.myClassId(p);
+    if (!cid) return;
+
+    var wk = Store.key(Store.weekStart(new Date()));
+    Cloud.fetchClassMembers(cid, wk).then(function (rows) {
+      if (!rows.length) return;   // 5명 미만이면 서버가 아무것도 주지 않는다
+
+      // 내 줄만 실시간 값으로 바꾼다. 서버 값은 마지막 동기화 시점이라 뒤처져 있다.
+      var mine = League.myCappedWeek();
+      rows.forEach(function (r) { if (r.me) r.minutes = Math.max(r.minutes, mine); });
+      rows.sort(function (a, b) { return b.minutes - a.minutes; });
+
+      var max = rows.reduce(function (m, r) { return Math.max(m, r.minutes); }, 0);
+
+      $('rankList').innerHTML = rows.map(function (r, i) {
+        var rank = i + 1;
+        var medal = rank <= 3 ? ' m' + rank : '';
+        var badge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+        var w = max > 0 ? (r.minutes / max * 100) : 0;
+        var color = Group.avatarColor(r.tag);
+        return '<div class="rank' + (r.me ? ' is-me' : '') + (rank === 1 ? ' top1' : '') + '">' +
+          '<div class="rk-pos' + medal + '">' + badge + '</div>' +
+          '<div class="rk-av" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
+          '<div class="rk-info">' +
+            '<div class="rk-name">' + (r.me ? '나' : '익명 ' + esc(r.tag)) +
+              (r.me && r.hidden ? '<span class="me-tag">숨김</span>' : '') + '</div>' +
+            '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
+            '<div class="rk-date">' + (r.me ? '실시간 반영' : agoText(r.updatedAt)) + '</div>' +
+          '</div>' +
+          '<div class="rk-time">' + durHtml(r.minutes) + '</div>' +
+        '</div>';
+      }).join('');
+
+      $('groupHero').innerHTML =
+        '<div><p class="gh-name">' + esc(cid.label) + '</p>' +
+        '<p class="gh-sub">' + rows.length + '명 참여 · 이번 주 합계 ' +
+          fmtDurFine(rows.reduce(function (s, r) { return s + r.minutes; }, 0)) +
+          ' · 서로 <b>익명</b>으로 보입니다</p></div>' +
+        '<div class="gh-stats">' +
+          '<div class="gh-stat"><div class="k">내 순위</div><div class="v">' +
+            (rows.findIndex ? (rows.findIndex(function (r) { return r.me; }) + 1) : 0) + '<small>위</small></div></div>' +
+          '<div class="gh-stat"><div class="k">내 주간 순공</div><div class="v">' + durHtml(mine) + '</div></div>' +
+          '<div class="gh-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '<small>일</small></div></div>' +
+        '</div>';
+    }, function () { /* 못 받아 오면 로컬 목록을 그대로 둔다 */ });
+  }
+
   function renderGroup() {
     var p = Store.profile();
     if (!p) return;
@@ -10626,11 +11657,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       var w = r.max > 0 ? (m.value / r.max * 100) : 0;
       var color = Group.avatarColor(m.nick);
       var stale = m.date !== Store.key();
+      /* 캐릭터와 티어. 내 것은 실시간이고, 그룹원은 코드를 받은 시점의 값이다.
+       * lifeMin 이 없는 옛 코드로 들어온 사람은 티어를 지어내지 않고 배지를 빼 둔다. */
+      var lifeMin = m.self ? Avatar.lifetimeMinutes() : m.lifeMin;
+      var av = m.self ? Avatar.get() : m.avatar;
       return '<div class="rank' + (m.self ? ' is-me' : '') + (m.rank === 1 ? ' top1' : '') + '">' +
         '<div class="rk-pos' + medal + '">' + badge + '</div>' +
-        '<div class="rk-av" style="background:' + color + '">' + esc(Group.initial(m.nick)) + '</div>' +
+        Avatar.html(av, lifeMin || 0, 'rk-av') +
         '<div class="rk-info">' +
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
+            (lifeMin != null ? Avatar.tierChip(lifeMin, true) : '') +
             (m.overall != null ? '<span class="brain">🧠 ' + m.overall + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
           '<div class="rk-date">' + (m.self ? '실시간 반영'
@@ -10661,6 +11697,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     renderGroupCompare();
     $('myCode').value = Group.encodeSelf();
+
+    // 서버에서 같은 반 명단을 받아 오면 위 목록을 익명 랭킹으로 갈아 끼운다
+    renderClassRank();
   }
 
   function renderGroupCompare() {
@@ -10879,11 +11918,67 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return ((last - 0xac00) % 28) ? withBatchim : without;
   }
 
+  /* 판을 좁혀 보는 필터. 순위 자체는 전체 기준으로 매기고, 보여 줄 때만 추린다 —
+   * 학년별로 다시 1위를 매기면 "우리 학년 1등" 과 "리그 1등" 이 뒤섞여 헷갈린다. */
+  function lgFilterRows(b) {
+    if (b.mode !== 'class') return b.ranked;
+    var sc = state.lgSchool || '', gr = state.lgGrade || '';
+    return b.ranked.filter(function (r) {
+      if (sc && r.schoolOnly !== sc) return false;
+      if (gr && r.grade !== gr) return false;
+      return true;
+    });
+  }
+
+  function renderLeagueFilters(b) {
+    var wrap = $('lgFilters');
+    if (!wrap) return;
+    wrap.classList.toggle('is-hidden', b.mode !== 'class');
+    if (b.mode !== 'class') return;
+
+    var schools = [], grades = [];
+    b.ranked.forEach(function (r) {
+      if (r.schoolOnly && schools.indexOf(r.schoolOnly) < 0) schools.push(r.schoolOnly);
+      if (r.grade && grades.indexOf(r.grade) < 0) grades.push(r.grade);
+    });
+    schools.sort();
+    grades.sort(function (x, y) { return parseInt(x, 10) - parseInt(y, 10); });
+
+    var sSel = $('lgFilterSchool'), gSel = $('lgFilterGrade');
+    sSel.innerHTML = '<option value="">전체 학교</option>' + schools.map(function (s) {
+      return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+    }).join('');
+    gSel.innerHTML = '<option value="">전체 학년</option>' + grades.map(function (g) {
+      return '<option value="' + esc(g) + '">' + esc(g) + '학년</option>';
+    }).join('');
+    sSel.value = state.lgSchool || '';
+    gSel.value = state.lgGrade || '';
+  }
+
   function renderLeague() {
     if (!$('lgBoard')) return;
 
-    var b = League.board();
+    var b = League.board(state.leagueMode);
     if (!b) return;                        // 프로필 전에는 그릴 게 없다
+
+    $$('#lgModes .lg-mode').forEach(function (btn) {
+      btn.classList.toggle('on', btn.dataset.mode === b.mode);
+    });
+    renderLeagueFilters(b);
+
+    /* 아직 5명이 안 모여 순위표에 못 오른 반이면, 사라지는 대신 이유를 말해 준다.
+     * 합계는 보여 주지 않는다 — 2명짜리 반에서 내 시간을 빼면 나머지 한 명이 드러난다. */
+    var pend = $('lgPending');
+    if (pend) {
+      if (b.mode === 'class' && b.pending) {
+        pend.classList.remove('is-hidden');
+        pend.innerHTML = '👥 <b>' + esc(b.pending.label) + '</b> — 지금 ' + b.pending.active +
+          '명 참여 중입니다. <b>' + b.pending.need + '명</b> 더 모이면 순위표에 올라갑니다.' +
+          '<span class="lp-why">인원이 적으면 합계가 사실상 한 사람의 공부 시간이 되기 때문에, 5명부터 공개합니다.</span>';
+      } else {
+        pend.classList.add('is-hidden');
+      }
+    }
 
     /* 티어 눈금 */
     $('lgRail').innerHTML = b.tiers.map(function (t, i) {
@@ -10901,15 +11996,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     /* 참가 학교 수에 따라 할 수 있는 말이 다르다.
      * 상대가 없는데 승급을 이야기하면 없는 경쟁을 지어내는 셈이다. */
+    var unit = b.unit;                       // '반' 또는 '학교'
+    var countUnit = b.mode === 'class' ? '개 반' : '개교';
     var gapTxt, gapCls = b.myZone;
     if (b.solo) {
-      gapTxt = '아직 우리 학교만 참가하고 있어요. 다른 학교 친구의 공유 코드를 등록하면 순위가 생깁니다.';
+      gapTxt = b.mode === 'class'
+        ? '아직 우리 반만 참가하고 있어요. 같은 학교 다른 반 친구가 참가하면 순위가 생깁니다.'
+        : '아직 우리 학교만 참가하고 있어요. 다른 학교 친구가 참가하면 순위가 생깁니다.';
       gapCls = 'stay';
     } else if (!b.ranked3) {
       gapTxt = b.ahead
         ? b.ahead.schoolName + josa(b.ahead.schoolName, '을', '를') +
           ' 앞서려면 ' + b.aheadGap.toLocaleString() + '분 더 필요해요'
-        : '지금 1위예요. ' + b.size + '개교가 참가 중입니다';
+        : '지금 1위예요. ' + b.size + countUnit + '이 참가 중입니다';
       gapCls = 'stay';
     } else if (b.myZone === 'promote') {
       gapTxt = '승급권 안에 있어요. ' + (b.promote + 1) + '위와 ' + b.gap.toLocaleString() + '분 차이';
@@ -10932,12 +12031,18 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     /* 승강 안내 */
     $('lgZoneNote').textContent = !b.ranked3
-      ? b.minField + '개교 이상 모이면 승급·강등이 시작됩니다'
-      : (b.tier.promote > 0 ? '상위 ' + b.promote + '개교 승급' : '최상위 리그') +
-        (b.demote > 0 ? ' · 하위 ' + b.demote + '개교 강등' : ' · 강등 없음');
+      ? b.minField + countUnit + ' 이상 모이면 승급·강등이 시작됩니다'
+      : (b.tier.promote > 0 ? '상위 ' + b.promote + countUnit + ' 승급' : '최상위 리그') +
+        (b.demote > 0 ? ' · 하위 ' + b.demote + countUnit + ' 강등' : ' · 강등 없음');
 
-    /* 순위표 — 각 행을 제 순위 자리로 옮긴다 */
-    var rows = b.ranked.map(function (s) {
+    /* 순위표 — 각 행을 제 순위 자리로 옮긴다.
+     * 필터를 걸면 자리가 비므로 화면상 위치는 다시 촘촘히 매기되,
+     * 번호는 전체 기준 순위를 그대로 보여 준다. */
+    var shown = lgFilterRows(b);
+    var filtered = shown.length !== b.ranked.length;
+
+    var rows = shown.map(function (s, i) {
+      var slot = filtered ? i : (s.rank - 1);
       // 판이 작아 승강선을 그리지 않을 때는 행에도 색을 넣지 않는다
       var zone = (b.promote || b.demote)
         ? League.getZone(s.rank, { promote: b.promote, demote: b.demote }, b.size)
@@ -10948,7 +12053,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       var deltaTxt = d ? (d > 0 ? '▲' + d : '▼' + (-d)) : '·';
 
       return '<div class="lg-row z-' + zone + (isMe ? ' is-me' : '') + '"' +
-        ' style="transform:translateY(' + ((s.rank - 1) * LG_ROW_H + 6) + 'px)">' +
+        ' style="transform:translateY(' + (slot * LG_ROW_H + 6) + 'px)">' +
         '<span class="r-rank">' + s.rank + '</span>' +
         '<span class="r-name">' + esc(s.schoolName) +
           '<span class="r-sub">참여 ' + s.active + '명 · 꾸준 ' + s.steady + '명</span>' +
@@ -10958,23 +12063,29 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       '</div>';
     }).join('');
 
+    /* 승급·강등선은 전체 판의 자리를 가리키므로, 추려 보는 중에는 그리지 않는다.
+     * 그대로 두면 엉뚱한 줄 사이에 선이 그어져 오히려 잘못 읽힌다. */
     var cuts = '';
-    if (b.promote > 0) {
+    if (!filtered && b.promote > 0) {
       cuts += '<div class="lg-cut promote" style="transform:translateY(' +
         (b.promote * LG_ROW_H + 6) + 'px)"><span><i>승급선</i></span></div>';
     }
-    if (b.demote > 0) {
+    if (!filtered && b.demote > 0) {
       cuts += '<div class="lg-cut demote" style="transform:translateY(' +
         ((b.size - b.demote) * LG_ROW_H + 6) + 'px)"><span><i>강등선</i></span></div>';
     }
 
-    /* 우리 학교뿐이면 순위표 대신 어떻게 상대를 늘리는지 알려 준다 */
-    var hint = b.solo
-      ? '<div class="lg-solo">아직 <b>우리 학교</b>만 참가하고 있습니다.<br>' +
-        '다른 학교 친구에게 <b>공유 코드</b>를 받아 [랭킹] 화면에서 등록하면 그 학교가 리그에 들어옵니다.</div>'
-      : '';
+    /* 상대가 없거나, 필터로 다 걸러졌을 때 빈 판만 보여 주지 않는다 */
+    var hint = '';
+    if (b.solo) {
+      hint = '<div class="lg-solo">아직 <b>' + (b.mode === 'class' ? '우리 반' : '우리 학교') +
+        '</b>만 참가하고 있습니다.<br>같은 학교 친구들이 리그를 켜면 자동으로 판에 들어옵니다.</div>';
+    } else if (!shown.length) {
+      hint = '<div class="lg-solo">고른 조건에 맞는 반이 없습니다.<br>학교나 학년을 <b>전체</b>로 바꿔 보세요.</div>';
+    }
 
-    $('lgBoard').style.height = (b.size * LG_ROW_H + 12 + (b.solo ? 96 : 0)) + 'px';
+    var slots = shown.length || 0;
+    $('lgBoard').style.height = (slots * LG_ROW_H + 12 + (hint ? 96 : 0)) + 'px';
     $('lgBoard').innerHTML = rows + cuts + hint;
 
     /* 오늘 인정된 시간 */
@@ -11018,7 +12129,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     }
     if ($('classEventBox')) $('classEventBox').classList.toggle('is-off', !s.enabled);
 
-    ['cloudTest', 'cloudSync', 'cloudReset'].forEach(function (id) {
+    if ($('cloudHidden')) {
+      $('cloudHidden').checked = Cloud.hiddenOn();
+      $('cloudHidden').disabled = !s.configured || !s.enabled;
+    }
+
+    ['cloudTest', 'cloudSync'].forEach(function (id) {
       if ($(id)) $(id).disabled = !s.configured;
     });
 
@@ -11130,6 +12246,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       }
     });
 
+    $('cloudHidden').addEventListener('change', function () {
+      Cloud.setHidden(this.checked);
+      renderCloudSettings();
+      // 숨김 상태는 서버가 알아야 남에게 안 보인다. 바로 올린다.
+      leagueSync(true);
+      toast(this.checked
+        ? '순위표에서 내 기록을 숨깁니다. 반 합계에는 그대로 들어가요.'
+        : '순위표에 내 기록을 다시 표시합니다.');
+    });
+
     $('cloudTest').addEventListener('click', function () {
       var el = $('cloudStatus');
       el.className = 'neis-status show';
@@ -11143,18 +12269,23 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       });
     });
 
+    $$('#lgModes .lg-mode').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.leagueMode = btn.dataset.mode;
+        state.lgSchool = ''; state.lgGrade = '';   // 판이 바뀌면 필터도 푼다
+        renderLeague();
+      });
+    });
+    $('lgFilterSchool').addEventListener('change', function () {
+      state.lgSchool = $('lgFilterSchool').value; renderLeague();
+    });
+    $('lgFilterGrade').addEventListener('change', function () {
+      state.lgGrade = $('lgFilterGrade').value; renderLeague();
+    });
+
     $('cloudSync').addEventListener('click', function () {
       if (!Cloud.enabled()) { toast('먼저 리그 참가를 켜 주세요.', true); return; }
       toast('동기화 중…');
-      leagueSync(true);
-    });
-
-    $('cloudReset').addEventListener('click', function () {
-      if (!confirm('기기 번호를 새로 받으면 서버에 쌓인 이전 기록과 연결이 끊깁니다.\n' +
-                   '이번 주 내 시간은 새 번호로 다시 올라갑니다.\n\n계속할까요?')) return;
-      Cloud.resetDeviceId();
-      renderCloudSettings();
-      toast('새 기기 번호를 발급했습니다.');
       leagueSync(true);
     });
 
@@ -11585,10 +12716,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           '<div class="aus-item"><div class="aus-label">이번 주 순공</div>' +
             '<div class="aus-value">' + fmtDur(r.minutes) + '</div></div>' +
         '</div>' +
+        '<div class="auc-act">' +
+          '<button type="button" class="btn ghost sm adm-del" data-device="' + esc(r.deviceId) +
+            '" data-label="' + esc(r.nickname + ' · ' + r.schoolName) + '">기록 삭제</button>' +
+        '</div>' +
       '</div>';
     }).join('');
 
     $('adminStudentsList').innerHTML = html || '<div class="adm-empty">조건에 맞는 학생이 없습니다.</div>';
+    bindAdminDelete($('adminStudentsList'));
   }
 
   /** 학교 리그(익명 합계)도 관리자 화면에 같이 보여 준다 — 개인 목록과의 차이를 비교하도록 */
@@ -11613,6 +12749,29 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     }, function () { /* 리그를 안 켰으면 자연스럽게 비어 있다 — 조용히 둔다 */ });
   }
 
+  /* 잘못 올라온 기록을 지운다. 거짓 정보나 오류로 들어온 값을 운영자가 정리할
+   * 수 있어야 판이 굴러간다. 리그와 학생 목록 양쪽에서 함께 사라진다. */
+  function bindAdminDelete(root) {
+    $$('.adm-del', root).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var label = btn.dataset.label || '이 기록';
+        var wk = Store.key(Store.weekStart(new Date()));
+        if (!confirm(label + '\n\n이번 주 기록을 삭제할까요?\n' +
+                     '리그 순위와 학생 목록 양쪽에서 사라지며 되돌릴 수 없습니다.\n\n' +
+                     '※ 그 학생이 앱을 계속 쓰면 다음 동기화 때 다시 올라옵니다.')) return;
+
+        btn.disabled = true;
+        Cloud.adminDeleteDevice(btn.dataset.device, wk).then(function (n) {
+          toast(n + '개 기록을 삭제했습니다.');
+          renderAdminServer();
+        }, function (e) {
+          btn.disabled = false;
+          toast('삭제하지 못했습니다 — ' + (e.message || '알 수 없는 오류'), true);
+        });
+      });
+    });
+  }
+
   /* 리그에만 참가한 학생들. 이름이 없으므로 기기 번호 앞자리로만 구분한다.
    * 같은 사람을 계속 알아볼 수는 있어도 누구인지는 알 수 없다 — 의도한 선이다. */
   function renderAdminLeagueMembers() {
@@ -11634,8 +12793,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           '<span class="e-txt"><b>익명 ' + esc(r.deviceId.slice(0, 4).toUpperCase()) + '</b>' +
             '<span class="e-sub">' + esc(r.schoolName) + ' · ' + esc(agoText(r.updatedAt)) + '</span></span>' +
           '<span class="e-ago">' + fmtDur(r.minutes) + '</span>' +
+          '<button type="button" class="icon-btn adm-del" data-device="' + esc(r.deviceId) +
+            '" data-label="' + esc(r.schoolName + ' · 익명 ' + r.deviceId.slice(0, 4).toUpperCase()) +
+            '" title="이 기록 삭제">✕</button>' +
         '</div>';
       }).join('') || '<div class="adm-empty">아직 참가자가 없습니다.</div>';
+
+      bindAdminDelete(listEl);
     }, function (e) {
       if (e.status === 401) {
         statusEl.textContent = '';
@@ -11748,6 +12912,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('profileChip').addEventListener('click', function () { openProfile(true); });
 
     $('editProfile').addEventListener('click', function () { openProfile(true); });
+    initAvatarPage();
 
     if (Store.profile()) {
       renderProfileChip();

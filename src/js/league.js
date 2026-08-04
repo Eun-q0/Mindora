@@ -166,6 +166,147 @@
     return mergeCloud(local, myName);
   }
 
+  /* ============================================================ 반 대항 리그
+   *
+   * 판의 단위만 학교에서 반으로 바뀔 뿐, 줄 세우기·승급·강등 기계는 그대로 쓴다.
+   * 그래서 반 단위도 학교 단위와 똑같은 모양(schoolCode/schoolName/total/steady)
+   * 으로 만든다 — 화면도 같은 코드로 그린다.
+   *
+   * 다만 반은 학교보다 훨씬 좁은 단위라 두 가지를 지킨다.
+   *   1. 5명 미만인 반은 서버 뷰에서 아예 빠진다. 2명짜리 "반" 의 합계는
+   *      사실상 개인의 공부 시간이고, 상품이 걸리면 그 반이 1등을 먹는다.
+   *   2. 학년·반은 [학급 대항전] 에 따로 동의한 사람만 올라간다.
+   *      동의하지 않은 사람은 학교 합계에만 남는다. */
+
+  function classKey(school, level, grade, klass) {
+    return [norm(school), norm(level), norm(grade), norm(klass)].join('|');
+  }
+
+  /** "한빛고등학교 2학년 3반" — 학교급이 '기타'면 학년을 빼고 적는다 */
+  function classLabel(school, level, grade, klass) {
+    var g = (level === '기타' || !grade) ? '' : ' ' + grade + '학년';
+    var c = norm(klass) ? ' ' + norm(klass) + '반' : '';
+    return norm(school) + g + c;
+  }
+
+  /** 내 프로필이 반 대항에 참가할 수 있는 상태인가 (학년·반이 다 있어야 한다) */
+  function myClassId(p) {
+    p = p || S.profile();
+    if (!p) return null;
+    var klass = norm(p.klass), grade = norm(p.grade);
+    if (!klass || !grade) return null;
+    return {
+      key: classKey(p.school, p.level, grade, klass),
+      school: norm(p.school), level: norm(p.level), grade: grade, klass: klass,
+      label: classLabel(p.school, p.level, grade, klass)
+    };
+  }
+
+  var cloudClassRows = [];
+  var cloudClassWeek = '';
+  var cloudPendingRows = [];
+
+  function setCloudClassRows(rows, pending, wk) {
+    cloudClassRows = Array.isArray(rows) ? rows : [];
+    cloudPendingRows = Array.isArray(pending) ? pending : [];
+    cloudClassWeek = wk || '';
+  }
+
+  /** 이 브라우저가 아는 사람들(나 + 그룹원)을 반 단위로 접는다 */
+  function localClasses() {
+    var p = S.profile();
+    if (!p) return {};
+
+    var meId = global.Group.memberId(p);
+    var acc = {};
+
+    function bucket(school, level, grade, klass) {
+      if (!norm(klass) || !norm(grade)) return null;   // 반이 없으면 판에 못 오른다
+      var k = classKey(school, level, grade, klass);
+      if (!acc[k]) {
+        acc[k] = {
+          key: k, schoolOnly: norm(school), level: norm(level),
+          grade: norm(grade), klass: norm(klass),
+          schoolName: classLabel(school, level, grade, klass),
+          active: 0, steady: 0, total: 0, staleAt: 0
+        };
+      }
+      return acc[k];
+    }
+
+    var b = bucket(p.school, p.level, p.grade, p.klass);
+    if (b) {
+      b.active++;
+      b.total += myCappedWeek();
+      if (global.StudyLog.streak() >= 3) b.steady++;
+    }
+
+    global.Group.members().forEach(function (m) {
+      if (m.id === meId) return;
+      var bb = bucket(m.school, m.level, m.grade, m.klass);
+      if (!bb) return;
+      bb.active++;
+      bb.total += Math.min(m.weekMin || 0, DAILY_CAP_MINUTES * 7);
+      if ((m.streak || 0) >= 3) bb.steady++;
+      if (m.ts && m.ts > bb.staleAt) bb.staleAt = m.ts;
+    });
+
+    return acc;
+  }
+
+  /**
+   * 이번 주 반 순위. 서버 집계를 기본으로 하고, 이 브라우저만 아는 값이
+   * 더 크면 그쪽을 쓴다(양쪽 다 전부가 아니다 — 학교 리그와 같은 이유).
+   */
+  function classUnits() {
+    var mineId = myClassId();
+    var acc = localClasses();
+
+    if (cloudClassWeek === weekKey(0)) {
+      cloudClassRows.forEach(function (r) {
+        var k = classKey(r.schoolName, r.level, r.grade, r.klass);
+        var cur = acc[k];
+        var total = Math.round(r.total / 25) * 25;
+        if (!cur) {
+          acc[k] = {
+            key: k, schoolOnly: norm(r.schoolName), level: norm(r.level),
+            grade: norm(r.grade), klass: norm(r.klass),
+            schoolName: classLabel(r.schoolName, r.level, r.grade, r.klass),
+            active: r.active, steady: 0, total: total,
+            staleAt: r.updatedAt, fromCloud: true
+          };
+          return;
+        }
+        if (total > cur.total) cur.total = total;
+        if (r.active > cur.active) cur.active = r.active;
+        if (r.updatedAt > cur.staleAt) cur.staleAt = r.updatedAt;
+        cur.fromCloud = true;
+      });
+    }
+
+    return Object.keys(acc).map(function (k) {
+      var u = acc[k];
+      u.total = Math.round(u.total / 25) * 25;
+      u.mine = !!(mineId && k === mineId.key);
+      u.schoolCode = u.mine ? MY_CODE : 'C:' + k;
+      return u;
+    });
+  }
+
+  /** 아직 5명이 안 모여 순위표에 못 오른 내 반의 상태 */
+  function myPendingClass() {
+    var mineId = myClassId();
+    if (!mineId) return null;
+    if (cloudClassWeek !== weekKey(0)) return null;
+
+    var hit = null;
+    cloudPendingRows.forEach(function (r) {
+      if (classKey(r.schoolName, r.level, r.grade, r.klass) === mineId.key) hit = r;
+    });
+    if (!hit) return null;
+    return { label: mineId.label, active: hit.active, need: Math.max(0, 5 - hit.active) };
+  }
+
   /* ------------------------------------------------------------ 서버 병합
    * 리그를 켜면 다른 학교의 집계가 서버에서 내려온다.
    * 서버를 쓰지 않거나 아직 못 받았으면 cloudRows 가 비어 있고,
@@ -230,18 +371,33 @@
 
     return C.push(school, wk, myCappedWeek(), force, cls)
       .catch(function () { return false; })          // 못 올려도 읽기는 시도한다
-      .then(function () { return C.fetchWeek(wk); })
-      .then(function (rows) {
-        setCloudRows(rows, wk);
+      .then(function () {
+        return Promise.all([
+          C.fetchWeek(wk),
+          C.fetchClassWeek ? C.fetchClassWeek(wk) : [],
+          C.fetchClassPending ? C.fetchClassPending(wk) : []
+        ]);
+      })
+      .then(function (res) {
+        setCloudRows(res[0], wk);
+        setCloudClassRows(res[1], res[2], wk);
         return true;
       });
   }
 
   /* --------------------------------------------------------------- 조회 */
 
-  /** 이번 주 판 전체. 프로필이 없으면 null. */
-  function board() {
-    var list = schools();
+  /**
+   * 이번 주 판 전체. 프로필이 없으면 null.
+   *
+   * mode 'class'  — 반 대항 (기본). 같은 학교·학년·반이 한 팀이다.
+   * mode 'school' — 학교 대항. 예전 판으로, 반을 안 넣은 사람도 들어간다.
+   *
+   * 두 판은 단위만 다르고 줄 세우기·승급·강등은 완전히 같은 코드를 쓴다.
+   */
+  function board(mode) {
+    var isClass = mode !== 'school';
+    var list = isClass ? classUnits() : schools();
     if (!list.length) return null;
 
     var st = load();
@@ -290,6 +446,9 @@
     var ahead = mine.rank > 1 ? ranked[mine.rank - 2] : null;
 
     return {
+      mode: isClass ? 'class' : 'school',
+      unit: isClass ? '반' : '학교',
+      pending: isClass ? myPendingClass() : null,
       tier: tier, tierIdx: tierIdx, tiers: TIERS,
       ranked: ranked, size: size,
       promote: z.promote, demote: z.demote,
@@ -377,7 +536,9 @@
     MIN_FIELD: MIN_FIELD,
     zoneSizes: zoneSizes, getZone: getZone, rankGroup: rankGroup,
     schools: schools, board: board, snapshot: snapshot,
-    syncNow: syncNow, setCloudRows: setCloudRows,
+    classUnits: classUnits, myClassId: myClassId, myPendingClass: myPendingClass,
+    classLabel: classLabel,
+    syncNow: syncNow, setCloudRows: setCloudRows, setCloudClassRows: setCloudClassRows,
     settleIfNeeded: settleIfNeeded, clearResult: clearResult, reset: reset,
     myCappedWeek: myCappedWeek, MY_CODE: MY_CODE
   };

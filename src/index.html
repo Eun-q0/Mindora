@@ -812,11 +812,29 @@
   <!-- ══════════════════════════════ 5-1. 학교 리그 ══════════════════════════════ -->
   <section id="secLeague" class="section is-hidden">
     <div class="sec-head">
-      <h2><span class="sec-num">🏆</span> 학교 리그</h2>
-      <p>우리 학교 전체가 다른 학교와 이번 주 순공 시간을 겨룹니다. 매주 월요일에 승급·강등이 정해집니다.</p>
+      <h2><span class="sec-num">🏆</span> 리그</h2>
+      <p>같은 반이 한 팀입니다. 우리 반이 다른 반과 이번 주 순공 시간을 겨룹니다. 매주 월요일에 승급·강등이 정해집니다.</p>
+    </div>
+
+    <div class="lg-modes" id="lgModes" role="tablist" aria-label="리그 종류">
+      <button type="button" class="lg-mode on" data-mode="class" role="tab">🏫 반 대항</button>
+      <button type="button" class="lg-mode" data-mode="school" role="tab">🏛️ 학교 대항</button>
+    </div>
+
+    <div class="lg-filters" id="lgFilters">
+      <label class="lg-f">
+        <span>학교</span>
+        <select id="lgFilterSchool" class="input"></select>
+      </label>
+      <label class="lg-f">
+        <span>학년</span>
+        <select id="lgFilterGrade" class="input"></select>
+      </label>
     </div>
 
     <div class="lg-rail" id="lgRail" role="tablist" aria-label="리그 티어"></div>
+
+    <div class="lg-pending is-hidden" id="lgPending"></div>
 
     <div class="card wide lg-mine">
       <div class="card-body">
@@ -904,6 +922,40 @@
     </div>
   </section>
 
+  <!-- ══════════════════════════ 🎨 캐릭터 꾸미기 ══════════════════════════ -->
+  <section id="secAvatar" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">🎨</span> 캐릭터 꾸미기</h2>
+      <p>피부·머리·옷은 언제든 바꿀 수 있어요. <b>테두리는 지금까지 쌓은 순공 시간</b>으로 하나씩 열립니다.
+        내 캐릭터와 티어는 <b>그룹 랭킹</b>에 그대로 표시됩니다.</p>
+    </div>
+
+    <div class="av-stage" id="avStage"></div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🧑‍🎨</span><h3>꾸미기</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="avRandom">🎲 무작위</button></span>
+      </div>
+      <div class="card-body">
+        <div class="av-picks" id="avPicks"></div>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🏅</span><h3>티어와 테두리</h3><span class="right" id="avTierCount"></span></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">티어는 <b>타이머로 실제 측정된 순공 시간</b>이 쌓이면 자동으로 오릅니다.
+          그냥 주어지는 티어는 없고, 한 번 오른 티어는 내려가지 않습니다.</p>
+        <div id="avTierList" class="av-tiers"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary lg" id="avSave">저장하기</button>
+      <button type="button" class="btn ghost" id="avRevert">되돌리기</button>
+    </div>
+  </section>
+
   <!-- ══════════════════════════════ ⚙ 설정 ══════════════════════════════ -->
   <section id="secSettings" class="section is-hidden">
     <div class="sec-head">
@@ -918,6 +970,7 @@
           <div id="profileSummary" class="prof-sum"></div>
           <div class="actions" style="margin-top:16px">
             <button type="button" class="btn" id="editProfile">프로필 · 그룹 수정</button>
+            <button type="button" class="btn" id="openAvatar">🎨 캐릭터 꾸미기</button>
           </div>
         </div>
       </div>
@@ -994,13 +1047,22 @@
           <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>도 함께 전송해야 합니다.
             학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 학년·반도 다음 동기화에서 지워집니다.</p>
           <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반 전송에 동의합니다</span></label>
-          <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반에서 <b>5명 이상</b>이 참가해야 순위에 집계됩니다.</p>
+          <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반이면 <b>따로 등록하지 않아도</b> 자동으로 같은 판에 들어갑니다.
+            서로에게는 <b>이름 없이</b> 주마다 바뀌는 짧은 표시(예: A1B2)로만 보입니다.
+            같은 반에서 <b>5명 이상</b>이 참가해야 순위가 공개됩니다.</p>
+        </div>
+
+        <div class="cl-event" style="margin-top:12px">
+          <p class="cl-h" style="margin:0 0 6px">🙈 내 랭킹 숨기기</p>
+          <p class="tiny" style="margin:0 0 10px">순위표에서 <b>내 줄만</b> 다른 사람에게 보이지 않게 합니다.
+            <b>우리 반 합계에는 그대로 들어갑니다</b> — 빠지면 우리 반이 손해를 보니까요.
+            내 화면에서는 계속 보이고, 언제든 다시 켤 수 있습니다.</p>
+          <label class="toggle"><input type="checkbox" id="cloudHidden"><span><b>순위표에서 내 기록 숨기기</b></span></label>
         </div>
 
         <div class="file-row" style="margin-top:14px">
           <button type="button" class="btn sm" id="cloudTest">연결 확인</button>
           <button type="button" class="btn ghost sm" id="cloudSync">지금 동기화</button>
-          <button type="button" class="btn ghost sm" id="cloudReset">기기 번호 새로 받기</button>
         </div>
         <div id="cloudStatus" class="neis-status"></div>
       </div>
@@ -1308,6 +1370,7 @@
 <script src="js/planner.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/studylog.js"></script>
+<script src="js/avatar.js"></script>
 <script src="js/group.js"></script>
 <script src="js/cloud.js"></script>
 <script src="js/league.js"></script>

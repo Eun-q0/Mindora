@@ -62,6 +62,9 @@
         // 기존 참가자가 자동으로 켜지지 않는다 — 동의 시점의 약속이
         // "학년·반은 전송하지 않는다" 였기 때문이다.
         classOn: !!o.classOn,
+        // 순위표에서 내 줄만 감춘다. 반 합계에는 그대로 들어간다 —
+        // 빠지면 우리 반이 손해를 보므로, 숨기는 것과 빠지는 것은 다른 선택이다.
+        hidden: !!o.hidden,
         deviceId: o.deviceId || '',
         lastSync: o.lastSync || 0,
         lastPush: o.lastPush || 0,
@@ -95,14 +98,6 @@
       st.deviceId = uuid();
       save(st);
     }
-    return st.deviceId;
-  }
-
-  function resetDeviceId() {
-    var st = load();
-    st.deviceId = uuid();
-    st.lastPush = 0;
-    save(st);
     return st.deviceId;
   }
 
@@ -211,11 +206,13 @@
       p_device: deviceId(), p_week: weekKey, p_school: school, p_minutes: mins,
       p_level: useClass ? String(cls.level || '') : '',
       p_grade: useClass ? String(cls.grade || '') : '',
-      p_klass: useClass ? String(cls.klass || '') : ''
+      p_klass: useClass ? String(cls.klass || '') : '',
+      p_hidden: !!st.hidden
     };
 
     var sig = school + '|' + weekKey + '|' + mins + '|' +
-              body.p_level + '/' + body.p_grade + '/' + body.p_klass;
+              body.p_level + '/' + body.p_grade + '/' + body.p_klass +
+              '|' + (body.p_hidden ? 'h' : '');
 
     if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
       return Promise.resolve(false);
@@ -428,10 +425,11 @@
     if (!s) return Promise.reject(Object.assign(new Error('로그인이 필요합니다.'), { status: 401 }));
 
     return req('/rest/v1/student_report?week=eq.' + encodeURIComponent(weekKey) +
-               '&select=nickname,school,minutes,updated_at&order=minutes.desc&limit=500', {}, s.accessToken)
+               '&select=device_id,nickname,school,minutes,updated_at&order=minutes.desc&limit=500', {}, s.accessToken)
       .then(function (rows) {
         return (rows || []).map(function (r) {
           return {
+            deviceId: String(r.device_id || ''),
             nickname: String(r.nickname || '').trim(),
             schoolName: String(r.school || '').trim(),
             minutes: Math.max(0, r.minutes | 0),
@@ -442,6 +440,108 @@
         if (e.status === 401) adminSessionSave(null);   // 세션이 만료·무효 — 다시 로그인해야 한다
         throw e;
       });
+  }
+
+  /* ------------------------------------------------------------ 반 대항 리그
+   * 5명 이상 모인 반만 내려온다(서버 뷰가 걸러 준다). 학교 10곳 × 25반이면
+   * 많아야 250행이라 한 번에 받아 클라이언트에서 줄 세워도 충분하다. */
+
+  function fetchClassWeek(weekKey) {
+    if (!enabled()) return Promise.resolve([]);
+
+    return req('/rest/v1/class_week?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=school,level,grade,klass,total_min,members,updated_at' +
+               '&order=total_min.desc&limit=500')
+      .then(function (rows) {
+        return (rows || []).map(function (r) {
+          return {
+            schoolName: String(r.school || '').trim(),
+            level: String(r.level || '').trim(),
+            grade: String(r.grade || '').trim(),
+            klass: String(r.klass || '').trim(),
+            total: Math.max(0, r.total_min | 0),
+            active: Math.max(0, r.members | 0),
+            updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0
+          };
+        });
+      }, function () { return []; });   // 권한 전이면 조용히 빈 판
+  }
+
+  /**
+   * 같은 반 사람들을 익명으로 받아 온다 — 공유 코드 없이 자동으로 묶인다.
+   *
+   * 이름은 오지 않는다. 주차마다 바뀌는 짧은 태그(A1B2)뿐이라 주가 넘어가면
+   * 같은 사람을 계속 따라갈 수 없다. 5명이 안 되는 반은 서버가 아무것도 주지 않는다.
+   */
+  function fetchClassMembers(cls, weekKey) {
+    if (!enabled() || !cls || !cls.school || !cls.grade || !cls.klass) {
+      return Promise.resolve([]);
+    }
+    return req('/rest/v1/rpc/class_members', {
+      method: 'POST',
+      body: {
+        p_school: String(cls.school || ''), p_level: String(cls.level || ''),
+        p_grade: String(cls.grade || ''), p_klass: String(cls.klass || ''),
+        p_week: weekKey, p_device: deviceId() || null
+      }
+    }).then(function (rows) {
+      return (rows || []).map(function (r) {
+        return {
+          tag: String(r.tag || '????'),
+          minutes: Math.max(0, r.minutes | 0),
+          updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0,
+          me: !!r.is_me,
+          hidden: !!r.is_hidden
+        };
+      });
+    }, function () { return []; });
+  }
+
+  function hiddenOn() { return !!load().hidden; }
+
+  function setHidden(on) {
+    var st = load();
+    st.hidden = !!on;
+    st.lastSig = '';   // 다음 동기화가 반드시 나가도록 서명을 지운다
+    save(st);
+  }
+
+  /** 아직 5명이 안 모여 순위표에 못 오른 반의 참여 인원 (합계는 오지 않는다) */
+  function fetchClassPending(weekKey) {
+    if (!enabled()) return Promise.resolve([]);
+
+    return req('/rest/v1/class_week_pending?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=school,level,grade,klass,members&limit=500')
+      .then(function (rows) {
+        return (rows || []).map(function (r) {
+          return {
+            schoolName: String(r.school || '').trim(),
+            level: String(r.level || '').trim(),
+            grade: String(r.grade || '').trim(),
+            klass: String(r.klass || '').trim(),
+            active: Math.max(0, r.members | 0)
+          };
+        });
+      }, function () { return []; });
+  }
+
+  /**
+   * 관리자가 잘못 올라온 기록을 지운다. 리그·학생 목록 양쪽에서 함께 사라진다.
+   * week 를 비우면 그 기기의 모든 주차를 지운다.
+   */
+  function adminDeleteDevice(deviceIdValue, weekKey) {
+    var s = adminSession();
+    if (!s) return Promise.reject(Object.assign(new Error('로그인이 필요합니다.'), { status: 401 }));
+
+    return req('/rest/v1/rpc/admin_delete_device', {
+      method: 'POST',
+      body: { p_device: deviceIdValue, p_week: weekKey || null }
+    }, s.accessToken).then(function (n) {
+      return typeof n === 'number' ? n : 0;
+    }, function (e) {
+      if (e.status === 401) adminSessionSave(null);
+      throw e;
+    });
   }
 
   /**
@@ -479,7 +579,7 @@
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
     classEnabled: classEnabled, setClassEnabled: setClassEnabled,
-    deviceId: deviceId, resetDeviceId: resetDeviceId, forget: forget,
+    deviceId: deviceId, forget: forget,
     push: push, fetchWeek: fetchWeek, test: test,
 
     studentShareEnabled: studentShareEnabled, setStudentShareEnabled: setStudentShareEnabled,
@@ -488,6 +588,10 @@
     adminSession: adminSession, adminSignIn: adminSignIn, adminSignOut: adminSignOut,
     fetchStudentWeek: fetchStudentWeek,
     fetchLeagueMembers: fetchLeagueMembers,
+    fetchClassWeek: fetchClassWeek, fetchClassPending: fetchClassPending,
+    fetchClassMembers: fetchClassMembers,
+    hiddenOn: hiddenOn, setHidden: setHidden,
+    adminDeleteDevice: adminDeleteDevice,
 
     SUPABASE_URL: SUPABASE_URL
   };
