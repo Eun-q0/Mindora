@@ -3309,7 +3309,9 @@
         (m.self ? '<span></span>' : '<button type="button" class="icon-btn rk-del" data-id="' + esc(m.id) + '" title="그룹에서 제외">✕</button>') +
       '</div>';
     }).join('')
-      : '<div class="m-empty">아직 그룹원이 없습니다.<br>아래 <b>공유 코드</b>를 친구에게 보내고, 친구 코드를 받아 넣으면 랭킹이 만들어집니다.</div>';
+      : '<div class="m-empty">아직 같은 반 친구가 없습니다.<br>' +
+        '<b>설정 → 학급 대항전</b>을 켜면 같은 학교·학년·반 친구들이 <b>자동으로</b> 여기에 올라옵니다.<br>' +
+        '같은 반에서 5명 이상 참가하면 순위가 공개됩니다.</div>';
 
     if (r.list.length > 1) {
       $('rankList').insertAdjacentHTML('beforeend',
@@ -3328,7 +3330,6 @@
     });
 
     renderGroupCompare();
-    $('myCode').value = Group.encodeSelf();
 
     // 서버에서 같은 반 명단을 받아 오면 위 목록을 그것으로 갈아 끼운다
     renderClassRank();
@@ -4601,35 +4602,6 @@
         $$('#rankTabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
         renderGroup();
       });
-    });
-    $('copyCode').addEventListener('click', function () {
-      var el = $('myCode');
-      el.select(); el.setSelectionRange(0, 99999);
-      var okCopy = false;
-      try { okCopy = document.execCommand('copy'); } catch (e) { okCopy = false; }
-      if (navigator.clipboard && !okCopy) {
-        navigator.clipboard.writeText(el.value).then(function () { toast('공유 코드를 복사했습니다.'); },
-          function () { toast('복사에 실패했습니다. 직접 선택해 복사해 주세요.', true); });
-      } else {
-        toast(okCopy ? '공유 코드를 복사했습니다.' : '복사에 실패했습니다. 직접 선택해 복사해 주세요.', !okCopy);
-      }
-    });
-    $('addMember').addEventListener('click', function () {
-      var p = Store.profile();
-      try {
-        var m = Group.decode($('joinCode').value);
-        if (m.id === Group.memberId(p)) { toast('본인 코드는 추가할 수 없습니다.', true); return; }
-        if (m.groupId !== Group.groupId(p)) {
-          if (!confirm(m.nick + ' 님은 다른 그룹(' + Group.groupLabel(m) + ')입니다.\n그래도 추가할까요? 랭킹에는 같은 그룹만 표시됩니다.')) return;
-        }
-        Group.upsert(m);
-        $('joinCode').value = '';
-        renderGroup();
-        renderLeague();
-        toast(m.nick + ' 님을 그룹에 추가했습니다.');
-      } catch (e) {
-        toast(e.message || '코드를 읽을 수 없습니다.', true);
-      }
     });
 
     initShare();
