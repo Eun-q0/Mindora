@@ -135,9 +135,14 @@
    * 인증키는 개인 자격 증명이므로 백업에 넣지 않는다. */
 
   var EXPORT_VERSION = 1;
+  /* 키를 더할 때 EXPORT_VERSION 은 올리지 않는다. 형식(키→JSON 문자열)이 그대로라
+   * 옛 앱이 새 백업을 읽어도 모르는 키를 건너뛸 뿐이고, 버전을 올리면 오히려
+   * "더 최신 버전에서 만든 백업" 이라며 통째로 거부당한다. */
   var BACKUP_KEYS = [
     K.profile, K.input, K.history, K.sessions, K.group, K.schools,
-    'neurostudy.kids.v1', 'neurostudy.sound.v1'
+    'neurostudy.kids.v1', 'neurostudy.sound.v1',
+    // 직접 만든 계획표와 몇 주에 걸쳐 올린 리그 티어도 복원할 수 없는 기록이다
+    'neurostudy.vacplan.v1', 'neurostudy.league.v1'
   ];
 
   function exportAll() {

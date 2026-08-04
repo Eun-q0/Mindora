@@ -317,7 +317,7 @@
       row.querySelector('.s-ready').value = String(data.readiness || 3);
     }
     row.querySelector('.s-del').addEventListener('click', function () {
-      if ($$('.subject-row').length <= 1) { toast('과목은 최소 1개가 필요합니다.', true); return; }
+      if ($$('.subject-row', $('subjectList')).length <= 1) { toast('과목은 최소 1개가 필요합니다.', true); return; }
       row.remove();
     });
     $('subjectList').appendChild(row);
@@ -326,7 +326,7 @@
 
   function readSubjects() {
     var today = new Date(); today.setHours(0, 0, 0, 0);
-    return $$('.subject-row').map(function (row, i) {
+    return $$('.subject-row', $('subjectList')).map(function (row, i) {
       var name = row.querySelector('.s-name').value.trim();
       if (!name) return null;
       var dv = row.querySelector('.s-date').value;
@@ -2120,7 +2120,13 @@
           r.cells.map(function (c, ci) {
             return '<td class="vp-cell" data-col="' + ci + '" contenteditable="true" spellcheck="false"></td>';
           }).join('') +
-          '<td class="vp-rowdel"><button type="button" class="vp-del" data-row="' + ri + '" title="시간대 삭제">✕</button></td></tr>';
+          // 시간대는 시각 순서대로 이어지는 목록이라 중간을 빼면 표에 구멍이 생긴다.
+          // 그래서 지우는 건 맨 끝에서만 — 칸 자체는 남겨 둬야 열이 어긋나지 않는다.
+          '<td class="vp-rowdel">' +
+            (ri === m.rows.length - 1
+              ? '<button type="button" class="vp-del" data-row="' + ri + '" title="마지막 시간대 삭제">✕</button>'
+              : '') +
+          '</td></tr>';
       }).join('') + '</tbody>';
 
     $$('.vp-day', table).forEach(function (th, i) {
@@ -2670,8 +2676,11 @@
      * 과목을 뽑은 뒤 총합만큼 덜어 낸다). 단순히 순서대로 돌리면 5점짜리와
      * 1점짜리가 같은 시간을 가져가고, 몫을 미리 세어 한 과목씩 몰아 넣으면
      * 하루가 통째로 한 과목이 된다. 이 방식은 비율을 지키면서도 과목이
-     * 고르게 흩어지고, 열마다 저울을 새로 시작하므로 매일 아침 첫 빈칸은
-     * 가장 급한 과목이 가져간다 — 머리가 가장 맑은 시간대다. */
+     * 고르게 흩어진다.
+     *
+     * 저울은 주 전체에서 한 번만 초기화한다(열마다 새로 시작하지 않는다).
+     * 그래야 주간 목표 비율이 정확히 맞는다 — 대신 매일 아침 첫 칸이
+     * 항상 같은 과목은 아니고 요일마다 돌아가며 바뀐다. */
     /* 1) 먼저 어느 칸이 휴식인지 정한다. 휴식은 과목과 무관하게 연속 공부 시간만으로
      *    결정되므로 미리 계산할 수 있고, 그래야 "실제로 공부에 쓸 수 있는 칸" 이
      *    몇 개인지 세어 주간 목표 시간과 맞출 수 있다. */
@@ -4108,7 +4117,7 @@
 
     /* 입력 */
     $('addSubject').addEventListener('click', function () {
-      if ($$('.subject-row').length >= 8) { toast('과목은 최대 8개까지 추가할 수 있습니다.', true); return; }
+      if ($$('.subject-row', $('subjectList')).length >= 8) { toast('과목은 최대 8개까지 추가할 수 있습니다.', true); return; }
       addSubjectRow().querySelector('.s-name').focus();
     });
     $('analyzeBtn').addEventListener('click', runAnalysis);
