@@ -408,9 +408,15 @@
     });
   }
 
+  /* 로컬에서 지우는 것만으로는 토큰이 만료(최대 1시간)까지 살아 있다.
+   * 학교 공용 PC 에서 쓰는 계정이고 전교생 기록을 읽을 수 있으므로 서버에서도 폐기한다.
+   * 다만 로컬 삭제를 먼저 해 둔다 — 네트워크가 죽었다고 로그인 상태로 남으면 안 된다. */
   function adminSignOut() {
+    var s = adminSessionLoad();
     adminSessionSave(null);
-    return Promise.resolve(true);
+    if (!s || !s.accessToken) return Promise.resolve(true);
+    return req('/auth/v1/logout', { method: 'POST' }, s.accessToken)
+      .then(function () { return true; }, function () { return true; });
   }
 
   /**
@@ -438,6 +444,37 @@
       });
   }
 
+  /**
+   * 그 주에 리그 시간을 올린 참가자를 개별로 받아 온다 (관리자 전용).
+   *
+   * 이름은 없다 — league_report 에 닉네임 컬럼 자체가 없기 때문이다.
+   * 학생에게 "이름은 전송되지 않는다" 고 안내하고 받은 동의라 그대로 지킨다.
+   * 이름이 필요하면 학생이 [관리자에게 내 기록 보이기] 를 켜야 하고,
+   * 그때는 student_report 로 들어와 이름 있는 목록에 뜬다.
+   *
+   * schema_admin_league.sql 을 실행하지 않았다면 권한이 없어 빈 배열이 온다.
+   */
+  function fetchLeagueMembers(weekKey) {
+    var s = adminSession();
+    if (!s) return Promise.reject(Object.assign(new Error('로그인이 필요합니다.'), { status: 401 }));
+
+    return req('/rest/v1/league_report?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=device_id,school,minutes,updated_at&order=minutes.desc&limit=1000', {}, s.accessToken)
+      .then(function (rows) {
+        return (rows || []).map(function (r) {
+          return {
+            deviceId: String(r.device_id || ''),
+            schoolName: String(r.school || '').trim(),
+            minutes: Math.max(0, r.minutes | 0),
+            updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0
+          };
+        });
+      }, function (e) {
+        if (e.status === 401) adminSessionSave(null);
+        throw e;
+      });
+  }
+
   global.Cloud = {
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
@@ -450,6 +487,7 @@
 
     adminSession: adminSession, adminSignIn: adminSignIn, adminSignOut: adminSignOut,
     fetchStudentWeek: fetchStudentWeek,
+    fetchLeagueMembers: fetchLeagueMembers,
 
     SUPABASE_URL: SUPABASE_URL
   };

@@ -397,6 +397,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .btn.sm { padding: 6px 12px; font-size: 12px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
+/* ------------------------------------------------------ 저장 상태 안내 */
+.store-status { margin: 12px 0 4px; padding: 11px 14px; border-radius: var(--r-sm); font-size: 12.5px; line-height: 1.6; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--muted); }
+.store-status.ok { border-color: var(--ok-line); background: var(--ok-bg); color: var(--ok-ink); }
+.store-status.warn { border-color: var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); }
+.store-status b { font-weight: 700; }
+.ss-backup { display: inline-block; margin-top: 4px; }
+.ss-backup.warn { font-weight: 700; }
+
 /* ------------------------------------------------------------ AI 브리핑 */
 .ai-briefing { display: flex; gap: 12px; align-items: flex-start; padding: 16px 18px; margin-bottom: 14px; border-radius: var(--r); background: linear-gradient(140deg, #7c5cff, #5b7cff); box-shadow: 0 8px 20px -8px rgba(109, 74, 255, 0.9); }
 .ab-badge { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.01em; color: #fff; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
@@ -2563,6 +2571,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <p class="tiny" style="margin:0 0 14px">모든 데이터는 이 브라우저에만 저장됩니다.
           <b>브라우저 데이터를 지우거나 기기를 바꾸면 그대로 사라집니다.</b> 가끔 백업 파일로 내려받아 두세요.</p>
         <div id="dataSummary" class="data-sum"></div>
+        <div id="storageStatus" class="store-status"></div>
         <div class="actions">
           <button type="button" class="btn" id="exportData">⬇ 백업 파일 내려받기</button>
           <label class="btn" for="importFile">⬆ 백업 불러오기</label>
@@ -2622,6 +2631,20 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       </div>
     </div>
 
+    <div class="card wide is-hidden" id="adminLeagueMembersCard">
+      <div class="card-head"><span class="ci">🙈</span><h3>리그 참가자 — 이번 주 (익명)</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px"><b>학교 리그만 켠 학생</b>입니다.
+          이름이 없는 이유는 감춘 게 아니라, <b>애초에 서버로 이름을 보내지 않기 때문</b>입니다 —
+          가입할 때 "학교명과 학습 시간만 전송된다"고 안내하고 동의를 받았습니다.
+          이름까지 보려면 그 학생이 설정에서 <b>관리자에게 내 기록 보이기</b>를 직접 켜야 하고,
+          그러면 위쪽 <b>이름 있는 목록</b>에 나타납니다.</p>
+        <button type="button" class="btn ghost sm" id="adminLeagueRefresh" style="margin:0 0 10px">↻ 새로고침</button>
+        <div id="adminLeagueMembers" class="adm-feed"></div>
+        <div id="adminLeagueStatus" class="tiny" style="margin-top:8px"></div>
+      </div>
+    </div>
+
     <div class="card wide is-hidden" id="adminSchoolAggCard">
       <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 합계 (익명)</h3></div>
       <div class="card-body">
@@ -2632,8 +2655,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     </div>
 
     <p class="tiny adm-scope is-hidden" id="adminServerScopeNote">🔒 <b>이 목록이 보여줄 수 있는 범위</b> —
-      <b>관리자에게 내 기록 보이기</b>를 스스로 켠 학생만 보입니다. 서버에 강제로 모으는 절차는 없습니다.
-      이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 학생</b>을 볼 수 있습니다
+      <b>이름이 보이는 것은</b> 설정에서 <b>관리자에게 내 기록 보이기</b>를 스스로 켠 학생뿐입니다.
+      <b>리그만 켠 학생</b>은 익명 참가자로만 보입니다 — 감춘 게 아니라 서버에 이름이 없기 때문입니다.
+      어느 쪽도 강제로 모으지 않습니다.
+      이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 기록</b>을 볼 수 있습니다
       (관리자가 한 명이라는 전제로 설계했습니다).</p>
 
     <hr class="adm-divider">
@@ -4014,6 +4039,46 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     } catch (e) { return false; }
   })();
 
+  /* ------------------------------------------------------- 저장 공간 보호
+   * localStorage 는 기본이 "지워도 되는" 저장소다. 저장 공간이 모자라면
+   * 브라우저가 말없이 비우고, iOS 는 한동안 안 들어오면 알아서 정리한다.
+   * 몇 달치 기록이 그렇게 사라지면 되돌릴 방법이 없으므로 영구 보관을 신청한다.
+   *
+   * 크롬 계열은 방문 빈도·홈 화면 설치 여부로 조용히 판단해 주고,
+   * 사파리는 홈 화면에 추가돼 있으면 내어 준다. 거절당해도 앱은 그대로 돌아간다. */
+  function persistStatus() {
+    if (!global.navigator || !navigator.storage || !navigator.storage.persisted) {
+      return Promise.resolve('unsupported');
+    }
+    return navigator.storage.persisted()
+      .then(function (yes) { return yes ? 'persisted' : 'best-effort'; })
+      ['catch'](function () { return 'unsupported'; });
+  }
+
+  function requestPersist() {
+    if (!global.navigator || !navigator.storage || !navigator.storage.persist) {
+      return Promise.resolve('unsupported');
+    }
+    return navigator.storage.persisted()
+      .then(function (yes) {
+        if (yes) return 'persisted';
+        return navigator.storage.persist().then(function (granted) {
+          return granted ? 'persisted' : 'best-effort';
+        });
+      })
+      ['catch'](function () { return 'unsupported'; });
+  }
+
+  /** 남은 저장 공간 (지원하지 않으면 null) */
+  function estimate() {
+    if (!global.navigator || !navigator.storage || !navigator.storage.estimate) {
+      return Promise.resolve(null);
+    }
+    return navigator.storage.estimate()
+      .then(function (e) { return { usage: e.usage || 0, quota: e.quota || 0 }; })
+      ['catch'](function () { return null; });
+  }
+
   function read(key, fallback) {
     if (!ok) return fallback;
     try {
@@ -4136,6 +4201,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     'neurostudy.vacplan.v1', 'neurostudy.league.v1'
   ];
 
+  /* 마지막으로 백업을 내려받은 시각. 백업 자체에는 넣지 않는다 —
+   * 복원한 기기에서 "이미 백업했다" 고 착각하면 안 되기 때문이다. */
+  var LAST_BACKUP_KEY = 'neurostudy.lastBackup.v1';
+
+  function lastBackupAt() { return read(LAST_BACKUP_KEY, 0) || 0; }
+  function markBackedUp() { write(LAST_BACKUP_KEY, Date.now()); }
+
   function exportAll() {
     var out = {
       app: 'Mindora', version: EXPORT_VERSION,
@@ -4184,6 +4256,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     group: group, saveGroup: saveGroup,
     recentSchools: recentSchools, rememberSchool: rememberSchool,
     exportAll: exportAll, importAll: importAll, EXPORT_VERSION: EXPORT_VERSION,
+    lastBackupAt: lastBackupAt, markBackedUp: markBackedUp,
+    persistStatus: persistStatus, requestPersist: requestPersist, estimate: estimate,
     clearAll: clearAll
   };
 
@@ -5012,9 +5086,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     });
   }
 
+  /* 로컬에서 지우는 것만으로는 토큰이 만료(최대 1시간)까지 살아 있다.
+   * 학교 공용 PC 에서 쓰는 계정이고 전교생 기록을 읽을 수 있으므로 서버에서도 폐기한다.
+   * 다만 로컬 삭제를 먼저 해 둔다 — 네트워크가 죽었다고 로그인 상태로 남으면 안 된다. */
   function adminSignOut() {
+    var s = adminSessionLoad();
     adminSessionSave(null);
-    return Promise.resolve(true);
+    if (!s || !s.accessToken) return Promise.resolve(true);
+    return req('/auth/v1/logout', { method: 'POST' }, s.accessToken)
+      .then(function () { return true; }, function () { return true; });
   }
 
   /**
@@ -5042,6 +5122,37 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       });
   }
 
+  /**
+   * 그 주에 리그 시간을 올린 참가자를 개별로 받아 온다 (관리자 전용).
+   *
+   * 이름은 없다 — league_report 에 닉네임 컬럼 자체가 없기 때문이다.
+   * 학생에게 "이름은 전송되지 않는다" 고 안내하고 받은 동의라 그대로 지킨다.
+   * 이름이 필요하면 학생이 [관리자에게 내 기록 보이기] 를 켜야 하고,
+   * 그때는 student_report 로 들어와 이름 있는 목록에 뜬다.
+   *
+   * schema_admin_league.sql 을 실행하지 않았다면 권한이 없어 빈 배열이 온다.
+   */
+  function fetchLeagueMembers(weekKey) {
+    var s = adminSession();
+    if (!s) return Promise.reject(Object.assign(new Error('로그인이 필요합니다.'), { status: 401 }));
+
+    return req('/rest/v1/league_report?week=eq.' + encodeURIComponent(weekKey) +
+               '&select=device_id,school,minutes,updated_at&order=minutes.desc&limit=1000', {}, s.accessToken)
+      .then(function (rows) {
+        return (rows || []).map(function (r) {
+          return {
+            deviceId: String(r.device_id || ''),
+            schoolName: String(r.school || '').trim(),
+            minutes: Math.max(0, r.minutes | 0),
+            updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0
+          };
+        });
+      }, function (e) {
+        if (e.status === 401) adminSessionSave(null);
+        throw e;
+      });
+  }
+
   global.Cloud = {
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
@@ -5054,6 +5165,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     adminSession: adminSession, adminSignIn: adminSignIn, adminSignOut: adminSignOut,
     fetchStudentWeek: fetchStudentWeek,
+    fetchLeagueMembers: fetchLeagueMembers,
 
     SUPABASE_URL: SUPABASE_URL
   };
@@ -7694,6 +7806,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     // 들어올 때마다 최신 값으로 다시 그린다
     if (id === 'secLeague') { renderLeague(); leagueSync(false); }
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
+    // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
+    if (id === 'secSettings') renderSettingsPage();
 
     var pg = pageBy(id);
     if (!skipHash && pg) {
@@ -8694,11 +8808,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'neurostudy-backup-' + Store.key() + '.json';
+    a.download = 'mindora-backup-' + Store.key() + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    Store.markBackedUp();
+    renderSettingsPage();
     toast('백업 파일을 내려받았습니다. 인증키는 포함되지 않습니다.');
   }
 
@@ -10370,6 +10486,43 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       '<div class="ds"><div class="k">누적 순공 시간</div><div class="v">' + Math.round(totalMin / 60) + '<small style="font-size:12px;color:var(--muted)">시간</small></div></div>' +
       '<div class="ds"><div class="k">뇌 컨디션 기록</div><div class="v">' + Store.history().length + '<small style="font-size:12px;color:var(--muted)">건</small></div></div>' +
       '<div class="ds"><div class="k">그룹원</div><div class="v">' + Group.members().length + '<small style="font-size:12px;color:var(--muted)">명</small></div></div>';
+
+    renderStorageStatus();
+  }
+
+  /* 기록이 몇 달치 쌓이는 앱이라, 저장이 안전한 상태인지 스스로 알려 준다.
+   * 브라우저가 공간을 회수할 수 있는 상태라면 그 사실을 숨기지 않는다. */
+  function renderStorageStatus() {
+    var el = $('storageStatus');
+    if (!el) return;
+
+    var last = Store.lastBackupAt();
+    var days = last ? Math.floor((Date.now() - last) / 86400000) : null;
+    var hasData = Store.history().length > 0 || StudyLog.todayTotal() > 0;
+
+    var backup = last
+      ? (days <= 0 ? '오늘 백업했습니다.' : days + '일 전에 백업했습니다.')
+      : '아직 백업한 적이 없습니다.';
+    var warn = (!last && hasData) || (days !== null && days >= 14);
+
+    Store.persistStatus().then(function (st) {
+      var line, cls;
+      if (st === 'persisted') {
+        line = '✅ <b>영구 보관 중</b> — 저장 공간이 모자라도 브라우저가 이 앱 기록을 지우지 않습니다.';
+        cls = 'ok';
+      } else if (st === 'best-effort') {
+        line = '⚠️ <b>임시 보관 상태</b> — 저장 공간이 부족하면 브라우저가 기록을 지울 수 있습니다. ' +
+               '홈 화면에 추가하고 자주 열면 영구 보관으로 바뀝니다.';
+        cls = 'warn';
+      } else {
+        line = 'ℹ️ 이 브라우저는 보관 상태를 알려 주지 않습니다. 백업 파일을 더 자주 내려받아 두세요.';
+        cls = '';
+      }
+      el.className = 'store-status ' + cls;
+      el.innerHTML = line + '<br><span class="ss-backup' + (warn ? ' warn' : '') + '">' +
+        (warn ? '📥 ' : '') + esc(backup) +
+        (warn ? ' 지금 내려받아 두세요 — 기기를 잃어버리면 되돌릴 수 없습니다.' : '') + '</span>';
+    });
   }
 
   /* ==================================================== 초·중 성장 모드 == */
@@ -11170,7 +11323,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
    * ①은 여러 기기를 아우르는 진짜 데이터고, ②는 이 브라우저 하나에 갇힌 데이터다.
    * 화면에서도 구분해 보여 준다. */
 
-  var adminState = { users: [], students: [], schoolAgg: [] };
+  var adminState = { users: [], students: [], schoolAgg: [], leagueMembers: [] };
 
   function collectAllUsers() {
     var users = [];
@@ -11382,7 +11535,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   }
 
   var ADMIN_LOCAL_CARDS = '#adminStatsCard, #adminUsersCard, #adminActivityCard, #adminFeedCard, #adminScopeNote';
-  var ADMIN_SERVER_CARDS = '#adminStudentsCard, #adminSchoolAggCard, #adminServerScopeNote';
+  var ADMIN_SERVER_CARDS = '#adminStudentsCard, #adminLeagueMembersCard, #adminSchoolAggCard, #adminServerScopeNote';
 
   function renderAdminLocal() {
     renderAdminStats();
@@ -11460,8 +11613,47 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     }, function () { /* 리그를 안 켰으면 자연스럽게 비어 있다 — 조용히 둔다 */ });
   }
 
+  /* 리그에만 참가한 학생들. 이름이 없으므로 기기 번호 앞자리로만 구분한다.
+   * 같은 사람을 계속 알아볼 수는 있어도 누구인지는 알 수 없다 — 의도한 선이다. */
+  function renderAdminLeagueMembers() {
+    var wk = Store.key(Store.weekStart(new Date()));
+    var statusEl = $('adminLeagueStatus');
+    var listEl = $('adminLeagueMembers');
+    statusEl.textContent = '불러오는 중…';
+
+    return Cloud.fetchLeagueMembers(wk).then(function (rows) {
+      adminState.leagueMembers = rows;
+      var sum = rows.reduce(function (a, r) { return a + r.minutes; }, 0);
+      statusEl.textContent = rows.length
+        ? rows.length + '명 · 합계 ' + fmtDur(sum) + ' · 방금 갱신'
+        : '이번 주에 리그 시간을 올린 참가자가 아직 없습니다.';
+
+      listEl.innerHTML = rows.map(function (r) {
+        return '<div class="adm-ev">' +
+          '<span class="e-ic">🙈</span>' +
+          '<span class="e-txt"><b>익명 ' + esc(r.deviceId.slice(0, 4).toUpperCase()) + '</b>' +
+            '<span class="e-sub">' + esc(r.schoolName) + ' · ' + esc(agoText(r.updatedAt)) + '</span></span>' +
+          '<span class="e-ago">' + fmtDur(r.minutes) + '</span>' +
+        '</div>';
+      }).join('') || '<div class="adm-empty">아직 참가자가 없습니다.</div>';
+    }, function (e) {
+      if (e.status === 401) {
+        statusEl.textContent = '';
+        adminShowLoggedOut('세션이 만료됐습니다. 다시 로그인해 주세요.');
+        return;
+      }
+      listEl.innerHTML = '';
+      /* 권한이 없으면 PostgREST 가 401/403 을 준다 — 대개 SQL 을 아직 안 돌린 경우다.
+       * "오류" 로만 적어 두면 무엇을 해야 하는지 알 수 없어 파일 이름까지 적는다. */
+      statusEl.textContent = (e.status === 403 || e.status === 401)
+        ? '권한이 없습니다 — Supabase SQL Editor 에서 supabase/schema_admin_league.sql 을 한 번 실행해 주세요.'
+        : '불러오지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+    });
+  }
+
   function renderAdminServer() {
     renderAdminStudents();
+    renderAdminLeagueMembers();
     renderAdminSchoolAgg();
   }
 
@@ -11519,6 +11711,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   function init() {
     initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
+
+    /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
+     * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
+    Store.requestPersist().then(function () { renderStorageStatus(); });
 
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
@@ -11668,7 +11864,14 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('adminSearch').addEventListener('input', renderAdminUsersList);
     $('adminStudentSearch').addEventListener('input', drawAdminStudents);
     $('adminStudentRefresh').addEventListener('click', renderAdminStudents);
-    $('openAdmin').addEventListener('click', function () { goPage('secAdmin'); });
+    $('adminLeagueRefresh').addEventListener('click', renderAdminLeagueMembers);
+    /* 들어갈 때마다 세션을 다시 본다. 한 번만 확인하면, 토큰이 만료된 뒤
+     * 다시 들어왔을 때 지난번 학생 목록이 화면에 그대로 남는다.
+     * 겸사겸사 목록도 새로 받아 오게 된다. */
+    $('openAdmin').addEventListener('click', function () {
+      goPage('secAdmin');
+      initAdminSession();
+    });
     initAdminSession();
 
     // 카드 안에서 다른 페이지로 보내는 링크 버튼들

@@ -238,6 +238,8 @@
     // 들어올 때마다 최신 값으로 다시 그린다
     if (id === 'secLeague') { renderLeague(); leagueSync(false); }
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
+    // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
+    if (id === 'secSettings') renderSettingsPage();
 
     var pg = pageBy(id);
     if (!skipHash && pg) {
@@ -1238,11 +1240,13 @@
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'neurostudy-backup-' + Store.key() + '.json';
+    a.download = 'mindora-backup-' + Store.key() + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    Store.markBackedUp();
+    renderSettingsPage();
     toast('백업 파일을 내려받았습니다. 인증키는 포함되지 않습니다.');
   }
 
@@ -2914,6 +2918,43 @@
       '<div class="ds"><div class="k">누적 순공 시간</div><div class="v">' + Math.round(totalMin / 60) + '<small style="font-size:12px;color:var(--muted)">시간</small></div></div>' +
       '<div class="ds"><div class="k">뇌 컨디션 기록</div><div class="v">' + Store.history().length + '<small style="font-size:12px;color:var(--muted)">건</small></div></div>' +
       '<div class="ds"><div class="k">그룹원</div><div class="v">' + Group.members().length + '<small style="font-size:12px;color:var(--muted)">명</small></div></div>';
+
+    renderStorageStatus();
+  }
+
+  /* 기록이 몇 달치 쌓이는 앱이라, 저장이 안전한 상태인지 스스로 알려 준다.
+   * 브라우저가 공간을 회수할 수 있는 상태라면 그 사실을 숨기지 않는다. */
+  function renderStorageStatus() {
+    var el = $('storageStatus');
+    if (!el) return;
+
+    var last = Store.lastBackupAt();
+    var days = last ? Math.floor((Date.now() - last) / 86400000) : null;
+    var hasData = Store.history().length > 0 || StudyLog.todayTotal() > 0;
+
+    var backup = last
+      ? (days <= 0 ? '오늘 백업했습니다.' : days + '일 전에 백업했습니다.')
+      : '아직 백업한 적이 없습니다.';
+    var warn = (!last && hasData) || (days !== null && days >= 14);
+
+    Store.persistStatus().then(function (st) {
+      var line, cls;
+      if (st === 'persisted') {
+        line = '✅ <b>영구 보관 중</b> — 저장 공간이 모자라도 브라우저가 이 앱 기록을 지우지 않습니다.';
+        cls = 'ok';
+      } else if (st === 'best-effort') {
+        line = '⚠️ <b>임시 보관 상태</b> — 저장 공간이 부족하면 브라우저가 기록을 지울 수 있습니다. ' +
+               '홈 화면에 추가하고 자주 열면 영구 보관으로 바뀝니다.';
+        cls = 'warn';
+      } else {
+        line = 'ℹ️ 이 브라우저는 보관 상태를 알려 주지 않습니다. 백업 파일을 더 자주 내려받아 두세요.';
+        cls = '';
+      }
+      el.className = 'store-status ' + cls;
+      el.innerHTML = line + '<br><span class="ss-backup' + (warn ? ' warn' : '') + '">' +
+        (warn ? '📥 ' : '') + esc(backup) +
+        (warn ? ' 지금 내려받아 두세요 — 기기를 잃어버리면 되돌릴 수 없습니다.' : '') + '</span>';
+    });
   }
 
   /* ==================================================== 초·중 성장 모드 == */
@@ -3714,7 +3755,7 @@
    * ①은 여러 기기를 아우르는 진짜 데이터고, ②는 이 브라우저 하나에 갇힌 데이터다.
    * 화면에서도 구분해 보여 준다. */
 
-  var adminState = { users: [], students: [], schoolAgg: [] };
+  var adminState = { users: [], students: [], schoolAgg: [], leagueMembers: [] };
 
   function collectAllUsers() {
     var users = [];
@@ -3926,7 +3967,7 @@
   }
 
   var ADMIN_LOCAL_CARDS = '#adminStatsCard, #adminUsersCard, #adminActivityCard, #adminFeedCard, #adminScopeNote';
-  var ADMIN_SERVER_CARDS = '#adminStudentsCard, #adminSchoolAggCard, #adminServerScopeNote';
+  var ADMIN_SERVER_CARDS = '#adminStudentsCard, #adminLeagueMembersCard, #adminSchoolAggCard, #adminServerScopeNote';
 
   function renderAdminLocal() {
     renderAdminStats();
@@ -4004,8 +4045,47 @@
     }, function () { /* 리그를 안 켰으면 자연스럽게 비어 있다 — 조용히 둔다 */ });
   }
 
+  /* 리그에만 참가한 학생들. 이름이 없으므로 기기 번호 앞자리로만 구분한다.
+   * 같은 사람을 계속 알아볼 수는 있어도 누구인지는 알 수 없다 — 의도한 선이다. */
+  function renderAdminLeagueMembers() {
+    var wk = Store.key(Store.weekStart(new Date()));
+    var statusEl = $('adminLeagueStatus');
+    var listEl = $('adminLeagueMembers');
+    statusEl.textContent = '불러오는 중…';
+
+    return Cloud.fetchLeagueMembers(wk).then(function (rows) {
+      adminState.leagueMembers = rows;
+      var sum = rows.reduce(function (a, r) { return a + r.minutes; }, 0);
+      statusEl.textContent = rows.length
+        ? rows.length + '명 · 합계 ' + fmtDur(sum) + ' · 방금 갱신'
+        : '이번 주에 리그 시간을 올린 참가자가 아직 없습니다.';
+
+      listEl.innerHTML = rows.map(function (r) {
+        return '<div class="adm-ev">' +
+          '<span class="e-ic">🙈</span>' +
+          '<span class="e-txt"><b>익명 ' + esc(r.deviceId.slice(0, 4).toUpperCase()) + '</b>' +
+            '<span class="e-sub">' + esc(r.schoolName) + ' · ' + esc(agoText(r.updatedAt)) + '</span></span>' +
+          '<span class="e-ago">' + fmtDur(r.minutes) + '</span>' +
+        '</div>';
+      }).join('') || '<div class="adm-empty">아직 참가자가 없습니다.</div>';
+    }, function (e) {
+      if (e.status === 401) {
+        statusEl.textContent = '';
+        adminShowLoggedOut('세션이 만료됐습니다. 다시 로그인해 주세요.');
+        return;
+      }
+      listEl.innerHTML = '';
+      /* 권한이 없으면 PostgREST 가 401/403 을 준다 — 대개 SQL 을 아직 안 돌린 경우다.
+       * "오류" 로만 적어 두면 무엇을 해야 하는지 알 수 없어 파일 이름까지 적는다. */
+      statusEl.textContent = (e.status === 403 || e.status === 401)
+        ? '권한이 없습니다 — Supabase SQL Editor 에서 supabase/schema_admin_league.sql 을 한 번 실행해 주세요.'
+        : '불러오지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+    });
+  }
+
   function renderAdminServer() {
     renderAdminStudents();
+    renderAdminLeagueMembers();
     renderAdminSchoolAgg();
   }
 
@@ -4063,6 +4143,10 @@
 
   function init() {
     initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
+
+    /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
+     * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
+    Store.requestPersist().then(function () { renderStorageStatus(); });
 
     // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
@@ -4212,7 +4296,14 @@
     $('adminSearch').addEventListener('input', renderAdminUsersList);
     $('adminStudentSearch').addEventListener('input', drawAdminStudents);
     $('adminStudentRefresh').addEventListener('click', renderAdminStudents);
-    $('openAdmin').addEventListener('click', function () { goPage('secAdmin'); });
+    $('adminLeagueRefresh').addEventListener('click', renderAdminLeagueMembers);
+    /* 들어갈 때마다 세션을 다시 본다. 한 번만 확인하면, 토큰이 만료된 뒤
+     * 다시 들어왔을 때 지난번 학생 목록이 화면에 그대로 남는다.
+     * 겸사겸사 목록도 새로 받아 오게 된다. */
+    $('openAdmin').addEventListener('click', function () {
+      goPage('secAdmin');
+      initAdminSession();
+    });
     initAdminSession();
 
     // 카드 안에서 다른 페이지로 보내는 링크 버튼들

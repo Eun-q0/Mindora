@@ -23,6 +23,46 @@
     } catch (e) { return false; }
   })();
 
+  /* ------------------------------------------------------- 저장 공간 보호
+   * localStorage 는 기본이 "지워도 되는" 저장소다. 저장 공간이 모자라면
+   * 브라우저가 말없이 비우고, iOS 는 한동안 안 들어오면 알아서 정리한다.
+   * 몇 달치 기록이 그렇게 사라지면 되돌릴 방법이 없으므로 영구 보관을 신청한다.
+   *
+   * 크롬 계열은 방문 빈도·홈 화면 설치 여부로 조용히 판단해 주고,
+   * 사파리는 홈 화면에 추가돼 있으면 내어 준다. 거절당해도 앱은 그대로 돌아간다. */
+  function persistStatus() {
+    if (!global.navigator || !navigator.storage || !navigator.storage.persisted) {
+      return Promise.resolve('unsupported');
+    }
+    return navigator.storage.persisted()
+      .then(function (yes) { return yes ? 'persisted' : 'best-effort'; })
+      ['catch'](function () { return 'unsupported'; });
+  }
+
+  function requestPersist() {
+    if (!global.navigator || !navigator.storage || !navigator.storage.persist) {
+      return Promise.resolve('unsupported');
+    }
+    return navigator.storage.persisted()
+      .then(function (yes) {
+        if (yes) return 'persisted';
+        return navigator.storage.persist().then(function (granted) {
+          return granted ? 'persisted' : 'best-effort';
+        });
+      })
+      ['catch'](function () { return 'unsupported'; });
+  }
+
+  /** 남은 저장 공간 (지원하지 않으면 null) */
+  function estimate() {
+    if (!global.navigator || !navigator.storage || !navigator.storage.estimate) {
+      return Promise.resolve(null);
+    }
+    return navigator.storage.estimate()
+      .then(function (e) { return { usage: e.usage || 0, quota: e.quota || 0 }; })
+      ['catch'](function () { return null; });
+  }
+
   function read(key, fallback) {
     if (!ok) return fallback;
     try {
@@ -145,6 +185,13 @@
     'neurostudy.vacplan.v1', 'neurostudy.league.v1'
   ];
 
+  /* 마지막으로 백업을 내려받은 시각. 백업 자체에는 넣지 않는다 —
+   * 복원한 기기에서 "이미 백업했다" 고 착각하면 안 되기 때문이다. */
+  var LAST_BACKUP_KEY = 'neurostudy.lastBackup.v1';
+
+  function lastBackupAt() { return read(LAST_BACKUP_KEY, 0) || 0; }
+  function markBackedUp() { write(LAST_BACKUP_KEY, Date.now()); }
+
   function exportAll() {
     var out = {
       app: 'Mindora', version: EXPORT_VERSION,
@@ -193,6 +240,8 @@
     group: group, saveGroup: saveGroup,
     recentSchools: recentSchools, rememberSchool: rememberSchool,
     exportAll: exportAll, importAll: importAll, EXPORT_VERSION: EXPORT_VERSION,
+    lastBackupAt: lastBackupAt, markBackedUp: markBackedUp,
+    persistStatus: persistStatus, requestPersist: requestPersist, estimate: estimate,
     clearAll: clearAll
   };
 

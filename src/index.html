@@ -1068,6 +1068,7 @@
         <p class="tiny" style="margin:0 0 14px">모든 데이터는 이 브라우저에만 저장됩니다.
           <b>브라우저 데이터를 지우거나 기기를 바꾸면 그대로 사라집니다.</b> 가끔 백업 파일로 내려받아 두세요.</p>
         <div id="dataSummary" class="data-sum"></div>
+        <div id="storageStatus" class="store-status"></div>
         <div class="actions">
           <button type="button" class="btn" id="exportData">⬇ 백업 파일 내려받기</button>
           <label class="btn" for="importFile">⬆ 백업 불러오기</label>
@@ -1127,6 +1128,20 @@
       </div>
     </div>
 
+    <div class="card wide is-hidden" id="adminLeagueMembersCard">
+      <div class="card-head"><span class="ci">🙈</span><h3>리그 참가자 — 이번 주 (익명)</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px"><b>학교 리그만 켠 학생</b>입니다.
+          이름이 없는 이유는 감춘 게 아니라, <b>애초에 서버로 이름을 보내지 않기 때문</b>입니다 —
+          가입할 때 "학교명과 학습 시간만 전송된다"고 안내하고 동의를 받았습니다.
+          이름까지 보려면 그 학생이 설정에서 <b>관리자에게 내 기록 보이기</b>를 직접 켜야 하고,
+          그러면 위쪽 <b>이름 있는 목록</b>에 나타납니다.</p>
+        <button type="button" class="btn ghost sm" id="adminLeagueRefresh" style="margin:0 0 10px">↻ 새로고침</button>
+        <div id="adminLeagueMembers" class="adm-feed"></div>
+        <div id="adminLeagueStatus" class="tiny" style="margin-top:8px"></div>
+      </div>
+    </div>
+
     <div class="card wide is-hidden" id="adminSchoolAggCard">
       <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 합계 (익명)</h3></div>
       <div class="card-body">
@@ -1137,8 +1152,10 @@
     </div>
 
     <p class="tiny adm-scope is-hidden" id="adminServerScopeNote">🔒 <b>이 목록이 보여줄 수 있는 범위</b> —
-      <b>관리자에게 내 기록 보이기</b>를 스스로 켠 학생만 보입니다. 서버에 강제로 모으는 절차는 없습니다.
-      이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 학생</b>을 볼 수 있습니다
+      <b>이름이 보이는 것은</b> 설정에서 <b>관리자에게 내 기록 보이기</b>를 스스로 켠 학생뿐입니다.
+      <b>리그만 켠 학생</b>은 익명 참가자로만 보입니다 — 감춘 게 아니라 서버에 이름이 없기 때문입니다.
+      어느 쪽도 강제로 모으지 않습니다.
+      이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 기록</b>을 볼 수 있습니다
       (관리자가 한 명이라는 전제로 설계했습니다).</p>
 
     <hr class="adm-divider">
