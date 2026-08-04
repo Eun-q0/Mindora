@@ -124,6 +124,7 @@
               <input type="text" id="pfSchool" class="input" maxlength="24" placeholder="예) 한빛" autocomplete="off">
               <div class="ac-list is-hidden" id="schoolAc"></div>
             </div>
+            <p class="tiny" id="pfSchoolStatus" role="status" aria-live="polite">목록에서 실제 학교를 선택하면 급식과 학급 시간표를 볼 수 있습니다.</p>
           </div>
           <div class="two-col">
             <div class="field">
@@ -157,7 +158,7 @@
           <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
 
           <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
-          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
+          <p class="tiny" id="pfLeagueNote">학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
             학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며,
             같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b>
             <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
@@ -194,7 +195,7 @@
           </div>
           <div class="field">
             <label>수면의 질 <em>깊게 잤는지, 자주 깼는지</em></label>
-            <div class="seg" data-target="sleepQuality">
+            <div class="seg" data-target="sleepQuality" role="group" aria-label="수면의 질">
               <button type="button" data-v="1">매우 나쁨</button>
               <button type="button" data-v="2">나쁨</button>
               <button type="button" data-v="3">보통</button>
@@ -227,12 +228,12 @@
           </div>
           <div class="field">
             <label>기분 / 정서 상태</label>
-            <div class="seg" data-target="mood">
-              <button type="button" data-v="1">😞</button>
-              <button type="button" data-v="2">🙁</button>
-              <button type="button" data-v="3">😐</button>
-              <button type="button" data-v="4">🙂</button>
-              <button type="button" data-v="5">😄</button>
+            <div class="seg" data-target="mood" role="group" aria-label="기분과 정서 상태">
+              <button type="button" data-v="1" aria-label="매우 나쁨">😞</button>
+              <button type="button" data-v="2" aria-label="나쁨">🙁</button>
+              <button type="button" data-v="3" aria-label="보통">😐</button>
+              <button type="button" data-v="4" aria-label="좋음">🙂</button>
+              <button type="button" data-v="5" aria-label="매우 좋음">😄</button>
             </div>
             <input type="hidden" id="mood" value="3">
           </div>
@@ -332,7 +333,7 @@
         <div class="card-body">
           <div class="field">
             <label>수면 규칙성 <em>평소와 취침·기상 시각이 비슷한가</em></label>
-            <div class="seg" data-target="sleepRegularity">
+            <div class="seg" data-target="sleepRegularity" role="group" aria-label="수면 규칙성">
               <button type="button" data-v="1">매우 불규칙</button>
               <button type="button" data-v="2">불규칙</button>
               <button type="button" data-v="3">보통</button>
@@ -397,7 +398,7 @@
     </div>
 
     <div class="ai-briefing" id="aiBriefing">
-      <span class="ab-badge">🧠 Mindora AI</span>
+      <span class="ab-badge">🧠 규칙 기반 분석</span>
       <p class="ab-line" id="aiBriefingLine">—</p>
     </div>
 
@@ -629,11 +630,11 @@
 
     <div class="card wide">
       <div class="card-head">
-        <span class="ci">🤖</span><h3>AI 계획표 세우기</h3>
+        <span class="ci">🗓️</span><h3>자동 계획표 세우기</h3>
         <span class="right"><button type="button" class="btn ghost sm" id="vpAiToggle" aria-expanded="false" aria-controls="vpAiBody">펼치기</button></span>
       </div>
       <div class="card-body is-hidden" id="vpAiBody">
-        <p class="tiny" style="margin:0 0 12px">기상·취침·식사·학원처럼 <b>이미 정해진 일정</b>을 먼저 넣으면, 남는 시간을 과목별 주간 목표 시간에 맞춰 AI가 배분해 큰 틀을 세웁니다. 만들어진 뒤에는 아래 시간표에서 자유롭게 고칠 수 있습니다.</p>
+        <p class="tiny" style="margin:0 0 12px">기상·취침·식사·학원처럼 <b>이미 정해진 일정</b>을 먼저 넣으면, 남는 시간을 과목별 주간 목표 시간에 맞춰 규칙에 따라 배분합니다. 만들어진 뒤에는 아래 시간표에서 자유롭게 고칠 수 있습니다.</p>
         <div class="two-col">
           <div class="field">
             <label for="vpAiWake">기상 시각</label>
@@ -642,17 +643,6 @@
           <div class="field">
             <label for="vpAiSleep">취침 시각</label>
             <input type="time" id="vpAiSleep" class="input" value="23:00">
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="field">
-            <label for="vpAiGradeNow">지금 등급</label>
-            <select id="vpAiGradeNow" class="input"></select>
-          </div>
-          <div class="field">
-            <label for="vpAiGradeGoal">목표 등급 <em>차이가 클수록 휴식이 줄어듭니다</em></label>
-            <select id="vpAiGradeGoal" class="input"></select>
           </div>
         </div>
 
@@ -683,7 +673,7 @@
         <p class="tiny" id="vpAiIntensity">—</p>
 
         <div class="actions" style="margin-top:16px">
-          <button type="button" class="btn primary" id="vpAiGenerate">🤖 AI로 시간표 채우기</button>
+          <button type="button" class="btn primary" id="vpAiGenerate">🗓️ 자동으로 시간표 채우기</button>
         </div>
       </div>
     </div>
@@ -697,7 +687,7 @@
         <div class="vp-wrap">
           <table class="vp-table" id="vpTable"></table>
         </div>
-        <p class="tiny">위 <b>AI 계획표 세우기</b>로 큰 틀을 먼저 잡은 뒤 여기서 다듬는 순서를 권합니다. 칸을 눌러 바로 내용을 적을 수 있고, 요일 이름도 눌러서 바꿀 수 있으며, 시간대는 자유롭게 추가·삭제할 수 있습니다.
+        <p class="tiny">위 <b>자동 계획표 세우기</b>로 큰 틀을 먼저 잡은 뒤 여기서 다듬는 순서를 권합니다. 칸을 눌러 바로 내용을 적을 수 있고, 요일 이름도 눌러서 바꿀 수 있으며, 시간대는 자유롭게 추가·삭제할 수 있습니다.
           <b>위아래·양옆으로 같은 내용을 적으면 저장할 때 하나의 큰 칸으로 합쳐집니다.</b></p>
       </div>
     </div>
@@ -767,9 +757,9 @@
       <div class="card-head">
         <span class="ci">🏆</span><h3>순공 시간 랭킹</h3>
         <span class="right">
-          <div class="tabs" id="rankTabs">
-            <button type="button" data-range="today" class="on">오늘</button>
-            <button type="button" data-range="week">이번 주</button>
+          <div class="tabs" id="rankTabs" role="tablist" aria-label="랭킹 기간">
+            <button type="button" data-range="today" class="on" role="tab" aria-selected="true">오늘</button>
+            <button type="button" data-range="week" role="tab" aria-selected="false">이번 주</button>
           </div>
         </span>
       </div>
@@ -804,8 +794,8 @@
     </div>
 
     <div class="lg-modes" id="lgModes" role="tablist" aria-label="리그 종류">
-      <button type="button" class="lg-mode on" data-mode="class" role="tab">🏫 반 대항</button>
-      <button type="button" class="lg-mode" data-mode="school" role="tab">🏛️ 학교 대항</button>
+      <button type="button" class="lg-mode on" data-mode="class" role="tab" aria-selected="true">🏫 반 대항</button>
+      <button type="button" class="lg-mode" data-mode="school" role="tab" aria-selected="false">🏛️ 학교 대항</button>
     </div>
 
     <div class="lg-filters" id="lgFilters">
@@ -862,7 +852,7 @@
     <p class="tiny lg-disclaimer">🔒 <b>리그에는 실제 기록이 있는 반·학교만 올라갑니다.</b> 지어낸 상대는 넣지 않습니다.
       <b>리그 참가를 켜면</b> 같은 리그를 켠 다른 반·학교의 집계가 서버에서 내려와 순위가 됩니다.
       <b>끄면</b> 우리 반만 보입니다. 반 대항에 들어가려면 <b>설정 → 학급 대항전</b>도 함께 켜야 합니다.
-      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호이며, 학급 대항을 켜면 학년·반과 닉네임이 더해집니다.
+      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부이며, 학급 대항을 켜면 학교급·학년·반과 닉네임이 더해집니다.
       참가 여부는 [설정]에서 언제든 바꿀 수 있습니다.</p>
   </section>
 
@@ -998,7 +988,7 @@
       <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 참가</h3></div>
       <div class="card-body">
         <p class="tiny" style="margin:0 0 14px">이 앱은 원래 모든 기록을 <b>이 브라우저에만</b> 보관합니다.
-          학교 리그에 참가하면 <b>딱 아래 네 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
+          학교 리그에 참가하면 <b>딱 아래 다섯 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
           끄면 즉시 전송이 멈춥니다.</p>
 
         <div class="cl-what">
@@ -1009,13 +999,13 @@
               <li><b>주차</b> — 그 주 월요일 날짜</li>
               <li><b>순공 시간</b> — 그 주 내 합계(분)</li>
               <li><b>기기 번호</b> — 무작위 숫자. 같은 사람을 두 번 세지 않으려고 씁니다.</li>
+              <li><b>랭킹 숨김 여부</b> — 같은 반 순위표에서 내 줄을 보일지 정합니다.</li>
             </ul>
           </div>
           <div class="cl-no">
             <p class="cl-h">🚫 전송되지 않는 것</p>
             <ul>
-              <li>이름</li>
-              <li>학년 · 반 <em>— 아래 학급 대항전을 따로 켠 경우에만 전송</em></li>
+              <li>닉네임 · 학교급 · 학년 · 반 <em>— 아래 학급 대항전을 따로 켠 경우에만 전송</em></li>
               <li>과목 · 시험 일정</li>
               <li>뇌 컨디션 점수와 수면 · 스트레스 입력값</li>
               <li>배지 · 사운드 설정 · 나이스 인증키</li>
@@ -1023,10 +1013,10 @@
           </div>
         </div>
 
-        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="cloudOn"><span><b>학교 리그에 참가합니다</b> — 위 네 가지 전송에 동의합니다</span></label>
+        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="cloudOn"><span><b>학교 리그에 참가합니다</b> — 위 다섯 가지 전송에 동의합니다</span></label>
 
         <p class="tiny" id="cloudMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b>
-          학교명과 학습 시간이 외부 서버에 저장됩니다.</p>
+          학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부가 외부 서버에 저장됩니다.</p>
 
         <!-- 학교 리그와 별개 동의. 기존 참가자는 "학년·반은 전송하지 않는다" 는
              조건으로 동의했으므로, 여기서 다시 묻지 않고 켜면 안 된다. -->
@@ -1060,8 +1050,8 @@
     <div class="card wide">
       <div class="card-head"><span class="ci">🙋</span><h3>관리자에게 내 기록 보이기</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px"><b>학교 리그와는 별개의 기능입니다.</b> 리그는 학교 합계만 다뤄
-          누가 누군지 알 수 없지만, 이건 <b>내 닉네임이 그대로 관리자 화면에 뜹니다.</b>
+        <p class="tiny" style="margin:0 0 14px"><b>학교 리그와는 별개의 기능입니다.</b> 기본 학교 리그 관리자 목록은 닉네임을 읽지 않지만,
+          이 기능을 켜면 <b>내 닉네임이 그대로 관리자 화면에 뜹니다.</b>
           둘 다 각자 따로 켜고 끌 수 있습니다.</p>
 
         <div class="cl-what">
@@ -1182,10 +1172,10 @@
     <div class="card wide is-hidden" id="adminLeagueMembersCard">
       <div class="card-head"><span class="ci">🙈</span><h3>리그 참가자 — 이번 주 (익명)</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px"><b>학교 리그만 켠 학생</b>입니다.
-          이름이 없는 이유는 감춘 게 아니라, <b>애초에 서버로 이름을 보내지 않기 때문</b>입니다 —
-          가입할 때 "학교명과 학습 시간만 전송된다"고 안내하고 동의를 받았습니다.
-          이름까지 보려면 그 학생이 설정에서 <b>관리자에게 내 기록 보이기</b>를 직접 켜야 하고,
+        <p class="tiny" style="margin:0 0 14px">이 목록은 <b>학교 리그 참가자를 닉네임 없이 조회</b>합니다.
+          학급 대항전에 따로 동의한 참가자는 같은 반 순위표용 닉네임이 서버에 있을 수 있지만,
+          이 관리자 목록은 그 값을 읽지 않습니다. 관리자에게 이름까지 보이려면 학생이 설정에서
+          <b>관리자에게 내 기록 보이기</b>를 직접 켜야 하고,
           그러면 위쪽 <b>이름 있는 목록</b>에 나타납니다.</p>
         <button type="button" class="btn ghost sm" id="adminLeagueRefresh" style="margin:0 0 10px">↻ 새로고침</button>
         <div id="adminLeagueMembers" class="adm-feed"></div>
@@ -1204,7 +1194,7 @@
 
     <p class="tiny adm-scope is-hidden" id="adminServerScopeNote">🔒 <b>이 목록이 보여줄 수 있는 범위</b> —
       <b>이름이 보이는 것은</b> 설정에서 <b>관리자에게 내 기록 보이기</b>를 스스로 켠 학생뿐입니다.
-      <b>리그만 켠 학생</b>은 익명 참가자로만 보입니다 — 감춘 게 아니라 서버에 이름이 없기 때문입니다.
+      <b>리그 참가자 목록</b>은 닉네임을 조회하지 않아 익명으로만 보입니다.
       어느 쪽도 강제로 모으지 않습니다.
       이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 기록</b>을 볼 수 있습니다
       (관리자가 한 명이라는 전제로 설계했습니다).</p>
@@ -1275,9 +1265,10 @@
 </main>
 
 <footer class="foot">
-  <p><b>Mindora</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
-    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, <b>학급 대항전</b>을 따로 켜면 학년·반이 함께 전송됩니다.
-    이름과 개인 기록(과목·시험·수면·컨디션 점수)은 어느 경우에도 전송되지 않습니다.</p>
+  <p><b>Mindora</b> — 기본적으로 입력한 데이터는 이 브라우저에만 저장됩니다.
+    <b>학교 리그</b>를 켜면 학교명·주차·순공 시간·무작위 기기 번호·랭킹 숨김 여부가 전송됩니다.
+    <b>학급 대항전</b>을 따로 켜면 학년·반·닉네임이 추가로 전송되며, <b>관리자 공개</b>를 켜면 닉네임·학교명·주차·순공 시간·기기 번호가 서버에 저장되어 등록된 관리자에게 보입니다.
+    과목·시험·수면·스트레스·뇌 컨디션 점수는 어느 기능에서도 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 

@@ -1780,6 +1780,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
               <input type="text" id="pfSchool" class="input" maxlength="24" placeholder="예) 한빛" autocomplete="off">
               <div class="ac-list is-hidden" id="schoolAc"></div>
             </div>
+            <p class="tiny" id="pfSchoolStatus" role="status" aria-live="polite">목록에서 실제 학교를 선택하면 급식과 학급 시간표를 볼 수 있습니다.</p>
           </div>
           <div class="two-col">
             <div class="field">
@@ -1813,7 +1814,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
 
           <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
-          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
+          <p class="tiny" id="pfLeagueNote">학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
             학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며,
             같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b>
             <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
@@ -1850,7 +1851,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           </div>
           <div class="field">
             <label>수면의 질 <em>깊게 잤는지, 자주 깼는지</em></label>
-            <div class="seg" data-target="sleepQuality">
+            <div class="seg" data-target="sleepQuality" role="group" aria-label="수면의 질">
               <button type="button" data-v="1">매우 나쁨</button>
               <button type="button" data-v="2">나쁨</button>
               <button type="button" data-v="3">보통</button>
@@ -1883,12 +1884,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           </div>
           <div class="field">
             <label>기분 / 정서 상태</label>
-            <div class="seg" data-target="mood">
-              <button type="button" data-v="1">😞</button>
-              <button type="button" data-v="2">🙁</button>
-              <button type="button" data-v="3">😐</button>
-              <button type="button" data-v="4">🙂</button>
-              <button type="button" data-v="5">😄</button>
+            <div class="seg" data-target="mood" role="group" aria-label="기분과 정서 상태">
+              <button type="button" data-v="1" aria-label="매우 나쁨">😞</button>
+              <button type="button" data-v="2" aria-label="나쁨">🙁</button>
+              <button type="button" data-v="3" aria-label="보통">😐</button>
+              <button type="button" data-v="4" aria-label="좋음">🙂</button>
+              <button type="button" data-v="5" aria-label="매우 좋음">😄</button>
             </div>
             <input type="hidden" id="mood" value="3">
           </div>
@@ -1988,7 +1989,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <div class="card-body">
           <div class="field">
             <label>수면 규칙성 <em>평소와 취침·기상 시각이 비슷한가</em></label>
-            <div class="seg" data-target="sleepRegularity">
+            <div class="seg" data-target="sleepRegularity" role="group" aria-label="수면 규칙성">
               <button type="button" data-v="1">매우 불규칙</button>
               <button type="button" data-v="2">불규칙</button>
               <button type="button" data-v="3">보통</button>
@@ -2053,7 +2054,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     </div>
 
     <div class="ai-briefing" id="aiBriefing">
-      <span class="ab-badge">🧠 Mindora AI</span>
+      <span class="ab-badge">🧠 규칙 기반 분석</span>
       <p class="ab-line" id="aiBriefingLine">—</p>
     </div>
 
@@ -2285,11 +2286,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     <div class="card wide">
       <div class="card-head">
-        <span class="ci">🤖</span><h3>AI 계획표 세우기</h3>
+        <span class="ci">🗓️</span><h3>자동 계획표 세우기</h3>
         <span class="right"><button type="button" class="btn ghost sm" id="vpAiToggle" aria-expanded="false" aria-controls="vpAiBody">펼치기</button></span>
       </div>
       <div class="card-body is-hidden" id="vpAiBody">
-        <p class="tiny" style="margin:0 0 12px">기상·취침·식사·학원처럼 <b>이미 정해진 일정</b>을 먼저 넣으면, 남는 시간을 과목별 주간 목표 시간에 맞춰 AI가 배분해 큰 틀을 세웁니다. 만들어진 뒤에는 아래 시간표에서 자유롭게 고칠 수 있습니다.</p>
+        <p class="tiny" style="margin:0 0 12px">기상·취침·식사·학원처럼 <b>이미 정해진 일정</b>을 먼저 넣으면, 남는 시간을 과목별 주간 목표 시간에 맞춰 규칙에 따라 배분합니다. 만들어진 뒤에는 아래 시간표에서 자유롭게 고칠 수 있습니다.</p>
         <div class="two-col">
           <div class="field">
             <label for="vpAiWake">기상 시각</label>
@@ -2298,17 +2299,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           <div class="field">
             <label for="vpAiSleep">취침 시각</label>
             <input type="time" id="vpAiSleep" class="input" value="23:00">
-          </div>
-        </div>
-
-        <div class="two-col">
-          <div class="field">
-            <label for="vpAiGradeNow">지금 등급</label>
-            <select id="vpAiGradeNow" class="input"></select>
-          </div>
-          <div class="field">
-            <label for="vpAiGradeGoal">목표 등급 <em>차이가 클수록 휴식이 줄어듭니다</em></label>
-            <select id="vpAiGradeGoal" class="input"></select>
           </div>
         </div>
 
@@ -2339,7 +2329,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <p class="tiny" id="vpAiIntensity">—</p>
 
         <div class="actions" style="margin-top:16px">
-          <button type="button" class="btn primary" id="vpAiGenerate">🤖 AI로 시간표 채우기</button>
+          <button type="button" class="btn primary" id="vpAiGenerate">🗓️ 자동으로 시간표 채우기</button>
         </div>
       </div>
     </div>
@@ -2353,7 +2343,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <div class="vp-wrap">
           <table class="vp-table" id="vpTable"></table>
         </div>
-        <p class="tiny">위 <b>AI 계획표 세우기</b>로 큰 틀을 먼저 잡은 뒤 여기서 다듬는 순서를 권합니다. 칸을 눌러 바로 내용을 적을 수 있고, 요일 이름도 눌러서 바꿀 수 있으며, 시간대는 자유롭게 추가·삭제할 수 있습니다.
+        <p class="tiny">위 <b>자동 계획표 세우기</b>로 큰 틀을 먼저 잡은 뒤 여기서 다듬는 순서를 권합니다. 칸을 눌러 바로 내용을 적을 수 있고, 요일 이름도 눌러서 바꿀 수 있으며, 시간대는 자유롭게 추가·삭제할 수 있습니다.
           <b>위아래·양옆으로 같은 내용을 적으면 저장할 때 하나의 큰 칸으로 합쳐집니다.</b></p>
       </div>
     </div>
@@ -2423,9 +2413,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       <div class="card-head">
         <span class="ci">🏆</span><h3>순공 시간 랭킹</h3>
         <span class="right">
-          <div class="tabs" id="rankTabs">
-            <button type="button" data-range="today" class="on">오늘</button>
-            <button type="button" data-range="week">이번 주</button>
+          <div class="tabs" id="rankTabs" role="tablist" aria-label="랭킹 기간">
+            <button type="button" data-range="today" class="on" role="tab" aria-selected="true">오늘</button>
+            <button type="button" data-range="week" role="tab" aria-selected="false">이번 주</button>
           </div>
         </span>
       </div>
@@ -2460,8 +2450,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     </div>
 
     <div class="lg-modes" id="lgModes" role="tablist" aria-label="리그 종류">
-      <button type="button" class="lg-mode on" data-mode="class" role="tab">🏫 반 대항</button>
-      <button type="button" class="lg-mode" data-mode="school" role="tab">🏛️ 학교 대항</button>
+      <button type="button" class="lg-mode on" data-mode="class" role="tab" aria-selected="true">🏫 반 대항</button>
+      <button type="button" class="lg-mode" data-mode="school" role="tab" aria-selected="false">🏛️ 학교 대항</button>
     </div>
 
     <div class="lg-filters" id="lgFilters">
@@ -2518,7 +2508,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     <p class="tiny lg-disclaimer">🔒 <b>리그에는 실제 기록이 있는 반·학교만 올라갑니다.</b> 지어낸 상대는 넣지 않습니다.
       <b>리그 참가를 켜면</b> 같은 리그를 켠 다른 반·학교의 집계가 서버에서 내려와 순위가 됩니다.
       <b>끄면</b> 우리 반만 보입니다. 반 대항에 들어가려면 <b>설정 → 학급 대항전</b>도 함께 켜야 합니다.
-      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호이며, 학급 대항을 켜면 학년·반과 닉네임이 더해집니다.
+      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부이며, 학급 대항을 켜면 학교급·학년·반과 닉네임이 더해집니다.
       참가 여부는 [설정]에서 언제든 바꿀 수 있습니다.</p>
   </section>
 
@@ -2654,7 +2644,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 참가</h3></div>
       <div class="card-body">
         <p class="tiny" style="margin:0 0 14px">이 앱은 원래 모든 기록을 <b>이 브라우저에만</b> 보관합니다.
-          학교 리그에 참가하면 <b>딱 아래 네 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
+          학교 리그에 참가하면 <b>딱 아래 다섯 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
           끄면 즉시 전송이 멈춥니다.</p>
 
         <div class="cl-what">
@@ -2665,13 +2655,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
               <li><b>주차</b> — 그 주 월요일 날짜</li>
               <li><b>순공 시간</b> — 그 주 내 합계(분)</li>
               <li><b>기기 번호</b> — 무작위 숫자. 같은 사람을 두 번 세지 않으려고 씁니다.</li>
+              <li><b>랭킹 숨김 여부</b> — 같은 반 순위표에서 내 줄을 보일지 정합니다.</li>
             </ul>
           </div>
           <div class="cl-no">
             <p class="cl-h">🚫 전송되지 않는 것</p>
             <ul>
-              <li>이름</li>
-              <li>학년 · 반 <em>— 아래 학급 대항전을 따로 켠 경우에만 전송</em></li>
+              <li>닉네임 · 학교급 · 학년 · 반 <em>— 아래 학급 대항전을 따로 켠 경우에만 전송</em></li>
               <li>과목 · 시험 일정</li>
               <li>뇌 컨디션 점수와 수면 · 스트레스 입력값</li>
               <li>배지 · 사운드 설정 · 나이스 인증키</li>
@@ -2679,10 +2669,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           </div>
         </div>
 
-        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="cloudOn"><span><b>학교 리그에 참가합니다</b> — 위 네 가지 전송에 동의합니다</span></label>
+        <label class="toggle" style="margin-top:18px"><input type="checkbox" id="cloudOn"><span><b>학교 리그에 참가합니다</b> — 위 다섯 가지 전송에 동의합니다</span></label>
 
         <p class="tiny" id="cloudMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b>
-          학교명과 학습 시간이 외부 서버에 저장됩니다.</p>
+          학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부가 외부 서버에 저장됩니다.</p>
 
         <!-- 학교 리그와 별개 동의. 기존 참가자는 "학년·반은 전송하지 않는다" 는
              조건으로 동의했으므로, 여기서 다시 묻지 않고 켜면 안 된다. -->
@@ -2716,8 +2706,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     <div class="card wide">
       <div class="card-head"><span class="ci">🙋</span><h3>관리자에게 내 기록 보이기</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px"><b>학교 리그와는 별개의 기능입니다.</b> 리그는 학교 합계만 다뤄
-          누가 누군지 알 수 없지만, 이건 <b>내 닉네임이 그대로 관리자 화면에 뜹니다.</b>
+        <p class="tiny" style="margin:0 0 14px"><b>학교 리그와는 별개의 기능입니다.</b> 기본 학교 리그 관리자 목록은 닉네임을 읽지 않지만,
+          이 기능을 켜면 <b>내 닉네임이 그대로 관리자 화면에 뜹니다.</b>
           둘 다 각자 따로 켜고 끌 수 있습니다.</p>
 
         <div class="cl-what">
@@ -2838,10 +2828,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     <div class="card wide is-hidden" id="adminLeagueMembersCard">
       <div class="card-head"><span class="ci">🙈</span><h3>리그 참가자 — 이번 주 (익명)</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px"><b>학교 리그만 켠 학생</b>입니다.
-          이름이 없는 이유는 감춘 게 아니라, <b>애초에 서버로 이름을 보내지 않기 때문</b>입니다 —
-          가입할 때 "학교명과 학습 시간만 전송된다"고 안내하고 동의를 받았습니다.
-          이름까지 보려면 그 학생이 설정에서 <b>관리자에게 내 기록 보이기</b>를 직접 켜야 하고,
+        <p class="tiny" style="margin:0 0 14px">이 목록은 <b>학교 리그 참가자를 닉네임 없이 조회</b>합니다.
+          학급 대항전에 따로 동의한 참가자는 같은 반 순위표용 닉네임이 서버에 있을 수 있지만,
+          이 관리자 목록은 그 값을 읽지 않습니다. 관리자에게 이름까지 보이려면 학생이 설정에서
+          <b>관리자에게 내 기록 보이기</b>를 직접 켜야 하고,
           그러면 위쪽 <b>이름 있는 목록</b>에 나타납니다.</p>
         <button type="button" class="btn ghost sm" id="adminLeagueRefresh" style="margin:0 0 10px">↻ 새로고침</button>
         <div id="adminLeagueMembers" class="adm-feed"></div>
@@ -2860,7 +2850,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     <p class="tiny adm-scope is-hidden" id="adminServerScopeNote">🔒 <b>이 목록이 보여줄 수 있는 범위</b> —
       <b>이름이 보이는 것은</b> 설정에서 <b>관리자에게 내 기록 보이기</b>를 스스로 켠 학생뿐입니다.
-      <b>리그만 켠 학생</b>은 익명 참가자로만 보입니다 — 감춘 게 아니라 서버에 이름이 없기 때문입니다.
+      <b>리그 참가자 목록</b>은 닉네임을 조회하지 않아 익명으로만 보입니다.
       어느 쪽도 강제로 모으지 않습니다.
       이 계정으로 로그인한 사람은 <b>학교와 관계없이 서버에 있는 모든 기록</b>을 볼 수 있습니다
       (관리자가 한 명이라는 전제로 설계했습니다).</p>
@@ -2931,9 +2921,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 </main>
 
 <footer class="foot">
-  <p><b>Mindora</b> — 입력한 데이터는 이 브라우저에만 저장됩니다.
-    <b>학교 리그</b>를 켠 경우에만 학교명과 주간 학습 시간이 전송되며, <b>학급 대항전</b>을 따로 켜면 학년·반이 함께 전송됩니다.
-    이름과 개인 기록(과목·시험·수면·컨디션 점수)은 어느 경우에도 전송되지 않습니다.</p>
+  <p><b>Mindora</b> — 기본적으로 입력한 데이터는 이 브라우저에만 저장됩니다.
+    <b>학교 리그</b>를 켜면 학교명·주차·순공 시간·무작위 기기 번호·랭킹 숨김 여부가 전송됩니다.
+    <b>학급 대항전</b>을 따로 켜면 학년·반·닉네임이 추가로 전송되며, <b>관리자 공개</b>를 켜면 닉네임·학교명·주차·순공 시간·기기 번호가 서버에 저장되어 등록된 관리자에게 보입니다.
+    과목·시험·수면·스트레스·뇌 컨디션 점수는 어느 기능에서도 전송되지 않습니다.</p>
   <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 
@@ -3091,7 +3082,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         if (q === 2) return '자주 깨거나 얕게 잔 수면이에요. 시간은 채웠어도 회복은 덜 된 상태입니다.';
         if (q === 3) return '보통 수준의 수면의 질입니다. 큰 문제도, 큰 도움도 되지 않는 구간이에요.';
         if (q === 4) return '깊게 잘 잔 편이에요. 기억 공고화와 정서 조절에 유리합니다.';
-        return '매우 좋은 수면의 질입니다. 창의적 연결과 장기 기억 형성에 최적 조건이에요.';
+        return '매우 좋은 수면의 질입니다. 창의적 연결과 장기 기억 형성에 유리할 수 있는 조건이에요.';
       }
     },
 
@@ -3116,7 +3107,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       value: function (i) { return clamp(1 - i.stress / 10, 0, 1); },
       note: function (i) {
         var s = i.stress;
-        if (s >= 8) return '매우 높은 스트레스입니다. 코르티솔이 해마의 기억 형성과 확산적 사고를 직접 억제해요.';
+        if (s >= 8) return '매우 높은 스트레스입니다. 기억 형성과 유연한 사고에 불리할 수 있어요.';
         if (s >= 6) return '스트레스가 높은 편이에요. 암기와 창의적 사고에 특히 불리합니다.';
         if (s >= 4) return '중간 정도의 스트레스입니다. 심각하진 않지만 여유로운 사고에는 약간 부담이 돼요.';
         if (s >= 2) return '스트레스가 낮은 편이에요. 새로운 연결을 만드는 사고에 유리합니다.';
@@ -3139,7 +3130,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         var s = i.stress;
         if (s >= 8) return '과각성 상태입니다. 긴장이 오히려 작업기억 용량을 잡아먹어 수행이 무너져요.';
         if (s >= 6) return '각성이 최적 구간을 넘었어요. 압박감이 실수와 되읽기를 늘립니다.';
-        if (s >= 2 && s <= 5) return '여키스-도슨 곡선의 최적 각성 구간이에요. 적당한 긴장이 집중을 오히려 붙잡아 줍니다.';
+        if (s >= 2 && s <= 5) return '이 모델이 적정 긴장으로 보는 구간이에요. 적당한 긴장은 집중에 도움이 될 수 있습니다.';
         return '각성이 낮아 늘어지기 쉬운 상태예요. 마감 타이머나 목표 설정으로 긴장을 살짝 올리면 좋습니다.';
       }
     },
@@ -3195,7 +3186,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         if (h >= 13.0 && !i.meals.lunch) skipped.push('점심');
         if (h >= 19.0 && !i.meals.dinner) skipped.push('저녁');
         var t = i.hoursSinceMeal;
-        if (skipped.length >= 2) return skipped.join('·') + '을 걸렀습니다. 뇌는 포도당을 저장하지 못해 결식이 곧바로 작업기억 저하로 이어져요.';
+        if (skipped.length >= 2) return skipped.join('·') + '을 걸렀습니다. 긴 공복은 일부 사람에게 집중과 작업기억에 불리할 수 있어요.';
         if (skipped.length === 1) return skipped[0] + ' 결식이 확인됩니다. 특히 계산·작업기억 과제에서 손해가 큽니다.';
         if (t >= 6) return '마지막 식사 후 ' + round1(t) + '시간이 지나 혈당이 낮아진 구간이에요. 가벼운 간식이 필요합니다.';
         if (t <= 0.5) return '식사 직후라 소화로 혈류가 몰리는 시간대예요. 20~30분 뒤가 집중에 더 유리합니다.';
@@ -3275,9 +3266,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       },
       note: function (i) {
         var e = i.exercise;
-        if (e === 0) return '오늘 운동 기록이 없습니다. 10분 빠른 걷기만으로도 BDNF가 올라가 기억 형성에 도움이 돼요.';
+        if (e === 0) return '오늘 운동 기록이 없습니다. 10분 정도 빠르게 걸으면 각성을 높이고 다음 공부를 준비하는 데 도움이 될 수 있어요.';
         if (e < 20) return '가벼운 활동이 있었습니다. 20~45분까지 늘리면 기억력 이득이 뚜렷해집니다.';
-        if (e <= 60) return '유산소 운동이 최적 구간입니다. BDNF 분비가 해마의 기억 형성을 직접 돕습니다.';
+        if (e <= 60) return '적당한 유산소 운동을 한 날입니다. 기분 전환과 주의 전환에 도움이 될 수 있어요.';
         return '운동량이 많은 편이에요. 근피로가 집중을 방해할 수 있으니 회복 시간을 충분히 두세요.';
       }
     },
@@ -3986,7 +3977,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       out.push({ icon: '☕', title: '커피 1잔은 지금이 적기', text: '집중력이 낮고 아직 카페인이 없습니다. 15시 이전 1잔은 이득이 손해보다 큽니다.' });
     }
     if (i.exercise === 0) {
-      out.push({ icon: '🚶', title: '10분 빠른 걷기', text: '긴 휴식 때 밖에서 10분만 걸으세요. BDNF가 올라가 바로 다음 블록의 기억 형성이 좋아집니다. 실내 스트레칭보다 효과가 큽니다.' });
+      out.push({ icon: '🚶', title: '10분 빠른 걷기', text: '긴 휴식 때 가능하면 10분 정도 걸어 보세요. 몸을 움직이면 각성을 높이고 다음 블록을 준비하는 데 도움이 될 수 있습니다.' });
     }
     if (i.hoursSinceMeal >= 5) {
       out.push({ icon: '🍎', title: '첫 휴식에 가벼운 간식', text: '마지막 식사 후 시간이 오래 지났습니다. 견과류나 과일처럼 혈당을 급격히 올리지 않는 것으로 채우세요. 단 음료는 1시간 뒤 급락을 부릅니다.' });
@@ -4960,9 +4951,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 /* =========================================================================
  * group.js — 학교·학년 기반 스터디 그룹과 순공 시간 랭킹
  *
- * 이 앱은 서버가 없다. 그래서 그룹원 기록은 "공유 코드"(Base64 문자열)를
- * 주고받아 각자의 브라우저에 저장하는 방식으로 모은다.
- * 자동 동기화는 되지 않지만, 코드를 교환하면 실제로 함께 랭킹을 볼 수 있다.
+ * 로컬 그룹원 기록과 예전 "공유 코드"(Base64 문자열) 호환을 담당한다.
+ * 현재 같은 반 자동 동기화는 cloud.js의 서버 연동을 통해 이 목록 위에 덮어쓴다.
  * ========================================================================= */
 (function (global) {
   'use strict';
@@ -5807,10 +5797,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /**
    * 그 주에 리그 시간을 올린 참가자를 개별로 받아 온다 (관리자 전용).
    *
-   * 이름은 없다 — league_report 에 닉네임 컬럼 자체가 없기 때문이다.
-   * 학생에게 "이름은 전송되지 않는다" 고 안내하고 받은 동의라 그대로 지킨다.
-   * 이름이 필요하면 학생이 [관리자에게 내 기록 보이기] 를 켜야 하고,
-   * 그때는 student_report 로 들어와 이름 있는 목록에 뜬다.
+   * 이 관리자 조회는 닉네임을 선택하지 않는다. 학급 대항전에 따로 동의한
+   * 참가자는 league_report 에 닉네임이 있을 수 있지만, 그 값은 같은 반
+   * 순위표에서만 쓴다. 관리자에게 이름을 보여 주려면 학생이 별도의
+   * [관리자에게 내 기록 보이기]를 켜야 하고, 그때 student_report에 들어온다.
    *
    * schema_admin_league.sql 을 실행하지 않았다면 권한이 없어 빈 배열이 온다.
    */
@@ -7904,7 +7894,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     // 3) 스트레스가 높은데 자극적인 소리를 고른 경우
     if (i.stress >= 7 && !base.calm) {
       return suggest('wave',
-        '스트레스가 ' + i.stress + '/10로 높습니다. 지금 설정된 ' + base.name + '은 자극이 있는 편이라, 천천히 오르내리는 파도 소리로 바꿔 두었습니다.'
+          '스트레스가 ' + i.stress + '/10로 높습니다. 지금 설정된 소리(' + base.name + ')는 자극이 있는 편이라, 천천히 오르내리는 파도 소리로 바꿔 두었습니다.'
       ) ? result : result;
     }
     // 4) 피로가 높은데 단조로운 소리라 더 처질 수 있는 경우 (독해형은 제외)
@@ -7970,6 +7960,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   };
 
   function fmtDur(min) {
+    if (min > 0 && min < 1) return Math.max(1, Math.round(min * 60)) + '초';
     var m = Math.round(min);
     var h = Math.floor(m / 60), r = m % 60;
     if (h && r) return h + '시간 ' + r + '분';
@@ -8459,6 +8450,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return pad(hh) + ':' + pad(mm);
   }
   function fmtDur(min) {
+    if (min > 0 && min < 1) return Math.max(1, Math.round(min * 60)) + '초';
     var m = Math.round(min);
     var h = Math.floor(m / 60), r = m % 60;
     if (h && r) return h + '시간 ' + r + '분';
@@ -8519,7 +8511,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     toastEl.textContent = msg;
     toastEl.className = 'toast show' + extra;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toastEl.className = 'toast' + extra; }, kind === 'party' ? 4200 : 3200);
+    toastTimer = setTimeout(function () {
+      toastEl.className = 'toast' + extra;
+      toastEl.textContent = '';
+      toastEl.removeAttribute('aria-live');
+    }, kind === 'party' ? 4200 : 3200);
   }
 
   /** 축하할 게 여러 개면 하나씩 순서대로 띄운다 */
@@ -8586,7 +8582,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       // 단계와 기능 사이에 한 번만 선을 그어 두 묶음을 구분한다
       var div = '';
       if (p.tool && !dividerDone) { div = '<span class="step-div" aria-hidden="true"></span>'; dividerDone = true; }
-      return div + '<button type="button" class="step' + (p.tool ? ' is-tool' : '') + '" data-go="' + p.id + '">' +
+      var accessibleName = p.tool ? p.label : p.num + ' ' + p.label;
+      return div + '<button type="button" class="step' + (p.tool ? ' is-tool' : '') + '" data-go="' + p.id + '" aria-label="' + esc(accessibleName) + '">' +
         (p.tool ? '' : '<i>' + p.num + '</i>') +
         '<span>' + esc(p.label) + '</span></button>';
     }).join('');
@@ -8600,6 +8597,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $$('.step').forEach(function (b) {
       var on = b.dataset.go === id;
       b.classList.toggle('is-active', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
       if (on && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
   }
@@ -8626,7 +8625,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   }
 
   /** 실제 페이지 전환 */
-  function goPage(id, skipHash) {
+  function goPage(id, skipHash, replaceHash) {
     var open = openPages();
     var allowed = open.some(function (p) { return p.id === id; });
 
@@ -8666,12 +8665,27 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (id === 'secSettings') renderSettingsPage();
     // 같은 반 명단은 서버에서 오므로, 들어올 때마다 다시 받아 온다
     if (id === 'secGroup') renderGroup();
+    // 타이머에서 막 기록한 짧은 구간도 즉시 보이도록 진입할 때 다시 집계한다
+    if (id === 'secReport') renderReport();
 
     var pg = pageBy(id);
     if (!skipHash && pg) {
-      try { history.replaceState(null, '', '#' + pg.hash); } catch (e) { location.hash = pg.hash; }
+      var nextHash = '#' + pg.hash;
+      if (location.hash !== nextHash) {
+        try {
+          if (replaceHash) history.replaceState(null, '', nextHash);
+          else history.pushState(null, '', nextHash);
+        } catch (e) { location.hash = pg.hash; }
+      }
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!skipHash) {
+      var heading = el.querySelector('h2');
+      if (heading) {
+        heading.setAttribute('tabindex', '-1');
+        try { heading.focus({ preventScroll: true }); } catch (e) { heading.focus(); }
+      }
+    }
   }
 
   var goto = goPage; // 기존 호출부 호환
@@ -8717,7 +8731,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   function paintSegs() {
     $$('.seg').forEach(function (seg) {
       var hidden = $(seg.dataset.target);
-      $$('button', seg).forEach(function (b) { b.classList.toggle('on', b.dataset.v === hidden.value); });
+      $$('button', seg).forEach(function (b) {
+        var on = b.dataset.v === hidden.value;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
     });
   }
 
@@ -8856,6 +8874,22 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   var acIndex = -1, acTimer = null, acSeq = 0;
 
+  function renderSchoolChoiceStatus() {
+    var el = $('pfSchoolStatus');
+    if (!el) return;
+    var school = $('pfSchool').value.trim();
+    var prev = Store.profile();
+    var picked = state.pickedSchool && state.pickedSchool.name === school;
+    var saved = prev && prev.neis && prev.neis.name === school;
+    if (picked || saved) {
+      el.textContent = '✅ 나이스 학교를 선택했습니다. 급식과 학급 시간표를 조회할 수 있습니다.';
+    } else if (school) {
+      el.textContent = '⚠ 직접 입력한 학교입니다. 저장은 가능하지만 급식과 학급 시간표는 조회할 수 없습니다.';
+    } else {
+      el.textContent = '목록에서 실제 학교를 선택하면 급식과 학급 시간표를 볼 수 있습니다.';
+    }
+  }
+
   function acItems() { return $$('#schoolAc .ac-item'); }
 
   function closeAc() { $('schoolAc').classList.add('is-hidden'); acIndex = -1; }
@@ -8879,6 +8913,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       state.pickedSchool = null; // 직접 입력한 이름은 코드가 없다
     }
     closeAc();
+    renderSchoolChoiceStatus();
     $('pfSchool').focus();
   }
 
@@ -8952,7 +8987,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   function initSchoolAc() {
     var inp = $('pfSchool');
-    inp.addEventListener('input', function () { state.pickedSchool = null; openAc(); });
+    inp.addEventListener('input', function () { state.pickedSchool = null; renderSchoolChoiceStatus(); openAc(); });
     inp.addEventListener('focus', openAc);
     inp.addEventListener('blur', function () { setTimeout(closeAc, 150); });
     $('pfLevel').addEventListener('change', function () { if (document.activeElement === inp) openAc(); });
@@ -8998,10 +9033,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       fillGradeOptions(p.grade);
       $('pfClass').value = p.klass || '';
       $('pfGoal').value = p.goal || 25;
+      state.pickedSchool = p.neis || null;
       syncAllRanges();
     } else {
+      state.pickedSchool = null;
       fillGradeOptions();
     }
+    renderSchoolChoiceStatus();
     renderCloudSettings(); // pfLeague 체크박스를 지금의 Cloud 상태로 맞춘다
     $('cancelProfile').style.display = p ? '' : 'none';
     goPage('secProfile');
@@ -9013,6 +9051,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (!nick) { toast('닉네임을 입력해 주세요.', true); $('pfNick').focus(); return; }
     if (!school) { toast('학교명을 입력해 주세요.', true); $('pfSchool').focus(); return; }
 
+    var prev = Store.profile();
+    var hasNeisSchool = (state.pickedSchool && state.pickedSchool.name === school) ||
+      (prev && prev.neis && prev.neis.name === school);
+    if (!hasNeisSchool && $('pfLevel').value !== '기타' &&
+        !confirm('목록에서 실제 학교를 선택하지 않았습니다. 이대로 저장하면 급식과 학급 시간표를 볼 수 없습니다.\n\n직접 입력한 이름으로 계속할까요?')) return;
+
     /* 학년이 비면 반 리그에 조용히 못 들어간다. 목록이 아직 안 채워진 상태로
      * 저장되는 경우가 있어(선택지가 비어 있으면 value 가 '' 다) 여기서 막는다. */
     if (!$('pfGrade').value) {
@@ -9022,7 +9066,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       }
     }
 
-    var prev = Store.profile();
     var p = {
       nick: nick, school: school,
       level: $('pfLevel').value,
@@ -9110,9 +9153,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     collapseResultDetail();
   }
 
-  /* ------------------------------------------------------- AI 브리핑 한 줄
+  /* ------------------------------------------------------- 규칙 기반 브리핑 한 줄
    * 점수만 늘어놓지 않고, 어제 대비 변화 + 오늘 먼저/뒤로 할 과목 유형까지
-   * 한 문장으로 묶어 "AI가 나를 보고 말해준다"는 느낌을 준다. */
+   * 한 문장으로 묶어 오늘 결과를 빠르게 이해하게 한다. */
 
   function bestTypeFor(capId) {
     var best = null, bestW = -1;
@@ -10369,7 +10412,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   }
 
   /** 07:00~23:00 빈 줄만 만든다.
-   *  예시 내용을 채워 두지 않는 이유는, AI 계획표가 먼저 큰 틀을 세우고
+   *  예시 내용을 채워 두지 않는 이유는, 자동 계획표가 먼저 큰 틀을 세우고
    *  사용자가 그 위에서 다듬는 순서이기 때문이다. 남의 계획을 지우는 일부터
    *  시키면 시작 문턱만 높아진다. */
   function vpEmptyRows() {
@@ -10882,7 +10925,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     });
   }
 
-  /* ------------------------------------------------------- AI 계획표 자동 채우기 */
+  /* ------------------------------------------------------- 규칙 기반 계획표 자동 채우기 */
 
   /* 요일 칩은 시간표의 열과 1:1로 맞아야 하므로 열 이름에서 직접 만든다.
    * 사용자가 요일 이름을 고쳐 뒀다면 칩도 그 이름을 따라간다. */
@@ -10986,38 +11029,18 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return h === 0 ? 24 : h;
   }
 
-  /** 목표 등급 상승폭과 실제 수면 시간으로 "몇 시간 공부하고 한 시간 쉴지" 를 정한다.
-   *
-   *  올리려는 폭이 클수록 휴식을 줄이지만, 잠이 모자라면 다시 늘린다.
-   *  수면이 부족한 상태로 몰아붙이는 계획은 어차피 지켜지지 않고,
-   *  이 앱이 수면을 가장 큰 변수로 쓰는 이상 계획표만 예외일 수는 없다. */
+  /** 실제로 잘 수 있는 시간을 보고 "몇 시간 공부하고 한 시간 쉴지" 를 정한다.
+   *  성적 목표는 휴식량을 줄이는 근거로 쓰지 않는다. */
   function vpAiRestPlan() {
-    var now = parseInt($('vpAiGradeNow').value, 10) || 4;
-    var goal = parseInt($('vpAiGradeGoal').value, 10) || 2;
-    var gap = Math.max(0, now - goal);
     var sleepH = vpAiSleepHours();
+    var run = 2;
+    var why = '성적 목표와 관계없이 2시간마다 쉬는 표준 리듬으로 잡았습니다';
 
-    var run = gap >= 4 ? 4 : (gap >= 2 ? 3 : 2);
-    var why = gap >= 4 ? '등급을 ' + gap + '단계 올리는 목표라 휴식을 최소로 줄였습니다'
-            : gap >= 2 ? '등급을 ' + gap + '단계 올리는 목표라 휴식을 한 칸 줄였습니다'
-            : gap === 1 ? '한 단계 목표라 표준 리듬으로 잡았습니다'
-            : '지금 등급을 지키는 목표라 표준 리듬으로 잡았습니다';
-
-    // 수면은 목표보다 세게 잡는다. 잠이 모자란 채로 몰아붙이는 계획은 지켜지지 않는다.
-    // 반대로 늘려 주는 쪽은 9시간부터 — 8시간은 넉넉한 게 아니라 정상이라 기준이 될 수 없다.
     if (sleepH < 6) {
-      run = Math.max(2, run - 1);
-      why += '. 다만 잘 수 있는 시간이 ' + fmtDur(sleepH * 60) + '뿐이라 휴식을 되돌렸습니다';
-    } else if (sleepH >= 9 && gap >= 2) {
-      run += 1;
-      why += '. 수면 ' + fmtDur(sleepH * 60) + '으로 넉넉해 더 몰아서 배치했습니다';
+      run = 1;
+      why = '잘 수 있는 시간이 ' + fmtDur(sleepH * 60) + '뿐이라 1시간마다 쉬도록 늘렸습니다';
     }
-
-    // 식사가 이미 하루를 3~4칸씩 토막 내 놓기 때문에, 4시간을 넘겨 잡으면
-    // 어차피 연속 공부가 그만큼 이어지지 않아 계획이 더 빡세지지도 않는다.
-    // 숫자만 커지고 결과가 같은 구간을 만들지 않으려고 여기서 끊는다.
-    run = Math.min(4, Math.max(2, run));
-    return { run: run, why: why, sleepH: sleepH, gap: gap };
+    return { run: run, why: why, sleepH: sleepH };
   }
 
   function renderVpAiIntensity() {
@@ -11028,14 +11051,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       return;
     }
     var p = vpAiRestPlan();
-    var tail = p.run >= 4
-      // 식사로 이미 끊기는 하루라, 4시간 기준에서는 쉬는 칸이 거의 안 생긴다.
-      // 그걸 숨기면 "휴식을 켰는데 왜 없냐" 는 말이 나온다.
-      ? ' 이 강도에서는 쉬는 칸이 거의 생기지 않고, 식사 시간이 사실상 유일한 휴식이 됩니다.'
-      : '';
-    el.innerHTML = '잘 수 있는 시간 <b>' + fmtDur(p.sleepH * 60) + '</b> · 목표 <b>' +
-      (p.gap ? p.gap + '단계 상승' : '현상 유지') + '</b> → <b>' + p.run +
-      '시간 공부마다 1시간 휴식</b>으로 배치합니다. ' + p.why + '.' + tail;
+    el.innerHTML = '잘 수 있는 시간 <b>' + fmtDur(p.sleepH * 60) + '</b> → <b>' + p.run +
+      '시간 공부마다 1시간 휴식</b>으로 배치합니다. ' + p.why + '.';
   }
 
   /** 기상·취침·식사·학원 시간을 입력받아 시간표 칸을 자동으로 채운다.
@@ -11076,7 +11093,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     // 빈 표라면 지울 것이 없으니 굳이 되묻지 않는다
     if (vpHasContent(state.vacplan) &&
-        !confirm('지금 시간표 내용을 지우고 AI로 새로 세울까요? 되돌릴 수 없습니다.')) return;
+        !confirm('지금 시간표 내용을 지우고 자동으로 새로 세울까요? 되돌릴 수 없습니다.')) return;
 
     var days = state.vacplan.days;
     var hours = [];
@@ -11219,13 +11236,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       buildVpTable();
       vpRenderPreview();
     });
-    var gradeOpts = '';
-    for (var g = 1; g <= 9; g++) gradeOpts += '<option value="' + g + '">' + g + '등급</option>';
-    $('vpAiGradeNow').innerHTML = gradeOpts;
-    $('vpAiGradeGoal').innerHTML = gradeOpts;
-    $('vpAiGradeNow').value = '4';
-    $('vpAiGradeGoal').value = '3';
-
     addVpAiAcademyRow();
     $('vpAiAcademyAdd').addEventListener('click', function () { addVpAiAcademyRow(); });
     addVpAiSubjectRow(); addVpAiSubjectRow(); addVpAiSubjectRow();
@@ -11233,7 +11243,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $('vpAiSubjectList').addEventListener('input', renderVpAiSubjectTotal);
     $('vpAiGenerate').addEventListener('click', vpAiGenerate);
 
-    ['vpAiWake', 'vpAiSleep', 'vpAiGradeNow', 'vpAiGradeGoal', 'vpAiAutoRest'].forEach(function (id) {
+    ['vpAiWake', 'vpAiSleep', 'vpAiAutoRest'].forEach(function (id) {
       $(id).addEventListener('change', renderVpAiIntensity);
     });
     renderVpAiIntensity();
@@ -11259,11 +11269,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       state.vacplan = vpDefaultModel();
       vpSave();
       renderVacPlanPage();
-      toast('빈 표로 되돌렸습니다. AI 계획표 세우기로 다시 시작해 보세요.');
+      toast('빈 표로 되돌렸습니다. 자동 계획표 세우기로 다시 시작해 보세요.');
     });
 
     renderVacPlanPage();
-    // 아직 아무것도 안 짠 상태라면 첫 화면에서 바로 AI 카드를 펼쳐 준다.
+    // 아직 아무것도 안 짠 상태라면 첫 화면에서 바로 자동 계획표 카드를 펼쳐 준다.
     // 빈 표만 덩그러니 보여 주면 무엇부터 해야 할지 알 수 없다.
     if (!vpHasContent(state.vacplan)) {
       $('vpAiBody').classList.remove('is-hidden');
@@ -11793,7 +11803,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var dPct = r.deltaPct === null ? null : Math.round(r.deltaPct);
     $('repStats').innerHTML =
       '<div class="rs hi"><div class="rs-k">주간 총 순공 시간</div><div class="rs-v">' +
-        Math.floor(r.totalMin / 60) + '<small>시간</small> ' + Math.round(r.totalMin % 60) + '<small>분</small></div>' +
+        durHtml(r.totalMin) + '</div>' +
         (dPct === null ? '<div class="rs-d flat">비교할 지난주 기록 없음</div>'
           : '<div class="rs-d ' + (dPct > 0 ? 'up' : dPct < 0 ? 'dn' : 'flat') + '">지난주 대비 ' + (dPct > 0 ? '+' : '') + dPct + '%</div>') +
       '</div>' +
@@ -12014,7 +12024,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (!b) return;                        // 프로필 전에는 그릴 게 없다
 
     $$('#lgModes .lg-mode').forEach(function (btn) {
-      btn.classList.toggle('on', btn.dataset.mode === b.mode);
+      var on = btn.dataset.mode === b.mode;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     renderLeagueFilters(b);
 
@@ -12079,7 +12091,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var badge = cs.enabled
       ? '<span class="lg-cloud">🔗 ' + (cs.lastSync ? agoText(cs.lastSync) + ' 동기화' : '동기화 중') + '</span>'
       : '<span class="lg-cloud off">📴 이 기기만</span>';
-    $('lgTierLabel').innerHTML = esc(b.tier.name) + ' 리그 · ' + b.size + '개교 참가' + badge;
+    $('lgTierLabel').innerHTML = esc(b.tier.name) + ' 리그 · ' + b.size +
+      (b.mode === 'class' ? '개 반 참가' : '개교 참가') + badge;
 
     /* 승강 안내 */
     $('lgZoneNote').textContent = !b.ranked3
@@ -12168,7 +12181,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     if ($('pfLeagueNote')) {
       $('pfLeagueNote').innerHTML = s.configured
-        ? '학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다. ' +
+        ? '학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다. ' +
           '학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며, ' +
           '같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b> ' +
           '<b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.'
@@ -12197,7 +12210,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       el.className = 'neis-status show warn';
       el.innerHTML = '서버가 아직 연결돼 있지 않습니다. ' +
         '<b>supabase/schema.sql</b> 을 실행하고 <b>src/js/cloud.js</b> 상단에 프로젝트 주소와 anon 키를 넣으면 켜집니다. ' +
-        '그때까지 리그는 이 브라우저가 아는 학교만 보여 줍니다.';
+        '그때까지 리그는 이 브라우저의 내 기록과 예전에 저장한 로컬 그룹 기록만 보여 줍니다.';
       return;
     }
     if (!s.enabled) {
@@ -12232,8 +12245,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (!el) return;
     el.addEventListener('change', function () {
       if (this.checked) {
-        if (!confirm('학교명과 주간 학습 시간이 외부 서버로 전송됩니다.\n' +
-                     '이름·학년·반과 개인 기록은 전송되지 않습니다.\n\n' +
+        if (!confirm('학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 외부 서버로 전송됩니다.\n' +
+                     '이 동의만으로는 닉네임·학년·반과 개인 기록이 전송되지 않습니다.\n\n' +
                      '만 14세 미만이라면 보호자와 함께 결정하세요.\n\n참가할까요?')) {
           this.checked = false;
           return;
@@ -12458,7 +12471,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     $('studentShareOn').addEventListener('change', function () {
       if (this.checked) {
-        if (!confirm('내 닉네임과 학교명, 주간 학습 시간이 관리자 계정에 그대로 보입니다.\n' +
+        if (!confirm('무작위 기기 번호·주차·닉네임·학교명·주간 학습 시간이 관리자 계정에 그대로 보입니다.\n' +
                      '(익명 처리되지 않습니다 — 관리자는 "누구"인지 압니다)\n\n' +
                      '만 14세 미만이라면 반드시 보호자와 함께 결정하세요.\n\n동의하고 켤까요?')) {
           this.checked = false;
@@ -12974,7 +12987,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       renderNav();
       // 주소창 해시가 있으면 그 페이지로, 없으면 입력 화면으로 시작
       var pg = pageByHash((location.hash || '').replace('#', ''));
-      goPage(pg ? pg.id : 'secInput', true);
+      if (pg) goPage(pg.id, true);
+      else goPage('secInput', false, true);
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';
@@ -13018,7 +13032,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     $$('#rankTabs button').forEach(function (b) {
       b.addEventListener('click', function () {
         state.rankRange = b.dataset.range;
-        $$('#rankTabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
+        $$('#rankTabs button').forEach(function (x) {
+          var on = x === b;
+          x.classList.toggle('on', on);
+          x.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
         renderGroup();
       });
     });

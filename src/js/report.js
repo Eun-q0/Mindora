@@ -23,6 +23,7 @@
   };
 
   function fmtDur(min) {
+    if (min > 0 && min < 1) return Math.max(1, Math.round(min * 60)) + '초';
     var m = Math.round(min);
     var h = Math.floor(m / 60), r = m % 60;
     if (h && r) return h + '시간 ' + r + '분';
