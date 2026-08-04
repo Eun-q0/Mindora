@@ -46,6 +46,7 @@
 
   function initial(nick) { return String(nick || '?').trim().charAt(0).toUpperCase() || '?'; }
 
+
   /* ----------------------------------------------------------- Base64 UTF-8 */
 
   function b64encode(str) {

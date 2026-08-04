@@ -1471,9 +1471,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   width: var(--av); height: var(--av); border-radius: 50%; flex-shrink: 0;
 }
 .av::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--line-2); }
+/* 캐릭터가 앉는 원판은 따뜻한 아이보리 — 살구빛 피부와 갈색 머리가 가장 잘 보인다.
+ * 다크 모드에서도 이 원판은 밝게 둔다(어두우면 얼굴이 묻힌다). */
 .av-in {
   position: absolute; inset: 7.5%; border-radius: 50%; overflow: hidden;
-  background: linear-gradient(160deg, #f5f1ff, #e8ecfd);
+  background: linear-gradient(165deg, #fdf8f2, #f6eee4);
 }
 .av-svg { display: block; width: 100%; height: 100%; }
 /* 링 없이 캐릭터만 (꾸미기 화면의 피부·머리·옷 미리보기) */
@@ -1766,8 +1768,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         <div class="card-head"><span class="ci">🎓</span><h3>내 프로필</h3></div>
         <div class="card-body">
           <div class="field">
-            <label for="pfNick">이름 / 닉네임 <em>랭킹에 표시됩니다</em></label>
-            <input type="text" id="pfNick" class="input" maxlength="12" placeholder="예) 지민">
+            <label for="pfNick">닉네임 <em>같은 반 친구들 순위표에 그대로 보입니다</em></label>
+            <input type="text" id="pfNick" class="input" maxlength="12" placeholder="예) 밤샘요정">
+            <p class="tiny" style="margin:6px 0 0">💡 <b>실명은 권하지 않습니다.</b>
+              학급 대항전을 켜면 이 이름이 같은 반 친구들에게 그대로 보입니다.
+              별명이나 별칭을 쓰세요 — 나중에 <b>설정</b>에서 언제든 바꿀 수 있습니다.</p>
           </div>
           <div class="field">
             <label for="pfSchool">학교명 <em>앞 글자만 쳐도 아래에서 고를 수 있어요</em></label>
@@ -1808,8 +1813,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
 
           <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
-          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 이름·시험·수면 같은 개인 기록은 전송되지 않습니다.
-            학년·반은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송됩니다.
+          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
+            학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며,
+            같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b>
             <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
 
           <div class="actions">
@@ -2407,7 +2413,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   <section id="secGroup" class="section is-hidden">
     <div class="sec-head">
       <h2><span class="sec-num">05</span> 그룹 랭킹</h2>
-      <p>같은 학교·학년 친구들과 순공 시간을 겨뤄 보세요. 공유 코드를 주고받으면 서로의 기록이 랭킹에 올라갑니다.</p>
+      <p>같은 반 친구들과 순공 시간을 겨뤄 보세요. <b>학급 대항전</b>을 켜면 같은 학교·학년·반은
+        따로 등록하지 않아도 자동으로 올라갑니다. 순위표에는 설정한 <b>닉네임</b>이 그대로 보입니다.</p>
     </div>
 
     <div class="group-hero" id="groupHero"></div>
@@ -2698,11 +2705,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
              조건으로 동의했으므로, 여기서 다시 묻지 않고 켜면 안 된다. -->
         <div class="cl-event" id="classEventBox">
           <p class="cl-h" style="margin:0 0 6px">🍗 학급 대항전</p>
-          <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>도 함께 전송해야 합니다.
-            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 학년·반도 다음 동기화에서 지워집니다.</p>
-          <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반 전송에 동의합니다</span></label>
+          <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>과 <b>닉네임</b>을 함께 전송해야 합니다.
+            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 값도 다음 동기화에서 지워집니다.</p>
+          <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반과 닉네임 전송에 동의합니다</span></label>
           <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반이면 <b>따로 등록하지 않아도</b> 자동으로 같은 판에 들어갑니다.
-            서로에게는 <b>이름 없이</b> 주마다 바뀌는 짧은 표시(예: A1B2)로만 보입니다.
+            순위표에는 <b>설정한 닉네임이 그대로</b> 보입니다 — <b>실명은 권하지 않습니다.</b>
+            이름을 보이고 싶지 않으면 아래 <b>내 랭킹 숨기기</b>를 켜세요.
             같은 반에서 <b>5명 이상</b>이 참가해야 순위가 공개됩니다.</p>
         </div>
 
@@ -4625,61 +4633,73 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* ------------------------------------------------------------- 피부 톤 */
 
   var SKINS = [
-    { id: 'light',  name: '밝은 톤', base: '#f6d8bd', shade: '#e7bd9b' },
-    { id: 'medium', name: '중간 톤', base: '#dda87b', shade: '#c48d61' },
-    { id: 'deep',   name: '진한 톤', base: '#9c6644', shade: '#82533a' }
+    { id: 'light',  name: '밝은 톤', base: '#f8e3d3', shade: '#eec9b3' },
+    { id: 'medium', name: '중간 톤', base: '#eabe98', shade: '#d7a67d' },
+    { id: 'deep',   name: '진한 톤', base: '#c48a64', shade: '#ab7251' }
   ];
 
   /* ------------------------------------------------------------- 머리 모양
    * 머리카락은 뒷머리(back)와 앞머리(front)로 나뉜다.
    * 얼굴을 그리기 전에 back, 그린 뒤에 front 를 얹어야 앞머리가 이마를 덮는다. */
 
-  var HC = '#3b3048';   // 머리카락
-  var HT = '#4d3f60';   // 머리카락 밝은 면
+  var HC = '#4b3327';   // 머리카락 — 따뜻한 다크 브라운
+  var HT = '#6b4a35';   // 결·하이라이트
 
   var HAIRS = [
-    { id: 'm-crop', name: '숏컷', sex: 'm', back: '',
-      front: '<path d="M29 47 C29 27 39 20 50 20 C61 20 71 27 71 47 C70 39 66 34 60 33 C55 32 45 32 40 33 C34 34 30 39 29 47 Z" fill="' + HC + '"/>' +
-             '<path d="M40 25 C46 22 56 22 62 26" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round"/>' },
+    /* ── 남성형 3종 ─────────────────────────────────────────────── */
 
-    { id: 'm-part', name: '가르마', sex: 'm', back: '',
-      front: '<path d="M29 47 C29 27 39 20 50 20 C61 20 71 27 71 47 C70 38 67 33 62 32 C58 39 48 41 42 36 C36 37 31 41 29 47 Z" fill="' + HC + '"/>' +
-             '<path d="M60 24 C56 30 50 33 44 33" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round"/>' },
+    { id: 'm-wave', name: '곱슬 웨이브', sex: 'm',
+      back: '<path d="M27 49 C25 27 38 17 50 17 C62 17 75 27 73 49 C72 55 67 56 65 50 L35 50 C33 56 28 55 27 49 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 47 C29 26 38 19 50 19 C62 19 71 26 71 47 C70 40 68 35 64 33 C61 38 56 39 52 36 C48 40 43 40 39 36 C34 38 31 41 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M37 25 C42 22 47 23 50 26" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round" opacity=".8"/>' +
+             '<path d="M56 24 C61 25 65 28 67 32" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round" opacity=".8"/>' },
 
-    { id: 'm-curl', name: '곱슬', sex: 'm', back: '',
-      front: '<path d="M30 47 C30 29 39 22 50 22 C61 22 70 29 70 47 C68 39 64 34 58 33 C52 32 46 32 41 34 C35 36 32 41 30 47 Z" fill="' + HC + '"/>' +
-             '<circle cx="36" cy="30" r="7" fill="' + HC + '"/><circle cx="46" cy="25" r="8" fill="' + HC + '"/>' +
-             '<circle cx="57" cy="26" r="8" fill="' + HC + '"/><circle cx="65" cy="32" r="6.5" fill="' + HC + '"/>' },
+    { id: 'm-fringe', name: '앞머리 숏컷', sex: 'm',
+      back: '<path d="M28 48 C27 26 38 17 50 17 C62 17 73 26 72 48 C71 53 67 54 65 49 L35 49 C33 54 29 53 28 48 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 46 C29 25 38 18 50 18 C62 18 71 25 71 46 C71 43 70 39 69 37 C60 40 40 40 31 37 C30 39 29 43 29 46 Z" fill="' + HC + '"/>' +
+             '<path d="M40 23 C46 21 54 21 60 24" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round" opacity=".75"/>' },
 
-    { id: 'f-long', name: '긴 생머리', sex: 'f',
-      back: '<path d="M26 42 C26 19 74 19 74 42 L74 92 L62 92 L62 50 L38 50 L38 92 L26 92 Z" fill="' + HC + '"/>',
-      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' +
-             '<path d="M31 92 L31 52" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".55"/>' +
-             '<path d="M69 92 L69 52" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".55"/>' },
+    { id: 'm-spiky', name: '짧은 뻗친 머리', sex: 'm',
+      back: '<path d="M29 48 C28 27 38 18 50 18 C62 18 72 27 71 48 C70 52 67 53 65 49 L35 49 C33 53 30 52 29 48 Z" fill="' + HC + '"/>',
+      front: '<path d="M30 45 C30 27 38 20 50 20 C62 20 70 27 70 45 C69 39 66 34 61 32 C56 31 44 31 39 32 C34 34 31 39 30 45 Z" fill="' + HC + '"/>' +
+             '<path d="M34 30 L33 21 L40 27 Z" fill="' + HC + '"/><path d="M43 25 L44 16 L50 24 Z" fill="' + HC + '"/>' +
+             '<path d="M54 24 L60 17 L59 27 Z" fill="' + HC + '"/><path d="M63 29 L69 24 L67 33 Z" fill="' + HC + '"/>' },
+
+    /* ── 여성형 5종 ─────────────────────────────────────────────── */
+
+    { id: 'f-wave', name: '긴 웨이브', sex: 'f',
+      back: '<path d="M25 43 C25 18 75 18 75 43 C77 53 72 59 76 69 C80 79 72 86 76 95 L61 95 L61 50 L39 50 L39 95 L24 95 C28 86 20 79 24 69 C28 59 23 53 25 43 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 47 C29 25 38 18 50 18 C62 18 71 25 71 47 C70 39 67 34 62 32 C57 37 46 38 40 34 C34 36 30 40 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M30 58 C34 64 28 70 32 78" stroke="' + HT + '" stroke-width="2.2" fill="none" opacity=".55"/>' +
+             '<path d="M70 58 C66 64 72 70 68 78" stroke="' + HT + '" stroke-width="2.2" fill="none" opacity=".55"/>' },
+
+    { id: 'f-bun', name: '올림머리', sex: 'f',
+      back: '<circle cx="50" cy="15" r="9.5" fill="' + HC + '"/>' +
+            '<path d="M29 47 C28 27 38 19 50 19 C62 19 72 27 71 47 C70 51 67 52 65 48 L35 48 C33 52 30 51 29 47 Z" fill="' + HC + '"/>',
+      front: '<path d="M30 45 C30 25 39 18 50 18 C61 18 70 25 70 45 C69 38 66 33 60 31 C56 35 44 35 40 31 C34 33 31 38 30 45 Z" fill="' + HC + '"/>' +
+             '<path d="M31 43 C29 51 30 58 33 63" stroke="' + HC + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+             '<path d="M69 43 C71 51 70 58 67 63" stroke="' + HC + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+             '<path d="M45 10 C50 8 56 10 58 14" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>' },
 
     { id: 'f-bob', name: '단발', sex: 'f',
-      back: '<path d="M27 43 C27 20 73 20 73 43 L73 68 Q73 72 68 71 L62 70 L62 50 L38 50 L38 70 L32 71 Q27 72 27 68 Z" fill="' + HC + '"/>',
-      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' +
-             '<path d="M33 68 C31 60 31 54 32 50" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".55"/>' },
+      back: '<path d="M27 43 C27 19 73 19 73 43 L73 66 Q73 71 68 70 L62 68 L62 50 L38 50 L38 68 L32 70 Q27 71 27 66 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 46 C29 24 38 18 50 18 C62 18 71 24 71 46 C71 42 70 38 69 36 C60 40 40 40 31 36 C30 38 29 42 29 46 Z" fill="' + HC + '"/>' +
+             '<path d="M33 66 C31 58 31 52 32 47" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".5"/>' },
 
-    { id: 'f-pony', name: '포니테일', sex: 'f',
-      back: '<ellipse cx="77" cy="62" rx="9" ry="17" fill="' + HC + '"/>' +
-            '<path d="M28 44 C28 21 72 21 72 44 L72 58 L62 58 L62 50 L38 50 L38 58 L28 58 Z" fill="' + HC + '"/>' +
-            '<rect x="66" y="41" width="8" height="6" rx="3" fill="#8b5a9c"/>',
-      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' +
-             '<path d="M42 22 C50 20 60 22 66 28" stroke="' + HT + '" stroke-width="2" fill="none" stroke-linecap="round"/>' },
+    { id: 'f-long', name: '긴 생머리', sex: 'f',
+      back: '<path d="M26 42 C26 18 74 18 74 42 L74 93 L61 93 L61 50 L39 50 L39 93 L26 93 Z" fill="' + HC + '"/>',
+      front: '<path d="M29 46 C29 24 38 18 50 18 C62 18 71 24 71 46 C71 42 70 38 69 36 C60 40 40 40 31 36 C30 38 29 42 29 46 Z" fill="' + HC + '"/>' +
+             '<path d="M31 93 L31 52" stroke="' + HT + '" stroke-width="2.2" fill="none" opacity=".5"/>' +
+             '<path d="M69 93 L69 52" stroke="' + HT + '" stroke-width="2.2" fill="none" opacity=".5"/>' },
 
-    { id: 'f-twin', name: '양갈래', sex: 'f',
-      back: '<ellipse cx="23" cy="66" rx="8" ry="15" fill="' + HC + '"/><ellipse cx="77" cy="66" rx="8" ry="15" fill="' + HC + '"/>' +
-            '<path d="M27 44 C27 21 73 21 73 44 L73 56 L62 56 L62 50 L38 50 L38 56 L27 56 Z" fill="' + HC + '"/>' +
-            '<rect x="20" y="46" width="7" height="6" rx="3" fill="#8b5a9c"/><rect x="73" y="46" width="7" height="6" rx="3" fill="#8b5a9c"/>',
-      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 66 33 60 32 C54 31 46 31 40 32 C34 33 30 38 29 47 Z" fill="' + HC + '"/>' },
-
-    { id: 'f-wave', name: '웨이브', sex: 'f',
-      back: '<path d="M26 42 C26 19 74 19 74 42 C74 52 79 58 74 66 C69 74 79 82 73 93 L61 93 L61 50 L39 50 L39 93 L27 93 C21 82 31 74 26 66 C21 58 26 52 26 42 Z" fill="' + HC + '"/>',
-      front: '<path d="M29 47 C29 26 39 19 50 19 C61 19 71 26 71 47 C70 38 65 33 58 33 C52 37 44 37 39 33 C34 35 30 39 29 47 Z" fill="' + HC + '"/>' +
-             '<path d="M32 56 C36 62 30 68 34 76" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".5"/>' +
-             '<path d="M68 56 C64 62 70 68 66 76" stroke="' + HT + '" stroke-width="2" fill="none" opacity=".5"/>' }
+    { id: 'f-braid', name: '땋은 머리', sex: 'f',
+      back: '<path d="M27 43 C27 19 73 19 73 43 L73 60 L62 60 L62 50 L38 50 L38 60 L27 60 Z" fill="' + HC + '"/>' +
+            '<ellipse cx="70" cy="62" rx="6" ry="5" fill="' + HC + '"/><ellipse cx="73" cy="70" rx="6" ry="5" fill="' + HC + '"/>' +
+            '<ellipse cx="71" cy="78" rx="5.5" ry="5" fill="' + HC + '"/><ellipse cx="74" cy="85" rx="5" ry="4.5" fill="' + HC + '"/>' +
+            '<path d="M66 62 C74 66 68 72 76 76" stroke="' + HT + '" stroke-width="1.6" fill="none" opacity=".6"/>' +
+            '<rect x="70" y="88" width="7" height="5" rx="2.5" fill="#c99aa6"/>',
+      front: '<path d="M29 47 C29 25 38 18 50 18 C62 18 71 25 71 47 C70 39 67 34 62 32 C57 37 46 38 40 34 C34 36 30 40 29 47 Z" fill="' + HC + '"/>' +
+             '<path d="M31 46 C30 53 31 58 33 62" stroke="' + HC + '" stroke-width="3" fill="none" stroke-linecap="round"/>' }
   ];
 
   /* --------------------------------------------------------------- 옷
@@ -4692,72 +4712,94 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     return '<path d="M41 69 C44 78 56 78 59 69 Z" fill="' + skin.base + '"/>';
   }
 
+  /** 셔츠 깃 — 목 아래로 벌어진 두 장 */
+  function collar(inner, edge) {
+    return '<path d="M40 69 L50 84 L44 70 Z" fill="' + inner + '"/>' +
+      '<path d="M60 69 L50 84 L56 70 Z" fill="' + inner + '"/>' +
+      '<path d="M40 69 L50 84 L60 69" stroke="' + edge + '" stroke-width="1.1" fill="none" stroke-linejoin="round"/>';
+  }
+
   var OUTFITS = [
-    { id: 'm-uniform', name: '교복 (넥타이)', sex: 'm', draw: function () {
-        return '<path d="' + BODY + '" fill="#2f3457"/>' +
-          '<path d="M39 70 L50 86 L61 70 L56 68.5 L50 79 L44 68.5 Z" fill="#f2f4fb"/>' +
-          '<path d="M50 82 L54.5 86 L52.5 100 L47.5 100 L45.5 86 Z" fill="#8f3a53"/>' +
-          '<path d="M22 100 C22 86 30 78 38 75" stroke="#3d4470" stroke-width="2" fill="none"/>' +
-          '<path d="M78 100 C78 86 70 78 62 75" stroke="#3d4470" stroke-width="2" fill="none"/>';
+    /* ── 남성형 5종 ─────────────────────────────────────────────── */
+
+    { id: 'm-shirt', name: '크림 셔츠', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#f2e7d6"/>' + neckHole(skin) +
+          '<path d="M42 69 L50 82 L58 69 L55 68 L50 76 L45 68 Z" fill="#e6d8c1"/>' +
+          collar('#fbf5ea', '#ddcdb4') +
+          '<path d="M50 84 L50 100" stroke="#ddcdb4" stroke-width="1.2"/>' +
+          '<rect x="59" y="86" width="9" height="8.5" rx="1.5" fill="none" stroke="#ddcdb4" stroke-width="1.2"/>';
       } },
-    { id: 'm-hoodie', name: '후드티', sex: 'm', draw: function (skin) {
-        return '<path d="' + BODY + '" fill="#4a54a8"/>' + neckHole(skin) +
-          '<path d="M33 72 C36 86 64 86 67 72 C62 69 38 69 33 72 Z" fill="#3f489a"/>' +
-          '<path d="M45 82 L44 95" stroke="#e8ecfb" stroke-width="2" stroke-linecap="round"/>' +
-          '<path d="M55 82 L56 95" stroke="#e8ecfb" stroke-width="2" stroke-linecap="round"/>';
+    { id: 'm-hoodie', name: '회색 후드티', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#c8ccd4"/>' + neckHole(skin) +
+          '<path d="M32 72 C35 87 65 87 68 72 C62 68 38 68 32 72 Z" fill="#b6bbc5"/>' +
+          '<path d="M45 84 L44 96" stroke="#f4f6f9" stroke-width="2.2" stroke-linecap="round"/>' +
+          '<path d="M55 84 L56 96" stroke="#f4f6f9" stroke-width="2.2" stroke-linecap="round"/>' +
+          '<path d="M32 95 C40 92 60 92 68 95" stroke="#b6bbc5" stroke-width="1.4" fill="none"/>';
       } },
-    { id: 'm-tee', name: '라운드 티셔츠', sex: 'm', draw: function (skin) {
-        return '<path d="' + BODY + '" fill="#7c5cff"/>' + neckHole(skin) +
-          '<path d="M40 69 C44 79 56 79 60 69" stroke="#6a4ae6" stroke-width="2" fill="none"/>' +
-          '<path d="M24 100 C24 88 28 80 34 76" stroke="#6a4ae6" stroke-width="2" fill="none"/>' +
-          '<path d="M76 100 C76 88 72 80 66 76" stroke="#6a4ae6" stroke-width="2" fill="none"/>';
+    { id: 'm-knit', name: '네이비 니트', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#333e5e"/>' + neckHole(skin) +
+          '<path d="M41 69 L50 83 L59 69 L55 67.5 L50 76 L45 67.5 Z" fill="#f7f8fb"/>' +
+          collar('#f7f8fb', '#d8dceb') +
+          '<path d="M40 70 C44 82 56 82 60 70" stroke="#28314c" stroke-width="2.4" fill="none"/>' +
+          '<path d="M24 100 C25 89 28 82 33 78" stroke="#28314c" stroke-width="1.6" fill="none"/>' +
+          '<path d="M76 100 C75 89 72 82 67 78" stroke="#28314c" stroke-width="1.6" fill="none"/>';
       } },
-    { id: 'm-cardi', name: '셔츠 + 가디건', sex: 'm', draw: function () {
-        return '<path d="' + BODY + '" fill="#6b7186"/>' +
-          '<path d="M40 70 L50 84 L60 70 L56 68.5 L50 77 L44 68.5 Z" fill="#f4f6fb"/>' +
-          '<path d="M44 76 L50 84 L56 76 L56 100 L44 100 Z" fill="#f4f6fb"/>' +
-          '<path d="M43 74 L43 100" stroke="#5b6076" stroke-width="2" fill="none"/>' +
-          '<path d="M57 74 L57 100" stroke="#5b6076" stroke-width="2" fill="none"/>';
+    { id: 'm-cardi', name: '베이지 가디건', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#ddc9ab"/>' + neckHole(skin) +
+          '<path d="M44 73 L50 84 L56 73 L56 100 L44 100 Z" fill="#f8f3e8"/>' +
+          '<path d="M43 71 L43 100" stroke="#c9b18e" stroke-width="1.6" fill="none"/>' +
+          '<path d="M57 71 L57 100" stroke="#c9b18e" stroke-width="1.6" fill="none"/>' +
+          '<path d="M40 69 L50 84 L60 69" stroke="#c9b18e" stroke-width="1.2" fill="none"/>' +
+          '<circle cx="50" cy="89" r="1.6" fill="#c9b18e"/><circle cx="50" cy="96" r="1.6" fill="#c9b18e"/>';
       } },
-    { id: 'm-track', name: '체육복', sex: 'm', draw: function (skin) {
-        return '<path d="' + BODY + '" fill="#39457e"/>' + neckHole(skin) +
-          '<path d="M41 69 C44 78 56 78 59 69" stroke="#f2f4fb" stroke-width="2.4" fill="none"/>' +
-          '<path d="M26 100 C26 88 30 80 35 76" stroke="#f2f4fb" stroke-width="3" fill="none"/>' +
-          '<path d="M74 100 C74 88 70 80 65 76" stroke="#f2f4fb" stroke-width="3" fill="none"/>';
+    { id: 'm-jacket', name: '블랙 셔츠 재킷', sex: 'm', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#2e2e34"/>' + neckHole(skin) +
+          '<path d="M42 69 L50 82 L58 69 L55 68 L50 76 L45 68 Z" fill="#25252a"/>' +
+          collar('#3a3a42', '#4c4c56') +
+          '<path d="M50 84 L50 100" stroke="#4c4c56" stroke-width="1.2"/>' +
+          '<rect x="31" y="86" width="10" height="9" rx="1.5" fill="none" stroke="#4c4c56" stroke-width="1.2"/>' +
+          '<rect x="59" y="86" width="10" height="9" rx="1.5" fill="none" stroke="#4c4c56" stroke-width="1.2"/>';
       } },
 
-    { id: 'f-uniform', name: '교복 (리본)', sex: 'f', draw: function () {
-        return '<path d="' + BODY + '" fill="#2f3457"/>' +
-          '<path d="M38 70 L50 88 L62 70 L57 68.5 L50 80 L43 68.5 Z" fill="#f2f4fb"/>' +
-          '<path d="M36 72 L44 78 L36 84 Z" fill="#4a5486" opacity=".9"/>' +
-          '<path d="M64 72 L56 78 L64 84 Z" fill="#4a5486" opacity=".9"/>' +
-          '<path d="M44 82 L50 86 L56 82 L54 90 L46 90 Z" fill="#b34a68"/>' +
-          '<circle cx="50" cy="85.5" r="2.4" fill="#8f3a53"/>';
+    /* ── 여성형 5종 ─────────────────────────────────────────────── */
+
+    { id: 'f-blouse', name: '리본 블라우스', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#f6ece0"/>' + neckHole(skin) +
+          '<path d="M39 70 C42 79 58 79 61 70 C57 67 43 67 39 70 Z" fill="#fcf7ef"/>' +
+          '<path d="M39 70 C42 79 58 79 61 70" stroke="#e3d5c0" stroke-width="1.2" fill="none"/>' +
+          '<path d="M44 78 L50 82 L56 78 L53 87 L47 87 Z" fill="#efdcc6"/>' +
+          '<circle cx="50" cy="81.5" r="2.2" fill="#e0c9ab"/>' +
+          '<rect x="58" y="87" width="8" height="7.5" rx="1.5" fill="none" stroke="#e3d5c0" stroke-width="1.1"/>';
       } },
-    { id: 'f-cardi', name: '가디건', sex: 'f', draw: function (skin) {
-        return '<path d="' + BODY + '" fill="#a89bd8"/>' + neckHole(skin) +
-          '<path d="M44 72 L50 82 L56 72 L56 100 L44 100 Z" fill="#f4f2fd"/>' +
-          '<path d="M43 71 L43 100" stroke="#9184c8" stroke-width="2" fill="none"/>' +
-          '<path d="M57 71 L57 100" stroke="#9184c8" stroke-width="2" fill="none"/>' +
-          '<circle cx="50" cy="90" r="1.6" fill="#9184c8"/><circle cx="50" cy="97" r="1.6" fill="#9184c8"/>';
+    { id: 'f-cardi', name: '핑크 가디건', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#eec4cc"/>' + neckHole(skin) +
+          '<path d="M44 73 L50 84 L56 73 L56 100 L44 100 Z" fill="#fbf3f4"/>' +
+          '<path d="M43 71 L43 100" stroke="#dda9b4" stroke-width="1.6" fill="none"/>' +
+          '<path d="M57 71 L57 100" stroke="#dda9b4" stroke-width="1.6" fill="none"/>' +
+          '<path d="M40 69 L50 84 L60 69" stroke="#dda9b4" stroke-width="1.2" fill="none"/>' +
+          '<circle cx="50" cy="89" r="1.6" fill="#dda9b4"/><circle cx="50" cy="96" r="1.6" fill="#dda9b4"/>';
       } },
-    { id: 'f-dress', name: '카라 원피스', sex: 'f', draw: function (skin) {
-        return '<path d="' + BODY + '" fill="#c4708c"/>' + neckHole(skin) +
-          '<path d="M39 70 L50 82 L61 70 L56 68 L50 75 L44 68 Z" fill="#fdf4f7"/>' +
-          '<path d="M34 74 C38 82 62 82 66 74" stroke="#ad5f7a" stroke-width="2" fill="none"/>' +
-          '<circle cx="50" cy="86" r="2" fill="#fdf4f7"/><circle cx="50" cy="94" r="2" fill="#fdf4f7"/>';
+    { id: 'f-sweater', name: '하늘색 스웨터', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#bad0e6"/>' + neckHole(skin) +
+          '<path d="M40 69 C44 80 56 80 60 69" stroke="#a3bcd6" stroke-width="3" fill="none"/>' +
+          '<path d="M30 86 C40 82 60 82 70 86" stroke="#a3bcd6" stroke-width="1.4" fill="none"/>' +
+          '<path d="M27 94 C40 90 60 90 73 94" stroke="#a3bcd6" stroke-width="1.4" fill="none"/>';
       } },
-    { id: 'f-hoodie', name: '후드티', sex: 'f', draw: function (skin) {
-        return '<path d="' + BODY + '" fill="#d1799a"/>' + neckHole(skin) +
-          '<path d="M33 72 C36 86 64 86 67 72 C62 69 38 69 33 72 Z" fill="#c26a8c"/>' +
-          '<path d="M45 82 L44 95" stroke="#fdf1f5" stroke-width="2" stroke-linecap="round"/>' +
-          '<path d="M55 82 L56 95" stroke="#fdf1f5" stroke-width="2" stroke-linecap="round"/>';
+    { id: 'f-tie', name: '화이트 셔츠 (리본타이)', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#f7f7fa"/>' + neckHole(skin) +
+          '<path d="M42 69 L50 82 L58 69 L55 68 L50 76 L45 68 Z" fill="#eceef4"/>' +
+          collar('#fdfdff', '#d9dce6') +
+          '<path d="M50 84 L50 100" stroke="#d9dce6" stroke-width="1.2"/>' +
+          '<path d="M45 79 L50 83 L55 79 L53 88 L47 88 Z" fill="#2f2f36"/>' +
+          '<circle cx="50" cy="82.5" r="2" fill="#1f1f25"/>';
       } },
-    { id: 'f-knit', name: '니트', sex: 'f', draw: function (skin) {
-        return '<path d="' + BODY + '" fill="#9d8fd6"/>' + neckHole(skin) +
-          '<path d="M40 69 C44 79 56 79 60 69" stroke="#8a7bc6" stroke-width="3" fill="none"/>' +
-          '<path d="M30 84 C40 80 60 80 70 84" stroke="#8a7bc6" stroke-width="1.6" fill="none"/>' +
-          '<path d="M27 92 C40 88 60 88 73 92" stroke="#8a7bc6" stroke-width="1.6" fill="none"/>';
+    { id: 'f-shirt', name: '올리브 셔츠', sex: 'f', draw: function (skin) {
+        return '<path d="' + BODY + '" fill="#9aa383"/>' + neckHole(skin) +
+          '<path d="M42 69 L50 82 L58 69 L55 68 L50 76 L45 68 Z" fill="#8a9374"/>' +
+          collar('#a7b090', '#7d8768') +
+          '<path d="M50 84 L50 100" stroke="#7d8768" stroke-width="1.2"/>' +
+          '<circle cx="50" cy="89" r="1.5" fill="#e9ecdf"/><circle cx="50" cy="96" r="1.5" fill="#e9ecdf"/>' +
+          '<rect x="59" y="86" width="9" height="8" rx="1.5" fill="none" stroke="#7d8768" stroke-width="1.1"/>';
       } }
   ];
 
@@ -4875,21 +4917,28 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var skin = byId(SKINS, c.skin), hair = byId(HAIRS, c.hair), fit = byId(OUTFITS, c.outfit);
 
     var head =
-      '<ellipse cx="31.5" cy="47" rx="3.6" ry="4.6" fill="' + skin.shade + '"/>' +
-      '<ellipse cx="68.5" cy="47" rx="3.6" ry="4.6" fill="' + skin.shade + '"/>' +
-      '<path d="M43 55 h14 v13 q-7 5 -14 0 Z" fill="' + skin.shade + '"/>' +
-      '<ellipse cx="50" cy="44" rx="18.5" ry="20.5" fill="' + skin.base + '"/>';
+      '<ellipse cx="31" cy="48" rx="3.5" ry="4.5" fill="' + skin.shade + '"/>' +
+      '<ellipse cx="69" cy="48" rx="3.5" ry="4.5" fill="' + skin.shade + '"/>' +
+      '<path d="M43 56 h14 v13 q-7 5 -14 0 Z" fill="' + skin.shade + '"/>' +
+      '<ellipse cx="50" cy="45" rx="19" ry="20.5" fill="' + skin.base + '"/>';
+
+    /* 눈은 크고 둥글게, 위쪽에 굵은 속눈썹 선을 하나 얹는다.
+     * 하이라이트 두 점(큰 것 위 · 작은 것 아래)이 이 그림체의 핵심이다. */
+    function eye(cx) {
+      return '<path d="M' + (cx - 3.6) + ' 43.6 C' + (cx - 2.6) + ' 41.8 ' + (cx + 2.6) + ' 41.8 ' + (cx + 3.6) + ' 43.6" ' +
+          'stroke="#3d2a22" stroke-width="1.9" fill="none" stroke-linecap="round"/>' +
+        '<ellipse cx="' + cx + '" cy="47.4" rx="3.3" ry="4.2" fill="#3d2a22"/>' +
+        '<circle cx="' + (cx - 1.1) + '" cy="45.8" r="1.45" fill="#fff" opacity=".95"/>' +
+        '<circle cx="' + (cx + 1.3) + '" cy="49.2" r="0.75" fill="#fff" opacity=".7"/>';
+    }
 
     var face =
-      '<path d="M38.5 39.5 C41 37.8 45.5 37.8 47.5 39.6" stroke="#4c3d5a" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
-      '<path d="M52.5 39.6 C54.5 37.8 59 37.8 61.5 39.5" stroke="#4c3d5a" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
-      '<ellipse cx="42.5" cy="46.5" rx="2.5" ry="3.2" fill="#2f2740"/>' +
-      '<ellipse cx="57.5" cy="46.5" rx="2.5" ry="3.2" fill="#2f2740"/>' +
-      '<circle cx="43.5" cy="45.3" r="0.9" fill="#fff" opacity=".85"/>' +
-      '<circle cx="58.5" cy="45.3" r="0.9" fill="#fff" opacity=".85"/>' +
-      '<ellipse cx="35.5" cy="52.5" rx="4" ry="2.4" fill="#e08a92" opacity=".35"/>' +
-      '<ellipse cx="64.5" cy="52.5" rx="4" ry="2.4" fill="#e08a92" opacity=".35"/>' +
-      '<path d="M46.5 55 C48.5 57.6 51.5 57.6 53.5 55" stroke="#a4535f" stroke-width="1.8" fill="none" stroke-linecap="round"/>';
+      '<path d="M38 39.6 C40.6 37.9 45 37.9 47 39.7" stroke="#6b4a35" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".85"/>' +
+      '<path d="M53 39.7 C55 37.9 59.4 37.9 62 39.6" stroke="#6b4a35" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".85"/>' +
+      eye(42.2) + eye(57.8) +
+      '<ellipse cx="34.8" cy="53.5" rx="4.4" ry="2.5" fill="#ee9d9c" opacity=".45"/>' +
+      '<ellipse cx="65.2" cy="53.5" rx="4.4" ry="2.5" fill="#ee9d9c" opacity=".45"/>' +
+      '<path d="M47.6 56.2 C49 58 51 58 52.4 56.2" stroke="#b5645d" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
 
     return '<svg class="av-svg" viewBox="0 0 100 100" role="img" aria-label="프로필 캐릭터" focusable="false">' +
       hair.back + head + face + hair.front + fit.draw(skin) +
@@ -4974,6 +5023,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   }
 
   function initial(nick) { return String(nick || '?').trim().charAt(0).toUpperCase() || '?'; }
+
 
   /* ----------------------------------------------------------- Base64 UTF-8 */
 
@@ -5433,12 +5483,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
       p_level: useClass ? String(cls.level || '') : '',
       p_grade: useClass ? String(cls.grade || '') : '',
       p_klass: useClass ? String(cls.klass || '') : '',
-      p_hidden: !!st.hidden
+      p_hidden: !!st.hidden,
+      /* 순위표에 보일 이름. 학급 대항에 동의한 경우에만 싣고,
+       * 아니면 빈 값을 보내 서버에 남아 있던 값을 지운다. */
+      p_nickname: useClass ? String(cls.nick || '') : ''
     };
 
     var sig = school + '|' + weekKey + '|' + mins + '|' +
               body.p_level + '/' + body.p_grade + '/' + body.p_klass +
-              '|' + (body.p_hidden ? 'h' : '');
+              '|' + (body.p_hidden ? 'h' : '') + '|' + body.p_nickname;
 
     if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
       return Promise.resolve(false);
@@ -6194,8 +6247,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     var wk = weekKey(0);
     var school = norm(p.school);
 
-    // 학급 정보는 Cloud 쪽에서 동의 여부를 보고 실을지 결정한다
-    var cls = { level: p.level, grade: p.grade, klass: norm(p.klass) };
+    // 학급 정보는 Cloud 쪽에서 동의 여부를 보고 실을지 결정한다.
+    // 닉네임은 순위표에 그대로 보이는 값이라, 입력 화면에서 실명을 권하지 않는다고 안내한다.
+    var cls = {
+      level: p.level, grade: p.grade, klass: norm(p.klass),
+      nick: norm(p.nick)
+    };
 
     return C.push(school, wk, myCappedWeek(), force, cls)
       .catch(function () { return false; })          // 못 올려도 읽기는 시도한다
@@ -8626,6 +8683,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     if (id === 'secAvatar') openAvatarPage();
     // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
     if (id === 'secSettings') renderSettingsPage();
+    // 같은 반 명단은 서버에서 오므로, 들어올 때마다 다시 받아 온다
+    if (id === 'secGroup') renderGroup();
 
     var pg = pageBy(id);
     if (!skipHash && pg) {
@@ -8970,8 +9029,17 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   function saveProfile() {
     var nick = $('pfNick').value.trim();
     var school = $('pfSchool').value.trim();
-    if (!nick) { toast('이름 또는 닉네임을 입력해 주세요.', true); $('pfNick').focus(); return; }
+    if (!nick) { toast('닉네임을 입력해 주세요.', true); $('pfNick').focus(); return; }
     if (!school) { toast('학교명을 입력해 주세요.', true); $('pfSchool').focus(); return; }
+
+    /* 학년이 비면 반 리그에 조용히 못 들어간다. 목록이 아직 안 채워진 상태로
+     * 저장되는 경우가 있어(선택지가 비어 있으면 value 가 '' 다) 여기서 막는다. */
+    if (!$('pfGrade').value) {
+      fillGradeOptions();
+      if (!$('pfGrade').value) {
+        toast('학년을 선택해 주세요.', true); $('pfGrade').focus(); return;
+      }
+    }
 
     var prev = Store.profile();
     var p = {
@@ -11576,8 +11644,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* ------------------------------------------------- 같은 반 자동 랭킹
    *
    * 공유 코드를 주고받는 방식은 번거로워서 결국 아무도 안 쓴다.
-   * 같은 학교·학년·반이면 등록 없이 같은 판에 놓되, 서로에게는 익명으로만 보인다.
-   * 태그(A1B2)는 주마다 바뀌므로 주가 넘어가면 같은 사람을 계속 따라갈 수 없다.
+   * 같은 학교·학년·반이면 등록 없이 같은 판에 들어가고, 프로필에 적은 닉네임이
+   * 그대로 보인다. 그래서 입력 화면에서 실명을 권하지 않는다고 미리 알린다.
+   * 닉네임이 아직 없는 옛 기록은 서버가 짧은 태그로 대신 채워 준다.
    *
    * 서버가 꺼져 있거나 5명이 안 모였으면 아무것도 그리지 않고,
    * 예전처럼 이 브라우저가 아는 그룹원 목록이 그대로 남는다. */
@@ -11609,7 +11678,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           '<div class="rk-pos' + medal + '">' + badge + '</div>' +
           '<div class="rk-av" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
           '<div class="rk-info">' +
-            '<div class="rk-name">' + (r.me ? '나' : '익명 ' + esc(r.tag)) +
+            '<div class="rk-name">' + esc(r.tag) +
+              (r.me ? '<span class="me-tag">나</span>' : '') +
               (r.me && r.hidden ? '<span class="me-tag">숨김</span>' : '') + '</div>' +
             '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
             '<div class="rk-date">' + (r.me ? '실시간 반영' : agoText(r.updatedAt)) + '</div>' +
@@ -11622,7 +11692,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
         '<div><p class="gh-name">' + esc(cid.label) + '</p>' +
         '<p class="gh-sub">' + rows.length + '명 참여 · 이번 주 합계 ' +
           fmtDurFine(rows.reduce(function (s, r) { return s + r.minutes; }, 0)) +
-          ' · 서로 <b>익명</b>으로 보입니다</p></div>' +
+          ' · 같은 반이면 자동으로 들어옵니다</p></div>' +
         '<div class="gh-stats">' +
           '<div class="gh-stat"><div class="k">내 순위</div><div class="v">' +
             (rows.findIndex ? (rows.findIndex(function (r) { return r.me; }) + 1) : 0) + '<small>위</small></div></div>' +
@@ -11698,7 +11768,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     renderGroupCompare();
     $('myCode').value = Group.encodeSelf();
 
-    // 서버에서 같은 반 명단을 받아 오면 위 목록을 익명 랭킹으로 갈아 끼운다
+    // 서버에서 같은 반 명단을 받아 오면 위 목록을 그것으로 갈아 끼운다
     renderClassRank();
   }
 
@@ -12116,8 +12186,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
     if ($('pfLeagueNote')) {
       $('pfLeagueNote').innerHTML = s.configured
-        ? '학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 이름·시험·수면 같은 개인 기록은 전송되지 않습니다. ' +
-          '학년·반은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송됩니다. ' +
+        ? '학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다. ' +
+          '학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며, ' +
+          '같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b> ' +
           '<b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.'
         : '서버가 아직 연결돼 있지 않아 지금은 켤 수 없습니다. 나중에 <b>설정</b> 화면에서 다시 시도해 주세요.';
     }
@@ -12227,8 +12298,10 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
           toast('학교 리그를 먼저 켜 주세요.', true);
           return;
         }
-        if (!confirm('학년·반이 학교명과 함께 서버로 전송됩니다.\n' +
-                     '학급 순위를 집계하기 위한 것이며, 이름은 전송되지 않습니다.\n\n' +
+        if (!confirm('학년·반과 닉네임이 학교명과 함께 서버로 전송됩니다.\n' +
+                     '닉네임은 같은 반 친구들 순위표에 그대로 보입니다.\n' +
+                     '지금 닉네임: ' + (Store.profile() || {}).nick + '\n' +
+                     '실명이라면 설정에서 별명으로 바꾸는 것을 권합니다.\n\n' +
                      '만 14세 미만이라면 보호자와 함께 결정하세요.\n\n참가할까요?')) {
           this.checked = false;
           return;

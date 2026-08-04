@@ -86,36 +86,60 @@ grant execute on function public.admin_delete_device(uuid, date) to authenticate
 
 alter table public.league_report add column if not exists hidden boolean not null default false;
 
--- 8-인자 오버로드. 앞의 버전들은 그대로 살아 있다(캐시된 옛 앱이 계속 동작해야 한다).
+-- 순위표에 보일 이름. 사용자가 프로필에 적은 닉네임을 그대로 쓴다.
+-- 앱은 입력 단계에서 실명을 권하지 않는다고 안내한다 — 같은 반 친구에게
+-- 그대로 보이는 값이라, 무엇이 보이는지 알고 정하게 하려는 것이다.
+alter table public.league_report add column if not exists nickname text;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'nickname_len' and conrelid = 'public.league_report'::regclass
+  ) then
+    alter table public.league_report add constraint nickname_len check (
+      nickname is null or char_length(nickname) <= 24
+    );
+  end if;
+end $$;
+
+-- 9-인자 오버로드. 앞의 버전들은 그대로 살아 있다(캐시된 옛 앱이 계속 동작해야 한다).
 create or replace function public.report_league(
-  p_device  uuid,
-  p_week    date,
-  p_school  text,
-  p_minutes integer,
-  p_level   text,
-  p_grade   text,
-  p_klass   text,
-  p_hidden  boolean
+  p_device   uuid,
+  p_week     date,
+  p_school   text,
+  p_minutes  integer,
+  p_level    text,
+  p_grade    text,
+  p_klass    text,
+  p_hidden   boolean,
+  p_nickname text
 ) returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_nick text := nullif(btrim(coalesce(p_nickname, '')), '');
 begin
   -- 검증·상한은 7-인자 버전에 모두 들어 있으므로 그대로 태운다
   perform public.report_league(p_device, p_week, p_school, p_minutes, p_level, p_grade, p_klass);
+  if v_nick is not null and char_length(v_nick) > 24 then
+    v_nick := left(v_nick, 24);
+  end if;
   update public.league_report
-     set hidden = coalesce(p_hidden, false)
+     set hidden   = coalesce(p_hidden, false),
+         nickname = v_nick
    where device_id = p_device and week = p_week;
 end;
 $$;
 
-revoke all on function public.report_league(uuid, date, text, integer, text, text, text, boolean) from public;
-grant execute on function public.report_league(uuid, date, text, integer, text, text, text, boolean) to anon, authenticated;
+revoke all on function public.report_league(uuid, date, text, integer, text, text, text, boolean, text) from public;
+grant execute on function public.report_league(uuid, date, text, integer, text, text, text, boolean, text) to anon, authenticated;
 
--- 같은 반 사람들을 익명으로 돌려준다.
--- 5명이 안 되는 반은 아무것도 내보내지 않는다 — 인원이 적으면 익명이라도
--- 누가 누구인지 사실상 드러나기 때문이다.
+-- 같은 반 사람들을 닉네임과 함께 돌려준다.
+-- 5명이 안 되는 반은 아무것도 내보내지 않는다 — 인원이 적으면 순위표가
+-- 사실상 특정 개인의 공부 시간을 가리키게 되기 때문이다.
+-- 닉네임이 없는 옛 행은 예전처럼 짧은 태그로 대신한다.
 create or replace function public.class_members(
   p_school text,
   p_level  text,
@@ -143,7 +167,10 @@ begin
 
   return query
     select
-      upper(left(md5(r.device_id::text || r.week::text), 4)) as tag,
+      coalesce(
+        nullif(btrim(coalesce(r.nickname, '')), ''),
+        upper(left(md5(r.device_id::text || r.week::text), 4))
+      ) as tag,
       r.minutes,
       r.updated_at,
       (p_device is not null and r.device_id = p_device) as is_me,

@@ -1425,9 +1425,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   width: var(--av); height: var(--av); border-radius: 50%; flex-shrink: 0;
 }
 .av::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--line-2); }
+/* 캐릭터가 앉는 원판은 따뜻한 아이보리 — 살구빛 피부와 갈색 머리가 가장 잘 보인다.
+ * 다크 모드에서도 이 원판은 밝게 둔다(어두우면 얼굴이 묻힌다). */
 .av-in {
   position: absolute; inset: 7.5%; border-radius: 50%; overflow: hidden;
-  background: linear-gradient(160deg, #f5f1ff, #e8ecfd);
+  background: linear-gradient(165deg, #fdf8f2, #f6eee4);
 }
 .av-svg { display: block; width: 100%; height: 100%; }
 /* 링 없이 캐릭터만 (꾸미기 화면의 피부·머리·옷 미리보기) */

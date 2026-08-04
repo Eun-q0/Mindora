@@ -245,6 +245,8 @@
     if (id === 'secAvatar') openAvatarPage();
     // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
     if (id === 'secSettings') renderSettingsPage();
+    // 같은 반 명단은 서버에서 오므로, 들어올 때마다 다시 받아 온다
+    if (id === 'secGroup') renderGroup();
 
     var pg = pageBy(id);
     if (!skipHash && pg) {
@@ -589,8 +591,17 @@
   function saveProfile() {
     var nick = $('pfNick').value.trim();
     var school = $('pfSchool').value.trim();
-    if (!nick) { toast('이름 또는 닉네임을 입력해 주세요.', true); $('pfNick').focus(); return; }
+    if (!nick) { toast('닉네임을 입력해 주세요.', true); $('pfNick').focus(); return; }
     if (!school) { toast('학교명을 입력해 주세요.', true); $('pfSchool').focus(); return; }
+
+    /* 학년이 비면 반 리그에 조용히 못 들어간다. 목록이 아직 안 채워진 상태로
+     * 저장되는 경우가 있어(선택지가 비어 있으면 value 가 '' 다) 여기서 막는다. */
+    if (!$('pfGrade').value) {
+      fillGradeOptions();
+      if (!$('pfGrade').value) {
+        toast('학년을 선택해 주세요.', true); $('pfGrade').focus(); return;
+      }
+    }
 
     var prev = Store.profile();
     var p = {
@@ -3195,8 +3206,9 @@
   /* ------------------------------------------------- 같은 반 자동 랭킹
    *
    * 공유 코드를 주고받는 방식은 번거로워서 결국 아무도 안 쓴다.
-   * 같은 학교·학년·반이면 등록 없이 같은 판에 놓되, 서로에게는 익명으로만 보인다.
-   * 태그(A1B2)는 주마다 바뀌므로 주가 넘어가면 같은 사람을 계속 따라갈 수 없다.
+   * 같은 학교·학년·반이면 등록 없이 같은 판에 들어가고, 프로필에 적은 닉네임이
+   * 그대로 보인다. 그래서 입력 화면에서 실명을 권하지 않는다고 미리 알린다.
+   * 닉네임이 아직 없는 옛 기록은 서버가 짧은 태그로 대신 채워 준다.
    *
    * 서버가 꺼져 있거나 5명이 안 모였으면 아무것도 그리지 않고,
    * 예전처럼 이 브라우저가 아는 그룹원 목록이 그대로 남는다. */
@@ -3228,7 +3240,8 @@
           '<div class="rk-pos' + medal + '">' + badge + '</div>' +
           '<div class="rk-av" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
           '<div class="rk-info">' +
-            '<div class="rk-name">' + (r.me ? '나' : '익명 ' + esc(r.tag)) +
+            '<div class="rk-name">' + esc(r.tag) +
+              (r.me ? '<span class="me-tag">나</span>' : '') +
               (r.me && r.hidden ? '<span class="me-tag">숨김</span>' : '') + '</div>' +
             '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
             '<div class="rk-date">' + (r.me ? '실시간 반영' : agoText(r.updatedAt)) + '</div>' +
@@ -3241,7 +3254,7 @@
         '<div><p class="gh-name">' + esc(cid.label) + '</p>' +
         '<p class="gh-sub">' + rows.length + '명 참여 · 이번 주 합계 ' +
           fmtDurFine(rows.reduce(function (s, r) { return s + r.minutes; }, 0)) +
-          ' · 서로 <b>익명</b>으로 보입니다</p></div>' +
+          ' · 같은 반이면 자동으로 들어옵니다</p></div>' +
         '<div class="gh-stats">' +
           '<div class="gh-stat"><div class="k">내 순위</div><div class="v">' +
             (rows.findIndex ? (rows.findIndex(function (r) { return r.me; }) + 1) : 0) + '<small>위</small></div></div>' +
@@ -3317,7 +3330,7 @@
     renderGroupCompare();
     $('myCode').value = Group.encodeSelf();
 
-    // 서버에서 같은 반 명단을 받아 오면 위 목록을 익명 랭킹으로 갈아 끼운다
+    // 서버에서 같은 반 명단을 받아 오면 위 목록을 그것으로 갈아 끼운다
     renderClassRank();
   }
 
@@ -3735,8 +3748,9 @@
 
     if ($('pfLeagueNote')) {
       $('pfLeagueNote').innerHTML = s.configured
-        ? '학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 이름·시험·수면 같은 개인 기록은 전송되지 않습니다. ' +
-          '학년·반은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송됩니다. ' +
+        ? '학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다. ' +
+          '학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며, ' +
+          '같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b> ' +
           '<b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.'
         : '서버가 아직 연결돼 있지 않아 지금은 켤 수 없습니다. 나중에 <b>설정</b> 화면에서 다시 시도해 주세요.';
     }
@@ -3846,8 +3860,10 @@
           toast('학교 리그를 먼저 켜 주세요.', true);
           return;
         }
-        if (!confirm('학년·반이 학교명과 함께 서버로 전송됩니다.\n' +
-                     '학급 순위를 집계하기 위한 것이며, 이름은 전송되지 않습니다.\n\n' +
+        if (!confirm('학년·반과 닉네임이 학교명과 함께 서버로 전송됩니다.\n' +
+                     '닉네임은 같은 반 친구들 순위표에 그대로 보입니다.\n' +
+                     '지금 닉네임: ' + (Store.profile() || {}).nick + '\n' +
+                     '실명이라면 설정에서 별명으로 바꾸는 것을 권합니다.\n\n' +
                      '만 14세 미만이라면 보호자와 함께 결정하세요.\n\n참가할까요?')) {
           this.checked = false;
           return;

@@ -366,8 +366,12 @@
     var wk = weekKey(0);
     var school = norm(p.school);
 
-    // 학급 정보는 Cloud 쪽에서 동의 여부를 보고 실을지 결정한다
-    var cls = { level: p.level, grade: p.grade, klass: norm(p.klass) };
+    // 학급 정보는 Cloud 쪽에서 동의 여부를 보고 실을지 결정한다.
+    // 닉네임은 순위표에 그대로 보이는 값이라, 입력 화면에서 실명을 권하지 않는다고 안내한다.
+    var cls = {
+      level: p.level, grade: p.grade, klass: norm(p.klass),
+      nick: norm(p.nick)
+    };
 
     return C.push(school, wk, myCappedWeek(), force, cls)
       .catch(function () { return false; })          // 못 올려도 읽기는 시도한다

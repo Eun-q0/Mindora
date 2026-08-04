@@ -207,12 +207,15 @@
       p_level: useClass ? String(cls.level || '') : '',
       p_grade: useClass ? String(cls.grade || '') : '',
       p_klass: useClass ? String(cls.klass || '') : '',
-      p_hidden: !!st.hidden
+      p_hidden: !!st.hidden,
+      /* 순위표에 보일 이름. 학급 대항에 동의한 경우에만 싣고,
+       * 아니면 빈 값을 보내 서버에 남아 있던 값을 지운다. */
+      p_nickname: useClass ? String(cls.nick || '') : ''
     };
 
     var sig = school + '|' + weekKey + '|' + mins + '|' +
               body.p_level + '/' + body.p_grade + '/' + body.p_klass +
-              '|' + (body.p_hidden ? 'h' : '');
+              '|' + (body.p_hidden ? 'h' : '') + '|' + body.p_nickname;
 
     if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
       return Promise.resolve(false);

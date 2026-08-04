@@ -112,8 +112,11 @@
         <div class="card-head"><span class="ci">🎓</span><h3>내 프로필</h3></div>
         <div class="card-body">
           <div class="field">
-            <label for="pfNick">이름 / 닉네임 <em>랭킹에 표시됩니다</em></label>
-            <input type="text" id="pfNick" class="input" maxlength="12" placeholder="예) 지민">
+            <label for="pfNick">닉네임 <em>같은 반 친구들 순위표에 그대로 보입니다</em></label>
+            <input type="text" id="pfNick" class="input" maxlength="12" placeholder="예) 밤샘요정">
+            <p class="tiny" style="margin:6px 0 0">💡 <b>실명은 권하지 않습니다.</b>
+              학급 대항전을 켜면 이 이름이 같은 반 친구들에게 그대로 보입니다.
+              별명이나 별칭을 쓰세요 — 나중에 <b>설정</b>에서 언제든 바꿀 수 있습니다.</p>
           </div>
           <div class="field">
             <label for="pfSchool">학교명 <em>앞 글자만 쳐도 아래에서 고를 수 있어요</em></label>
@@ -154,8 +157,9 @@
           <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
 
           <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
-          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 이름·시험·수면 같은 개인 기록은 전송되지 않습니다.
-            학년·반은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송됩니다.
+          <p class="tiny" id="pfLeagueNote">학교명과 주간 학습 시간(분)만 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
+            학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며,
+            같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b>
             <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
 
           <div class="actions">
@@ -753,7 +757,8 @@
   <section id="secGroup" class="section is-hidden">
     <div class="sec-head">
       <h2><span class="sec-num">05</span> 그룹 랭킹</h2>
-      <p>같은 학교·학년 친구들과 순공 시간을 겨뤄 보세요. 공유 코드를 주고받으면 서로의 기록이 랭킹에 올라갑니다.</p>
+      <p>같은 반 친구들과 순공 시간을 겨뤄 보세요. <b>학급 대항전</b>을 켜면 같은 학교·학년·반은
+        따로 등록하지 않아도 자동으로 올라갑니다. 순위표에는 설정한 <b>닉네임</b>이 그대로 보입니다.</p>
     </div>
 
     <div class="group-hero" id="groupHero"></div>
@@ -1044,11 +1049,12 @@
              조건으로 동의했으므로, 여기서 다시 묻지 않고 켜면 안 된다. -->
         <div class="cl-event" id="classEventBox">
           <p class="cl-h" style="margin:0 0 6px">🍗 학급 대항전</p>
-          <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>도 함께 전송해야 합니다.
-            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 학년·반도 다음 동기화에서 지워집니다.</p>
-          <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반 전송에 동의합니다</span></label>
+          <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>과 <b>닉네임</b>을 함께 전송해야 합니다.
+            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 값도 다음 동기화에서 지워집니다.</p>
+          <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반과 닉네임 전송에 동의합니다</span></label>
           <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반이면 <b>따로 등록하지 않아도</b> 자동으로 같은 판에 들어갑니다.
-            서로에게는 <b>이름 없이</b> 주마다 바뀌는 짧은 표시(예: A1B2)로만 보입니다.
+            순위표에는 <b>설정한 닉네임이 그대로</b> 보입니다 — <b>실명은 권하지 않습니다.</b>
+            이름을 보이고 싶지 않으면 아래 <b>내 랭킹 숨기기</b>를 켜세요.
             같은 반에서 <b>5명 이상</b>이 참가해야 순위가 공개됩니다.</p>
         </div>
 
