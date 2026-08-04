@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mindora.co.kr/sitemap.xml
+Sitemap: https://www.mindora.co.kr/sitemap.xml
