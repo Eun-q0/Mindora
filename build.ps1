@@ -44,6 +44,7 @@ $outPath = Join-Path $root 'index.html'
 # ads.txt 도 같은 이유로 여기 둔다 — 애드센스 크롤러가 도메인 루트에서 직접 받아 간다.
 $assets = @('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-maskable.svg',
             'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png',
+            'avatar-sheet.png',
             'ads.txt', 'robots.txt', 'sitemap.xml')
 foreach ($a in $assets) {
     $from = Join-Path $src $a

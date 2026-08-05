@@ -2938,7 +2938,7 @@
     var myMin = Avatar.lifetimeMinutes();
     $('profileSummary').innerHTML =
       Avatar.html(Avatar.get(), myMin, 'av-lg') +
-      '<div><div class="ps-name">' + esc(p.nick) + ' ' + Avatar.tierChip(myMin) + '</div>' +
+      '<div><div class="ps-name">' + esc(p.nick) + '</div>' +
       '<div class="ps-meta">' + esc(Group.groupLabel(p)) +
         (p.neis && p.neis.region ? ' <span style="color:var(--dim)">(' + esc(p.neis.region) + ')</span>' : '') + '</div>' +
       '<div class="ps-goal">주간 목표 ' + (p.goal || 25) + '시간' +
@@ -3013,22 +3013,22 @@
     if (!avDraft) avDraft = Avatar.get();
     renderAvatarStage();
     renderAvatarPicks();
-    renderAvatarTiers();
+    renderAvatarBorders();
   }
 
   function renderAvatarStage() {
     var p = Store.profile() || {};
     var min = avMin();
-    var t = Avatar.tierFor(min);
+    var t = Avatar.progress(min);
 
     $('avStage').innerHTML =
       '<div class="av-stage-fig">' + Avatar.html(avDraft, min, 'av-xl') + '</div>' +
       '<div class="av-stage-txt">' +
-        '<div class="av-stage-name">' + esc(p.nick || '나') + ' ' + Avatar.tierChip(min) + '</div>' +
+        '<div class="av-stage-name">' + esc(p.nick || '나') + '</div>' +
         '<p class="av-stage-sub">지금까지 쌓은 순공 시간 <b>' + fmtDurFine(min) + '</b></p>' +
         '<div class="av-prog">' +
-          '<div class="av-prog-top"><span>' + esc(t.tier.name) + '</span>' +
-            '<span>' + (t.next ? esc(t.next.name) + '까지 ' + fmtDurFine(t.remainMin) : '최고 티어 달성') + '</span></div>' +
+          '<div class="av-prog-top"><span>테두리 ' + (t.idx + 1) + ' / ' + Avatar.BORDERS.length + '개 해금</span>' +
+            '<span>' + (t.next ? esc(t.next.name) + '까지 ' + fmtDurFine(t.remainMin) : '모든 색을 모았어요') + '</span></div>' +
           '<div class="av-prog-track"><i style="width:' + t.pct.toFixed(1) + '%"></i></div>' +
         '</div>' +
         '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다.</p>' +
@@ -3043,7 +3043,7 @@
 
     var fig = kind === 'border'
       ? Avatar.html(preview, Infinity, 'av-sm')
-      : '<span class="av av-plain av-sm"><span class="av-in">' + Avatar.svg(preview) + '</span></span>';
+      : '<span class="av av-plain av-sm"><span class="av-in">' + Avatar.figure(preview) + '</span></span>';
 
     return '<button type="button" class="av-opt' + (on ? ' on' : '') + (locked ? ' locked' : '') + '"' +
       (locked ? ' aria-disabled="true"' : '') +
@@ -3062,7 +3062,7 @@
 
   function renderAvatarPicks() {
     var min = avMin();
-    var myTier = Avatar.tierIndexFor(min);
+    var opened = Avatar.borderIndexFor(min);
 
     function bySex(list, sex) { return list.filter(function (x) { return x.sex === sex; }); }
     function opts(kind, list) {
@@ -3070,15 +3070,12 @@
     }
 
     var html =
-      avGroup('피부 톤', '3종', opts('skin', Avatar.SKINS)) +
-      avGroup('머리 — 남성형', '3종', opts('hair', bySex(Avatar.HAIRS, 'm'))) +
-      avGroup('머리 — 여성형', '5종', opts('hair', bySex(Avatar.HAIRS, 'f'))) +
-      avGroup('옷 — 남성형', '5종', opts('outfit', bySex(Avatar.OUTFITS, 'm'))) +
-      avGroup('옷 — 여성형', '5종', opts('outfit', bySex(Avatar.OUTFITS, 'f'))) +
-      avGroup('테두리', '순공 시간으로 열립니다', Avatar.BORDERS.map(function (b) {
-        var locked = b.tier > myTier;
+      avGroup('캐릭터 — 남학생', '3종', opts('char', bySex(Avatar.CHARS, 'm'))) +
+      avGroup('캐릭터 — 여학생', '5종', opts('char', bySex(Avatar.CHARS, 'f'))) +
+      avGroup('테두리 색', '공부한 시간이 쌓이면 열려요', Avatar.BORDERS.map(function (b, i) {
+        var locked = i > opened;
         return avOption('border', b, avDraft.border === b.id, locked,
-          locked ? '누적 ' + Avatar.TIERS[b.tier].hours + '시간' : Avatar.TIERS[b.tier].name);
+          locked ? '누적 ' + b.hours + '시간' : (b.hours ? b.hours + '시간 달성' : '기본'));
       }).join(''));
 
     $('avPicks').innerHTML = html;
@@ -3086,8 +3083,8 @@
     $$('#avPicks .av-opt').forEach(function (b) {
       b.addEventListener('click', function () {
         if (b.classList.contains('locked')) {
-          var need = Avatar.TIERS[Avatar.byId(Avatar.BORDERS, b.dataset.id).tier];
-          toast(need.icon + ' ' + need.name + ' 티어(누적 ' + need.hours + '시간)가 되면 열립니다.', true);
+          var need = Avatar.byId(Avatar.BORDERS, b.dataset.id);
+          toast('누적 ' + need.hours + '시간을 채우면 ' + need.name + ' 테두리가 열려요.', true);
           return;
         }
         avDraft[b.dataset.kind] = b.dataset.id;
@@ -3096,23 +3093,23 @@
     });
   }
 
-  function renderAvatarTiers() {
+  function renderAvatarBorders() {
     var min = avMin();
-    var myTier = Avatar.tierIndexFor(min);
-    $('avTierCount').innerHTML = '<span class="sp-chip">' + (myTier + 1) + ' / ' + Avatar.TIERS.length + ' 달성</span>';
+    var opened = Avatar.borderIndexFor(min);
+    $('avBorderCount').innerHTML = '<span class="sp-chip">' + (opened + 1) + ' / ' + Avatar.BORDERS.length + ' 해금</span>';
 
-    $('avTierList').innerHTML = Avatar.TIERS.map(function (t, i) {
-      var got = i <= myTier;
-      var b = Avatar.BORDERS[i];
-      var remain = Math.max(0, t.hours * 60 - min);
-      return '<div class="av-tier' + (got ? ' got' : '') + (i === myTier ? ' now' : '') + '">' +
-        '<span class="av-tier-ring ' + b.cls + '"><i></i></span>' +
-        '<div class="av-tier-txt">' +
-          '<div class="av-tier-name">' + t.icon + ' ' + esc(t.name) +
-            (i === myTier ? '<span class="me-tag">지금</span>' : '') + '</div>' +
-          '<div class="av-tier-sub">' + esc(b.name) + ' · 누적 ' + t.hours + '시간</div>' +
+    $('avBorderList').innerHTML = Avatar.BORDERS.map(function (b, i) {
+      var got = i <= opened;
+      var remain = Math.max(0, b.hours * 60 - min);
+      return '<div class="av-brd' + (got ? ' got' : '') + (i === opened ? ' now' : '') + '">' +
+        '<span class="av-brd-ring ' + b.cls + '"><i></i></span>' +
+        '<div class="av-brd-txt">' +
+          '<div class="av-brd-name">' + esc(b.name) +
+            (i === opened ? '<span class="me-tag">지금</span>' : '') + '</div>' +
+          '<div class="av-brd-sub">' + (b.hours ? '누적 ' + b.hours + '시간' : '기본 제공') +
+            (b.desc ? ' · ' + esc(b.desc) : '') + '</div>' +
         '</div>' +
-        '<div class="av-tier-state">' + (got ? '✅ 획득' : '남은 ' + fmtDurFine(remain)) + '</div>' +
+        '<div class="av-brd-state">' + (got ? '✅ 사용 가능' : '남은 ' + fmtDurFine(remain)) + '</div>' +
       '</div>';
     }).join('');
   }
@@ -3121,10 +3118,8 @@
     $('openAvatar').addEventListener('click', function () { goPage('secAvatar'); });
 
     $('avRandom').addEventListener('click', function () {
-      function pick(list) { return list[Math.floor(Math.random() * list.length)].id; }
-      avDraft.skin = pick(Avatar.SKINS);
-      avDraft.hair = pick(Avatar.HAIRS);
-      avDraft.outfit = pick(Avatar.OUTFITS);
+      var list = Avatar.CHARS;
+      avDraft.char = list[Math.floor(Math.random() * list.length)].id;
       renderAvatar();
     });
 
@@ -3308,8 +3303,8 @@
       var w = r.max > 0 ? (m.value / r.max * 100) : 0;
       var color = Group.avatarColor(m.nick);
       var stale = m.date !== Store.key();
-      /* 캐릭터와 티어. 내 것은 실시간이고, 그룹원은 코드를 받은 시점의 값이다.
-       * lifeMin 이 없는 옛 코드로 들어온 사람은 티어를 지어내지 않고 배지를 빼 둔다. */
+      /* 캐릭터. 내 것은 실시간이고, 그룹원은 코드를 받은 시점의 값이다.
+       * lifeMin 이 없는 옛 코드로 들어온 사람은 기본 테두리로 보인다. */
       var lifeMin = m.self ? Avatar.lifetimeMinutes() : m.lifeMin;
       var av = m.self ? Avatar.get() : m.avatar;
       return '<div class="rank' + (m.self ? ' is-me' : '') + (m.rank === 1 ? ' top1' : '') + '">' +
@@ -3317,7 +3312,6 @@
         Avatar.html(av, lifeMin || 0, 'rk-av') +
         '<div class="rk-info">' +
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
-            (lifeMin != null ? Avatar.tierChip(lifeMin, true) : '') +
             (m.overall != null ? '<span class="brain">🧠 ' + m.overall + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
           '<div class="rk-date">' + (m.self ? '실시간 반영'

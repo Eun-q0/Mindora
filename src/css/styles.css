@@ -1425,14 +1425,21 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   width: var(--av); height: var(--av); border-radius: 50%; flex-shrink: 0;
 }
 .av::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--line-2); }
-/* 캐릭터가 앉는 원판은 따뜻한 아이보리 — 살구빛 피부와 갈색 머리가 가장 잘 보인다.
+/* 캐릭터가 앉는 원판은 그림 배경과 같은 크림색이다.
  * 다크 모드에서도 이 원판은 밝게 둔다(어두우면 얼굴이 묻힌다). */
 .av-in {
   position: absolute; inset: 7.5%; border-radius: 50%; overflow: hidden;
-  background: linear-gradient(165deg, #fdf8f2, #f6eee4);
+  background: #fcf8f5;
 }
-.av-svg { display: block; width: 100%; height: 100%; }
-/* 링 없이 캐릭터만 (꾸미기 화면의 피부·머리·옷 미리보기) */
+/* 캐릭터 한 장 + 옷 한 장을 같은 자리에 겹쳐 놓는다.
+ * 옷 그림은 배경이 뚫려 있어 얼굴·머리는 그대로 보이고 상의만 갈아입는다. */
+/* background-image 는 avatar.js 가 인라인으로 붙인다 (경로가 문서 기준이어야 한다) */
+.av-l {
+  position: absolute; inset: 0; display: block;
+  background-size: 400% 200%;   /* 시트 4열 × 2행 */
+  background-repeat: no-repeat;
+}
+/* 링 없이 캐릭터만 (꾸미기 화면의 미리보기) */
 .av-plain::before { display: none; }
 .av-plain .av-in { inset: 0; border: 1px solid var(--line); }
 
@@ -1441,42 +1448,17 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-lg { --av: 58px; }
 .av-xl { --av: 132px; }
 
-/* 테두리 10종 — 티어와 1:1 로 짝지어져 있다 (avatar.js 의 BORDERS) */
+/* 테두리 5색 — 순공 시간이 쌓이면 하나씩 열린다 (avatar.js 의 BORDERS) */
 .av-b1::before { background: var(--line-2); }
-.av-b2::before { background: linear-gradient(140deg, #e2ab7c, #9c5e2f); }
-.av-b3::before { background: linear-gradient(140deg, #e8edf7, #929cb3); }
-.av-b4::before { background: linear-gradient(140deg, #f3d791, #bd8c33); }
-.av-b5::before { background: linear-gradient(140deg, #eef2ff, #98a7dd); }
-.av-b5 { box-shadow: 0 0 10px -3px rgba(120, 140, 220, 0.8); }
-.av-b6::before { background: linear-gradient(140deg, #d5b4ff, #7440e0); }
-.av-b6 { box-shadow: 0 0 12px -3px rgba(140, 80, 235, 0.75); }
-.av-b7::before { background: linear-gradient(140deg, #a6c6ff, #3a58d4); }
-.av-b7 { box-shadow: 0 0 12px -3px rgba(70, 110, 230, 0.8); }
-.av-b8::before { background: conic-gradient(from 0deg, #9b83ff, #ff9ab5, #8fa9ff, #9b83ff); }
-.av-b8 { box-shadow: 0 0 15px -3px rgba(160, 120, 255, 0.85); }
-.av-b9::before { background: conic-gradient(from 0deg, #6d4aff, #c68bff, #ff9ab5, #6d4aff); animation: av-spin 7s linear infinite; }
-.av-b9 { box-shadow: 0 0 17px -2px rgba(150, 90, 255, 0.9); }
-.av-b10::before { background: conic-gradient(from 0deg, #6d4aff, #ff9ab5, #5b7cff, #c68bff, #6d4aff); animation: av-spin 4.5s linear infinite; }
-.av-b10 { box-shadow: 0 0 12px -4px rgba(255, 150, 190, 0.9), 0 0 24px -4px rgba(120, 90, 255, 0.9); }
+.av-b2::before { background: linear-gradient(140deg, #cbb4ff, #8f6ceb); }
+.av-b2 { box-shadow: 0 0 10px -4px rgba(140, 100, 235, 0.7); }
+.av-b3::before { background: linear-gradient(140deg, #a9c8ff, #5b7cff); }
+.av-b3 { box-shadow: 0 0 10px -4px rgba(90, 125, 255, 0.7); }
+.av-b4::before { background: linear-gradient(140deg, #ffb9cd, #e5719a); }
+.av-b4 { box-shadow: 0 0 11px -4px rgba(230, 115, 155, 0.75); }
+.av-b5::before { background: conic-gradient(from 0deg, #7c5cff, #ff9ab5, #5b7cff, #c68bff, #7c5cff); animation: av-spin 6s linear infinite; }
+.av-b5 { box-shadow: 0 0 12px -4px rgba(255, 150, 190, 0.85), 0 0 22px -5px rgba(120, 90, 255, 0.85); }
 @keyframes av-spin { to { transform: rotate(360deg); } }
-
-/* 티어 배지 — 랭킹·프로필에 붙는다 */
-.tier-chip {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10.5px; font-weight: 700; line-height: 1.7;
-  padding: 0 8px; border-radius: 999px; white-space: nowrap;
-  border: 1px solid var(--line-2); background: var(--surface-3); color: var(--muted);
-}
-.tier-chip.sm { font-size: 9.5px; padding: 0 6px; }
-.tc2 { border-color: #d7a97e; background: #f8efe6; color: #8a5326; }
-.tc3 { border-color: #bcc4d6; background: #f1f3f9; color: #5c667c; }
-.tc4 { border-color: #e0c184; background: #fbf3e0; color: #8a6516; }
-.tc5 { border-color: #b6c2ea; background: #eef1fc; color: #3f4f8c; }
-.tc6 { border-color: #cbb0f5; background: #f3ecff; color: #5b32a8; }
-.tc7 { border-color: #a9bdf2; background: #eaf0ff; color: #2c47a5; }
-.tc8 { border-color: #c4a6ff; background: #f1eaff; color: #5427ad; }
-.tc9 { border-color: #b98cff; background: linear-gradient(120deg, #f3eaff, #ffeef4); color: #4d1f9e; }
-.tc10 { border-color: #ff9ab5; background: linear-gradient(120deg, #f0e9ff, #ffe9f0); color: #a32456; }
 
 /* ------------------------------------------------------- 꾸미기 화면 */
 
@@ -1512,19 +1494,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-opt-name { font-size: 11.5px; font-weight: 600; text-align: center; line-height: 1.35; }
 .av-opt-note { font-size: 10px; color: var(--dim); }
 
-.av-tiers { display: flex; flex-direction: column; gap: 7px; }
-.av-tier {
+.av-brds { display: flex; flex-direction: column; gap: 7px; }
+.av-brd {
   display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center;
   padding: 10px 13px; border-radius: var(--r-sm);
   border: 1px solid var(--line); background: var(--surface-3);
 }
-.av-tier:not(.got) { opacity: 0.62; }
-.av-tier.now { border-color: var(--accent); background: var(--accent-soft); }
-.av-tier-ring { position: relative; width: 30px; height: 30px; border-radius: 50%; }
-.av-tier-ring i { position: absolute; inset: 5px; border-radius: 50%; background: var(--surface); display: block; }
-.av-tier-name { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-.av-tier-sub { font-size: 11px; color: var(--dim); }
-.av-tier-state { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.av-brd:not(.got) { opacity: 0.62; }
+.av-brd.now { border-color: var(--accent); background: var(--accent-soft); }
+.av-brd-ring { position: relative; width: 30px; height: 30px; border-radius: 50%; }
+.av-brd-ring i { position: absolute; inset: 5px; border-radius: 50%; background: var(--surface); display: block; }
+.av-brd-name { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.av-brd-sub { font-size: 11px; color: var(--dim); }
+.av-brd-state { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 @media (max-width: 560px) {
   .av-stage { gap: 18px; padding: 18px; }
@@ -1631,17 +1613,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
    * 다만 컷라인 배지 안의 글자는 배경색이 currentColor 라 흰색을 유지해야 한다. */
   .lg-cut span i { color: #12151f; }
 
-  /* 티어 배지 — 라이트용 파스텔 배경이라 어두운 톤으로 다시 잡는다.
-   * 캐릭터가 앉는 원판(.av-in)은 밝은 채로 둔다 — 그래야 얼굴이 보인다. */
-  .tc2 { border-color: #7a4f2c; background: #2b201a; color: #dfab7d; }
-  .tc3 { border-color: #4a5266; background: #232838; color: #bfc7d8; }
-  .tc4 { border-color: #7d5f22; background: #2b2417; color: #e6c479; }
-  .tc5 { border-color: #45527f; background: #1e2436; color: #b6c4f0; }
-  .tc6 { border-color: #5b3f96; background: #262045; color: #d1b4ff; }
-  .tc7 { border-color: #35498c; background: #1b2340; color: #a8bfff; }
-  .tc8 { border-color: #5c3fa8; background: #271f47; color: #cdb0ff; }
-  .tc9 { border-color: #6b45b8; background: linear-gradient(120deg, #271f47, #3a2036); color: #dcbcff; }
-  .tc10 { border-color: #a34d72; background: linear-gradient(120deg, #2a2048, #3d2033); color: #ffadc6; }
+  /* 캐릭터가 앉는 원판(.av-in)은 다크 모드에서도 밝은 채로 둔다 —
+   * 어두우면 얼굴이 묻힌다. 테두리 색은 그대로 써도 잘 보인다. */
 
   /* SVG 안에 하드코딩된 격자선 — 어두운 배경에서는 밝은 쪽으로 뒤집는다 */
   .radar polygon[stroke^="rgba(22"], .radar line[stroke^="rgba(22"] { stroke: rgba(233, 236, 245, 0.14) !important; }
