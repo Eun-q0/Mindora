@@ -43,13 +43,13 @@
     memorize: {
       high: {
         title: '능동 회상 + 새 범위 진도',
-        body: '기억력이 잘 올라온 날입니다. 새 범위를 나가되 읽기만 하지 말고, 한 단락마다 교재를 덮고 백지에 인출하세요. 빠진 부분만 다시 확인하는 게 읽기 3회보다 강력합니다. 오늘 외운 내용은 자기 전 5분만 훑으면 수면 중 공고화 효과를 그대로 가져갑니다.',
-        kidsBody: '오늘은 외우는 힘이 좋은 날이에요! 새로운 부분을 배우되, 눈으로만 읽지 마세요. 한 문단 읽고 책을 덮은 다음 빈 종이에 기억나는 걸 적어 보세요. 세 번 읽는 것보다 한 번 적어 보는 게 훨씬 오래 남아요. 자기 전에 5분만 다시 보면 자는 동안 뇌가 정리해 줍니다.'
+        body: '오늘 입력값에서는 암기·인출 과제가 다른 유형보다 상대적으로 덜 부담스러운 것으로 추정됩니다. 새 범위를 나가되 읽기만 하지 말고, 한 단락마다 교재를 덮고 백지에 인출하세요. 빠진 부분만 다시 확인해 보세요.',
+        kidsBody: '오늘은 암기 과제를 먼저 시도해 볼 수 있어요. 한 문단을 읽고 책을 덮은 다음 빈 종이에 기억나는 내용을 적어 보세요. 자기 전에 5분만 다시 확인하고, 실제로 잘 떠오르는지 기록해 보세요.'
       },
       mid: {
         title: '새 암기 60% + 복습 40%',
         body: '10분 학습 → 2분 백지 인출 루틴으로 끊어 가세요. 새 범위만 밀어붙이면 저녁에 대부분 날아갑니다. 어제·지난주 범위를 섞어 주면 같은 시간으로 유지율이 크게 올라갑니다.',
-        kidsBody: '10분 외우고 2분 동안 종이에 적어 보기를 반복하세요. 새로운 것만 계속 외우면 저녁엔 거의 다 잊어버려요. 어제 배운 것도 조금씩 섞어 주면 같은 시간에 훨씬 많이 남습니다.'
+        kidsBody: '10분 외우고 2분 동안 종이에 적어 보기를 반복하세요. 어제 배운 내용도 조금씩 섞은 뒤 어느 쪽이 더 잘 떠오르는지 확인해 보세요.'
       },
       low: {
         title: '재인출 위주 · 새 암기 최소화',
@@ -60,7 +60,7 @@
     calculate: {
       high: {
         title: '실전 세트 타임어택',
-        body: '계산 능력이 잘 나오는 날입니다. 시간을 재고 실전 세트를 푸세요. 다단계 계산이 필요한 고난도 문항을 지금 배치하는 게 가장 효율적입니다. 채점은 세트를 끝낸 뒤 한 번에 하세요.',
+        body: '오늘 입력값에서는 계산형 과제가 다른 유형보다 상대적으로 덜 부담스러운 것으로 추정됩니다. 시간을 재고 실전 세트를 풀되, 실제 체감이 다르면 난이도나 시간을 낮추세요. 채점은 세트를 끝낸 뒤 한 번에 하세요.',
         kidsBody: '오늘은 계산이 잘 되는 날이에요! 시계를 맞춰 놓고 문제를 쭉 풀어 보세요. 어려운 문제일수록 지금 푸는 게 좋아요. 채점은 한 문제씩 하지 말고 다 풀고 나서 한 번에 하세요.'
       },
       mid: {
@@ -70,14 +70,14 @@
       },
       low: {
         title: '오답노트 · 풀이 과정 재현',
-        body: '새 유형은 오늘 손해입니다. 틀린 문제의 풀이를 처음부터 다시 써 보고, 어느 줄에서 틀렸는지 표시하세요. 계산 부하가 낮으면서 실수 패턴을 잡아 주는 작업입니다.',
+        body: '오늘은 새 유형보다 익숙한 오답부터 시작해 보세요. 틀린 문제의 풀이를 처음부터 다시 쓰고, 어느 줄에서 틀렸는지 표시한 뒤 실제 체감을 남기세요.',
         kidsBody: '오늘 새 문제는 잘 안 풀릴 거예요. 대신 틀렸던 문제를 처음부터 다시 풀어 보고, 어디서 틀렸는지 동그라미 쳐 보세요. 힘은 덜 들면서 내가 자주 하는 실수를 찾을 수 있어요.'
       }
     },
     reading: {
       high: {
         title: '낯선 주제 장문 정독 + 요약 재구성',
-        body: '언어 이해력이 좋은 날입니다. 평소 피하던 낯선 분야의 긴 지문을 잡으세요. 문단별 한 줄 요약 → 전체 한 문장 요약 순으로 압축하면 구조를 보는 눈이 빨리 자랍니다.',
+        body: '오늘 입력값에서는 독해형 과제가 다른 유형보다 상대적으로 덜 부담스러운 것으로 추정됩니다. 평소 피하던 긴 지문을 잡고 문단별 한 줄 요약 → 전체 한 문장 요약 순으로 압축해 보세요.',
         kidsBody: '오늘은 글이 잘 읽히는 날이에요! 평소 어려워서 피하던 긴 글에 도전해 보세요. 문단마다 한 줄로 줄여 쓰고, 마지막엔 글 전체를 한 문장으로 줄여 보세요. 글의 뼈대가 보이기 시작합니다.'
       },
       mid: {
@@ -88,23 +88,23 @@
       low: {
         title: '문장 단위 해석 + 어휘 정리',
         body: '긴 지문은 오늘 붙잡아도 눈만 굴러갑니다. 짧은 문단을 문장 단위로 끊어 해석하고 모르는 어휘를 정리하세요. 소리 내어 읽으면 이해도가 눈에 띄게 올라갑니다.',
-        kidsBody: '오늘 긴 글은 읽어도 머리에 안 들어와요. 짧은 글을 한 문장씩 끊어 읽고, 모르는 낱말만 따로 적어 두세요. 소리 내어 읽으면 훨씬 잘 이해돼요.'
+        kidsBody: '오늘 긴 글이 부담스럽다면 짧은 글을 한 문장씩 끊어 읽고, 모르는 낱말만 따로 적어 두세요. 소리 내어 읽는 방식이 맞는지도 확인해 보세요.'
       }
     },
     creative: {
       high: {
         title: '백지에서 통째로 써 보기',
-        body: '창의력이 올라온 시간대입니다. 개요 없이 답안을 통째로 써 본 다음, 모범답안과 구조를 비교하세요. 이 순서를 뒤집으면 남의 틀만 따라 쓰게 됩니다.',
+        body: '오늘 입력값과 시간대 기준으로 서술·기획 과제가 상대적으로 덜 부담스러운 것으로 추정됩니다. 먼저 답안을 써 본 다음 모범답안과 구조를 비교하세요.',
         kidsBody: '오늘은 새로운 생각이 잘 떠오르는 시간이에요! 예시 답을 보기 전에 내 생각을 먼저 쭉 써 보세요. 다 쓰고 나서 예시 답과 비교해 보면 됩니다. 순서를 바꾸면 남의 생각을 그대로 따라 쓰게 돼요.'
       },
       mid: {
         title: '개요 직접 설계 + 한 문단 완성',
-        body: '뼈대는 반드시 스스로 짜고, 본문은 한 문단만 제대로 완성하세요. 전체를 얕게 쓰는 것보다 한 문단을 끝까지 다듬는 편이 훨씬 남습니다.',
-        kidsBody: '무엇을 쓸지 순서부터 직접 정해 보세요. 그다음 한 문단만 제대로 완성하면 충분해요. 전체를 대충 쓰는 것보다 한 문단을 끝까지 다듬는 게 훨씬 도움이 됩니다.'
+        body: '먼저 스스로 뼈대를 짠 뒤 본문 한 문단을 완성해 보세요. 전체를 얕게 쓰는 방식과 한 문단을 다듬는 방식 중 어느 쪽이 맞는지 피드백으로 확인하세요.',
+        kidsBody: '무엇을 쓸지 순서부터 직접 정해 보세요. 그다음 한 문단만 완성하고, 이 방식이 시작하기 편했는지 피드백을 남겨 보세요.'
       },
       low: {
         title: '우수 답안 구조 분해',
-        body: '오늘은 생산보다 분석입니다. 모범답안을 목차 수준으로 분해해 두세요. 오늘 만든 뼈대는 창의력이 올라오는 날 살을 붙이면 됩니다.',
+        body: '오늘은 생산보다 분석을 먼저 제안합니다. 모범답안을 목차 수준으로 분해하고, 실제 체감이 괜찮은 날 살을 붙여 보세요.',
         kidsBody: '오늘은 직접 쓰기보다 잘 쓴 글을 뜯어보는 날이에요. 예시 답이 어떤 순서로 쓰였는지 번호를 매겨 정리해 두세요. 그 틀에 내 생각을 채우는 건 컨디션 좋은 날 하면 됩니다.'
       }
     },
@@ -121,8 +121,8 @@
       },
       low: {
         title: '목차 훑기로 예열 후 진입',
-        body: '가벼운 개념 복습과 목차 훑기로 뇌를 예열하세요. 20~30분 뒤 각성이 올라오면 그때 문제로 넘어가면 됩니다.',
-        kidsBody: '바로 문제부터 풀면 힘들어요. 먼저 목차와 배운 내용을 가볍게 훑으며 뇌를 깨우세요. 20~30분쯤 지나 머리가 좀 돌아가면 그때 문제로 넘어가면 됩니다.'
+        body: '가벼운 개념 복습과 목차 훑기로 시작하세요. 20분 뒤 피로 체감을 다시 확인하고 괜찮다면 문제로 넘어갑니다.',
+        kidsBody: '바로 문제가 부담스럽다면 목차와 배운 내용을 가볍게 훑으며 시작하세요. 20분 뒤 괜찮은지 확인하고 문제로 넘어가면 됩니다.'
       }
     }
   };
@@ -148,7 +148,7 @@
     if (overall >= 74) return { k: 1.00, note: '컨디션이 좋아 계획한 학습 시간을 그대로 배정했습니다.' };
     if (overall >= 62) return { k: 0.94, note: '무난한 컨디션이라 계획 대비 약간의 여유를 두었습니다.' };
     if (overall >= 50) return { k: 0.86, note: '컨디션이 보통이라 총량을 14% 줄였습니다. 남는 시간은 회복에 쓰세요.' };
-    if (overall >= 38) return { k: 0.72, note: '컨디션 저하로 총량을 28% 줄였습니다. 무리하면 내일까지 손해입니다.' };
+    if (overall >= 38) return { k: 0.72, note: '자기보고 입력에서 준비도가 낮게 나타나 총량을 28% 줄였습니다. 실제 피로 체감에 따라 더 줄여도 됩니다.' };
     return { k: 0.55, note: '회복이 우선인 상태라 총량을 45% 줄였습니다. 오늘은 최소한만 하고 일찍 자세요.' };
   }
 
@@ -301,7 +301,8 @@
       // 취침 시각을 넘기면서까지 블록을 밀어 넣지 않는다.
       // 블록 수 추정은 사이클 평균값이라 실제 배치와 몇 분씩 어긋날 수 있어,
       // 여기서 한 번 더 잘라 줘야 타임라인이 커퓨를 넘지 않는다.
-      if (hardEndHour !== null && hardEndHour !== undefined && t + pom.focus / 60 > hardEndHour) break;
+      var blockMinutes = best.blockMinutes || pom.focus;
+      if (hardEndHour !== null && hardEndHour !== undefined && t + blockMinutes / 60 > hardEndHour) break;
 
       remaining[best.id]--; done++; last = best.id;
 
@@ -312,11 +313,11 @@
         type: best.type,
         color: best.color,
         start: t,
-        end: t + pom.focus / 60,
-        minutes: pom.focus,
+        end: t + blockMinutes / 60,
+        minutes: blockMinutes,
         fit: Math.round(fitAt(analysis, best.type, t) * 100)
       });
-      t += pom.focus / 60;
+      t += blockMinutes / 60;
 
       if (done >= totalBlocks) break;
 
@@ -357,20 +358,20 @@
       out.push({ icon: '💧', title: '휴식마다 물 한 컵', text: '현재 ' + i.water + '컵입니다. 휴식 시작 신호를 물 마시는 행동과 묶어 두면 자연스럽게 채워집니다.' });
     }
     if (i.caffeine >= 4) {
-      out.push({ icon: '🚫', title: '카페인 여기서 중단', text: '이미 ' + i.caffeine + '잔입니다. 반감기가 5~6시간이라 지금 더 마시면 오늘 밤 수면의 질이 떨어지고, 그 손해는 내일 기억력으로 돌아옵니다.' });
+      out.push({ icon: '🚫', title: '카페인 추가 섭취 주의', text: '이미 ' + i.caffeine + '잔입니다. 늦은 카페인은 일부 사람의 수면에 영향을 줄 수 있으니 추가 섭취를 피하세요.' });
     } else if (i.caffeine === 0 && i.hour < 15 && analysis.byId.focus.exact < 70) {
-      out.push({ icon: '☕', title: '커피 1잔은 지금이 적기', text: '집중력이 낮고 아직 카페인이 없습니다. 15시 이전 1잔은 이득이 손해보다 큽니다.' });
+      out.push({ icon: '☕', title: '카페인은 선택', text: '집중 과제 적합도 참고값이 낮고 카페인 기록은 없습니다. 청소년·민감한 사람에게는 권하지 않으며, 물과 짧은 걷기를 먼저 시도하세요.' });
     }
     if (i.exercise === 0) {
       out.push({ icon: '🚶', title: '10분 빠른 걷기', text: '긴 휴식 때 가능하면 10분 정도 걸어 보세요. 몸을 움직이면 각성을 높이고 다음 블록을 준비하는 데 도움이 될 수 있습니다.' });
     }
     if (i.hoursSinceMeal >= 5) {
-      out.push({ icon: '🍎', title: '첫 휴식에 가벼운 간식', text: '마지막 식사 후 시간이 오래 지났습니다. 견과류나 과일처럼 혈당을 급격히 올리지 않는 것으로 채우세요. 단 음료는 1시간 뒤 급락을 부릅니다.' });
+      out.push({ icon: '🍎', title: '첫 휴식에 가벼운 간식', text: '마지막 식사 후 시간이 오래 지났습니다. 배고픔이 느껴진다면 견과류나 과일처럼 부담이 적은 간식과 물을 고려하세요.' });
     }
     if (i.sleep.hours < 6) {
       out.push({ icon: '🛏️', title: '오늘은 취침 시각이 최우선', text: '수면 부족이 오늘 점수를 가장 크게 끌어내렸습니다. 학습 종료 시각을 앞당겨서라도 평소보다 일찍 자는 게 내일까지 합산하면 이득입니다.' });
     }
-    out.push({ icon: '📵', title: '휴식 중 스마트폰 금지', text: 'SNS·영상은 뇌를 쉬게 하지 않고 자극만 바꿉니다. 눈 감고 멍때리기, 창밖 보기, 스트레칭이 실제 회복을 만듭니다. 이걸 지키느냐가 다음 블록 집중력을 좌우합니다.' });
+    out.push({ icon: '📵', title: '휴식 중 화면 잠시 내려놓기', text: 'SNS·영상 대신 눈 감기, 창밖 보기, 가벼운 스트레칭처럼 자극이 적은 휴식을 시도해 보세요. 다음 블록의 집중 체감을 피드백으로 확인할 수 있습니다.' });
     return out;
   }
 
@@ -382,16 +383,16 @@
   function fitReason(s, analysis) {
     var label = TYPES[s.type].label;
     if (!analysis.capMeaningful) {
-      return '오늘은 능력 간 편차가 작아 유형 궁합이 큰 변수가 아닙니다';
+      return '오늘은 과제 적합도 간 편차가 작아 유형 차이가 큰 변수가 아닙니다';
     }
     var dev = Math.round(Math.abs(s.fitDev) * 10) / 10;
     if (s.brainFit >= FIT_GOOD) {
-      return '오늘 ' + label + ' 과목이 쓰는 능력(' + s.domCapLabel + ' 중심)이 평균보다 ' + dev + '점 높아 궁합이 좋습니다';
+      return '오늘 자기보고 입력에서 ' + label + ' 과제가 쓰는 준비도(' + s.domCapLabel + ' 중심)가 평균보다 ' + dev + '점 높게 추정됐습니다';
     }
     if (s.brainFit >= FIT_OK) {
-      return '오늘 ' + label + ' 과목이 쓰는 능력이 평균과 비슷해 무난하게 맞습니다';
+      return '오늘 자기보고 입력에서 ' + label + ' 과제 준비도가 평균과 비슷하게 추정됐습니다';
     }
-    return '오늘 ' + label + ' 과목이 쓰는 능력(' + s.domCapLabel + ' 중심)이 평균보다 ' + dev + '점 낮아 궁합이 떨어집니다';
+    return '오늘 자기보고 입력에서 ' + label + ' 과제 준비도(' + s.domCapLabel + ' 중심)가 평균보다 ' + dev + '점 낮게 추정됐습니다';
   }
 
   function reasonFor(s, analysis) {
@@ -458,7 +459,8 @@
       var urgency = urgencyOf(s.daysLeft);
       var gap = 0.12 + 0.88 * ((5 - s.readiness) / 4);
       var importance = 0.20 + 0.80 * ((s.importance - 1) / 4);
-      var priority = 0.34 * urgency + 0.24 * gap + 0.24 * importance + 0.18 * brainFit;
+      var preference = typeof s.preference === 'number' ? clamp(s.preference, -1, 1) : 0;
+      var priority = (0.34 * urgency + 0.24 * gap + 0.24 * importance + 0.18 * brainFit) * (1 + preference * 0.12);
 
       return {
         id: s.id || ('s' + idx),
@@ -479,10 +481,14 @@
         domCapScore: analysis.byId[domCap].score,
         domCapRel: Math.round(analysis.byId[domCap].rel * 10) / 10,
         priority: priority,
+        preference: preference,
+        recommendationAction: s.recommendationAction || '',
         blocks: 0
       };
     });
 
+    subjects = subjects.filter(function (s) { return s.recommendationAction !== 'exclude'; });
+    if (!subjects.length) totalBlocks = 0;
     subjects.sort(function (a, b) { return b.priority - a.priority; });
 
     // 블록이 과목 수보다 적으면 상위 과목만 남긴다
@@ -490,10 +496,13 @@
     var dropped = subjects.slice(active.length);
 
     allocateBlocks(active, totalBlocks);
+    active.forEach(function (s) {
+      s.blockMinutes = s.recommendationAction === 'shorter' ? Math.max(10, pom.focus - 10) : pom.focus;
+    });
     active = active.filter(function (s) { return s.blocks > 0; });
 
     active.forEach(function (s) {
-      s.minutes = s.blocks * pom.focus;
+      s.minutes = s.blocks * s.blockMinutes;
       var cap = analysis.byId[s.domCap];
       var m = METHODS[s.type][cap.level];
       s.method = m.title;
@@ -509,11 +518,14 @@
     // 그러지 않으면 "30분 배정" 이라고 써 놓고 타임라인에는 없는 상태가 된다.
     var placed = {};
     timeline.forEach(function (b) {
-      if (b.kind === 'study') placed[b.subjectId] = (placed[b.subjectId] || 0) + 1;
+      if (b.kind !== 'study') return;
+      if (!placed[b.subjectId]) placed[b.subjectId] = { blocks: 0, minutes: 0 };
+      placed[b.subjectId].blocks++;
+      placed[b.subjectId].minutes += b.minutes;
     });
     active.forEach(function (s) {
-      s.blocks = placed[s.id] || 0;
-      s.minutes = s.blocks * pom.focus;
+      s.blocks = placed[s.id] ? placed[s.id].blocks : 0;
+      s.minutes = placed[s.id] ? placed[s.id].minutes : 0;
     });
     dropped = dropped.concat(active.filter(function (s) { return s.blocks === 0; }));
     active = active.filter(function (s) { return s.blocks > 0; });
@@ -533,10 +545,10 @@
     } else if (active.length === 0) {
       headline = '배정할 학습 블록이 없습니다. 가용 시간이나 과목을 확인해 주세요.';
     } else {
-      headline = '오늘은 ' + top.label + '(' + top.score + '점)이 가장 잘 올라와 있고 ' +
-                 bottom.label + '(' + bottom.score + '점)이 가장 낮습니다. ' +
+      headline = '오늘 자기보고 입력에서는 ' + top.label + '가 상대적으로 높고 ' +
+                 bottom.label + '가 상대적으로 낮게 추정됐습니다. ' +
                  '그래서 ' + active[0].name + '에 가장 많은 시간(' + active[0].minutes + '분)을 배정했고, ' +
-                 pom.focus + '분 집중 / ' + pom.short + '분 휴식 리듬을 추천합니다.';
+                 '기본 ' + pom.focus + '분 집중 / ' + pom.short + '분 휴식 리듬을 추천합니다.';
     }
 
     var scaleNote = scale.note;
@@ -572,12 +584,12 @@
 
   function pomodoroReason(overall, fatigue, pom) {
     var base;
-    if (overall >= 85) base = '종합 뇌 컨디션 ' + Math.round(overall) + '점으로 최상 구간이라, 긴 딥워크 블록(' + pom.focus + '분)을 소화할 수 있습니다.';
-    else if (overall >= 74) base = '종합 ' + Math.round(overall) + '점으로 좋은 구간이라 표준보다 긴 ' + pom.focus + '분 블록을 배정했습니다.';
-    else if (overall >= 62) base = '종합 ' + Math.round(overall) + '점으로 양호해 ' + pom.focus + '분 블록이 적당합니다.';
-    else if (overall >= 50) base = '종합 ' + Math.round(overall) + '점이라 무리하지 않는 클래식 ' + pom.focus + '분 블록으로 잡았습니다.';
-    else if (overall >= 38) base = '종합 ' + Math.round(overall) + '점으로 낮아, 짧은 ' + pom.focus + '분 블록으로 끊어야 완주할 수 있습니다.';
-    else base = '종합 ' + Math.round(overall) + '점으로 매우 낮습니다. ' + pom.focus + '분 최소 블록만 유지하고 회복에 무게를 두세요.';
+    if (overall >= 85) base = '자기보고 입력 기반 준비도가 높은 구간이라 ' + pom.focus + '분 블록을 제안합니다.';
+    else if (overall >= 74) base = '자기보고 입력 기반 준비도가 높은 편이라 ' + pom.focus + '분 블록을 제안합니다.';
+    else if (overall >= 62) base = '자기보고 입력 기반 준비도가 보통 이상이라 ' + pom.focus + '분 블록을 제안합니다.';
+    else if (overall >= 50) base = '자기보고 입력 기반 준비도가 보통이라 ' + pom.focus + '분 블록을 제안합니다.';
+    else if (overall >= 38) base = '자기보고 입력 기반 준비도가 보통 이하라 짧은 ' + pom.focus + '분 블록을 제안합니다.';
+    else base = '자기보고 입력 기반 준비도가 낮은 편이라 ' + pom.focus + '분 최소 블록만 제안합니다.';
 
     if (fatigue >= 7) base += ' 피로도가 ' + fatigue + '/10으로 높아 휴식을 ' + pom.short + '분으로 늘렸습니다.';
     return base;

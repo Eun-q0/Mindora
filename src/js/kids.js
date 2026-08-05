@@ -145,7 +145,7 @@
     { id: 'meals3', icon: '🍚', name: '밥심 충전', desc: '아침·점심·저녁을 모두 먹었어요', check: function (c) { return c.input.meals && c.input.meals.breakfast && c.input.meals.lunch && c.input.meals.dinner; } },
     { id: 'water6', icon: '💧', name: '물 마시기 왕', desc: '물을 6컵 넘게 마셨어요', check: function (c) { return c.input.water >= 6; } },
     { id: 'move', icon: '🏃', name: '움직이는 뇌', desc: '20분 넘게 운동했어요', check: function (c) { return c.input.exercise >= 20; } },
-    { id: 'brain80', icon: '🧠', name: '최상 컨디션', desc: '뇌 컨디션 80점을 넘겼어요', check: function (c) { return c.todayRec && c.todayRec.overall >= 80; } },
+    { id: 'brain80', icon: '🧠', name: '준비 완료', desc: '오늘의 학습 준비도가 높은 구간이에요', check: function (c) { return c.todayRec && c.todayRec.overall >= 80; } },
     { id: 'goal', icon: '🎯', name: '목표 달성', desc: '이번 주 목표를 다 채웠어요', check: function (c) { return c.goalMin > 0 && c.weekMin >= c.goalMin; } },
     { id: 'top1', icon: '🥇', name: '우리 반 1등', desc: '그룹 랭킹 1위를 했어요', check: function (c) { return c.rank && c.rank.me && c.rank.me.rank === 1 && c.rank.me.value > 0 && c.rank.count >= 2; } }
   ];

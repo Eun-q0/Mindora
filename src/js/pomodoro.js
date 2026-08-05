@@ -116,7 +116,10 @@
   Pomodoro.prototype.canEdit = function (index) {
     if (index < 0 || index >= this.queue.length) return false;
     if (index < this.index) return false;                    // 이미 지난 블록
-    if (index === this.index && this.running) return false;  // 지금 돌아가는 블록
+    if (index === this.index &&
+        (this.running || this.remainingMs < this.queue[index].ms)) return false;
+    // 일시정지했더라도 한 번 시작한 블록은 길이를 바꾸지 않는다.
+    // 바꾸면 남은 시간이 전체 블록 길이로 되돌아가 진행 기록이 사라진다.
     return true;
   };
 
