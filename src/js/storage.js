@@ -10,7 +10,8 @@
     history: 'neurostudy.history.v1',   // 일별 뇌 컨디션
     sessions: 'neurostudy.sessions.v1', // 일별 × 과목 순공 시간(분)
     group: 'neurostudy.group.v1',       // 그룹원 기록
-    schools: 'neurostudy.schools.v1'    // 예전에 입력한 학교명 (자동완성용)
+    schools: 'neurostudy.schools.v1',   // 예전에 입력한 학교명 (자동완성용)
+    personalization: 'mindora.personalization.v1' // 블록 피드백·시험 회고·개인 실험
   };
 
   var MAX_HISTORY = 180;
@@ -169,6 +170,64 @@
     write(K.schools, list.slice(0, 12));
   }
 
+  /* --------------------------------------------------------- 개인화 기록
+   * 능력 검사 결과가 아니라 실제 공부 뒤 사용자가 남긴 체감만 저장한다.
+   * 추천 보정은 최근 응답을 작게 반영하며, 사용자가 직접 바꾼 과목·시간이 항상 우선한다. */
+
+  function personalization() {
+    var v = read(K.personalization, null) || {};
+    if (!Array.isArray(v.feedback)) v.feedback = [];
+    if (!v.reflections || typeof v.reflections !== 'object') v.reflections = {};
+    if (v.experiment === undefined) v.experiment = null;
+    return v;
+  }
+
+  function savePersonalization(v) { return write(K.personalization, v); }
+
+  function addFeedback(item) {
+    var v = personalization();
+    var rec = {
+      ts: Date.now(), date: key(),
+      subject: String(item.subject || ''),
+      type: item.type || 'mixed',
+      minutes: Math.max(0, Number(item.minutes) || 0),
+      focus: item.focus === undefined || item.focus === null ? null : Number(item.focus),
+      difficulty: item.difficulty === undefined || item.difficulty === null ? null : Number(item.difficulty),
+      recommendation: item.recommendation === undefined || item.recommendation === null ? null : Number(item.recommendation)
+    };
+    v.feedback.push(rec);
+    if (v.feedback.length > 240) v.feedback = v.feedback.slice(-240);
+    savePersonalization(v);
+    return rec;
+  }
+
+  function feedback() { return personalization().feedback; }
+
+  /** 최근 12개 응답의 추천 적합도 평균(-1~1). 같은 과목을 우선하고 부족하면 같은 유형을 쓴다. */
+  function recommendationPreference(subject, type) {
+    var rows = feedback().slice().reverse();
+    var exact = rows.filter(function (r) { return r.subject === subject && typeof r.recommendation === 'number' && r.recommendation !== 0; }).slice(0, 12);
+    var picked = exact.length >= 2 ? exact : rows.filter(function (r) { return r.type === type && typeof r.recommendation === 'number' && r.recommendation !== 0; }).slice(0, 12);
+    if (!picked.length) return 0;
+    return picked.reduce(function (s, r) { return s + r.recommendation; }, 0) / picked.length;
+  }
+
+  function saveExamReflection(examKey, value) {
+    var v = personalization();
+    v.reflections[String(examKey)] = { value: value, ts: Date.now() };
+    savePersonalization(v);
+  }
+
+  function examReflections() { return personalization().reflections; }
+
+  function experiment() { return personalization().experiment; }
+  function saveExperiment(value) {
+    var v = personalization();
+    v.experiment = value || null;
+    savePersonalization(v);
+    return v.experiment;
+  }
+
   /* ------------------------------------------------- 백업 (내보내기/가져오기)
    * localStorage 는 브라우저 데이터를 지우면 함께 사라진다.
    * 몇 달치 기록이 한순간에 없어지지 않도록 파일로 빼낼 수 있어야 한다.
@@ -182,7 +241,7 @@
     K.profile, K.input, K.history, K.sessions, K.group, K.schools,
     'neurostudy.kids.v1', 'neurostudy.sound.v1',
     // 직접 만든 계획표와 몇 주에 걸쳐 올린 리그 티어도 복원할 수 없는 기록이다
-    'neurostudy.vacplan.v1', 'neurostudy.league.v1'
+    'neurostudy.vacplan.v1', 'neurostudy.league.v1', K.personalization
   ];
 
   /* 마지막으로 백업을 내려받은 시각. 백업 자체에는 넣지 않는다 —
@@ -227,7 +286,7 @@
 
   function clearAll() {
     if (!ok) return;
-    [K.history, K.sessions, K.group].forEach(function (k) { localStorage.removeItem(k); });
+    [K.history, K.sessions, K.group, K.personalization].forEach(function (k) { localStorage.removeItem(k); });
   }
 
   global.Store = {
@@ -239,6 +298,11 @@
     sessions: sessions, saveSessions: saveSessions,
     group: group, saveGroup: saveGroup,
     recentSchools: recentSchools, rememberSchool: rememberSchool,
+    personalization: personalization, savePersonalization: savePersonalization,
+    addFeedback: addFeedback, feedback: feedback,
+    recommendationPreference: recommendationPreference,
+    saveExamReflection: saveExamReflection, examReflections: examReflections,
+    experiment: experiment, saveExperiment: saveExperiment,
     exportAll: exportAll, importAll: importAll, EXPORT_VERSION: EXPORT_VERSION,
     lastBackupAt: lastBackupAt, markBackedUp: markBackedUp,
     persistStatus: persistStatus, requestPersist: requestPersist, estimate: estimate,

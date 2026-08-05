@@ -1,5 +1,5 @@
 /* =========================================================================
- * engine.js — 뇌 학습 능력 산출 엔진
+ * engine.js — 학습 준비도 참고값 산출 엔진
  *
  * 설계 원칙
  *  1) 결정론적 규칙 기반: 같은 입력 → 항상 같은 결과 (재현 가능)
@@ -38,7 +38,7 @@
   function round1(v) { return Math.round(v * 10) / 10; }
 
   /* -------------------------------------------------------------- 요인 정의
-   * 각 요인은 사용자의 원시 입력을 0~1 사이의 "뇌 친화도"로 변환한다.
+   * 각 요인은 사용자의 자기보고 입력을 0~1 사이의 상대적 적합도로 변환한다.
    * 0.5 = 중립. 0.5보다 높으면 가점, 낮으면 감점으로 해석된다.
    */
 
@@ -58,10 +58,10 @@
       },
       note: function (i) {
         var h = i.sleep.hours;
-        if (h < 4) return '수면이 심각하게 부족합니다. 전두엽의 억제 조절과 해마의 기억 공고화가 함께 무너진 상태예요.';
-        if (h < 6) return '권장 수면(7~9시간)에 크게 못 미칩니다. 주의 지속 시간과 기억 인출이 동시에 떨어져요.';
-        if (h < 7) return '약간 부족한 수면이에요. 초반 집중은 되지만 2시간 이후 효율이 급격히 떨어질 수 있습니다.';
-        if (h <= 9) return '권장 수면 범위를 충족했어요. 오늘 뇌 컨디션에서 가장 든든한 기반입니다.';
+        if (h < 4) return '입력한 수면 시간이 매우 짧습니다. 오늘은 짧고 쉬운 과제부터 시작하고 휴식을 충분히 두세요.';
+        if (h < 6) return '입력한 수면 시간이 권장 범위보다 짧습니다. 긴 집중 블록보다 복습처럼 부담이 낮은 과제를 먼저 권합니다.';
+        if (h < 7) return '입력한 수면 시간이 약간 짧습니다. 피로 체감을 확인하며 집중 블록을 짧게 조정해 보세요.';
+        if (h <= 9) return '입력한 수면 시간이 일반적인 권장 범위에 있습니다. 다른 자기보고 입력과 함께 계획에 참고합니다.';
         if (h <= 10) return '평소보다 긴 수면이에요. 나쁘진 않지만 완전한 각성까지 시간이 걸릴 수 있습니다.';
         return '과다 수면은 오히려 수면 관성(무기력)을 부릅니다. 가벼운 활동으로 각성을 올려주세요.';
       }
@@ -89,7 +89,7 @@
       value: function (i) { return (i.sleep.regularity - 1) / 4; },
       note: function (i) {
         var r = i.sleep.regularity;
-        if (r <= 2) return '취침·기상 시각이 들쭉날쭉합니다. 생체시계가 어긋나면 같은 수면 시간이라도 회복 효율이 떨어져요.';
+        if (r <= 2) return '취침·기상 시각이 들쭉날쭉하다고 입력했습니다. 오늘 피로 체감을 살피고 가능한 범위에서 일정한 수면 시각을 시도해 보세요.';
         if (r === 3) return '수면 리듬이 보통입니다. 주말·평일 편차를 1시간 이내로 줄이면 체감이 큽니다.';
         return '규칙적인 수면 리듬이에요. 생체시계가 안정되어 시간대별 컨디션 예측이 잘 맞습니다.';
       }
@@ -124,7 +124,7 @@
       },
       note: function (i) {
         var s = i.stress;
-        if (s >= 8) return '과각성 상태입니다. 긴장이 오히려 작업기억 용량을 잡아먹어 수행이 무너져요.';
+        if (s >= 8) return '스트레스 체감이 높은 편입니다. 오늘은 한 번에 처리할 양을 줄이고 짧은 과제부터 시작하세요.';
         if (s >= 6) return '각성이 최적 구간을 넘었어요. 압박감이 실수와 되읽기를 늘립니다.';
         if (s >= 2 && s <= 5) return '이 모델이 적정 긴장으로 보는 구간이에요. 적당한 긴장은 집중에 도움이 될 수 있습니다.';
         return '각성이 낮아 늘어지기 쉬운 상태예요. 마감 타이머나 목표 설정으로 긴장을 살짝 올리면 좋습니다.';
@@ -145,7 +145,7 @@
       note: function (i) {
         var f = i.fatigue;
         if (f >= 8) return '탈진에 가까운 피로입니다. 이 상태의 학습은 입력은 되지만 저장이 거의 되지 않아요.';
-        if (f >= 6) return '피로가 상당합니다. 긴 집중 블록보다 짧게 여러 번 끊는 편이 훨씬 효율적이에요.';
+        if (f >= 6) return '피로 체감이 높은 편입니다. 긴 집중 블록보다 짧게 끊었을 때 실제로 더 편한지 확인해 보세요.';
         if (f >= 4) return '중간 정도의 피로예요. 표준 길이의 집중 블록은 소화할 수 있습니다.';
         if (f >= 2) return '피로가 낮은 편입니다. 긴 딥워크 블록을 감당할 수 있어요.';
         return '피로가 거의 없습니다. 오늘 가장 어려운 과제를 배치하기 좋은 조건이에요.';
@@ -183,10 +183,10 @@
         if (h >= 19.0 && !i.meals.dinner) skipped.push('저녁');
         var t = i.hoursSinceMeal;
         if (skipped.length >= 2) return skipped.join('·') + '을 걸렀습니다. 긴 공복은 일부 사람에게 집중과 작업기억에 불리할 수 있어요.';
-        if (skipped.length === 1) return skipped[0] + ' 결식이 확인됩니다. 특히 계산·작업기억 과제에서 손해가 큽니다.';
-        if (t >= 6) return '마지막 식사 후 ' + round1(t) + '시간이 지나 혈당이 낮아진 구간이에요. 가벼운 간식이 필요합니다.';
+        if (skipped.length === 1) return skipped[0] + ' 식사 기록이 없습니다. 배고픔이 느껴진다면 과제 전에 가벼운 간식과 물을 고려하세요.';
+        if (t >= 6) return '마지막 식사 후 ' + round1(t) + '시간이 지났습니다. 배고픔이 느껴진다면 가벼운 간식과 물을 고려하세요.';
         if (t <= 0.5) return '식사 직후라 소화로 혈류가 몰리는 시간대예요. 20~30분 뒤가 집중에 더 유리합니다.';
-        return '식사와 혈당 상태가 안정적입니다. 뇌에 연료가 충분히 공급되고 있어요.';
+        return '입력한 식사 간격은 무난한 편입니다. 실제 배고픔과 몸 상태를 함께 확인하세요.';
       }
     },
 
@@ -205,7 +205,7 @@
         var w = i.water;
         if (w <= 2) return '탈수에 가깝습니다. 체수분 2% 손실만으로도 주의력과 단기 기억이 눈에 띄게 떨어져요.';
         if (w <= 4) return '수분이 다소 부족합니다. 휴식마다 물 한 컵을 채우는 것만으로 체감이 달라져요.';
-        if (w <= 9) return '수분 섭취가 충분합니다. 뇌 기능 유지에 필요한 기본 조건을 갖췄어요.';
+        if (w <= 9) return '입력한 수분 섭취량은 무난한 편입니다. 목마름과 몸 상태를 함께 확인하세요.';
         return '수분은 충분합니다. 다만 화장실 때문에 집중이 끊기지 않도록 블록 사이에 맞춰 마시세요.';
       }
     },
@@ -225,7 +225,7 @@
         var c = i.caffeine;
         if (c === 0) return '카페인 없음. 각성을 끌어올릴 여지가 남아 있어요 (오후 3시 이전 1잔 권장).';
         if (c <= 2) return '카페인이 각성에 가장 잘 작용하는 구간입니다. 아데노신 차단 효과가 최적이에요.';
-        if (c === 3) return '각성 효과 자체는 충분히 받고 있지만 최적 구간은 살짝 넘었습니다. 여기서 더 마시면 이득보다 손해가 큽니다.';
+        if (c === 3) return '카페인 섭취가 평소보다 많다면 추가 섭취를 피하고 잠들기 불편하지 않은지 기록해 보세요.';
         return '카페인 과다입니다. 손떨림·불안이 작업기억을 오히려 갉아먹고, 오늘 밤 수면까지 망가뜨립니다.';
       }
     },
@@ -263,7 +263,7 @@
       note: function (i) {
         var e = i.exercise;
         if (e === 0) return '오늘 운동 기록이 없습니다. 10분 정도 빠르게 걸으면 각성을 높이고 다음 공부를 준비하는 데 도움이 될 수 있어요.';
-        if (e < 20) return '가벼운 활동이 있었습니다. 20~45분까지 늘리면 기억력 이득이 뚜렷해집니다.';
+        if (e < 20) return '가벼운 활동이 있었습니다. 무리가 없다면 평소 활동량을 조금씩 늘려 보세요.';
         if (e <= 60) return '적당한 유산소 운동을 한 날입니다. 기분 전환과 주의 전환에 도움이 될 수 있어요.';
         return '운동량이 많은 편이에요. 근피로가 집중을 방해할 수 있으니 회복 시간을 충분히 두세요.';
       }
@@ -326,12 +326,12 @@
   var CAPACITIES = [
     {
       id: 'focus',
-      label: '학습 집중력',
-      short: '집중력',
+      label: '집중 과제 적합도',
+      short: '집중 과제',
       icon: '🎯',
       color: '#7c5cff',
-      desc: '한 과제에 주의를 붙들고 방해를 밀어내는 힘. 딥워크의 총 길이를 결정합니다.',
-      kidsDesc: '한 가지에 오래 집중하는 힘이에요. 이게 높으면 딴짓이 확 줄어들어요.',
+      desc: '오늘 한 과제를 이어가기 상대적으로 수월할지 추정한 참고값입니다.',
+      kidsDesc: '오늘 한 가지 공부를 이어가기 얼마나 수월할지 보여 주는 참고값이에요.',
       weights: {
         sleepDuration: 0.24, fatigue: 0.22, stressArousal: 0.13, sleepQuality: 0.12,
         nutrition: 0.09, caffeineAlert: 0.09, hydration: 0.05, mood: 0.04, sleepRegularity: 0.02
@@ -339,12 +339,12 @@
     },
     {
       id: 'memory',
-      label: '기억력',
-      short: '기억력',
+      label: '기억 과제 적합도',
+      short: '기억 과제',
       icon: '🧠',
       color: '#4f8ef7',
-      desc: '새 정보를 부호화하고 오래 붙잡아 두는 힘. 수면과 가장 강하게 묶여 있습니다.',
-      kidsDesc: '외운 걸 오래 기억하는 힘이에요. 잠을 푹 자면 쑥 올라가요.',
+      desc: '오늘 암기·인출 과제를 하기 상대적으로 수월할지 추정한 참고값입니다.',
+      kidsDesc: '오늘 외우기와 복습이 얼마나 수월할지 보여 주는 참고값이에요.',
       weights: {
         sleepDuration: 0.28, sleepQuality: 0.19, stressCalm: 0.14, fatigue: 0.11,
         exercise: 0.09, nutrition: 0.07, sleepRegularity: 0.06, hydration: 0.03, mood: 0.03
@@ -352,12 +352,12 @@
     },
     {
       id: 'computation',
-      label: '계산 능력',
-      short: '계산력',
+      label: '계산 과제 적합도',
+      short: '계산 과제',
       icon: '🔢',
       color: '#8a6fd8',
-      desc: '작업기억을 굴려 여러 단계를 정확히 처리하는 힘. 피로와 혈당에 가장 민감합니다.',
-      kidsDesc: '숫자를 빠르고 정확하게 푸는 힘이에요. 피곤하거나 배고프면 뚝 떨어져요.',
+      desc: '오늘 여러 단계의 계산 과제를 하기 상대적으로 수월할지 추정한 참고값입니다.',
+      kidsDesc: '오늘 계산 문제를 풀기 얼마나 수월할지 보여 주는 참고값이에요.',
       weights: {
         fatigue: 0.23, sleepDuration: 0.21, stressArousal: 0.14, nutrition: 0.13,
         caffeineAlert: 0.10, sleepQuality: 0.09, hydration: 0.05, mood: 0.05
@@ -365,12 +365,12 @@
     },
     {
       id: 'creativity',
-      label: '창의력',
-      short: '창의력',
+      label: '창의 과제 적합도',
+      short: '창의 과제',
       icon: '💡',
       color: '#b566d9',
-      desc: '멀리 떨어진 개념을 잇는 확산적 사고. 정서와 스트레스의 지배를 크게 받습니다.',
-      kidsDesc: '새롭고 재미있는 생각을 떠올리는 힘이에요. 기분이 좋을 때 잘 나와요.',
+      desc: '오늘 서술·기획 과제를 하기 상대적으로 수월할지 추정한 참고값입니다.',
+      kidsDesc: '오늘 생각을 펼쳐 쓰는 공부가 얼마나 수월할지 보여 주는 참고값이에요.',
       weights: {
         mood: 0.23, stressCalm: 0.21, sleepQuality: 0.16, sleepDuration: 0.11,
         exercise: 0.09, caffeineCalm: 0.08, fatigue: 0.06, nutrition: 0.04, hydration: 0.02
@@ -378,12 +378,12 @@
     },
     {
       id: 'language',
-      label: '언어 이해력',
-      short: '언어력',
+      label: '독해 과제 적합도',
+      short: '독해 과제',
       icon: '📖',
       color: '#6f7fc4',
-      desc: '긴 글의 구조와 맥락을 붙잡아 의미를 재구성하는 힘.',
-      kidsDesc: '긴 글을 읽고 무슨 말인지 알아채는 힘이에요.',
+      desc: '오늘 긴 글을 읽고 정리하기 상대적으로 수월할지 추정한 참고값입니다.',
+      kidsDesc: '오늘 긴 글을 읽고 정리하기 얼마나 수월할지 보여 주는 참고값이에요.',
       weights: {
         sleepDuration: 0.19, fatigue: 0.19, sleepQuality: 0.13, stressCalm: 0.12,
         mood: 0.12, nutrition: 0.10, hydration: 0.06, caffeineAlert: 0.05, sleepRegularity: 0.04
@@ -396,12 +396,12 @@
   };
 
   var STATES = [
-    { min: 85, label: '최상', tone: 'excellent', line: '오늘은 가장 어려운 과제를 정면으로 붙잡을 수 있는 날입니다.' },
-    { min: 74, label: '좋음', tone: 'good', line: '컨디션이 좋습니다. 긴 집중 블록을 소화할 수 있어요.' },
-    { min: 62, label: '양호', tone: 'fair', line: '무난한 컨디션입니다. 표준 루틴대로 가면 됩니다.' },
-    { min: 50, label: '보통', tone: 'fair', line: '평범한 컨디션이에요. 욕심을 조금 줄이고 블록을 짧게 가세요.' },
-    { min: 38, label: '저하', tone: 'low', line: '뇌 컨디션이 떨어져 있습니다. 새 진도보다 복습과 정리에 무게를 두세요.' },
-    { min: 0, label: '매우 저하', tone: 'critical', line: '학습보다 회복이 먼저인 상태입니다. 오늘은 최소한만 하고 일찍 자는 편이 내일까지 이득이에요.' }
+    { min: 85, label: '높음', tone: 'excellent', line: '자기보고 입력 기준으로 긴 집중 블록을 시도해 볼 수 있는 상태입니다.' },
+    { min: 74, label: '높음', tone: 'good', line: '자기보고 입력 기준으로 평소보다 긴 블록을 시도해 볼 수 있습니다.' },
+    { min: 62, label: '보통 이상', tone: 'fair', line: '오늘 입력값은 표준 루틴을 시작하기 무난한 범위입니다.' },
+    { min: 50, label: '보통', tone: 'fair', line: '오늘은 블록을 조금 짧게 잡고 체감을 확인하세요.' },
+    { min: 38, label: '보통 이하', tone: 'low', line: '오늘은 새 진도보다 익숙한 복습부터 시작하는 편을 권합니다.' },
+    { min: 0, label: '낮음', tone: 'critical', line: '오늘은 짧은 최소 목표만 시도하고 회복을 우선해 보세요.' }
   ];
 
   function stateOf(score) {
@@ -414,21 +414,21 @@
   function buildAlerts(i) {
     var out = [];
     if (i.sleep.hours < 5) out.push({ level: 'bad', text: '수면 ' + round1(i.sleep.hours) + '시간 — 오늘 학습 총량보다 회복이 우선입니다.' });
-    else if (i.sleep.hours < 6.5) out.push({ level: 'warn', text: '수면 부족 — 후반 블록의 효율 저하를 미리 감안하세요.' });
+    else if (i.sleep.hours < 6.5) out.push({ level: 'warn', text: '입력한 수면 시간이 짧습니다 — 후반 블록은 실제 피로 체감을 보며 줄이세요.' });
 
-    if (i.stress >= 8) out.push({ level: 'bad', text: '스트레스 ' + i.stress + '/10 — 암기와 창의적 과제는 오늘 성과가 잘 안 나옵니다.' });
-    if (i.fatigue >= 8) out.push({ level: 'bad', text: '피로도 ' + i.fatigue + '/10 — 20분 파워냅 없이는 블록 유지가 어렵습니다.' });
+    if (i.stress >= 8) out.push({ level: 'bad', text: '스트레스 체감 ' + i.stress + '/10 — 새 과제보다 익숙한 복습을 짧게 시작해 보세요.' });
+    if (i.fatigue >= 8) out.push({ level: 'bad', text: '피로 체감 ' + i.fatigue + '/10 — 집중 시간을 줄이고 충분히 쉬어도 괜찮습니다.' });
 
     var h = i.hour, skipped = [];
     if (h >= 8.5 && !i.meals.breakfast) skipped.push('아침');
     if (h >= 13 && !i.meals.lunch) skipped.push('점심');
     if (h >= 19 && !i.meals.dinner) skipped.push('저녁');
-    if (skipped.length) out.push({ level: skipped.length >= 2 ? 'bad' : 'warn', text: skipped.join('·') + ' 결식 — 계산·작업기억 과제가 특히 손해를 봅니다.' });
+    if (skipped.length) out.push({ level: skipped.length >= 2 ? 'bad' : 'warn', text: skipped.join('·') + ' 식사 기록 없음 — 배고픔이 느껴지면 부담이 적은 간식과 물을 고려하세요.' });
 
     if (i.hoursSinceMeal >= 6) out.push({ level: 'warn', text: '마지막 식사 후 ' + round1(i.hoursSinceMeal) + '시간 — 첫 휴식 때 간단히라도 먹으세요.' });
-    if (i.caffeine >= 4) out.push({ level: 'warn', text: '카페인 ' + i.caffeine + '잔 — 추가 섭취는 손해입니다. 반감기가 5~6시간이라 오늘 밤 수면까지 영향을 줍니다.' });
-    if (i.water <= 2) out.push({ level: 'warn', text: '수분 ' + i.water + '컵 — 경미한 탈수만으로도 주의력이 떨어집니다.' });
-    if (i.mood <= 2) out.push({ level: 'warn', text: '정서 상태 저조 — 새 개념 학습보다 익숙한 범위의 반복이 안전합니다.' });
+    if (i.caffeine >= 4) out.push({ level: 'warn', text: '카페인 ' + i.caffeine + '잔 — 오늘은 추가 섭취를 피하고 잠드는 데 불편함이 없는지 기록해 보세요.' });
+    if (i.water <= 2) out.push({ level: 'warn', text: '수분 ' + i.water + '컵 — 목마름이나 두통이 있다면 물을 조금씩 보충하세요.' });
+    if (i.mood <= 2) out.push({ level: 'warn', text: '기분 체감이 낮은 편입니다 — 새 개념보다 익숙한 복습을 짧게 시작해 보세요.' });
 
     var urgent = (i.subjects || []).filter(function (s) { return s.daysLeft !== null && s.daysLeft <= 2; });
     if (urgent.length) {
@@ -437,7 +437,7 @@
         text: urgent.map(function (s) { return s.name + ' D-' + s.daysLeft; }).join(', ') + ' — 시험이 코앞입니다. 새 범위보다 인출 연습에 집중하세요.'
       });
     }
-    if (i.hour >= 22) out.push({ level: 'warn', text: '늦은 시각 학습 — 종료 후 30분은 화면을 멀리해야 오늘 잠이 망가지지 않습니다.' });
+    if (i.hour >= 22) out.push({ level: 'warn', text: '늦은 시각 학습 — 잠들기 불편하다면 종료 후 화면 밝기와 자극을 줄여 보세요.' });
     return out;
   }
 

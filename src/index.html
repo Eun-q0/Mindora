@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mindora — 뇌 컨디션 기반 학습 코치</title>
+<title>Mindora — 오늘의 학습 준비도 코치</title>
 
 <meta name="naver-site-verification" content="fa3d8aeb91cd3600bfaf8c486a86f00aba5d0cd7" />
 
@@ -17,11 +17,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Do+Hyeon&family=Jua&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
 
 <!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
-<meta name="description" content="수면·스트레스·피로를 넣으면 오늘 내 뇌에 맞는 공부와 과목별 시간을 짜 줍니다. 설치 없이 링크만 열면 됩니다.">
+<meta name="description" content="수면·스트레스·피로와 시험 일정을 바탕으로 오늘 시작할 과목과 시간을 제안합니다. 설치 없이 링크만 열면 됩니다.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Mindora">
-<meta property="og:title" content="Mindora — 뇌 컨디션 기반 학습 코치">
-<meta property="og:description" content="오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱. 친구들과 순공 시간으로 겨루는 학교 리그도 있어요.">
+<meta property="og:title" content="Mindora — 오늘의 학습 준비도 코치">
+<meta property="og:description" content="오늘 상태를 짧게 확인하고 지금 시작할 과목과 시간을 제안받는 학습 코치입니다.">
 <meta property="og:locale" content="ko_KR">
 <!-- 대표 주소는 www. apex 는 여기로 308 리다이렉트된다.
      apex 로 옮기면 안 된다: 저장 기록(localStorage)은 출처별로 분리되므로
@@ -55,14 +55,11 @@
   <div class="intro-card">
     <img class="intro-logo" src="icon-512.png" alt="" aria-hidden="true">
     <h2 class="intro-title" id="introTitle">Mindora</h2>
-    <p class="intro-lead">무작정 오래 앉아 있는 공부는 그만.</p>
-    <p class="intro-body">어젯밤 몇 시간 잤는지, 지금 얼마나 피곤한지만 알려 주세요.
-      오늘 <b>내 뇌가 어떤 공부에 강한지</b> 숫자로 보여주고, 거기에 맞춰
-      무엇부터 몇 분 할지 정해 드릴게요.</p>
-    <p class="intro-body">친구들과 순공 시간으로 등수를 겨루다 보면,
-      책상에 앉아 있는 시간은 저절로 늘어납니다.</p>
-    <p class="intro-tag">잘 되는 공부부터, 순서대로.</p>
-    <button type="button" class="btn primary intro-go" id="introGo">시작하기</button>
+    <p class="intro-lead">오늘 잘 되는 공부부터 시작하세요.</p>
+    <p class="intro-body">수면·피로·스트레스와 시험 일정을 바탕으로
+      오늘 시작할 과목과 공부 시간을 제안합니다.</p>
+    <p class="intro-tag">로그인 없이 시작 · 기록은 기본적으로 이 기기에 저장</p>
+    <button type="button" class="btn primary intro-go" id="introGo">10초 컨디션 확인하기</button>
   </div>
 </div>
 
@@ -75,7 +72,7 @@
       <div class="brand-text">
         <!-- 화면마다 h2 로 제목이 붙으므로, 문서 전체를 대표하는 h1 은 여기 하나만 둔다 -->
         <h1>Mindora</h1>
-        <span>뇌 컨디션 기반 학습 코치</span>
+        <span>나를 이해하는 학습 루틴</span>
       </div>
     </div>
     <nav class="steps" id="stepNav"></nav>
@@ -98,13 +95,13 @@
 
     <div class="onboard">
       <div class="ob-hello">
-        <h3>오늘 내 뇌가 어떤 공부에<br>가장 잘 맞는지 알려드릴게요.</h3>
-        <p>수면·스트레스·피로·식사 같은 데이터를 넣으면 학습 능력을 5가지로 나눠 계산하고, 과목별 공부 시간까지 배분해 줍니다.</p>
+        <h3>오늘 잘 되는 공부부터<br>가볍게 시작해 보세요.</h3>
+        <p>수면·스트레스·피로와 시험 일정을 짧게 확인하고, 오늘의 과제 적합도와 시작 시간을 제안합니다.</p>
         <ul class="ob-list">
-          <li><span class="oi">🧠</span><span><b>뇌 상태 분석</b>집중력·기억력·계산력·창의력·언어력을 오늘 컨디션 기준으로 산출하고 근거를 숫자로 보여줍니다.</span></li>
+          <li><span class="oi">📊</span><span><b>학습 준비도</b>자기보고한 오늘 상태를 바탕으로 과제 유형별 상대적 적합도를 안내합니다.</span></li>
           <li><span class="oi">⏱️</span><span><b>순공 시간 측정</b>타이머를 돌린 만큼 실제 공부한 시간이 과목별로 쌓입니다.</span></li>
-          <li><span class="oi">🏆</span><span><b>그룹 등수</b>같은 학교·학년 친구들과 오늘·이번 주 순공 시간을 겨룹니다.</span></li>
-          <li><span class="oi">📈</span><span><b>주간 리포트</b>매주 공부 시간, 과목 분포, 뇌 컨디션 추이를 정리해 드립니다.</span></li>
+          <li><span class="oi">✅</span><span><b>공부 후 피드백</b>실제 체감을 5초만 남기면 다음 추천에 조금씩 반영됩니다.</span></li>
+          <li><span class="oi">📈</span><span><b>주간 리포트</b>공부 시간, 과목 분포, 학습 준비도 참고값을 함께 정리합니다.</span></li>
         </ul>
       </div>
 
@@ -150,7 +147,7 @@
             <div class="field">
               <label for="pfGoal">주간 목표 학습 시간</label>
               <div class="range-row">
-                <input type="range" id="pfGoal" min="3" max="70" step="1" value="25" data-out="pfGoalOut">
+                <input type="range" id="pfGoal" min="1" max="70" step="1" value="25" data-out="pfGoalOut">
                 <output id="pfGoalOut" class="out">25시간</output>
               </div>
             </div>
@@ -172,11 +169,20 @@
     </div>
   </section>
 
+  <!-- ══════════════════════════════ 오늘 홈 ══════════════════════════════ -->
+  <section id="secToday" class="section is-hidden">
+    <div class="sec-head">
+      <h2><span class="sec-num">오늘</span> 바로 시작할 공부</h2>
+      <p>매번 모든 메뉴를 둘러보지 않아도 오늘 할 일과 기록을 한눈에 확인합니다.</p>
+    </div>
+    <div class="today-home" id="todayHome"></div>
+  </section>
+
   <!-- ══════════════════════════════ 1. 입력 ══════════════════════════════ -->
   <section id="secInput" class="section is-hidden">
     <div class="sec-head">
       <h2><span class="sec-num">01</span> 오늘의 데이터 입력</h2>
-      <p>수면·심리·생활 습관과 시험 일정을 입력하면, 오늘 당신의 뇌가 어떤 학습에 최적인지 계산합니다.</p>
+      <p>수면·피로·스트레스·기분과 오늘 공부할 과목만 확인하세요. 나머지는 바뀐 날에만 고치면 됩니다.</p>
     </div>
 
     <div id="quickNote"></div>
@@ -240,7 +246,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="dailyMealCard">
         <div class="card-head"><span class="ci">🍚</span><h3>식사 · 영양</h3></div>
         <div class="card-body">
           <div class="field">
@@ -267,7 +273,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="dailyTimetableCard">
         <div class="card-head"><span class="ci">🗓️</span><h3>학급 시간표</h3></div>
         <div class="card-body">
           <div class="two-col">
@@ -292,7 +298,7 @@
     <div class="collapse">
       <button type="button" class="collapse-head" id="detailToggle" aria-expanded="false" aria-controls="detailBody">
         <span class="ch-icon">＋</span>
-        <span class="ch-text"><b>세부 항목</b><span>수분 · 카페인 · 운동 · 수면 규칙성 · 학습 시간</span></span>
+        <span class="ch-text"><b>선택 입력 · 평소 설정</b><span>식사 · 시간표 · 수분 · 카페인 · 운동 · 수면 리듬</span></span>
         <span class="ch-hint">평소와 같다면 안 열어도 됩니다</span>
       </button>
       <div class="collapse-body is-hidden" id="detailBody">
@@ -377,14 +383,14 @@
           <span>과목명</span><span>유형</span><span>시험일 <em>D-day 반영</em></span><span>중요도</span><span>준비도</span><span></span>
         </div>
         <div id="subjectList" class="subject-list"></div>
-        <p class="tiny">유형에 따라 어떤 뇌 능력과 매칭할지가 결정됩니다.
+        <p class="tiny">유형에 따라 어떤 과제 적합도 참고값을 우선 반영할지 결정됩니다.
           <b>📅 시험일을 넣으면 날짜가 가까운 과목에 시간이 더 배분됩니다</b> — 우선순위에서 가장 비중이 큰 항목입니다.
           비워 두어도 되고, 그때는 긴급도가 기본값으로 계산됩니다.</p>
       </div>
     </div>
 
     <div class="actions">
-      <button type="button" class="btn primary lg" id="analyzeBtn">🧠 오늘의 뇌 상태 분석하기</button>
+      <button type="button" class="btn primary lg" id="analyzeBtn">오늘의 학습 준비도 분석</button>
       <button type="button" class="btn" id="sampleBtn">예시 데이터</button>
       <button type="button" class="btn ghost" id="resetBtn">초기화</button>
     </div>
@@ -393,12 +399,12 @@
   <!-- ══════════════════════════════ 2. 결과 ══════════════════════════════ -->
   <section id="secResult" class="section is-hidden">
     <div class="sec-head">
-      <h2><span class="sec-num">02</span> 뇌 학습 능력 분석</h2>
+      <h2><span class="sec-num">02</span> 오늘의 학습 컨디션 분석</h2>
       <p id="analyzedAt">—</p>
     </div>
 
     <div class="ai-briefing" id="aiBriefing">
-      <span class="ab-badge">🧠 규칙 기반 분석</span>
+      <span class="ab-badge">자기보고 입력 기반 참고값</span>
       <p class="ab-line" id="aiBriefingLine">—</p>
     </div>
 
@@ -417,7 +423,7 @@
         </svg>
         <div class="gauge-center">
           <div class="g-score" id="overallScore">0</div>
-          <div class="g-unit">/ 100</div>
+          <div class="g-unit">참고값 / 100</div>
           <div class="g-state" id="overallState">—</div>
         </div>
       </div>
@@ -429,13 +435,13 @@
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">📊</span><h3>5대 학습 능력</h3></div>
+      <div class="card-head"><span class="ci">📊</span><h3>5가지 학습 준비도</h3></div>
       <div class="card-body">
         <div id="capStrip" class="cap-strip"></div>
         <p class="tiny" id="capStripNote">—</p>
         <button type="button" class="res-more" id="resultMore" aria-expanded="false" aria-controls="resultDetail">
           <span class="rm-txt">자세한 분석 보기</span>
-          <span class="rm-sub">레이더 차트 · 능력별 근거 · 계산 과정</span>
+          <span class="rm-sub">준비도 프로필 · 입력 요인 · 산출 원리</span>
           <span class="rm-arw">▾</span>
         </button>
       </div>
@@ -444,14 +450,14 @@
     <div id="resultDetail" class="is-hidden">
       <div class="grid-radar">
         <div class="card">
-          <div class="card-head"><span class="ci">📊</span><h3>5대 학습 능력 프로필</h3></div>
+          <div class="card-head"><span class="ci">📊</span><h3>5가지 과제 적합도 프로필</h3></div>
           <div class="card-body radar-body">
             <svg id="radar" viewBox="0 0 340 320" class="radar"></svg>
             <div class="radar-legend" id="radarLegend"></div>
           </div>
         </div>
         <div class="card">
-          <div class="card-head"><span class="ci">🔍</span><h3>능력별 점수</h3></div>
+          <div class="card-head"><span class="ci">🔍</span><h3>과제 유형별 참고값</h3></div>
           <div class="card-body">
             <div id="capBars" class="cap-bars"></div>
             <p class="tiny">각 항목을 누르면 <b>왜 그 점수가 나왔는지</b> 입력 데이터 기반 근거가 펼쳐집니다.</p>
@@ -460,7 +466,7 @@
       </div>
 
       <div class="card wide">
-        <div class="card-head"><span class="ci">🧾</span><h3>산출 근거 — 입력한 데이터가 각 능력에 미친 영향</h3></div>
+        <div class="card-head"><span class="ci">🧾</span><h3>산출 원리 — 자기보고 입력이 참고값에 반영된 방향</h3></div>
         <div class="card-body"><div id="capDetails" class="cap-details"></div></div>
       </div>
     </div>
@@ -474,6 +480,8 @@
     </div>
 
     <div id="curfewBanner" class="is-hidden"></div>
+
+    <div class="goal-tiers" id="goalTiers"></div>
 
     <div class="pom-summary" id="pomSummary"></div>
 
@@ -767,7 +775,7 @@
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">📊</span><h3>뇌 능력 — 그룹 평균 대비 나</h3></div>
+      <div class="card-head"><span class="ci">📊</span><h3>과제 적합도 참고값 — 그룹 평균 대비 나</h3></div>
       <div class="card-body"><div id="groupCompare" class="gcmp"></div></div>
     </div>
 
@@ -887,7 +895,7 @@
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">📈</span><h3>뇌 컨디션 추이</h3></div>
+      <div class="card-head"><span class="ci">📈</span><h3>학습 준비도 추이</h3></div>
       <div class="card-body">
         <svg id="historyChart" viewBox="0 0 720 240" class="hchart"></svg>
         <p class="tiny" id="historyNote">—</p>
@@ -897,6 +905,28 @@
     <div class="card wide">
       <div class="card-head"><span class="ci">🧭</span><h3>이번 주 총평</h3></div>
       <div class="card-body"><div id="repSummary" class="rep-summary"></div></div>
+    </div>
+
+    <div class="grid-2 insight-grid">
+      <div class="card">
+        <div class="card-head"><span class="ci">🔎</span><h3>나의 학습 패턴</h3></div>
+        <div class="card-body" id="personalPattern"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ci">🎯</span><h3>다음 주 목표 제안</h3></div>
+        <div class="card-body" id="goalSuggestion"></div>
+      </div>
+    </div>
+
+    <div class="grid-2 insight-grid">
+      <div class="card">
+        <div class="card-head"><span class="ci">📝</span><h3>시험 후 회고</h3></div>
+        <div class="card-body" id="examReflection"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="ci">🧪</span><h3>이번 주 개인 학습 실험</h3></div>
+        <div class="card-body" id="learningExperiment"></div>
+      </div>
     </div>
   </section>
 
@@ -1007,7 +1037,7 @@
             <ul>
               <li>닉네임 · 학교급 · 학년 · 반 <em>— 아래 학급 대항전을 따로 켠 경우에만 전송</em></li>
               <li>과목 · 시험 일정</li>
-              <li>뇌 컨디션 점수와 수면 · 스트레스 입력값</li>
+              <li>학습 준비도 참고값과 수면 · 스트레스 입력값</li>
               <li>배지 · 사운드 설정 · 나이스 인증키</li>
             </ul>
           </div>
@@ -1093,8 +1123,9 @@
         <div class="field">
           <label for="neisKey">API 인증키 <em>이 브라우저에만 저장됩니다</em></label>
           <div class="file-row" style="margin-top:0">
-            <input type="text" id="neisKey" class="input code" placeholder="키를 비우면 연동하지 않습니다" style="flex:1;min-width:220px">
+            <input type="password" id="neisKey" class="input code" placeholder="키를 비우면 연동하지 않습니다" autocomplete="off" style="flex:1;min-width:220px">
             <button type="button" class="btn sm" id="neisTest">연결 확인</button>
+            <button type="button" class="btn ghost sm" id="neisDeleteKey">인증키 삭제</button>
             <button type="button" class="btn ghost sm" id="neisClearCache">급식 캐시 비우기</button>
           </div>
           <div id="neisStatus" class="neis-status"></div>
@@ -1116,8 +1147,15 @@
           <input type="file" id="importFile" accept="application/json,.json" hidden>
           <button type="button" class="btn ghost" id="clearHistory">모든 기록 삭제</button>
         </div>
-        <p class="tiny">백업에는 프로필·학습 기록·뇌 컨디션·그룹·배지·사운드 설정·계획표·리그 티어가 담깁니다.
+        <p class="tiny">백업에는 프로필·학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹·배지·사운드 설정·계획표·리그 티어가 담깁니다.
           나이스 인증키는 개인 자격 증명이라 <b>백업에 포함하지 않습니다.</b> 새 기기에서는 설정에서 한 번 더 입력하세요.</p>
+        <details class="privacy-details">
+          <summary>동의 철회·보관 기간·삭제 방법 보기</summary>
+          <p class="tiny">학교 리그·학급 대항전·관리자 공개는 위의 각 스위치에서 서로 별도로 철회할 수 있습니다.
+            끄면 새 전송이 중단되고, 학급 정보와 관리자 공개 정보는 다음 동기화에서 삭제됩니다.
+            현재 시범 버전은 서버 집계의 자동 삭제를 보장하지 않습니다. 정식 운영 전 보관 기간·삭제 절차·문의 연락처를 확정하고 실제 서버 정책과 일치시켜야 합니다.
+            이 기기의 로컬 기록은 <b>모든 기록 삭제</b>로 즉시 지울 수 있습니다. 만 14세 미만 사용자는 서버 전송 기능을 보호자와 함께 결정하세요.</p>
+        </details>
       </div>
     </div>
 
@@ -1243,7 +1281,7 @@
     <div class="card wide is-hidden" id="adminActivityCard">
       <div class="card-head"><span class="ci">📈</span><h3>활동 타임라인</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px">최근 14일 동안 날짜별로 무엇을 얼마나 공부했는지, 그날 뇌 컨디션은 몇 점이었는지 보여 줍니다.</p>
+        <p class="tiny" style="margin:0 0 14px">최근 14일 동안 날짜별로 무엇을 얼마나 공부했는지, 그날 학습 준비도 참고값이 어땠는지 보여 줍니다.</p>
         <div id="adminTimeline" class="adm-timeline"></div>
       </div>
     </div>
@@ -1264,12 +1302,42 @@
 
 </main>
 
+<div class="feedback-modal is-hidden" id="feedbackModal" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
+  <div class="feedback-card">
+    <p class="feedback-kicker">공부 후 5초 피드백</p>
+    <h3 id="feedbackTitle">방금 공부는 어땠나요?</h3>
+    <p class="tiny" id="feedbackSubject">—</p>
+    <div class="feedback-question">
+      <b>집중이 잘됐나요?</b>
+      <div class="feedback-options" data-feedback="focus">
+        <button type="button" data-v="-1">어려웠음</button><button type="button" data-v="0">보통</button><button type="button" data-v="1">잘됐음</button>
+      </div>
+    </div>
+    <div class="feedback-question">
+      <b>난이도는 적절했나요?</b>
+      <div class="feedback-options" data-feedback="difficulty">
+        <button type="button" data-v="-1">너무 어려움</button><button type="button" data-v="0">적절함</button><button type="button" data-v="1">너무 쉬움</button>
+      </div>
+    </div>
+    <div class="feedback-question">
+      <b>추천 과목이 맞았나요?</b>
+      <div class="feedback-options" data-feedback="recommendation">
+        <button type="button" data-v="-1">아니요</button><button type="button" data-v="0">잘 모르겠음</button><button type="button" data-v="1">네</button>
+      </div>
+    </div>
+    <div class="feedback-actions">
+      <button type="button" class="btn ghost" id="feedbackSkip">나중에</button>
+      <button type="button" class="btn primary" id="feedbackSave" disabled>저장하고 계속</button>
+    </div>
+  </div>
+</div>
+
 <footer class="foot">
   <p><b>Mindora</b> — 기본적으로 입력한 데이터는 이 브라우저에만 저장됩니다.
     <b>학교 리그</b>를 켜면 학교명·주차·순공 시간·무작위 기기 번호·랭킹 숨김 여부가 전송됩니다.
     <b>학급 대항전</b>을 따로 켜면 학년·반·닉네임이 추가로 전송되며, <b>관리자 공개</b>를 켜면 닉네임·학교명·주차·순공 시간·기기 번호가 서버에 저장되어 등록된 관리자에게 보입니다.
-    과목·시험·수면·스트레스·뇌 컨디션 점수는 어느 기능에서도 전송되지 않습니다.</p>
-  <p class="tiny">본 앱의 점수는 수면·스트레스·영양·일주기 리듬에 관한 공개된 인지과학 연구 경향을 규칙 모델로 옮긴 학습 보조 도구입니다. 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
+    과목·시험·수면·스트레스·학습 준비도 참고값은 어느 기능에서도 전송되지 않습니다.</p>
+  <p class="tiny">학습 준비도 참고값은 자기보고한 수면·피로·스트레스·생활 정보와 시험 일정을 규칙 모델에 넣어 추정합니다. 능력·지능을 측정하지 않으며, 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
 
 <template id="subjectRowTpl">

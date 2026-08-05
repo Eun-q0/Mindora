@@ -159,7 +159,7 @@
 
     var local = Object.keys(acc).map(function (k) {
       var s = acc[k];
-      s.total = Math.round(s.total / 25) * 25;
+      s.total = Math.round(s.total);
       return s;
     });
 
@@ -266,7 +266,7 @@
       cloudClassRows.forEach(function (r) {
         var k = classKey(r.schoolName, r.level, r.grade, r.klass);
         var cur = acc[k];
-        var total = Math.round(r.total / 25) * 25;
+        var total = Math.round(r.total);
         if (!cur) {
           acc[k] = {
             key: k, schoolOnly: norm(r.schoolName), level: norm(r.level),
@@ -286,7 +286,7 @@
 
     return Object.keys(acc).map(function (k) {
       var u = acc[k];
-      u.total = Math.round(u.total / 25) * 25;
+      u.total = Math.round(u.total);
       u.mine = !!(mineId && k === mineId.key);
       u.schoolCode = u.mine ? MY_CODE : 'C:' + k;
       return u;
@@ -333,7 +333,7 @@
           schoolCode: r.schoolName === myName ? MY_CODE : 'S:' + r.schoolName,
           schoolName: r.schoolName,
           active: r.active, steady: 0,
-          total: Math.round(r.total / 25) * 25,
+          total: Math.round(r.total),
           mine: r.schoolName === myName,
           staleAt: r.updatedAt, fromCloud: true
         };
@@ -342,7 +342,7 @@
       /* 이 브라우저가 아는 값과 서버 값이 다를 수 있다.
        * 서버에는 리그를 켠 사람만 올라오고, 여기에는 공유 코드를 준 사람만 있다.
        * 어느 쪽도 전부가 아니므로 더 큰 쪽을 쓴다. */
-      var cloudTotal = Math.round(r.total / 25) * 25;
+      var cloudTotal = Math.round(r.total);
       if (cloudTotal > cur.total) cur.total = cloudTotal;
       if (r.active > cur.active) cur.active = r.active;
       if (r.updatedAt > cur.staleAt) cur.staleAt = r.updatedAt;
@@ -433,10 +433,10 @@
       gap = mine.total - (ranked[z.promote] ? ranked[z.promote].total : 0);
     } else if (myZone === 'demote') {
       var above = ranked[size - z.demote - 1];
-      gap = (above ? above.total : mine.total) - mine.total + 25;
+      gap = (above ? above.total : mine.total) - mine.total + 1;
     } else if (z.promote > 0) {
       var line = ranked[z.promote - 1];
-      gap = (line ? line.total : mine.total) - mine.total + 25;
+      gap = (line ? line.total : mine.total) - mine.total + 1;
     }
 
     /* 지난번에 본 순위와 비교해 변동을 표시한다 */
@@ -460,7 +460,7 @@
       solo: size < 2,
       me: mine, myZone: myZone, gap: Math.abs(gap),
       ahead: ahead,
-      aheadGap: ahead ? (ahead.total - mine.total + 25) : 0,
+      aheadGap: ahead ? (ahead.total - mine.total + 1) : 0,
       deltas: deltas,
       daysLeft: 7 - elapsedDays(),
       todayMin: Math.min(global.StudyLog.todayTotal(), DAILY_CAP_MINUTES),

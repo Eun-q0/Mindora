@@ -16,12 +16,15 @@
     lgSchool: '', lgGrade: '',
     weekOffset: 0,
     queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
-    page: 'secInput',
+    page: 'secToday',
     pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
     vacplan: null,      // 방학 계획표 모델
     span: null,        // 진행 중인 순공 구간
     lastFlush: 0,
-    lastSoundKey: null // 같은 상태에서 사운드를 다시 트는 것을 막는다
+    lastSoundKey: null, // 같은 상태에서 사운드를 다시 트는 것을 막는다
+    planOverrides: {}, // 과목별 추천 수정(exclude / shorter)
+    pendingFeedback: null,
+    resumeAfterFeedback: false
   };
 
   /* ------------------------------------------------------------- helpers */
@@ -33,6 +36,24 @@
   }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
+  function displayScore(n) { return Math.max(0, Math.min(100, Math.round(Number(n || 0) / 5) * 5)); }
+  function scoreBand(n) {
+    n = Number(n || 0);
+    if (n >= 75) return '높음';
+    if (n >= 60) return '보통 이상';
+    if (n >= 45) return '보통';
+    if (n >= 30) return '보통 이하';
+    return '낮음';
+  }
+
+  function maskEmail(email) {
+    var parts = String(email || '').split('@');
+    if (parts.length !== 2) return '관리자 계정';
+    var name = parts[0];
+    var shown = name.slice(0, Math.min(4, Math.max(1, name.length - 2)));
+    return shown + '***@' + parts[1];
+  }
+
   function fmtHour(h) {
     var t = ((h % 24) + 24) % 24;
     var hh = Math.floor(t), mm = Math.round((t - hh) * 60);
@@ -41,7 +62,7 @@
   }
   function fmtDur(min) {
     if (min > 0 && min < 1) return Math.max(1, Math.round(min * 60)) + '초';
-    var m = Math.round(min);
+    var m = Math.floor(min);
     var h = Math.floor(m / 60), r = m % 60;
     if (h && r) return h + '시간 ' + r + '분';
     if (h) return h + '시간';
@@ -128,8 +149,9 @@
    * 예전에는 숫자와 이모지가 1 2 3 4 📅 ★ 5 🏆 6 ⚙ 처럼 섞여 있어서
    * 무엇이 순서고 무엇이 기능인지 한눈에 들어오지 않았다. */
   var PAGES = [
+    { id: 'secToday', num: '⌂', label: '오늘', hash: 'today' },
     { id: 'secInput', num: '1', label: '입력', hash: 'input' },
-    { id: 'secResult', num: '2', label: '뇌 분석', hash: 'result', needAnalysis: true },
+    { id: 'secResult', num: '2', label: '준비도', hash: 'result', needAnalysis: true },
     { id: 'secPlan', num: '3', label: '학습 플랜', hash: 'plan', needAnalysis: true },
     { id: 'secTimer', num: '4', label: '타이머', hash: 'timer', needAnalysis: true },
     { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true },
@@ -228,7 +250,7 @@
       var p = pageBy(id);
       if (p && p.needAnalysis) toast('먼저 오늘의 데이터를 분석해 주세요.', true);
       else if (p && p.kidsOnly) toast('초등학교·중학교를 선택한 경우에만 열립니다.', true);
-      return;
+      return false;
     }
 
     ALL_SECTIONS.forEach(function (sid) {
@@ -249,6 +271,7 @@
 
     // 들어올 때마다 최신 값으로 다시 그린다
     if (id === 'secLeague') { renderLeague(); leagueSync(false); }
+    if (id === 'secToday') renderTodayHome();
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
     if (id === 'secAvatar') openAvatarPage();
     // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
@@ -276,6 +299,7 @@
         try { heading.focus({ preventScroll: true }); } catch (e) { heading.focus(); }
       }
     }
+    return true;
   }
 
   var goto = goPage; // 기존 호출부 호환
@@ -341,6 +365,14 @@
     paintSegs();
   }
 
+  function moveOptionalDailyCards() {
+    var grid = $('detailBody').querySelector('.grid-2');
+    ['dailyMealCard', 'dailyTimetableCard'].forEach(function (id) {
+      var card = $(id);
+      if (card && grid) grid.insertBefore(card, grid.firstChild);
+    });
+  }
+
   /* ------------------------------------------------------------ 과목 행 */
 
   function addSubjectRow(data) {
@@ -371,12 +403,15 @@
         var d = new Date(dv + 'T00:00:00');
         if (!isNaN(d)) daysLeft = Math.round((d - today) / 86400000);
       }
+      var action = state.planOverrides[name] || '';
       return {
         id: 'sub' + i, name: name,
         type: row.querySelector('.s-type').value,
         examDate: dv || null, daysLeft: daysLeft,
         importance: parseInt(row.querySelector('.s-imp').value, 10),
-        readiness: parseInt(row.querySelector('.s-ready').value, 10)
+        readiness: parseInt(row.querySelector('.s-ready').value, 10),
+        preference: Store.recommendationPreference(name, row.querySelector('.s-type').value),
+        recommendationAction: action
       };
     }).filter(Boolean);
   }
@@ -700,7 +735,7 @@
     // 조용히 넘어갔었다 — 이제 프로필이 생겼으니 한 번 밀어 준다.
     if (Cloud.enabled()) leagueSync(true);
     toast(Group.groupLabel(p) + ' 그룹으로 설정했습니다.');
-    goPage(prev ? 'secSettings' : 'secInput');
+    goPage(prev ? 'secSettings' : 'secToday');
   }
 
   function unlockApp() { renderNav(); renderPageNav(); }
@@ -711,28 +746,28 @@
     var now = new Date();
     $('analyzedAt').textContent =
       now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일 ' +
-      fmtHour(a.input.hour) + ' 기준 · 입력한 ' + Object.keys(a.factors).length + '개 생체·심리·생활 지표로 산출';
+      fmtHour(a.input.hour) + ' 기준 · 자기보고 입력 기반 추정 · 모델 v1 · 참고값은 5점 단위로 표시';
 
     var C = 2 * Math.PI * 92;
     var fill = $('gaugeFill');
     fill.style.strokeDasharray = C;
     fill.style.strokeDashoffset = C;
-    setTimeout(function () { fill.style.strokeDashoffset = C * (1 - a.overall / 100); }, 60);
+    setTimeout(function () { fill.style.strokeDashoffset = C * (1 - displayScore(a.overall) / 100); }, 60);
 
-    animateNum($('overallScore'), a.overall);
-    $('overallState').textContent = a.state.label;
+    animateNum($('overallScore'), displayScore(a.overall));
+    $('overallState').textContent = scoreBand(a.overall);
     $('overallState').className = 'g-state ' + a.state.tone;
 
     // 5개 능력은 같은 뿌리(수면·피로)에서 나와 서로 붙어 움직인다.
     // 편차가 충분히 벌어졌을 때만 "무엇이 낫다" 고 말한다.
     $('heroTitle').textContent = a.capMeaningful
-      ? '오늘은 ' + a.top.label + '이 상대적으로 가장 잘 올라와 있고, ' + a.bottom.label + '이 가장 처져 있습니다.'
-      : '오늘은 능력별 편차가 크지 않습니다. 어떤 과목을 해도 조건은 비슷합니다.';
+      ? '오늘 자기보고 입력에서는 ' + a.top.label + '가 상대적으로 높고, ' + a.bottom.label + '가 상대적으로 낮게 추정됐습니다.'
+      : '오늘은 과제 유형별 준비도 차이가 크지 않습니다. 먼저 시작하기 쉬운 과목을 고르세요.';
     $('heroLine').textContent = a.state.line + ' ' + dominantDriver(a);
 
     $('alertList').innerHTML = a.alerts.map(function (x) {
       return '<div class="alert ' + x.level + '"><b>' + (x.level === 'bad' ? '⚠' : '!') + '</b><span>' + esc(x.text) + '</span></div>';
-    }).join('') || '<div class="alert warn"><b>✓</b><span>특별한 위험 신호는 없습니다. 계획대로 진행하세요.</span></div>';
+    }).join('') || '<div class="alert warn"><b>✓</b><span>현재 입력에서 특별히 조정할 항목은 없습니다. 실제 체감을 보며 계획을 바꾸세요.</span></div>';
 
     $('aiBriefingLine').textContent = buildAiBriefing(a);
 
@@ -764,11 +799,11 @@
     var trend = '';
     if (y) {
       var sleepDiff = a.input.sleep.hours - y.sleep;
-      var overallDiff = a.overall - y.overall;
+      var overallDiff = displayScore(a.overall) - displayScore(y.overall);
       if (Math.abs(sleepDiff) >= 0.4) {
         trend = '어제보다 수면이 ' + round1(Math.abs(sleepDiff)) + '시간 ' + (sleepDiff < 0 ? '부족합니다.' : '늘었습니다.') + ' ';
       } else if (Math.abs(overallDiff) >= 5) {
-        trend = '어제보다 종합 컨디션이 ' + Math.abs(overallDiff) + '점 ' + (overallDiff < 0 ? '떨어졌습니다.' : '올라왔습니다.') + ' ';
+        trend = '어제보다 학습 준비도 참고값이 ' + Math.abs(overallDiff) + '점 ' + (overallDiff < 0 ? '낮게' : '높게') + ' 나타났습니다. ';
       }
     }
 
@@ -776,8 +811,8 @@
     if (a.capMeaningful) {
       var good = bestTypeFor(a.top.id);
       var bad = bestTypeFor(a.bottom.id);
-      advice = '오늘은 ' + good.label + '(' + good.hint.split(' · ')[0] + ' 등)을 먼저 하고, ' +
-        bad.label + '은 뒤로 미루는 것이 좋습니다.';
+      advice = '오늘은 ' + good.label + '(' + good.hint.split(' · ')[0] + ' 등)을 먼저 시도하고, ' +
+        bad.label + '은 다음 순서로 두어 보세요.';
     } else {
       advice = a.state.line;
     }
@@ -795,26 +830,24 @@
     var mean = Math.round(a.capMean);
 
     $('capStrip').innerHTML = a.capacities.map(function (c) {
-      var rel = Math.round(c.rel);
+      var rel = Math.round(c.rel / 5) * 5;
       var relCls = rel >= 2 ? 'up' : (rel <= -2 ? 'dn' : 'flat');
       var relTxt = rel === 0 ? '±0' : (rel > 0 ? '+' + rel : '−' + Math.abs(rel));
       var isTop = a.capMeaningful && c.id === a.top.id;
 
       return '<button type="button" class="cap-chip' + (isTop ? ' is-top' : '') + '"' +
-        ' data-cap="' + c.id + '" aria-label="' + esc(c.label) + ' ' + c.score + '점, 자세히 보기">' +
+        ' data-cap="' + c.id + '" aria-label="' + esc(c.label) + ' ' + scoreBand(c.score) + ', 자세히 보기">' +
         '<span class="cc-ic">' + c.icon + '</span>' +
-        '<span class="cc-score" style="color:' + c.color + '">' + c.score + '</span>' +
+        '<span class="cc-score" style="color:' + c.color + '">' + displayScore(c.score) + '</span>' +
         '<span class="cc-name">' + esc(c.short) + '</span>' +
-        '<span class="cc-track"><i class="cc-fill" data-w="' + c.score + '" style="width:0;background:' + c.color + '"></i></span>' +
+        '<span class="cc-track"><i class="cc-fill" data-w="' + displayScore(c.score) + '" style="width:0;background:' + c.color + '"></i></span>' +
         '<span class="cc-rel ' + relCls + '">' + relTxt + '</span>' +
       '</button>';
     }).join('');
 
     $('capStripNote').innerHTML = a.capMeaningful
-      ? '오늘 평균은 <b>' + mean + '점</b>이고 능력 간 차이가 ' + Math.round(a.capSpread) + '점으로 벌어져 있습니다. ' +
-        '아래 숫자는 평균 대비 편차입니다 — <b>' + esc(a.top.label) + '</b>을 쓰는 과목을 먼저 배치하세요.'
-      : '오늘 평균은 <b>' + mean + '점</b>이고 최고·최저 차이가 ' + Math.round(a.capSpread) + '점뿐입니다. ' +
-        '<b>어떤 과목이 특별히 유리하다고 말하기 어려우니</b> 총량만 조절하세요.';
+      ? '오늘 자기보고 입력에서는 <b>' + esc(a.top.label) + '</b>가 다른 유형보다 상대적으로 높게 추정됐습니다. 실제 체감이 다르면 추천을 바꿔 주세요.'
+      : '오늘은 유형 간 차이가 작아 <b>어떤 과목이 특별히 유리하다고 말하기 어렵습니다.</b> 먼저 시작하기 쉬운 과목을 고르세요.';
 
     setTimeout(function () {
       $$('.cc-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; });
@@ -874,7 +907,7 @@
       .sort(function (x, y) { return Math.abs(y.v) - Math.abs(x.v); });
     if (!arr.length) return '';
     var f = a.factors[arr[0].id];
-    return '종합 점수를 가장 크게 움직인 것은 ' + f.label + '(' + f.display + ')이며, 종합에 ' + signed(arr[0].v) + '점만큼 작용했습니다.';
+    return '이번 참고값에서 가장 크게 반영된 입력은 ' + f.label + '(' + f.display + ')이며, ' + (arr[0].v < 0 ? '낮추는' : '높이는') + ' 방향으로 반영됐습니다.';
   }
 
   // 카운트업은 장식이므로 값을 먼저 확정해 둔다.
@@ -942,7 +975,7 @@
       var lp = pt(idx, R + 26);
       var anchor = lp[0] > cx + 12 ? 'start' : (lp[0] < cx - 12 ? 'end' : 'middle');
       svg.push('<text x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '" text-anchor="' + anchor + '" fill="#5b6579" font-size="11.5" font-weight="600">' + esc(c.short) + '</text>');
-      svg.push('<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 14).toFixed(1) + '" text-anchor="' + anchor + '" fill="' + c.color + '" font-size="12.5" font-weight="800">' + c.score + '</text>');
+      svg.push('<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 14).toFixed(1) + '" text-anchor="' + anchor + '" fill="' + c.color + '" font-size="12.5" font-weight="800">' + displayScore(c.score) + '</text>');
     });
 
     $('radar').innerHTML = svg.join('');
@@ -957,29 +990,30 @@
     // 앱 전체 색과 같은 계열로 — 초록·주황 대신 --good/--warn 토큰과 맞춘 파랑·로즈브라운
     if (level === 'high') return { t: '우수', c: '#2a55a8', b: '#eaf1fc' };
     if (level === 'mid') return { t: '보통', c: '#3f5bc4', b: '#eaeeff' };
-    return { t: '저하', c: '#7a4f3b', b: '#f6efec' };
+    return { t: '낮음', c: '#7a4f3b', b: '#f6efec' };
   }
 
   function renderCapBars(a) {
-    var mean = Math.round(a.capMean);
+    var mean = displayScore(a.capMean);
     $('capBars').innerHTML = a.capacities.map(function (c) {
       var tg = levelTag(c.level);
-      var rel = Math.round(c.rel);
+      var shownScore = displayScore(c.score);
+      var rel = shownScore - mean;
       var relCls = rel >= 2 ? 'up' : (rel <= -2 ? 'dn' : 'flat');
       var relTxt = rel === 0 ? '평균' : (rel > 0 ? '+' + rel : '−' + Math.abs(rel));
       return '<button type="button" class="cap-bar" data-cap="' + c.id + '">' +
         '<div class="cb-top"><span>' + c.icon + '</span><span class="cb-name">' + esc(c.label) + '</span>' +
         '<span class="cb-tag" style="color:' + tg.c + ';background:' + tg.b + '">' + tg.t + '</span>' +
-        '<span class="cb-rel ' + relCls + '" title="오늘 5개 능력 평균(' + mean + '점) 대비">' + relTxt + '</span>' +
-        '<span class="cb-score" style="color:' + c.color + '">' + c.score + '</span></div>' +
-        '<div class="cb-track"><div class="cb-fill" data-w="' + c.score + '" style="background:linear-gradient(90deg,' + c.color + '99,' + c.color + ')"></div>' +
-        '<div class="cb-mean" style="left:calc(' + mean + '% - 1px)" title="오늘 평균 ' + mean + '점"></div></div>' +
+        '<span class="cb-rel ' + relCls + '" title="오늘 5개 과제 적합도 평균(' + mean + '점) 대비">' + relTxt + '</span>' +
+        '<span class="cb-score" style="color:' + c.color + '">' + shownScore + '</span></div>' +
+        '<div class="cb-track"><div class="cb-fill" data-w="' + shownScore + '" style="background:linear-gradient(90deg,' + c.color + '99,' + c.color + ')"></div>' +
+        '<div class="cb-mean" style="left:calc(' + mean + '% - 1px)" title="오늘 평균 참고값 ' + mean + '점"></div></div>' +
         '<div class="cb-desc">' + esc(kidsOn() && c.kidsDesc ? c.kidsDesc : c.desc) + '</div></button>';
     }).join('') +
-      '<p class="tiny">세로선은 오늘 5개 능력의 평균(' + mean + '점)입니다. 5개 능력은 수면·피로라는 같은 뿌리에서 나오기 때문에 함께 오르내립니다. ' +
+      '<p class="tiny">세로선은 오늘 5개 과제 적합도 참고값의 평균(' + mean + '점)입니다. 같은 자기보고 입력을 함께 참고하므로 값이 비슷하게 움직일 수 있습니다. ' +
       (a.capMeaningful
-        ? '오늘은 능력 간 차이가 ' + Math.round(a.capSpread) + '점으로 벌어져 있어 <b>평균 대비 편차</b>를 보고 과목을 고르면 됩니다.'
-        : '오늘은 최고·최저 차이가 ' + Math.round(a.capSpread) + '점뿐이라 <b>어떤 과목이 특별히 유리하다고 말하기 어렵습니다.</b> 절대 점수(종합 컨디션)를 기준으로 총량만 조절하세요.') + '</p>';
+        ? '오늘은 과제 유형 간 차이가 ' + displayScore(a.capSpread) + '점으로 나타나 <b>평균 대비 편차</b>를 과목 순서에 참고할 수 있습니다.'
+        : '오늘은 최고·최저 차이가 약 ' + displayScore(a.capSpread) + '점이라 <b>어떤 과목이 특별히 유리하다고 말하기 어렵습니다.</b> 전체 준비도 구간을 참고해 총량만 조절하세요.') + '</p>';
 
     setTimeout(function () { $$('.cb-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; }); }, 80);
 
@@ -1027,15 +1061,14 @@
         '<button type="button" class="cd-head">' +
           '<span class="dot" style="background:' + c.color + '"></span>' +
           '<span class="nm">' + c.icon + ' ' + esc(c.label) + '</span>' +
-          '<span class="sc" style="color:' + c.color + '">' + c.score + '점</span>' +
+          '<span class="sc" style="color:' + c.color + '">' + scoreBand(c.score) + ' · ' + displayScore(c.score) + '점</span>' +
           '<span class="chev">▼</span></button>' +
         '<div class="cd-body">' +
           '<div class="contrib">' + rows + '</div>' +
-          '<div class="calc-line"><span>기준점 (모든 지표가 중립일 때)</span><span class="v">50.0</span></div>' +
-          '<div class="calc-line"><span>입력 데이터 기여 합계</span><span class="v">' + signed(c.baseScore - 50) + '</span></div>' +
-          '<div class="calc-line"><span>소계</span><span class="v">' + c.baseScore.toFixed(1) + '</span></div>' +
-          '<div class="calc-line"><span>생체리듬 보정 (' + fmtHour(a.input.hour) + ' 기준 ×' + c.circMult.toFixed(2) + ')</span><span class="v">' + signed(c.circPoints) + '</span></div>' +
-          '<div class="calc-line total"><span>최종 ' + esc(c.label) + '</span><span class="v">' + c.score + '점</span></div>' +
+          '<div class="calc-line"><span>입력 범위</span><span class="v">오늘의 자기보고 항목</span></div>' +
+          '<div class="calc-line"><span>표시 방식</span><span class="v">5점 단위 참고값</span></div>' +
+          '<div class="calc-line"><span>시간대 반영</span><span class="v">' + (circPct === 0 ? '중립' : (circPct > 0 ? '상향' : '하향')) + '</span></div>' +
+          '<div class="calc-line total"><span>추정 결과</span><span class="v">' + scoreBand(c.score) + ' · ' + displayScore(c.score) + '점</span></div>' +
           '<div class="why">' + whyText(c, circText) + '</div>' +
         '</div></div>';
     }).join('');
@@ -1052,21 +1085,21 @@
   function whyText(c, circText) {
     var pos = c.contribs.filter(function (x) { return x.points > 0.4; });
     var neg = c.contribs.filter(function (x) { return x.points < -0.4; });
-    var parts = ['<b>왜 ' + esc(c.label) + '이 ' + c.score + '점인가?</b>'];
+    var parts = ['<b>왜 ' + esc(c.label) + '가 ' + scoreBand(c.score) + '으로 추정됐나요?</b>'];
 
     if (neg.length) {
-      parts.push(esc(c.label) + '을 가장 크게 끌어내린 것은 <b>' + esc(neg[0].label) + '(' + esc(neg[0].display) + ')</b>으로 ' + signed(neg[0].points) + '점이며' +
-        (neg[1] ? ', 그다음은 <b>' + esc(neg[1].label) + '(' + esc(neg[1].display) + ')</b>의 ' + signed(neg[1].points) + '점입니다' : '') + '.');
+      parts.push('낮추는 방향으로 가장 크게 반영된 입력은 <b>' + esc(neg[0].label) + '(' + esc(neg[0].display) + ')</b>' +
+        (neg[1] ? ', 그다음은 <b>' + esc(neg[1].label) + '(' + esc(neg[1].display) + ')</b>입니다' : '입니다') + '.');
     }
     if (pos.length) {
-      parts.push('반대로 <b>' + esc(pos[0].label) + '(' + esc(pos[0].display) + ')</b>이 ' + signed(pos[0].points) + '점으로 가장 크게 받쳐 줬고' +
-        (pos[1] ? ', <b>' + esc(pos[1].label) + '</b>도 ' + signed(pos[1].points) + '점 기여했습니다' : '습니다') + '.');
+      parts.push('높이는 방향으로 가장 크게 반영된 입력은 <b>' + esc(pos[0].label) + '(' + esc(pos[0].display) + ')</b>' +
+        (pos[1] ? ', 그다음은 <b>' + esc(pos[1].label) + '</b>입니다' : '입니다') + '.');
     }
     if (!pos.length && !neg.length) parts.push('모든 지표가 중립에 가까워 큰 가감 요인이 없습니다.');
     parts.push(circText);
 
-    if (c.level === 'high') parts.push('→ 오늘 <b>' + esc(c.label) + '을 요구하는 과제를 우선 배치</b>하는 것이 유리합니다.');
-    else if (c.level === 'low') parts.push('→ ' + esc(c.label) + '에 크게 의존하는 과제는 <b>오늘 효율이 떨어집니다.</b> 비중을 줄이거나 뒤로 미루세요.');
+    if (c.level === 'high') parts.push('→ 오늘은 이 유형을 먼저 시도해 볼 수 있지만, 실제 체감이 다르면 추천을 바꾸세요.');
+    else if (c.level === 'low') parts.push('→ 오늘은 이 유형을 짧게 시작하고, 실제 체감이 어렵다면 복습 과제로 바꾸세요.');
 
     return parts.join(' ');
   }
@@ -1076,6 +1109,7 @@
   function renderPlan(p) {
     $('planHeadline').textContent = p.headline;
     renderCurfew(p);
+    renderGoalTiers(p);
 
     $('pomSummary').innerHTML =
       '<div class="pm hi"><div class="pm-k">추천 모드</div><div class="pm-v" style="font-size:17px">' + esc(p.pomodoro.name) + '</div></div>' +
@@ -1115,7 +1149,13 @@
             '<span><b>긴급도</b> ' + Math.round(s.urgency * 100) + '%</span>' +
             '<span><b>중요도</b> ' + s.importanceRaw + '/5</span>' +
             '<span><b>준비도</b> ' + s.readiness + '/5</span>' +
-            '<span><b>오늘 뇌 궁합</b> ' + Math.round(s.brainFit * 100) + '% (' + esc(s.domCapLabel) + ' ' + s.domCapScore + '점 · 평균 대비 ' + signed(s.domCapRel) + ')</span>' +
+            '<span><b>오늘 과제 적합도</b> ' + scoreBand(s.domCapScore) + ' · 자기보고 입력 기반</span>' +
+          '</div>' +
+          '<div class="sp-actions">' +
+            '<button type="button" class="sp-action" data-plan-action="change" data-subject="' + esc(s.name) + '">과목 바꾸기</button>' +
+            '<button type="button" class="sp-action" data-plan-action="shorter" data-subject="' + esc(s.name) + '">시간 줄이기</button>' +
+            '<button type="button" class="sp-action" data-plan-action="exclude" data-subject="' + esc(s.name) + '">오늘 제외</button>' +
+            '<button type="button" class="sp-action" data-plan-action="bad" data-subject="' + esc(s.name) + '" data-type="' + esc(s.type) + '">이 추천이 맞지 않음</button>' +
           '</div>' +
         '</div></div>';
     }).join('') || '<p class="tiny">' + (p.curfew && p.curfew.bedtimeNow
@@ -1142,6 +1182,10 @@
       });
     });
 
+    $$('#subjectPlans .sp-action').forEach(function (btn) {
+      btn.addEventListener('click', function () { handlePlanAction(btn.dataset.planAction, btn.dataset.subject, btn.dataset.type); });
+    });
+
     // 커퓨로 전부 빠진 경우는 배너가 이미 설명하고 있어 중복이다
     $('droppedNote').innerHTML = (p.dropped.length && !(p.curfew && p.curfew.bedtimeNow))
       ? '<p class="tiny">⏸ 오늘 가용 시간으로는 ' + esc(p.dropped.map(function (d) { return d.name; }).join(', ')) +
@@ -1150,7 +1194,7 @@
     $('timeline').innerHTML = p.timeline.map(function (b) {
       if (b.kind === 'study') {
         return '<div class="tl study" style="--c:' + b.color + '"><span class="tl-time">' + fmtHour(b.start) + ' – ' + fmtHour(b.end) + '</span>' +
-          '<span class="tl-name">' + esc(b.subject) + '<span class="fit">뇌 궁합 ' + b.fit + '%</span></span></div>';
+          '<span class="tl-name">' + esc(b.subject) + '<span class="fit">상대 적합도 참고 ' + b.fit + '%</span></span></div>';
       }
       return '<div class="tl ' + b.kind + '"><span class="tl-time">' + fmtHour(b.start) + ' – ' + fmtHour(b.end) + '</span>' +
         '<span class="tl-name">' + (b.kind === 'longBreak' ? '🌿 긴 휴식' : '☕ 휴식') + ' ' + b.minutes + '분</span></div>';
@@ -1159,7 +1203,7 @@
     if (p.timeline.length) {
       $('timeline').insertAdjacentHTML('beforeend',
         '<p class="tiny">🏁 예상 종료 ' + fmtHour(p.endHour) + ' · 순공 ' + fmtDur(p.plannedStudyMin) + ' + 휴식 ' + fmtDur(p.plannedBreakMin) +
-        '. 같은 과목을 연달아 붙이지 않고 번갈아 배치했습니다(인터리빙). 시간대별 뇌 능력에 맞춰 순서를 조정했습니다.</p>');
+        '. 같은 과목을 연달아 붙이지 않고 번갈아 배치했습니다. 시간대별 준비도 참고값을 순서에 일부 반영했습니다.</p>');
     }
 
     $('restList').innerHTML = p.rest.map(function (r) {
@@ -1167,6 +1211,54 @@
     }).join('');
 
     collapsePlanDetail();
+  }
+
+  function renderGoalTiers(p) {
+    var box = $('goalTiers');
+    var study = p.timeline.filter(function (b) { return b.kind === 'study'; });
+    if (!study.length) { box.innerHTML = ''; return; }
+    var first = study[0];
+    var second = study[1];
+    box.innerHTML =
+      '<div class="goal-tier min"><div class="gt-k">오늘의 최소 목표</div>' +
+        '<div class="gt-v">' + esc(first.subject) + ' ' + first.minutes + '분</div>' +
+        '<div class="gt-note">이 한 블록만 끝내도 오늘 목표를 달성한 것으로 봅니다.</div></div>' +
+      '<div class="goal-tier"><div class="gt-k">상태가 괜찮다면</div>' +
+        '<div class="gt-v">' + (second ? esc(second.subject) + ' ' + second.minutes + '분 추가' : esc(first.subject) + ' 10분 연장') + '</div>' +
+        '<div class="gt-note">확장 목표는 선택입니다. 실제 체감이 어렵다면 건너뛰어도 됩니다.</div></div>';
+  }
+
+  function refreshPlanFromOverrides() {
+    var input = collectInput();
+    var a = BrainEngine.analyze(input);
+    var p = BrainPlanner.plan(a);
+    state.analysis = a;
+    state.plan = p;
+    renderResult(a);
+    renderPlan(p);
+    state.timer.load(p.timeline);
+    input._date = Store.key();
+    Store.saveInput(input);
+    renderNav();
+    goPage('secPlan');
+  }
+
+  function handlePlanAction(action, subject, type) {
+    if (action === 'change') {
+      goPage('secInput');
+      var row = $$('.subject-row', $('subjectList')).filter(function (r) { return r.querySelector('.s-name').value.trim() === subject; })[0];
+      if (row) row.querySelector('.s-name').focus();
+      toast('과목명·유형·시험 일정을 고친 뒤 다시 분석하세요.');
+      return;
+    }
+    if (action === 'bad') {
+      Store.addFeedback({ subject: subject, type: type || 'mixed', recommendation: -1 });
+      toast('이 추천이 맞지 않았다는 기록을 다음 추천에 반영합니다.');
+      return;
+    }
+    state.planOverrides[subject] = action;
+    refreshPlanFromOverrides();
+    toast(action === 'exclude' ? subject + '을(를) 오늘 플랜에서 제외했습니다.' : subject + ' 시간을 한 블록 줄였습니다.');
   }
 
   /* 취침 커퓨 안내.
@@ -1348,7 +1440,12 @@
       onComplete: function (block) {
         commitSpan(true);
         if ($('soundOn').checked) Pomodoro.beep(block ? block.kind : 'study');
-        if (block && block.kind === 'study') Kids.addBlock();
+        if (block && block.kind === 'study') {
+          Kids.addBlock();
+          state.resumeAfterFeedback = state.timer.running;
+          state.timer.pause();
+          showStudyFeedback(block);
+        }
         if (block) {
           var msg = block.kind === 'study'
             ? (kidsOn()
@@ -1395,6 +1492,58 @@
     // 탭을 닫거나 숨길 때 진행 중인 구간을 저장
     window.addEventListener('beforeunload', function () { commitSpan(true); });
     document.addEventListener('visibilitychange', function () { if (document.hidden) commitSpan(false); });
+  }
+
+  function showStudyFeedback(block) {
+    state.pendingFeedback = block;
+    $('feedbackSubject').textContent = block.subject + ' · ' + block.minutes + '분';
+    $$('.feedback-options').forEach(function (group) {
+      delete group.dataset.selected;
+      $$('button', group).forEach(function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); });
+    });
+    $('feedbackSave').disabled = true;
+    $('feedbackModal').classList.remove('is-hidden');
+    setTimeout(function () {
+      var first = $('feedbackModal').querySelector('button');
+      if (first) first.focus();
+    }, 30);
+  }
+
+  function closeStudyFeedback(resume) {
+    $('feedbackModal').classList.add('is-hidden');
+    state.pendingFeedback = null;
+    if (resume && state.resumeAfterFeedback && state.timer.current()) state.timer.start();
+    state.resumeAfterFeedback = false;
+  }
+
+  function initStudyFeedback() {
+    $$('.feedback-options').forEach(function (group) {
+      $$('button', group).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          group.dataset.selected = btn.dataset.v;
+          $$('button', group).forEach(function (b) {
+            var on = b === btn;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          $('feedbackSave').disabled = $$('.feedback-options').some(function (g) { return g.dataset.selected === undefined; });
+        });
+      });
+    });
+    $('feedbackSkip').addEventListener('click', function () { closeStudyFeedback(true); });
+    $('feedbackSave').addEventListener('click', function () {
+      var block = state.pendingFeedback;
+      if (!block) return;
+      var values = {};
+      $$('.feedback-options').forEach(function (g) { values[g.dataset.feedback] = Number(g.dataset.selected); });
+      Store.addFeedback({
+        subject: block.subject, type: block.type || 'mixed', minutes: block.minutes,
+        focus: values.focus, difficulty: values.difficulty, recommendation: values.recommendation
+      });
+      toast('피드백을 저장했습니다. 다음 추천에 조금씩 반영합니다.');
+      closeStudyFeedback(true);
+      renderReport();
+    });
   }
 
   function renderTimer(s) {
@@ -1767,6 +1916,43 @@
       '<button type="button" class="btn primary sm" id="quickAnalyze">그대로 분석 →</button>';
 
     $('quickAnalyze').addEventListener('click', runAnalysis);
+  }
+
+  function renderTodayHome() {
+    var box = $('todayHome');
+    if (!box || !Store.profile()) return;
+    var rec = Store.recordOn(Store.key());
+    var saved = Store.loadInput();
+    var first = state.plan && state.plan.subjects[0];
+    var upcoming = (saved && saved.subjects || []).filter(function (s) { return s.daysLeft === null || s.daysLeft >= 0; })
+      .sort(function (a, b) {
+        if (a.daysLeft === null) return 1;
+        if (b.daysLeft === null) return -1;
+        return a.daysLeft - b.daysLeft;
+      })[0];
+    var title = first
+      ? first.name + ' ' + Math.min(first.minutes, state.plan.pomodoro.focus) + '분부터 시작하세요'
+      : (rec ? '오늘 준비도는 확인했습니다. 과목 추천을 다시 만들 수 있어요.' : '오늘 상태를 10초만 확인해 주세요');
+    var meta = rec
+      ? '학습 준비도 ' + scoreBand(rec.overall) + ' · 수면 ' + rec.sleep + '시간 · 피로 ' + rec.fatigue + '/10'
+      : (saved ? '이전 입력값을 불러와 바뀐 항목만 고치면 됩니다.' : '수면·피로·스트레스·기분과 오늘 과목만 확인합니다.');
+    var exam = upcoming && upcoming.examDate
+      ? (upcoming.daysLeft === 0 ? upcoming.name + ' D-DAY' : upcoming.name + ' D-' + upcoming.daysLeft)
+      : '등록된 가까운 시험 없음';
+    box.innerHTML = '<div class="today-hero"><div class="today-kicker">' + (rec ? '오늘의 추천' : '오늘의 시작') + '</div>' +
+      '<h3>' + esc(title) + '</h3><p class="today-meta">' + esc(meta) + '</p>' +
+      '<div class="today-actions">' +
+        (first ? '<button type="button" class="btn primary lg" id="todayStart">바로 시작</button>' : '<button type="button" class="btn primary lg" id="todayCheck">10초 컨디션 확인</button>') +
+        '<button type="button" class="btn ghost" id="todayEdit">입력값 수정</button></div></div>' +
+      '<div class="today-stats"><div class="today-stat"><div class="k">오늘 순공</div><div class="v">' + fmtDurFine(StudyLog.todayTotal()) + '</div></div>' +
+      '<div class="today-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '일</div></div>' +
+      '<div class="today-stat"><div class="k">가까운 시험</div><div class="v">' + esc(exam) + '</div></div></div>';
+    if ($('todayCheck')) $('todayCheck').addEventListener('click', function () { goPage('secInput'); });
+    if ($('todayEdit')) $('todayEdit').addEventListener('click', function () { goPage('secInput'); });
+    if ($('todayStart')) $('todayStart').addEventListener('click', function () {
+      goPage('secTimer');
+      setTimeout(function () { if (!state.timer.running) state.timer.start(); }, 250);
+    });
   }
 
   /* ============================================================ 급식 == */
@@ -2681,6 +2867,11 @@
     var autoRest = $('vpAiAutoRest').checked;
     var restPlan = vpAiRestPlan();
 
+    if (!subjects.length) {
+      toast('공부할 과목과 주간 목표 시간을 하나 이상 입력해 주세요.', true);
+      return;
+    }
+
     // 빈 표라면 지울 것이 없으니 굳이 되묻지 않는다
     if (vpHasContent(state.vacplan) &&
         !confirm('지금 시간표 내용을 지우고 자동으로 새로 세울까요? 되돌릴 수 없습니다.')) return;
@@ -2729,17 +2920,12 @@
      * 저울은 주 전체에서 한 번만 초기화한다(열마다 새로 시작하지 않는다).
      * 그래야 주간 목표 비율이 정확히 맞는다 — 대신 매일 아침 첫 칸이
      * 항상 같은 과목은 아니고 요일마다 돌아가며 바뀐다. */
-    /* 1) 먼저 어느 칸이 휴식인지 정한다. 휴식은 과목과 무관하게 연속 공부 시간만으로
-     *    결정되므로 미리 계산할 수 있고, 그래야 "실제로 공부에 쓸 수 있는 칸" 이
-     *    몇 개인지 세어 주간 목표 시간과 맞출 수 있다. */
+    /* 1) 고정 일정이 없는 모든 칸을 후보로 모은다. 휴식은 실제 과목 배치가 끝난 뒤
+     *    연속 공부가 생긴 구간에만 넣는다. */
     var studySlots = [];
     for (var col = 0; col < days.length; col++) {
-      var streak = 0;
       for (var r = 0; r < grid.length; r++) {
-        if (grid[r][col]) { streak = 0; continue; }          // 고정 일정은 연속 공부를 끊어 준다
-        if (autoRest && streak >= restPlan.run) { grid[r][col] = '휴식'; streak = 0; continue; }
-        studySlots.push([r, col]);
-        streak++;
+        if (!grid[r][col]) studySlots.push([r, col]);
       }
     }
 
@@ -2767,6 +2953,41 @@
       grid[pos[0]][pos[1]] = alloc.pool[best].name;
     });
 
+    // 실제 과목이 연속된 구간에만 휴식을 둔다. 다음 칸이 과목이면 같은 구간의
+    // 뒤쪽 자유 시간으로 그 과목을 옮겨 목표 시간을 그대로 보존한다.
+    var restCount = 0;
+    if (autoRest) {
+      var subjectSet = {};
+      subjects.forEach(function (s) { subjectSet[s.name] = true; });
+      for (var dc = 0; dc < days.length; dc++) {
+        var studyRun = 0;
+        for (var rr = 0; rr < grid.length; rr++) {
+          var value = grid[rr][dc];
+          if (!subjectSet[value]) { studyRun = 0; continue; }
+          studyRun++;
+          if (studyRun < restPlan.run || rr + 1 >= grid.length) continue;
+
+          var next = rr + 1;
+          if (grid[next][dc] === '자유 시간') {
+            grid[next][dc] = '휴식';
+            restCount++;
+          } else if (subjectSet[grid[next][dc]]) {
+            var free = -1;
+            for (var fr = next + 1; fr < grid.length; fr++) {
+              if (grid[fr][dc] === '자유 시간') { free = fr; break; }
+              if (!subjectSet[grid[fr][dc]]) break;
+            }
+            if (free >= 0) {
+              grid[free][dc] = grid[next][dc];
+              grid[next][dc] = '휴식';
+              restCount++;
+            }
+          }
+          studyRun = 0;
+        }
+      }
+    }
+
     state.vacplan.rows = hours.map(function (h2, i) {
       return { time: pad(h2 % 24) + ':00', cells: grid[i] };
     });
@@ -2777,7 +2998,8 @@
     if (alloc.scaled) {
       toast('목표 ' + alloc.want + '시간이 남는 ' + alloc.capacity + '시간을 넘어 비율대로 줄였습니다.', true);
     } else if (alloc.want && alloc.want < alloc.capacity) {
-      toast('주 ' + alloc.want + '시간을 배치하고 남은 ' + (alloc.capacity - alloc.want) + '시간은 자유 시간으로 두었습니다.');
+      toast('주 ' + alloc.want + '시간을 배치하고 남은 ' + Math.max(0, alloc.capacity - alloc.want - restCount) +
+        '시간은 자유 시간' + (restCount ? ', ' + restCount + '시간은 휴식' : '') + '으로 두었습니다.');
     } else {
       toast('큰 틀을 세웠습니다. 이제 칸을 눌러 자유롭게 다듬으세요.');
     }
@@ -2918,6 +3140,18 @@
       });
     });
 
+    $('neisDeleteKey').addEventListener('click', function () {
+      if (!Neis.hasKey()) { toast('저장된 나이스 인증키가 없습니다.'); return; }
+      if (!confirm('이 브라우저에 저장된 나이스 인증키를 삭제할까요?\n학교 검색·급식·시간표는 키 없이도 제한된 범위에서 계속 동작합니다.')) return;
+      $('neisKey').value = '';
+      Neis.setKey('');
+      Neis.clearCache();
+      Neis.clearTimetableCache();
+      neisStatus('인증키를 삭제했습니다. 키 없는 조회로 전환했습니다.', 'ok');
+      renderMeals();
+      renderTimetable();
+    });
+
     $('neisClearCache').addEventListener('click', function () {
       Neis.clearCache();
       Neis.clearTimetableCache();
@@ -2953,8 +3187,8 @@
 
     $('dataSummary').innerHTML =
       '<div class="ds"><div class="k">기록된 학습일</div><div class="v">' + days + '<small style="font-size:12px;color:var(--muted)">일</small></div></div>' +
-      '<div class="ds"><div class="k">누적 순공 시간</div><div class="v">' + Math.round(totalMin / 60) + '<small style="font-size:12px;color:var(--muted)">시간</small></div></div>' +
-      '<div class="ds"><div class="k">뇌 컨디션 기록</div><div class="v">' + Store.history().length + '<small style="font-size:12px;color:var(--muted)">건</small></div></div>' +
+      '<div class="ds"><div class="k">누적 순공 시간</div><div class="v">' + fmtDur(totalMin) + '</div></div>' +
+      '<div class="ds"><div class="k">학습 준비도 기록</div><div class="v">' + Store.history().length + '<small style="font-size:12px;color:var(--muted)">건</small></div></div>' +
       '<div class="ds"><div class="k">그룹원</div><div class="v">' + Group.members().length + '<small style="font-size:12px;color:var(--muted)">명</small></div></div>';
 
     renderStorageStatus();
@@ -2978,11 +3212,11 @@
     Store.persistStatus().then(function (st) {
       var line, cls;
       if (st === 'persisted') {
-        line = '✅ <b>영구 보관 중</b> — 저장 공간이 모자라도 브라우저가 이 앱 기록을 지우지 않습니다.';
+        line = '✅ <b>브라우저 보관 보호 사용 중</b> — 그래도 브라우저 데이터 삭제·기기 변경 시 기록이 사라질 수 있으므로 정기적으로 백업하세요.';
         cls = 'ok';
       } else if (st === 'best-effort') {
         line = '⚠️ <b>임시 보관 상태</b> — 저장 공간이 부족하면 브라우저가 기록을 지울 수 있습니다. ' +
-               '홈 화면에 추가하고 자주 열면 영구 보관으로 바뀝니다.';
+               '홈 화면에 추가하고 자주 열면 보관 보호를 받을 가능성이 높아집니다.';
         cls = 'warn';
       } else {
         line = 'ℹ️ 이 브라우저는 보관 상태를 알려 주지 않습니다. 백업 파일을 더 자주 내려받아 두세요.';
@@ -3318,7 +3552,7 @@
         '<div class="rk-info">' +
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
             (lifeMin != null ? Avatar.tierChip(lifeMin, true) : '') +
-            (m.overall != null ? '<span class="brain">🧠 ' + m.overall + '</span>' : '') + '</div>' +
+            (m.overall != null ? '<span class="brain" title="학습 준비도 참고값">준비도 ' + displayScore(m.overall) + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
           '<div class="rk-date">' + (m.self ? '실시간 반영'
             : (stale ? '⚠ ' + esc(m.date) + ' 기록 (' + agoText(m.ts) + ')' : '코드 받은 시점 · ' + agoText(m.ts))) +
@@ -3361,21 +3595,21 @@
 
     if (!ga || !mine || ga.count < 2) {
       $('groupCompare').innerHTML = '<div class="m-empty">' +
-        (!mine ? '먼저 오늘의 뇌 상태를 분석해 주세요.' : '그룹원이 2명 이상이면 능력별 평균과 비교해 드립니다.') + '</div>';
+        (!mine ? '먼저 오늘의 학습 준비도를 확인해 주세요.' : '그룹원이 2명 이상이면 과제 적합도 참고값을 비교해 드립니다.') + '</div>';
       return;
     }
 
     $('groupCompare').innerHTML = BrainEngine.CAPACITIES.map(function (c) {
-      var my = mine.scores[c.id] || 0;
-      var avg = ga.avg[c.id] || 0;
-      var diff = Math.round(my - avg);
+      var my = displayScore(mine.scores[c.id] || 0);
+      var avg = displayScore(ga.avg[c.id] || 0);
+      var diff = my - avg;
       return '<div class="gc">' +
         '<div class="gc-top"><span class="nm">' + c.icon + ' ' + esc(c.label) + '</span>' +
         '<span style="color:' + c.color + ';font-weight:800">' + my + '</span>' +
-        '<span class="df ' + (diff >= 0 ? 'up' : 'dn') + '">평균 ' + Math.round(avg) + ' 대비 ' + (diff >= 0 ? '+' : '') + diff + '</span></div>' +
+        '<span class="df ' + (diff >= 0 ? 'up' : 'dn') + '">평균 ' + avg + ' 대비 ' + (diff >= 0 ? '+' : '') + diff + '</span></div>' +
         '<div class="gc-track"><div class="gc-mine" style="width:' + my + '%;background:' + c.color + '"></div>' +
         '<div class="gc-avg" style="left:calc(' + avg.toFixed(1) + '% - 1px)"></div></div></div>';
-    }).join('') + '<div class="gc-legend"><span><i class="bar"></i>내 점수</span><span><i class="tick"></i>그룹 평균 (' + ga.count + '명)</span></div>';
+    }).join('') + '<div class="gc-legend"><span><i class="bar"></i>내 참고값</span><span><i class="tick"></i>그룹 평균 (' + ga.count + '명)</span></div>';
   }
 
   /* ========================================================= 주간 리포트 == */
@@ -3391,25 +3625,26 @@
     $('nextWeek').disabled = state.weekOffset >= 0;
 
     var dPct = r.deltaPct === null ? null : Math.round(r.deltaPct);
+    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? '&lt;1' : Math.round(r.goalPct);
     $('repStats').innerHTML =
       '<div class="rs hi"><div class="rs-k">주간 총 순공 시간</div><div class="rs-v">' +
         durHtml(r.totalMin) + '</div>' +
         (dPct === null ? '<div class="rs-d flat">비교할 지난주 기록 없음</div>'
           : '<div class="rs-d ' + (dPct > 0 ? 'up' : dPct < 0 ? 'dn' : 'flat') + '">지난주 대비 ' + (dPct > 0 ? '+' : '') + dPct + '%</div>') +
       '</div>' +
-      '<div class="rs"><div class="rs-k">목표 달성률</div><div class="rs-v">' + Math.round(r.goalPct) + '<small>%</small></div>' +
+      '<div class="rs"><div class="rs-k">목표 달성률</div><div class="rs-v">' + goalPctLabel + '<small>%</small></div>' +
         '<div class="rs-d flat">목표 ' + (r.goalMin / 60) + '시간</div></div>' +
       '<div class="rs"><div class="rs-k">학습한 날</div><div class="rs-v">' + r.studyDays + '<small>일</small></div>' +
-        '<div class="rs-d flat">하루 평균 ' + fmtDur(r.dailyAvgMin) + '</div></div>' +
-      '<div class="rs"><div class="rs-k">평균 뇌 컨디션</div><div class="rs-v">' +
-        (r.brainAvg === null ? '—' : Math.round(r.brainAvg)) + (r.brainAvg === null ? '' : '<small>점</small>') + '</div>' +
+        '<div class="rs-d flat">학습일 평균 ' + fmtDur(r.dailyAvgMin) + '</div></div>' +
+      '<div class="rs"><div class="rs-k">평균 학습 준비도</div><div class="rs-v">' +
+        (r.brainAvg === null ? '—' : displayScore(r.brainAvg)) + (r.brainAvg === null ? '' : '<small>점</small>') + '</div>' +
         '<div class="rs-d flat">' + (r.brainRows.length ? r.brainRows.length + '일 기록' : '기록 없음') + '</div></div>';
 
     var maxDay = Math.max.apply(null, r.days.map(function (d) { return d.min; }).concat([1]));
     $('weekBars').innerHTML = r.days.map(function (d) {
       var h = d.min > 0 ? Math.max(4, d.min / maxDay * 100) : 2;
       return '<div class="wb' + (d.isToday ? ' today' : '') + (d.min <= 0 ? ' zero' : '') + '">' +
-        '<div class="wb-col">' + (d.min > 0 ? '<div class="wb-val">' + Math.round(d.min) + '분</div>' : '') +
+        '<div class="wb-col">' + (d.min > 0 ? '<div class="wb-val">' + fmtDur(d.min) + '</div>' : '') +
         '<div class="wb-bar" style="height:' + h.toFixed(1) + '%"></div></div>' +
         '<div class="wb-day">' + d.dow + '</div></div>';
     }).join('');
@@ -3433,13 +3668,168 @@
       return '<div class="rsum ' + (s.tone || '') + '"><div class="ri">' + s.icon + '</div>' +
         '<div><h5>' + esc(s.title) + '</h5><p>' + esc(s.text) + '</p></div></div>';
     }).join('');
+
+    renderPersonalPattern();
+    renderGoalSuggestion();
+    renderExamReflection();
+    renderLearningExperiment();
+  }
+
+  function renderPersonalPattern() {
+    var box = $('personalPattern');
+    var rows = Store.history().filter(function (r) { return StudyLog.dayTotal(r.date) > 0; });
+    if (rows.length < 7) {
+      box.innerHTML = '<p class="insight-empty">아직 학습일 기록이 <b>' + rows.length + '일</b>입니다. 최소 7일이 쌓이면 원인이 아닌 <b>기록에서 나타난 경향</b>만 보여 드립니다.</p>';
+      return;
+    }
+    var enough = rows.filter(function (r) { return r.sleep >= 6; });
+    var short = rows.filter(function (r) { return r.sleep < 6; });
+    var msg = '';
+    if (enough.length >= 2 && short.length >= 2) {
+      var a = enough.reduce(function (s, r) { return s + StudyLog.dayTotal(r.date); }, 0) / enough.length;
+      var b = short.reduce(function (s, r) { return s + StudyLog.dayTotal(r.date); }, 0) / short.length;
+      var diff = b > 0 ? Math.round((a - b) / b * 100) : 0;
+      msg = '최근 기록에서 수면이 6시간 이상인 날의 평균 순공은 <b>' + fmtDur(a) + '</b>, 6시간 미만인 날은 <b>' + fmtDur(b) + '</b>이었습니다. ' +
+        (Math.abs(diff) >= 10 ? '6시간 이상인 날이 ' + Math.abs(diff) + '% ' + (diff > 0 ? '높게' : '낮게') + ' 나타났습니다.' : '두 집단의 차이는 아직 크지 않습니다.');
+    } else {
+      msg = '7일 이상 기록됐지만 수면 구간별 표본이 한쪽에 몰려 있어 비교를 보류합니다. 각 구간이 2일 이상 쌓이면 보여 드립니다.';
+    }
+    var fb = Store.feedback().filter(function (x) { return typeof x.recommendation === 'number'; });
+    if (fb.length >= 5) {
+      var good = fb.filter(function (x) { return x.recommendation > 0; }).length;
+      msg += ' 공부 후 피드백 ' + fb.length + '건 중 추천이 맞았다는 응답은 ' + Math.round(good / fb.length * 100) + '%였습니다.';
+    }
+    box.innerHTML = '<p class="insight-value">기록에서 나타난 경향</p><p class="tiny">' + msg + ' 다른 요인의 영향도 있을 수 있으며 인과관계를 뜻하지 않습니다.</p>';
+  }
+
+  function renderGoalSuggestion() {
+    var box = $('goalSuggestion');
+    var weeks = [-1, -2, -3].map(function (o) { return StudyLog.weekTotal(o); }).filter(function (m) { return m > 0; });
+    if (weeks.length < 2) {
+      box.innerHTML = '<p class="insight-empty">완료된 주간 기록이 ' + weeks.length + '주입니다. 2주 이상 쌓이면 최근 평균보다 최대 15%만 높은 현실적인 목표를 제안합니다.</p>';
+      return;
+    }
+    var avg = weeks.reduce(function (s, m) { return s + m; }, 0) / weeks.length;
+    var suggested = Math.max(1, Math.round((avg * 1.10) / 60));
+    var current = (Store.profile() || {}).goal || 25;
+    suggested = Math.min(suggested, Math.max(1, Math.ceil(current * 1.15)));
+    box.innerHTML = '<p class="insight-value">다음 주 ' + suggested + '시간을 제안합니다</p>' +
+      '<p class="tiny">최근 ' + weeks.length + '주 평균은 ' + fmtDur(avg) + '입니다. 한 번에 과도하게 늘지 않도록 제한했습니다.</p>' +
+      '<div class="insight-actions"><button type="button" class="btn primary sm" id="applyGoalSuggestion" data-goal="' + suggested + '">추천 목표 적용</button>' +
+      '<button type="button" class="btn ghost sm" data-goto="secSettings">직접 설정</button></div>';
+    $('applyGoalSuggestion').addEventListener('click', function () {
+      var p = Store.profile();
+      if (!p) return;
+      p.goal = Number(this.dataset.goal);
+      Store.saveProfile(p);
+      $('pfGoal').value = p.goal;
+      syncAllRanges();
+      renderSettingsPage();
+      renderReport();
+      toast('주간 목표를 ' + p.goal + '시간으로 바꿨습니다.');
+    });
+    var direct = box.querySelector('[data-goto]');
+    if (direct) direct.addEventListener('click', function () { goPage(direct.dataset.goto); });
+  }
+
+  function subjectMinutesUntil(name, examDate) {
+    var all = StudyLog.all(), total = 0;
+    Object.keys(all).forEach(function (date) {
+      if (date > examDate) return;
+      if (all[date] && all[date][name]) total += all[date][name].m || 0;
+    });
+    return total;
+  }
+
+  function renderExamReflection() {
+    var box = $('examReflection');
+    var saved = Store.loadInput();
+    var today = Store.key();
+    var refs = Store.examReflections();
+    var ended = (saved && saved.subjects || []).filter(function (s) {
+      if (!s.examDate || s.examDate >= today) return false;
+      var days = Math.round((Store.parseKey(today) - Store.parseKey(s.examDate)) / 86400000);
+      return days <= 14 && !refs[s.name + '|' + s.examDate];
+    });
+    if (!ended.length) {
+      box.innerHTML = '<p class="insight-empty">최근 14일 안에 끝난 시험 중 아직 회고할 항목이 없습니다. 시험이 끝나면 실제 결과 체감을 다음 추천에 연결합니다.</p>';
+      return;
+    }
+    var s = ended[0], key = s.name + '|' + s.examDate;
+    box.innerHTML = '<p class="insight-value">' + esc(s.name) + ' 시험 준비 회고</p>' +
+      '<p class="tiny">시험일까지 기록된 순공 시간은 ' + fmtDur(subjectMinutesUntil(s.name, s.examDate)) + '입니다. 실제 결과는 예상과 비교해 어땠나요?</p>' +
+      '<div class="insight-actions"><button type="button" class="btn ghost sm exam-ref" data-v="low">예상보다 낮음</button>' +
+      '<button type="button" class="btn ghost sm exam-ref" data-v="same">비슷함</button>' +
+      '<button type="button" class="btn ghost sm exam-ref" data-v="high">예상보다 높음</button></div>';
+    $$('.exam-ref', box).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        Store.saveExamReflection(key, btn.dataset.v);
+        toast('시험 회고를 저장했습니다. 다음 시험 계획의 참고 데이터로 사용합니다.');
+        renderExamReflection();
+      });
+    });
+  }
+
+  var EXPERIMENTS = {
+    water: { title: '공부 시작 전 물 한 컵', question: '물 한 컵이 집중 체감에 영향을 줄까?' },
+    block: { title: '15분과 25분 블록 비교', question: '나에게 더 잘 맞는 집중 블록은 무엇일까?' },
+    music: { title: '음악 사용 여부 비교', question: '음악이 집중 체감에 영향을 줄까?' },
+    walk: { title: '공부 전 10분 산책', question: '짧은 산책이 집중 체감에 영향을 줄까?' }
+  };
+
+  function renderLearningExperiment() {
+    var box = $('learningExperiment');
+    var ex = Store.experiment();
+    if (!ex) {
+      box.innerHTML = '<p class="insight-empty">한 번에 한 가지 습관만 6일 동안 비교합니다. 결과는 원인 판정이 아니라 내 기록에서 나타난 차이로 표시합니다.</p>' +
+        '<select id="experimentType" class="input"><option value="water">물 한 컵</option><option value="block">15분/25분 블록</option><option value="music">음악 사용</option><option value="walk">10분 산책</option></select>' +
+        '<div class="insight-actions"><button type="button" class="btn primary sm" id="startExperiment">실험 시작</button></div>';
+      $('startExperiment').addEventListener('click', function () {
+        var id = $('experimentType').value;
+        Store.saveExperiment({ id: id, title: EXPERIMENTS[id].title, question: EXPERIMENTS[id].question, startedAt: Store.key(), days: [] });
+        renderLearningExperiment();
+        toast('개인 학습 실험을 시작했습니다.');
+      });
+      return;
+    }
+    var today = Store.key();
+    var todayRow = ex.days.filter(function (d) { return d.date === today; })[0];
+    var feedback = Store.feedback();
+    function avgFor(cond) {
+      var dates = ex.days.filter(function (d) { return d.condition === cond; }).map(function (d) { return d.date; });
+      var rows = feedback.filter(function (f) { return dates.indexOf(f.date) >= 0 && typeof f.focus === 'number'; });
+      return rows.length ? rows.reduce(function (s, f) { return s + f.focus; }, 0) / rows.length : null;
+    }
+    var a = avgFor('test'), b = avgFor('control');
+    var result = ex.days.length >= 6 && a !== null && b !== null
+      ? '<p class="tiny"><b>현재 기록의 차이:</b> 실험 조건 집중 체감 ' + a.toFixed(1) + ', 평소 조건 ' + b.toFixed(1) + '. 원인 판정이 아닌 이번 기록의 경향입니다.</p>'
+      : '<p class="tiny">' + ex.days.length + '/6일 기록 · 두 조건을 각각 3일 정도 남기고 공부 후 피드백까지 저장하세요.</p>';
+    box.innerHTML = '<p class="insight-value">' + esc(ex.question) + '</p>' + result +
+      '<div class="insight-actions"><button type="button" class="btn sm experiment-day" data-cond="test"' + (todayRow && todayRow.condition === 'test' ? ' disabled' : '') + '>오늘은 실험 조건</button>' +
+      '<button type="button" class="btn sm experiment-day" data-cond="control"' + (todayRow && todayRow.condition === 'control' ? ' disabled' : '') + '>오늘은 평소대로</button>' +
+      '<button type="button" class="btn ghost sm" id="endExperiment">실험 종료</button></div>';
+    $$('.experiment-day', box).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        ex.days = ex.days.filter(function (d) { return d.date !== today; });
+        ex.days.push({ date: today, condition: btn.dataset.cond });
+        Store.saveExperiment(ex);
+        renderLearningExperiment();
+        toast('오늘의 실험 조건을 기록했습니다.');
+      });
+    });
+    $('endExperiment').addEventListener('click', function () {
+      if (!confirm('현재 개인 학습 실험을 종료할까요?')) return;
+      Store.saveExperiment(null);
+      renderLearningExperiment();
+    });
   }
 
   function renderHistoryChart(r) {
     var rows = r.brainRows;
     if (!rows.length) {
-      $('historyChart').innerHTML = '<text x="360" y="120" text-anchor="middle" fill="#8b93a8" font-size="13">이 주에 기록된 뇌 컨디션이 없습니다</text>';
-      $('historyNote').textContent = '매일 데이터를 입력하면 컨디션 변화와 공부량의 관계가 보입니다.';
+      $('historyChart').innerHTML = '<text x="360" y="110" text-anchor="middle" fill="#8b93a8" font-size="13">아직 표시할 학습 준비도 기록이 없습니다</text>' +
+        '<text x="360" y="136" text-anchor="middle" fill="#8b93a8" font-size="11">컨디션 확인 후 타이머 한 블록을 시작해 보세요</text>';
+      $('historyNote').textContent = '7일 이상 기록되기 전에는 패턴을 해석하지 않습니다.';
       return;
     }
 
@@ -3470,15 +3860,18 @@
     $('historyChart').innerHTML = svg.join('');
 
     if (rows.length === 1) {
-      $('historyNote').textContent = '이 주에는 ' + rows[0].date + ' 하루만 기록됐습니다 (' + rows[0].overall +
-        '점, 수면 ' + rows[0].sleep + '시간). 며칠 더 쌓이면 수면과 컨디션의 관계가 드러납니다.';
+      $('historyNote').textContent = '이 주에는 ' + rows[0].date + ' 하루만 기록됐습니다 (준비도 참고값 ' + displayScore(rows[0].overall) +
+        '점, 수면 ' + rows[0].sleep + '시간). 7일 전에는 관계를 해석하지 않습니다.';
+      return;
+    }
+    if (rows.length < 7) {
+      $('historyNote').textContent = '현재 ' + rows.length + '일 기록입니다. 7일 이상 쌓이기 전에는 수면과 학습 준비도의 관계를 해석하지 않습니다.';
       return;
     }
     var sorted = rows.slice().sort(function (a, b) { return b.overall - a.overall; });
     var hi = sorted[0], lo = sorted[sorted.length - 1];
-    $('historyNote').textContent = '가장 좋았던 날은 ' + hi.date + '(' + hi.overall + '점, 수면 ' + hi.sleep + '시간), ' +
-      '가장 낮았던 날은 ' + lo.date + '(' + lo.overall + '점, 수면 ' + lo.sleep + '시간)입니다.' +
-      (hi.sleep > lo.sleep ? ' 수면이 길었던 날의 컨디션이 더 좋았습니다.' : '');
+    $('historyNote').textContent = '기록에서 준비도 참고값이 가장 높았던 날은 ' + hi.date + '(' + displayScore(hi.overall) + '점), ' +
+      '가장 낮았던 날은 ' + lo.date + '(' + displayScore(lo.overall) + '점)입니다. 다른 요인의 영향도 있을 수 있어 원인으로 단정하지 않습니다.';
   }
 
   /* ---------------------------------------------------------------- 실행 */
@@ -3512,10 +3905,11 @@
     renderSoundNow();
     renderSettingsPage();
     renderQuickNote();
+    renderTodayHome();
 
     renderNav();
     goPage('secResult');
-    toast('분석 완료 — 종합 뇌 컨디션 ' + a.overall + '점');
+    toast('분석 완료 — 오늘의 학습 준비도 ' + scoreBand(a.overall));
     setTimeout(awardKids, 1600);
   }
 
@@ -3960,7 +4354,7 @@
     return location.origin + location.pathname.replace(/index\.html$/, '');
   }
 
-  var SHARE_TEXT = '🧠 Mindora — 오늘 내 뇌 컨디션에 맞는 공부 계획을 짜 주는 앱이야.\n' +
+  var SHARE_TEXT = 'Mindora — 오늘 상태와 시험 일정을 바탕으로 시작할 공부를 제안하는 앱이야.\n' +
                    '순공 시간으로 친구들이랑 겨루는 학교 리그도 있어. 설치 없이 링크만 열면 돼!';
 
   /** execCommand 는 사라지는 중이고 clipboard 는 권한이 필요하다 — 둘 다 시도한다 */
@@ -4286,7 +4680,7 @@
     var p = Store.profile();
     var meId = p ? Group.memberId(p) : null;
 
-    // 내 뇌 컨디션 기록
+    // 내 학습 준비도 기록
     Store.history().forEach(function (h) {
       events.push({
         ts: h.ts, icon: '🧠',
@@ -4350,7 +4744,8 @@
         statusEl.textContent = '';
         adminShowLoggedOut('세션이 만료됐습니다. 다시 로그인해 주세요.');
       } else {
-        statusEl.textContent = '불러오지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+        console.error('admin student fetch failed', e);
+        statusEl.textContent = '관리자 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
       }
     });
   }
@@ -4465,11 +4860,8 @@
         return;
       }
       listEl.innerHTML = '';
-      /* 권한이 없으면 PostgREST 가 401/403 을 준다 — 대개 SQL 을 아직 안 돌린 경우다.
-       * "오류" 로만 적어 두면 무엇을 해야 하는지 알 수 없어 파일 이름까지 적는다. */
-      statusEl.textContent = (e.status === 403 || e.status === 401)
-        ? '권한이 없습니다 — Supabase SQL Editor 에서 supabase/schema_admin_league.sql 을 한 번 실행해 주세요.'
-        : '불러오지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+      console.error('admin league fetch failed', e);
+      statusEl.textContent = '관리자 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
     });
   }
 
@@ -4492,7 +4884,7 @@
     var s = Cloud.adminSession();
     $('adminAuthSection').classList.add('is-hidden');
     $('adminContent').classList.remove('is-hidden');
-    $('adminWhoAmI').textContent = s ? ('로그인: ' + s.email) : '';
+    $('adminWhoAmI').textContent = s ? ('관리자 계정 · ' + maskEmail(s.email)) : '관리자 계정';
     $$(ADMIN_SERVER_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
     $$(ADMIN_LOCAL_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
     renderAdminServer();
@@ -4513,8 +4905,9 @@
       adminShowLoggedIn();
       toast('관리자로 로그인했습니다.');
     }, function (e) {
+      console.error('admin sign-in failed', e);
       statusEl.className = 'neis-status show err';
-      statusEl.textContent = e.message || '로그인에 실패했습니다.';
+      statusEl.textContent = '관리자 로그인에 실패했습니다. 계정 정보와 권한을 확인해 주세요.';
     });
   }
 
@@ -4532,7 +4925,8 @@
   }
 
   function init() {
-    initRanges(); initSegs(); initClock(); initTimer(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
+    moveOptionalDailyCards();
+    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
 
     /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
@@ -4575,10 +4969,9 @@
     if (Store.profile()) {
       renderProfileChip();
       renderNav();
-      // 주소창 해시가 있으면 그 페이지로, 없으면 입력 화면으로 시작
+      // 주소창 해시가 있으면 그 페이지로, 없으면 오늘 홈으로 시작
       var pg = pageByHash((location.hash || '').replace('#', ''));
-      if (pg) goPage(pg.id, true);
-      else goPage('secInput', false, true);
+      if (!pg || !goPage(pg.id, true)) goPage('secToday', false, true);
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';
@@ -4645,7 +5038,7 @@
     });
 
     $('clearHistory').addEventListener('click', function () {
-      if (!confirm('학습 기록·뇌 컨디션 기록·그룹원을 모두 삭제할까요?\n모은 배지와 경험치도 함께 사라지며 되돌릴 수 없습니다.')) return;
+      if (!confirm('학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹원을 모두 삭제할까요?\n모은 배지와 경험치도 함께 사라지며 되돌릴 수 없습니다.')) return;
       Store.clearAll();
       Kids.reset();
       League.reset();
@@ -4683,6 +5076,7 @@
     if (Store.profile()) { fillTtGradeOptions(Store.profile().grade); $('ttClass').value = Store.profile().klass || ''; }
     renderTimetable();
     renderQuickNote();
+    renderTodayHome();
     updateDetailSummary();
     updateCurfewHint();
     renderLiveTotal();
