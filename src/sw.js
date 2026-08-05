@@ -17,10 +17,12 @@
 'use strict';
 
 /* 정책을 바꿀 때마다 올린다. activate 에서 옛 버전 캐시를 통째로 지운다. */
-var VERSION = 'neurostudy-v3';
+var VERSION = 'neurostudy-v5';
 var SHELL = ['./', './index.html', './manifest.webmanifest',
              './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png',
-             './icon.svg', './icon-maskable.svg'];
+             './icon.svg', './icon-maskable.svg',
+             // 프로필 캐릭터 그림 — 이것만 없으면 랭킹·설정 화면이 텅 비어 보인다
+             './avatar-sheet.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
