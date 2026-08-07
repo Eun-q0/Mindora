@@ -16,7 +16,7 @@
     lgSchool: '', lgGrade: '',
     weekOffset: 0,
     queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
-    page: 'secToday',
+    page: 'secHome',
     pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
     vacplan: null,      // 방학 계획표 모델
     span: null,        // 진행 중인 순공 구간
@@ -143,23 +143,27 @@
    * 한 번에 한 페이지만 보여 준다. 길게 스크롤할 필요가 없도록
    * 상단 탭으로 전환하고 주소창 해시(#timer 등)로도 이동할 수 있게 한다. */
 
-  /* 상단 탭은 두 묶음이다.
-   *   번호가 붙은 앞의 넷 — 순서대로 밟는 실제 단계 (입력 → 분석 → 플랜 → 타이머)
-   *   tool 로 표시한 뒤쪽   — 아무 때나 열어 보는 기능들 (번호도 이모지도 안 붙인다)
-   * 예전에는 숫자와 이모지가 1 2 3 4 📅 ★ 5 🏆 6 ⚙ 처럼 섞여 있어서
-   * 무엇이 순서고 무엇이 기능인지 한눈에 들어오지 않았다. */
+  /* 상단 바에는 홈과 번호 붙은 4단계만 남긴다.
+   *   home            — 앱을 열면 처음 보이는 요약 화면
+   *   번호가 붙은 넷   — 순서대로 밟는 실제 단계 (입력 → 분석 → 플랜 → 타이머)
+   *   tool 로 표시한 것 — 아무 때나 열어 보는 기능들. 상단 바에 늘어놓지 않고
+   *                      [더보기] 메뉴와 홈 화면의 바로가기 타일에서만 들어간다.
+   * 예전에는 탭 10개가 한 줄에 늘어서서 무엇이 순서고 무엇이 기능인지
+   * 한눈에 들어오지 않았고, 좁은 화면에서는 가로로 스크롤해야 했다. */
   var PAGES = [
-    { id: 'secToday', num: '⌂', label: '오늘', hash: 'today' },
+    /* 홈은 모리를 키우는 화면이 맡는다. 개편 때 들어온 [오늘] 화면(secToday)의
+     * 코드는 지우지 않고 남겨 두었다 — 탭 목록에만 없어서 열리지 않을 뿐이다. */
+    { id: 'secHome', label: '홈', hash: 'home', home: true, icon: '🏠' },
     { id: 'secInput', num: '1', label: '입력', hash: 'input' },
     { id: 'secResult', num: '2', label: '준비도', hash: 'result', needAnalysis: true },
     { id: 'secPlan', num: '3', label: '학습 플랜', hash: 'plan', needAnalysis: true },
     { id: 'secTimer', num: '4', label: '타이머', hash: 'timer', needAnalysis: true },
-    { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true },
-    { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true },
-    { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true },
-    { id: 'secLeague', label: '리그', hash: 'league', tool: true },
-    { id: 'secReport', label: '리포트', hash: 'report', tool: true },
-    { id: 'secSettings', label: '설정', hash: 'settings', tool: true }
+    { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true, icon: '📅', desc: '방학·주간 계획표 만들기' },
+    { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true, icon: '★', desc: '경험치 · 배지 · 미션' },
+    { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true, icon: '🏅', desc: '같은 반 순공 시간 등수' },
+    { id: 'secLeague', label: '리그', hash: 'league', tool: true, icon: '🏆', desc: '반 대항 · 학교 대항 주간 리그' },
+    { id: 'secReport', label: '리포트', hash: 'report', tool: true, icon: '📈', desc: '주간 학습 리포트' },
+    { id: 'secSettings', label: '설정', hash: 'settings', tool: true, icon: '⚙️', desc: '프로필 · 사운드 · 데이터' }
   ];
 
   /* 상단 탭에는 없지만 이동은 되는 페이지들.
@@ -188,21 +192,54 @@
 
   function renderNav() {
     var open = openPages();
-    var dividerDone = false;
+    var steps = open.filter(function (p) { return !p.tool; });
+    var tools = open.filter(function (p) { return p.tool; });
 
-    $('stepNav').innerHTML = open.map(function (p) {
-      // 단계와 기능 사이에 한 번만 선을 그어 두 묶음을 구분한다
-      var div = '';
-      if (p.tool && !dividerDone) { div = '<span class="step-div" aria-hidden="true"></span>'; dividerDone = true; }
-      var accessibleName = p.tool ? p.label : p.num + ' ' + p.label;
-      return div + '<button type="button" class="step' + (p.tool ? ' is-tool' : '') + '" data-go="' + p.id + '" aria-label="' + esc(accessibleName) + '">' +
-        (p.tool ? '' : '<i>' + p.num + '</i>') +
+    $('stepNav').innerHTML = steps.map(function (p) {
+      // 홈과 단계 사이에 한 번만 선을 그어 "요약" 과 "순서" 를 갈라 준다
+      var div = p.num === '1' ? '<span class="step-div" aria-hidden="true"></span>' : '';
+      var accessibleName = p.home ? p.label : p.num + ' ' + p.label;
+      return div + '<button type="button" class="step' + (p.home ? ' is-home' : '') + '" data-go="' + p.id + '" aria-label="' + esc(accessibleName) + '">' +
+        (p.home ? '<i aria-hidden="true">' + p.icon + '</i>' : '<i>' + p.num + '</i>') +
         '<span>' + esc(p.label) + '</span></button>';
     }).join('');
-    $$('.step').forEach(function (b) {
-      b.addEventListener('click', function () { goPage(b.dataset.go); });
+
+    $('moreBtn').classList.toggle('is-hidden', !tools.length);
+    $('moreMenu').innerHTML = tools.map(function (p) {
+      return '<button type="button" class="mm-item" role="menuitem" data-go="' + p.id + '">' +
+        '<span class="mm-ic" aria-hidden="true">' + esc(p.icon || '•') + '</span>' +
+        '<span class="mm-txt"><b>' + esc(p.label) + '</b><span>' + esc(p.desc || '') + '</span></span></button>';
+    }).join('');
+
+    $$('.step, .mm-item').forEach(function (b) {
+      b.addEventListener('click', function () { closeMore(); goPage(b.dataset.go); });
     });
     setActiveStep(state.page);
+    renderHomeQuick();
+  }
+
+  /* ------------------------------------------------------------- 더보기 */
+
+  function closeMore() {
+    $('moreMenu').classList.add('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleMore() {
+    var open = $('moreMenu').classList.toggle('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', open ? 'false' : 'true');
+  }
+
+  function initMore() {
+    $('moreBtn').addEventListener('click', function (e) { e.stopPropagation(); toggleMore(); });
+    // 바깥을 누르거나 Esc 를 누르면 닫힌다 — 메뉴가 열린 채 화면을 가리지 않게
+    document.addEventListener('click', function (e) {
+      if (!$('moreMenu').contains(e.target) && e.target !== $('moreBtn')) closeMore();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMore(); });
+    $('brandHome').addEventListener('click', function () {
+      goPage(Store.profile() ? 'secHome' : 'secProfile');
+    });
   }
 
   function setActiveStep(id) {
@@ -213,6 +250,15 @@
       else b.removeAttribute('aria-current');
       if (on && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
+    // 지금 보고 있는 화면이 [더보기] 안에 있으면 버튼 자체를 켜 둔다.
+    // 안 그러면 상단 바 어디에도 표시가 없어 길을 잃는다.
+    var inMore = false;
+    $$('.mm-item').forEach(function (b) {
+      var on = b.dataset.go === id;
+      b.classList.toggle('is-active', on);
+      if (on) inMore = true;
+    });
+    $('moreBtn').classList.toggle('is-active', inMore);
   }
 
   function renderPageNav() {
@@ -270,6 +316,8 @@
     renderPageNav();
 
     // 들어올 때마다 최신 값으로 다시 그린다
+    if (id === 'secHome') { renderHome(); Slime.open($('slimeRoot')); }
+    else Slime.stop();   // 홈을 떠나면 자동 생산 타이머를 멈춘다 (기록은 시각으로 남는다)
     if (id === 'secLeague') { renderLeague(); leagueSync(false); }
     if (id === 'secToday') renderTodayHome();
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
@@ -735,7 +783,7 @@
     // 조용히 넘어갔었다 — 이제 프로필이 생겼으니 한 번 밀어 준다.
     if (Cloud.enabled()) leagueSync(true);
     toast(Group.groupLabel(p) + ' 그룹으로 설정했습니다.');
-    goPage(prev ? 'secSettings' : 'secToday');
+    goPage(prev ? 'secSettings' : 'secHome');
   }
 
   function unlockApp() { renderNav(); renderPageNav(); }
@@ -1370,6 +1418,7 @@
       : '아직 기록된 순공 시간이 없습니다.';
 
     $('recDot').className = 'rec-dot' + (state.span ? ' live' : '');
+    renderHome();   // 홈의 '오늘 순공' 타일도 같은 숫자를 본다
   }
 
   /* ------------------------------------------------------------- 타이머 */
@@ -2018,6 +2067,96 @@
       box.innerHTML = '<div class="meal-empty">급식을 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
         '<b>인터넷 연결이나 설정의 API 키를 확인해 주세요.</b></div>';
     });
+  }
+
+  /* ============================================================== 홈 ==
+   * 앱을 열면 처음 보이는 화면. 새로 계산하는 값은 없고, 다른 화면이 이미
+   * 갖고 있는 숫자(뇌 컨디션 · 순공 시간 · 등수)를 모아 보여 주기만 한다. */
+
+  function renderHomeQuick() {
+    var box = $('homeQuick');
+    if (!box) return;
+    var open = openPages().filter(function (p) { return p.tool; });
+    box.innerHTML = open.map(function (p) {
+      return '<button type="button" class="hq" data-go="' + p.id + '">' +
+        '<span class="hq-ic" aria-hidden="true">' + esc(p.icon || '•') + '</span>' +
+        '<b>' + esc(p.label) + '</b><span class="hq-d">' + esc(p.desc || '') + '</span></button>';
+    }).join('');
+    $$('.hq', box).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.go); });
+    });
+  }
+
+  function renderHome() {
+    // 홈을 보고 있을 때만 그린다. 다른 화면에서 순공 시간이 바뀔 때마다
+    // 여기까지 계산할 이유가 없고, 홈에 들어오는 순간 goPage 가 다시 부른다.
+    if (state.page !== 'secHome') return;
+    var p = Store.profile();
+    if (!p) return;
+
+    $('hmNick').textContent = p.nick || '학습자';
+
+    var now = new Date();
+    $('hmDate').textContent = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 (' + DOW_KO[now.getDay()] + ')';
+
+    /* 뇌 컨디션 도넛 — 오늘 분석한 적이 없으면 저장된 마지막 기록을 쓰고,
+     * 그것도 없으면 빈 상태로 둔다. 없는 점수를 지어내지 않는다. */
+    var a = state.analysis;
+    var hist = Store.history();
+    var last = hist.length ? hist[hist.length - 1] : null;
+    var score = null, label = '', fresh = false;
+    if (a) { score = a.overall; label = a.state.label; fresh = true; }
+    else if (last) { score = last.overall; label = last.date === Store.key() ? '오늘 기록' : '지난 기록'; fresh = last.date === Store.key(); }
+
+    var dial = $('hmDial');
+    if (score == null) {
+      $('hmScore').textContent = '—';
+      $('hmState').textContent = '분석 전';
+      dial.style.setProperty('--pct', '0%');
+      dial.classList.add('is-empty');
+    } else {
+      $('hmScore').textContent = score;
+      $('hmState').textContent = label;
+      dial.style.setProperty('--pct', score + '%');
+      dial.classList.remove('is-empty');
+    }
+
+    $('hmLine').textContent = a ? a.state.line
+      : (last && last.date === Store.key() ? '오늘 분석한 결과가 남아 있어요.' : '오늘 컨디션을 넣으면 맞춤 플랜을 짜 드릴게요.');
+
+    /* 숫자 타일 */
+    var todayMin = StudyLog.todayTotal();
+    var weekMin = StudyLog.weekTotal(0);
+    var dailyGoal = (p.goal || 25) * 60 / 7;
+    $('hmToday').textContent = fmtDur(todayMin);
+    $('hmTodaySub').textContent = todayMin > 0
+      ? '오늘 목표의 ' + Math.round(Math.min(999, todayMin / dailyGoal * 100)) + '%'
+      : '타이머로 재기';
+    $('hmWeek').textContent = fmtDur(weekMin);
+    $('hmWeekSub').textContent = '주간 목표 ' + (p.goal || 25) + '시간';
+    $('hmStreak').textContent = StudyLog.streak() + '일';
+
+    // 혼자뿐일 때 '1위' 는 등수가 아니라 착시다 — 사람이 둘 이상일 때만 순위를 말한다
+    var r = Group.rank('today');
+    $('hmRank').textContent = (r.me && r.count > 1) ? r.me.rank + '위' : '—';
+    $('hmRankSub').textContent = r.count > 1 ? '같은 반 ' + r.count + '명 중' : '같은 반 친구를 기다리는 중';
+
+    /* 큰 버튼은 지금 할 일 하나만 가리킨다 */
+    var cta = $('hmCta');
+    if (!state.analysis) {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secInput">' +
+        '🧠 오늘의 데이터 넣고 분석하기</button>';
+    } else if (state.timer && state.timer.running) {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secTimer">⏱️ 타이머로 돌아가기</button>';
+    } else {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secTimer">▶ 공부 시작하기</button>' +
+        '<button type="button" class="btn lg home-cta2" data-go="secPlan">오늘의 플랜 보기</button>';
+    }
+    $$('[data-go]', cta).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.go); });
+    });
+
+    renderHomeQuick();
   }
 
   /* ============================================================ 시간표 == */
@@ -3486,7 +3625,7 @@
         var color = Group.avatarColor(r.tag);
         return '<div class="rank' + (r.me ? ' is-me' : '') + (rank === 1 ? ' top1' : '') + '">' +
           '<div class="rk-pos' + medal + '">' + badge + '</div>' +
-          '<div class="rk-av" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
+          '<div class="rk-tag" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
           '<div class="rk-info">' +
             '<div class="rk-name">' + esc(r.tag) +
               (r.me ? '<span class="me-tag">나</span>' : '') +
@@ -3546,11 +3685,8 @@
         Avatar.html(av, lifeMin || 0, 'rk-av') +
         '<div class="rk-info">' +
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
- agent/retention-personalization
-            (lifeMin != null ? Avatar.tierChip(lifeMin, true) : '') +
+            /* 티어 배지는 없앴다 — 테두리 색으로 바뀌면서 Avatar.tierChip 도 함께 사라졌다 */
             (m.overall != null ? '<span class="brain" title="학습 준비도 참고값">준비도 ' + displayScore(m.overall) + '</span>' : '') + '</div>' +
-=======
-            (m.overall != null ? '<span class="brain">🧠 ' + m.overall + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
           '<div class="rk-date">' + (m.self ? '실시간 반영'
             : (stale ? '⚠ ' + esc(m.date) + ' 기록 (' + agoText(m.ts) + ')' : '코드 받은 시점 · ' + agoText(m.ts))) +
@@ -4925,6 +5061,9 @@
   function init() {
     moveOptionalDailyCards();
     initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
+    initMore();
+    Slime.init({ toast: toast });
+    Slime.touch();   // 앱을 닫아 둔 동안 농장이 모은 젤리를 먼저 정리해 둔다
 
     /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
@@ -4967,9 +5106,10 @@
     if (Store.profile()) {
       renderProfileChip();
       renderNav();
-      // 주소창 해시가 있으면 그 페이지로, 없으면 오늘 홈으로 시작
+      // 주소창 해시가 있으면 그 페이지로, 없으면 홈에서 시작.
+      // 해시가 열 수 없는 페이지를 가리키면 goPage 가 false 를 주므로 홈으로 떨어진다.
       var pg = pageByHash((location.hash || '').replace('#', ''));
-      if (!pg || !goPage(pg.id, true)) goPage('secToday', false, true);
+      if (!pg || !goPage(pg.id, true)) goPage('secHome', false, true);
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';
@@ -5036,10 +5176,13 @@
     });
 
     $('clearHistory').addEventListener('click', function () {
-      if (!confirm('학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹원을 모두 삭제할까요?\n모은 배지와 경험치도 함께 사라지며 되돌릴 수 없습니다.')) return;
+      if (!confirm('학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹원을 모두 삭제할까요?\n모은 배지와 경험치, 키우던 모리도 함께 사라지며 되돌릴 수 없습니다.')) return;
       Store.clearAll();
       Kids.reset();
       League.reset();
+      // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
+      // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
+      Slime.reset();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
       renderLeague();
       toast('모든 기록을 삭제했습니다.');
