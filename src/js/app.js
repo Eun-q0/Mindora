@@ -509,6 +509,7 @@
       caffeine: parseInt($('caffeine').value, 10),
       exercise: parseInt($('exercise').value, 10),
       availableHours: parseFloat($('availableHours').value),
+      fixedPomodoro: $('fixedPomodoro').checked,
       subjects: readSubjects()
     };
   }
@@ -529,6 +530,7 @@
     $('caffeine').value = inp.caffeine;
     $('exercise').value = inp.exercise;
     $('availableHours').value = inp.availableHours;
+    $('fixedPomodoro').checked = !!inp.fixedPomodoro;   // 예전 기록에 없으면 꺼진 상태(자동)
     // 취침 시각은 나중에 추가된 항목이라 예전 기록에는 없다 — 기본값을 유지한다
     if (inp.bedHour !== null && inp.bedHour !== undefined) {
       $('bedTime').value = pad(Math.floor(inp.bedHour)) + ':' + pad(Math.round((inp.bedHour % 1) * 60));
