@@ -9651,9 +9651,15 @@ body {
 
   function costOf(u, n) { return Math.round(u.base * Math.pow(u.mult, n)); }
 
-  /* 농장도 정산과 같은 저울 위에 있어야 한다. 공부해서 버는 것보다 자동 생산이
-   * 빠르면 "공부해서 여는 게임" 이라는 전제가 무너진다. */
-  var FARM_PER_MIN = 0.02;                                   // 레벨당 분당 젤리
+  /* 농장은 정산과 다른 저울을 쓴다.
+   *
+   * 정산(MIN_PER_JELLY)은 일부러 느리게 잡아 공부한 시간이 귀하게 느껴지도록 두고,
+   * 농장은 "앱을 꺼 둔 동안 알아서 쌓이는 재미" 를 맡는다. 둘을 같은 속도로 묶어
+   * 두었더니 자리를 비운 사이에 아무 일도 일어나지 않아, 돌아와도 볼 것이 없었다.
+   *
+   * 대신 무한정 쌓이지는 않는다 — 접시 용량(offlineCapMin)까지만 차고 멈춘다.
+   * 며칠 만에 들어와서 갑자기 부자가 되는 일은 그 상한이 막는다. */
+  var FARM_PER_MIN = 0.6;                                    // 레벨당 분당 젤리
   function farmRate(d) { return d.ups.farm * FARM_PER_MIN; }
   function offlineCapMin(d) { return (2 + d.ups.dish * 2) * 60; }
   function claimMult(d) { return 1 + d.ups.train * 0.25; }
