@@ -377,6 +377,56 @@ body.intro-open { overflow: hidden; }
 .sl-feed em { font-style: normal; opacity: 0.75; margin-left: 5px; font-size: 12px; }
 .sl-pat-left { color: var(--dim); }
 
+/* 모리 머리 위 말풍선 */
+.sl-bubble {
+  position: relative; margin: 0 0 2px; max-width: 100%;
+  padding: 9px 14px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--accent-line);
+  color: var(--accent-ink); font-size: 12.5px; font-weight: 600; text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+/* 꼬리 — 테두리까지 같이 그리려고 두 겹으로 겹친다 */
+.sl-bubble::before, .sl-bubble::after {
+  content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: var(--accent-line);
+}
+.sl-bubble::after { border-width: 6px; border-top-color: var(--surface); }
+.sl-bubble.is-new { animation: slBubbleIn 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes slBubbleIn {
+  from { opacity: 0; transform: translateY(5px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+.sl-grad { width: 100%; max-width: 280px; margin-top: 4px; }
+/* 전설의 무지개 모리만 은은하게 빛난다 */
+.sl-svg.is-shine { filter: drop-shadow(0 0 7px rgba(160, 130, 255, 0.75)); }
+
+/* --------------------------------------------------------------- 도감 */
+.sl-dex { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.sl-dex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.sl-dex-head b { font-size: 14px; font-weight: 700; }
+.sl-dex-head span { font-size: 11.5px; color: var(--dim); }
+.sl-dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.sd-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 6px 9px; border-radius: var(--r-sm);
+  background: var(--surface-3); border: 1px solid var(--line);
+}
+.sd-cell.got { background: var(--surface); border-color: var(--accent-line); }
+.sd-fig { position: relative; width: 68px; height: 62px; display: grid; place-items: center; }
+.sd-fig .sl-svg { width: 68px; height: 62px; }
+/* 도감 칸은 여러 개가 나란히 놓이므로 움직이지 않는다 */
+.sd-fig .sl-body, .sd-fig .sl-eye { animation: none; }
+.sd-unknown { font-size: 26px; font-weight: 800; color: var(--line-2); }
+.sd-n {
+  position: absolute; right: 0; bottom: 2px; padding: 1px 6px; border-radius: 999px;
+  background: var(--accent); color: #fff; font-size: 10px; font-weight: 700;
+}
+.sd-cell b { font-size: 12px; font-weight: 700; text-align: center; }
+.sd-cell.got b { color: var(--text); }
+.sd-cell:not(.got) b { color: var(--dim); }
+.sd-rare { font-size: 10px; color: var(--dim); }
+
 .sl-shop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
 .sl-up {
   display: flex; flex-direction: column; gap: 6px; padding: 14px;
@@ -1423,6 +1473,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .home-quick { grid-template-columns: 1fr 1fr; }
   .sl-svg { width: 148px; height: 136px; }
   .sl-facts { grid-template-columns: 1fr; }
+  /* 8종을 두 줄에 담는다 — 두 칸씩 네 줄이면 도감이 화면을 다 잡아먹는다 */
+  .sl-dex-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sd-fig { width: 58px; height: 54px; }
+  .sd-fig .sl-svg { width: 58px; height: 54px; }
+  .sd-cell b { font-size: 11.5px; }
 }
 
 /* ============================================ 결과 요약 스트립 (secResult)
