@@ -53,8 +53,8 @@
 
   var SHOP_BORDERS = [
     { id: 'j1', name: '젤리',   cost: 400,  cls: 'av-j1', desc: '모리와 같은 색이에요' },
-    { id: 'j2', name: '포도',   cost: 900,  cls: 'av-j2', desc: '' },
-    { id: 'j3', name: '은하',   cost: 2000, cls: 'av-j3', desc: '별가루가 흐르는 테두리예요' }
+    { id: 'j2', name: '자수정', cost: 900,  cls: 'av-j2', desc: '' },
+    { id: 'j3', name: '은하수', cost: 2000, cls: 'av-j3', desc: '별가루가 흐르는 테두리예요' }
   ];
 
   /* ------------------------------------------------------------- 테두리 색
@@ -63,9 +63,9 @@
 
   var BORDERS = [
     { id: 'b1', name: '기본',   hours: 0,   cls: 'av-b1', desc: '처음부터 쓸 수 있어요' },
-    { id: 'b2', name: '라벤더', hours: 10,  cls: 'av-b2', desc: '' },
-    { id: 'b3', name: '스카이', hours: 30,  cls: 'av-b3', desc: '' },
-    { id: 'b4', name: '로즈',   hours: 80,  cls: 'av-b4', desc: '' },
+    { id: 'b2', name: '안개',   hours: 10,  cls: 'av-b2', desc: '' },
+    { id: 'b3', name: '물빛',   hours: 30,  cls: 'av-b3', desc: '' },
+    { id: 'b4', name: '노을',   hours: 80,  cls: 'av-b4', desc: '' },
     { id: 'b5', name: '오로라', hours: 200, cls: 'av-b5', desc: '천천히 색이 도는 테두리예요' }
   ];
 

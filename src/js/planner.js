@@ -496,8 +496,12 @@
     var dropped = subjects.slice(active.length);
 
     allocateBlocks(active, totalBlocks);
+    // 블록 길이 직접 조절. 추천은 추천일 뿐이라 과목별로 한 단계씩 줄이고 늘릴 수 있다.
+    // 상한 120분은 타이머 큐 편집(pomodoro.js LIMITS.study)과 같은 값이다.
     active.forEach(function (s) {
-      s.blockMinutes = s.recommendationAction === 'shorter' ? Math.max(10, pom.focus - 10) : pom.focus;
+      if (s.recommendationAction === 'shorter') s.blockMinutes = Math.max(10, pom.focus - 10);
+      else if (s.recommendationAction === 'longer') s.blockMinutes = Math.min(120, pom.focus + 10);
+      else s.blockMinutes = pom.focus;
     });
     active = active.filter(function (s) { return s.blocks > 0; });
 

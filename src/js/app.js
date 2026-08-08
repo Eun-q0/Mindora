@@ -1186,6 +1186,7 @@
     /* 과목마다 근거·공부법·지표를 다 펼쳐 두면 화면이 너무 길어진다.
      * 기본은 "무엇을 얼마나" 한 줄만 두고, 누르면 이유가 펼쳐지게 한다. */
     $('subjectPlans').innerHTML = p.subjects.map(function (s) {
+      var act = state.planOverrides[s.name] || '';
       var dd = s.daysLeft === null ? '' :
         '<span class="sp-chip dday' + (s.daysLeft > 7 ? ' far' : '') + '">' + (s.daysLeft < 0 ? '종료' : (s.daysLeft === 0 ? 'D-DAY' : 'D-' + s.daysLeft)) + '</span>';
       return '<div class="sp" style="--c:' + s.color + '" data-subj="' + esc(s.name) + '">' +
@@ -1210,7 +1211,8 @@
           '</div>' +
           '<div class="sp-actions">' +
             '<button type="button" class="sp-action" data-plan-action="change" data-subject="' + esc(s.name) + '">과목 바꾸기</button>' +
-            '<button type="button" class="sp-action" data-plan-action="shorter" data-subject="' + esc(s.name) + '">시간 줄이기</button>' +
+            '<button type="button" class="sp-action' + (act === 'shorter' ? ' on' : '') + '" data-plan-action="shorter" data-subject="' + esc(s.name) + '">− 시간 줄이기</button>' +
+            '<button type="button" class="sp-action' + (act === 'longer' ? ' on' : '') + '" data-plan-action="longer" data-subject="' + esc(s.name) + '">＋ 시간 늘리기</button>' +
             '<button type="button" class="sp-action" data-plan-action="exclude" data-subject="' + esc(s.name) + '">오늘 제외</button>' +
             '<button type="button" class="sp-action" data-plan-action="bad" data-subject="' + esc(s.name) + '" data-type="' + esc(s.type) + '">이 추천이 맞지 않음</button>' +
           '</div>' +
@@ -1313,9 +1315,30 @@
       toast('이 추천이 맞지 않았다는 기록을 다음 추천에 반영합니다.');
       return;
     }
+    /* 블록 길이는 짧게 / 기본 / 길게 세 단계를 오간다.
+     * 줄이기만 있으면 한 번 잘못 누른 뒤 되돌릴 방법이 없어, 반대 버튼이 곧 취소가 된다. */
+    if (action === 'shorter' || action === 'longer') {
+      var LADDER = ['shorter', '', 'longer'];
+      var cur = LADDER.indexOf(state.planOverrides[subject] || '');
+      if (cur < 0) cur = 1;
+      var next = cur + (action === 'longer' ? 1 : -1);
+      if (next < 0 || next >= LADDER.length) {
+        toast(subject + ' 블록은 이미 가장 ' + (action === 'longer' ? '깁니다' : '짧습니다') +
+          '. 더 바꾸려면 [입력] 에서 학습 시간을 조정하세요.', true);
+        return;
+      }
+      if (LADDER[next]) state.planOverrides[subject] = LADDER[next];
+      else delete state.planOverrides[subject];
+      refreshPlanFromOverrides();
+      toast(LADDER[next] === 'shorter' ? subject + ' 블록을 한 단계 짧게 바꿨습니다.'
+          : LADDER[next] === 'longer' ? subject + ' 블록을 한 단계 길게 바꿨습니다.'
+          : subject + ' 블록을 기본 길이로 되돌렸습니다.');
+      return;
+    }
+
     state.planOverrides[subject] = action;
     refreshPlanFromOverrides();
-    toast(action === 'exclude' ? subject + '을(를) 오늘 플랜에서 제외했습니다.' : subject + ' 시간을 한 블록 줄였습니다.');
+    toast(subject + '을(를) 오늘 플랜에서 제외했습니다.');
   }
 
   /* 취침 커퓨 안내.

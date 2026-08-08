@@ -840,6 +840,8 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .sp-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
 .sp-action { border:1px solid var(--line); background:var(--surface); color:var(--muted); border-radius:999px; padding:7px 10px; font:inherit; font-size:12px; font-weight:750; cursor:pointer; }
 .sp-action:hover { border-color:var(--brand); color:var(--brand); }
+/* 지금 적용 중인 조절을 버튼 자체가 알려 준다 — 같은 버튼을 또 눌러 되돌릴 수 있다는 뜻이기도 하다. */
+.sp-action.on { border-color:var(--brand); color:var(--brand); background:rgba(109,74,255,.10); }
 
 .insight-grid { margin-top:16px; }
 .insight-empty { color:var(--muted); line-height:1.65; }
