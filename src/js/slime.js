@@ -14,13 +14,14 @@
   'use strict';
 
   var KEY = 'neurostudy.slime.v1';
-  var MAX_PAT_PER_DAY = 5;       // 쓰다듬기로 무한정 벌지 못하게 하루 상한을 둔다
+  var MAX_PAT_PER_DAY = 20;      // 쓰다듬기로 무한정 벌지 못하게 하루 상한을 둔다
   var HUNGRY_HOURS = 18;         // 이만큼 안 먹으면 배고픔 — 자동 생산이 절반이 된다
 
   /* 젤리 1개를 받는 데 필요한 순공 시간(분).
-   * 이 하나만 고치면 게임 전체의 속도가 함께 움직인다.
-   * '공부 특훈' 업그레이드를 올리면 이 시간이 짧아진다. */
-  var MIN_PER_JELLY = 30;
+   * 이 하나만 고치면 게임 전체의 속도가 함께 움직인다 —
+   * 농장도 이 값에 대한 비율로 잡혀 있어 함께 따라온다.
+   * '공부 특훈' 업그레이드를 올리면 이 시간이 더 짧아진다. */
+  var MIN_PER_JELLY = 1;
 
   var toast = function () { /* app.js 가 init 에서 꽂아 준다 */ };
   var root = null;
@@ -186,7 +187,11 @@
       id: 'farm', icon: '🌱', name: '젤리 농장',
       desc: '자는 동안에도 젤리가 저절로 쌓입니다.',
       base: 30, mult: 1.7, max: 25,
-      effect: function (n) { return (n * FARM_PER_MIN * 60).toFixed(1) + ' 젤리/시간'; }
+      effect: function (n) {
+        var share = farmShare(n);
+        return (share / MIN_PER_JELLY * 60).toFixed(1) + ' 젤리/시간' +
+          (n ? ' (공부의 ' + Math.round(share * 100) + '%)' : '');
+      }
     },
     {
       id: 'dish', icon: '🥣', name: '큰 접시',
@@ -200,7 +205,7 @@
       base: 80, mult: 1.9, max: 12,
       effect: function (n) {
         var mult = 1 + n * 0.25;
-        return '정산 ×' + mult.toFixed(2) + ' (' + fmtMin(MIN_PER_JELLY / mult) + '에 1개)';
+        return '정산 ×' + mult.toFixed(2) + ' (순공 1시간에 ' + Math.round(60 / MIN_PER_JELLY * mult) + '개)';
       }
     }
   ];
@@ -212,16 +217,20 @@
 
   function costOf(u, n) { return Math.round(u.base * Math.pow(u.mult, n)); }
 
-  /* 농장은 정산과 다른 저울을 쓴다.
+  /* 농장(앱을 꺼 둔 동안 저절로 쌓이는 젤리)의 속도는 절대값으로 두지 않고
+   * 공부로 버는 속도에 대한 비율로 잡는다.
    *
-   * 정산(MIN_PER_JELLY)은 일부러 느리게 잡아 공부한 시간이 귀하게 느껴지도록 두고,
-   * 농장은 "앱을 꺼 둔 동안 알아서 쌓이는 재미" 를 맡는다. 둘을 같은 속도로 묶어
-   * 두었더니 자리를 비운 사이에 아무 일도 일어나지 않아, 돌아와도 볼 것이 없었다.
+   * 절대값으로 두었더니 정산 속도를 손볼 때마다 둘의 관계가 뒤집혔다.
+   * 방치가 공부를 앞지르면 "공부해서 여는 게임" 이라는 전제 자체가 무너진다.
+   * 그래서 상한을 걸어 둔다 — 농장을 아무리 올려도 공부보다 빠를 수 없다.
    *
-   * 대신 무한정 쌓이지는 않는다 — 접시 용량(offlineCapMin)까지만 차고 멈춘다.
+   * 게다가 무한정 쌓이지도 않는다. 접시 용량(offlineCapMin)까지만 차고 멈추므로
    * 며칠 만에 들어와서 갑자기 부자가 되는 일은 그 상한이 막는다. */
-  var FARM_PER_MIN = 0.6;                                    // 레벨당 분당 젤리
-  function farmRate(d) { return d.ups.farm * FARM_PER_MIN; }
+  var FARM_SHARE_PER_LEVEL = 0.15;   // 레벨마다 공부 속도의 15%
+  var FARM_SHARE_MAX = 0.8;          // 다 올려도 공부의 80% 를 넘지 않는다
+
+  function farmShare(level) { return Math.min(FARM_SHARE_MAX, level * FARM_SHARE_PER_LEVEL); }
+  function farmRate(d) { return farmShare(d.ups.farm) / MIN_PER_JELLY; }   // 분당 젤리
   function offlineCapMin(d) { return (2 + d.ups.dish * 2) * 60; }
   function claimMult(d) { return 1 + d.ups.train * 0.25; }
 
@@ -426,7 +435,8 @@
   function cheerFor(d) {
     if (isHungry(d)) return '배고파요… 밥 주세요!';
     if (isGrown(d)) return '다 자랐어요! 이제 떠날 준비가 됐어요.';
-    if (pendingMin(d) >= minPerJelly(d)) return '공부한 시간이 쌓였어요. 정산해 주세요!';
+    // 1분 공부하자마자 조르지 않도록 최소 25분은 쌓인 뒤에 말한다
+    if (pendingMin(d) >= Math.max(25, minPerJelly(d))) return '공부한 시간이 쌓였어요. 정산해 주세요!';
     var i = Math.floor(Date.now() / CHEER_MS) % CHEERS.length;
     return CHEERS[i];
   }
@@ -501,8 +511,10 @@
               ? '📚 공부 ' + esc(fmtMin(v.pend)) + ' 정산 → ✨' + fmtJelly(pendJelly)
               : '📚 정산할 공부 시간이 없어요') +
           '</button>' +
-          '<p class="tiny sl-claim-cap">타이머로 잰 <b>순공 ' + fmtMin(minPerJelly(d)) + '이 젤리 1개</b>입니다. ' +
-            '‘공부 특훈’ 을 올리면 더 빨라져요.</p>' +
+          /* 분 단위로 적으면 '공부 특훈' 을 올릴수록 0분에 수렴해 뜻이 사라진다.
+           * 시간당 개수로 적으면 어느 속도에서든 그대로 읽힌다. */
+          '<p class="tiny sl-claim-cap">타이머로 잰 <b>순공 1시간이 젤리 ' +
+            Math.round(60 / minPerJelly(d)) + '개</b>입니다. ‘공부 특훈’ 을 올리면 더 늘어나요.</p>' +
 
           '<div class="sl-acts">' +
             '<button type="button" class="btn sl-feed" id="slFeed"' + (d.jelly >= feedCost ? '' : ' disabled') + '>' +
@@ -601,8 +613,7 @@
       save(d);
       return;
     }
-    // 쓰다듬기는 인사지 벌이가 아니다 — 공부해서 버는 쪽이 항상 커야 한다
-    var got = 1;
+    var got = 1 + Math.floor(Math.random() * 3);
     d.patCount++; d.pats++;
     d.jelly += got;
     d.xp += 1;
