@@ -1744,6 +1744,30 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-b5 { box-shadow: 0 0 12px -4px rgba(255, 150, 190, 0.85), 0 0 22px -5px rgba(120, 90, 255, 0.85); }
 @keyframes av-spin { to { transform: rotate(360deg); } }
 
+/* 젤리로 사는 테두리 3색 (avatar.js 의 SHOP_BORDERS) */
+.av-j1::before { background: linear-gradient(140deg, #c9b6ff, #6d4aff); }
+.av-j1 { box-shadow: 0 0 11px -4px rgba(109, 74, 255, 0.8); }
+.av-j2::before { background: linear-gradient(140deg, #b98cff, #5b2ea6 60%, #2f1a63); }
+.av-j2 { box-shadow: 0 0 12px -4px rgba(90, 45, 165, 0.85); }
+.av-j3::before {
+  background: conic-gradient(from 0deg, #1b1240, #6d4aff, #cfc0ff, #5b7cff, #1b1240);
+  animation: av-spin 9s linear infinite;
+}
+.av-j3 { box-shadow: 0 0 14px -4px rgba(109, 74, 255, 0.9), 0 0 26px -6px rgba(200, 180, 255, 0.7); }
+
+/* 모리를 프로필 사진으로 쓸 때 — 시트 그림 대신 slime.js 의 SVG 가 들어온다.
+ * SVG 는 몸통 위아래로 여백(그림자 자리·머리 장식 자리)을 두고 그려져서,
+ * 그대로 넣으면 원판 한가운데 작게 뜬다. 키워서 넣고 몸통 중심을 원판 중심에
+ * 맞춘다. 넘치는 부분은 .av-in 의 overflow:hidden 이 잘라 준다. */
+.av-slime { display: grid; place-items: center; background: none; }
+/* 136% / -4% 는 가장 큰 단계(우주 모리, 머리 위 고리까지)를 기준으로 잰 값이다.
+ * 몸통이 원판 폭의 80% 를 채우면서 고리도 잘리지 않는 지점이다. */
+.av-slime .sl-svg { width: 136%; height: 136%; transform: translateY(-4%); }
+.av-slime .sl-shadow { display: none; }
+/* 목록에 여러 개가 나란히 놓이므로 프로필에서는 움직이지 않는다 —
+ * 통통거리는 건 홈 화면의 모리 하나로 충분하다. */
+.av-slime .sl-body, .av-slime .sl-eye { animation: none; }
+
 /* ------------------------------------------------------- 꾸미기 화면 */
 
 .av-stage {
@@ -1773,6 +1797,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-opt:hover { border-color: var(--accent-line); background: var(--surface); }
 .av-opt.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
 .av-opt.locked { opacity: 0.5; cursor: not-allowed; }
+/* 살 수 있는 물건 — 시간 자물쇠와 달리 지금 누르면 되므로 흐리게 하지 않는다 */
+.av-opt.buy { border-style: dashed; border-color: var(--accent-line); }
+.av-opt.buy:hover { border-style: solid; border-color: var(--accent); background: var(--accent-soft); }
+.av-opt.buy .av-opt-note { color: var(--accent-ink); font-weight: 700; }
+.av-buy-tag {
+  position: absolute; right: -3px; bottom: -3px; width: 19px; height: 19px;
+  display: grid; place-items: center; font-size: 10px; border-radius: 50%;
+  background: var(--accent); color: #fff; box-shadow: 0 0 0 2px var(--surface);
+}
 .av-opt-fig { position: relative; line-height: 0; }
 .av-lock { position: absolute; inset: 0; display: grid; place-items: center; font-size: 17px; }
 .av-opt-name { font-size: 11.5px; font-weight: 600; text-align: center; line-height: 1.35; }

@@ -36,6 +36,15 @@
   }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
+  /* 조사 붙이기. 사용자가 적은 이름에는 '을(를)' 로 두지만, 앱이 가진 고정된
+   * 이름(상점 물건 같은)에는 받침을 보고 하나만 골라 쓴다 — 훨씬 잘 읽힌다. */
+  function josa(word, withFinal, withoutFinal) {
+    var last = String(word || '').slice(-1);
+    var code = last.charCodeAt(0);
+    if (!(code >= 0xac00 && code <= 0xd7a3)) return withoutFinal;   // 한글이 아니면 받침 없는 쪽
+    return ((code - 0xac00) % 28) ? withFinal : withoutFinal;
+  }
+
   function displayScore(n) { return Math.max(0, Math.min(100, Math.round(Number(n || 0) / 5) * 5)); }
   function scoreBand(n) {
     n = Number(n || 0);
@@ -3404,12 +3413,15 @@
             '<span>' + (t.next ? esc(t.next.name) + '까지 ' + fmtDurFine(t.remainMin) : '모든 색을 모았어요') + '</span></div>' +
           '<div class="av-prog-track"><i style="width:' + t.pct.toFixed(1) + '%"></i></div>' +
         '</div>' +
-        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다.</p>' +
+        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다. ' +
+          '가진 젤리 <b>✨' + Slime.jelly() + '</b> — 홈에서 모리를 키우면 늘어납니다.</p>' +
       '</div>';
   }
 
-  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다 */
-  function avOption(kind, item, on, locked, note) {
+  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다.
+   * buyable 은 "아직 없지만 눌러서 살 수 있는" 상태다. 시간이 차야 열리는
+   * 자물쇠와 달리 지금 당장 누를 수 있으므로 흐리게 죽이지 않는다. */
+  function avOption(kind, item, on, locked, note, buyable) {
     var preview = {};
     Object.keys(avDraft).forEach(function (k) { preview[k] = avDraft[k]; });
     preview[kind] = item.id;
@@ -3418,10 +3430,13 @@
       ? Avatar.html(preview, Infinity, 'av-sm')
       : '<span class="av av-plain av-sm"><span class="av-in">' + Avatar.figure(preview) + '</span></span>';
 
-    return '<button type="button" class="av-opt' + (on ? ' on' : '') + (locked ? ' locked' : '') + '"' +
-      (locked ? ' aria-disabled="true"' : '') +
+    return '<button type="button" class="av-opt' + (on ? ' on' : '') +
+      (locked && !buyable ? ' locked' : '') + (buyable ? ' buy' : '') + '"' +
+      (locked && !buyable ? ' aria-disabled="true"' : '') +
       ' data-kind="' + kind + '" data-id="' + esc(item.id) + '">' +
-      '<span class="av-opt-fig">' + fig + (locked ? '<span class="av-lock">🔒</span>' : '') + '</span>' +
+      '<span class="av-opt-fig">' + fig +
+        (locked && !buyable ? '<span class="av-lock">🔒</span>' : '') +
+        (buyable ? '<span class="av-buy-tag">✨</span>' : '') + '</span>' +
       '<span class="av-opt-name">' + esc(item.name) + '</span>' +
       (note ? '<span class="av-opt-note">' + esc(note) + '</span>' : '') +
       '</button>';
@@ -3442,6 +3457,16 @@
       return list.map(function (it) { return avOption(kind, it, avDraft[kind] === it.id); }).join('');
     }
 
+    /* 젤리로 사는 물건은 산 것만 고를 수 있다. 값은 옵션 밑에 그대로 적어 둔다 —
+     * 눌러 봐야 얼마인지 아는 상점은 불친절하다. */
+    function shopOpts(kind, list) {
+      return list.map(function (it) {
+        var got = avDraft.owned.indexOf(it.id) >= 0;
+        return avOption(kind, it, got && avDraft[kind] === it.id, !got,
+          got ? '보유 중' : '✨' + it.cost, !got);
+      }).join('');
+    }
+
     var html =
       avGroup('캐릭터 — 남학생', '3종', opts('char', bySex(Avatar.CHARS, 'm'))) +
       avGroup('캐릭터 — 여학생', '5종', opts('char', bySex(Avatar.CHARS, 'f'))) +
@@ -3449,21 +3474,46 @@
         var locked = i > opened;
         return avOption('border', b, avDraft.border === b.id, locked,
           locked ? '누적 ' + b.hours + '시간' : (b.hours ? b.hours + '시간 달성' : '기본'));
-      }).join(''));
+      }).join('')) +
+      avGroup('✨ 젤리 상점', '모리를 키워 모은 젤리로 삽니다',
+        shopOpts('char', Avatar.SHOP_CHARS) + shopOpts('border', Avatar.SHOP_BORDERS));
 
     $('avPicks').innerHTML = html;
 
     $$('#avPicks .av-opt').forEach(function (b) {
       b.addEventListener('click', function () {
+        var id = b.dataset.id;
+        var shop = Avatar.shopItem(id);
+        if (shop && avDraft.owned.indexOf(id) < 0) { avBuy(shop, b.dataset.kind); return; }
         if (b.classList.contains('locked')) {
-          var need = Avatar.byId(Avatar.BORDERS, b.dataset.id);
+          var need = Avatar.byId(Avatar.BORDERS, id);
           toast('누적 ' + need.hours + '시간을 채우면 ' + need.name + ' 테두리가 열려요.', true);
           return;
         }
-        avDraft[b.dataset.kind] = b.dataset.id;
+        avDraft[b.dataset.kind] = id;
         renderAvatar();
       });
     });
+  }
+
+  /** 젤리로 사기 — 값을 보여 주고 확인을 받은 뒤에만 깎는다 */
+  function avBuy(item, kind) {
+    var have = Slime.jelly();
+    if (have < item.cost) {
+      toast('젤리가 ' + (item.cost - have) + '개 모자라요. 홈에서 공부 시간을 정산해 보세요.', true);
+      return;
+    }
+    if (!confirm(item.name + josa(item.name, '을', '를') + ' 젤리 ' + item.cost + '개로 살까요?\n\n지금 가진 젤리 ' + have + '개')) return;
+    if (!Slime.spend(item.cost)) { toast('젤리가 모자라요.', true); return; }
+
+    // 산 사실은 바로 프로필에 남긴다 — 값을 치렀는데 저장하기를 안 눌렀다고 사라지면 안 된다.
+    // 어떤 걸 입을지(char/border)만 저장하기 전까지 미리보기로 남는다.
+    if (!Avatar.grant(item.id)) { toast('저장에 실패했습니다.', true); return; }
+
+    if (avDraft.owned.indexOf(item.id) < 0) avDraft.owned.push(item.id);
+    avDraft[kind] = item.id;          // 산 것을 바로 입혀 준다
+    renderAvatar();
+    toast(item.name + josa(item.name, '을', '를') + ' 샀어요! 저장하기를 눌러 반영하세요.', 'party');
   }
 
   function renderAvatarBorders() {

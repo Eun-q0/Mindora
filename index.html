@@ -1790,6 +1790,30 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-b5 { box-shadow: 0 0 12px -4px rgba(255, 150, 190, 0.85), 0 0 22px -5px rgba(120, 90, 255, 0.85); }
 @keyframes av-spin { to { transform: rotate(360deg); } }
 
+/* 젤리로 사는 테두리 3색 (avatar.js 의 SHOP_BORDERS) */
+.av-j1::before { background: linear-gradient(140deg, #c9b6ff, #6d4aff); }
+.av-j1 { box-shadow: 0 0 11px -4px rgba(109, 74, 255, 0.8); }
+.av-j2::before { background: linear-gradient(140deg, #b98cff, #5b2ea6 60%, #2f1a63); }
+.av-j2 { box-shadow: 0 0 12px -4px rgba(90, 45, 165, 0.85); }
+.av-j3::before {
+  background: conic-gradient(from 0deg, #1b1240, #6d4aff, #cfc0ff, #5b7cff, #1b1240);
+  animation: av-spin 9s linear infinite;
+}
+.av-j3 { box-shadow: 0 0 14px -4px rgba(109, 74, 255, 0.9), 0 0 26px -6px rgba(200, 180, 255, 0.7); }
+
+/* 모리를 프로필 사진으로 쓸 때 — 시트 그림 대신 slime.js 의 SVG 가 들어온다.
+ * SVG 는 몸통 위아래로 여백(그림자 자리·머리 장식 자리)을 두고 그려져서,
+ * 그대로 넣으면 원판 한가운데 작게 뜬다. 키워서 넣고 몸통 중심을 원판 중심에
+ * 맞춘다. 넘치는 부분은 .av-in 의 overflow:hidden 이 잘라 준다. */
+.av-slime { display: grid; place-items: center; background: none; }
+/* 136% / -4% 는 가장 큰 단계(우주 모리, 머리 위 고리까지)를 기준으로 잰 값이다.
+ * 몸통이 원판 폭의 80% 를 채우면서 고리도 잘리지 않는 지점이다. */
+.av-slime .sl-svg { width: 136%; height: 136%; transform: translateY(-4%); }
+.av-slime .sl-shadow { display: none; }
+/* 목록에 여러 개가 나란히 놓이므로 프로필에서는 움직이지 않는다 —
+ * 통통거리는 건 홈 화면의 모리 하나로 충분하다. */
+.av-slime .sl-body, .av-slime .sl-eye { animation: none; }
+
 /* ------------------------------------------------------- 꾸미기 화면 */
 
 .av-stage {
@@ -1819,6 +1843,15 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-opt:hover { border-color: var(--accent-line); background: var(--surface); }
 .av-opt.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
 .av-opt.locked { opacity: 0.5; cursor: not-allowed; }
+/* 살 수 있는 물건 — 시간 자물쇠와 달리 지금 누르면 되므로 흐리게 하지 않는다 */
+.av-opt.buy { border-style: dashed; border-color: var(--accent-line); }
+.av-opt.buy:hover { border-style: solid; border-color: var(--accent); background: var(--accent-soft); }
+.av-opt.buy .av-opt-note { color: var(--accent-ink); font-weight: 700; }
+.av-buy-tag {
+  position: absolute; right: -3px; bottom: -3px; width: 19px; height: 19px;
+  display: grid; place-items: center; font-size: 10px; border-radius: 50%;
+  background: var(--accent); color: #fff; box-shadow: 0 0 0 2px var(--surface);
+}
 .av-opt-fig { position: relative; line-height: 0; }
 .av-lock { position: absolute; inset: 0; display: grid; place-items: center; font-size: 17px; }
 .av-opt-name { font-size: 11.5px; font-weight: 600; text-align: center; line-height: 1.35; }
@@ -3047,7 +3080,8 @@ body {
   <section id="secAvatar" class="section is-hidden">
     <div class="sec-head">
       <h2><span class="sec-num">🎨</span> 캐릭터 꾸미기</h2>
-      <p>캐릭터는 언제든 바꿀 수 있어요. <b>테두리 색은 지금까지 쌓은 순공 시간</b>으로 하나씩 열립니다.
+      <p>캐릭터는 언제든 바꿀 수 있어요. <b>테두리 색은 지금까지 쌓은 순공 시간</b>으로 하나씩 열리고,
+        <b>젤리 상점</b>의 모리와 특별 테두리는 홈에서 모은 젤리로 삽니다.
         내 캐릭터는 <b>그룹 랭킹</b>에 그대로 표시됩니다.</p>
     </div>
 
@@ -5222,6 +5256,24 @@ body {
     { id: 'f5', name: '땋은 머리', sex: 'f', cell: 7 }
   ];
 
+  /* ------------------------------------------------------- 젤리로 사는 것
+   * 원래 있던 캐릭터 8종과 시간으로 열리는 테두리 5색은 그대로 둔다.
+   * 이미 쓰던 것을 뺏어 다시 팔지 않는다 — 여기 있는 건 전부 새로 더한 것이다.
+   *
+   * 젤리는 순공 1분당 1개다. 결국 이것도 공부해서 여는 것이지, 그냥 주는 게 아니다.
+   * 모리는 그림 시트에 칸이 없어 slime.js 가 그리는 SVG 를 그대로 쓴다 —
+   * 덕분에 홈에서 키운 단계가 프로필 사진에도 그대로 나온다. */
+
+  var SHOP_CHARS = [
+    { id: 'slime', name: '모리', sex: 'x', cell: -1, cost: 300, desc: '홈에서 키운 모습 그대로 나와요' }
+  ];
+
+  var SHOP_BORDERS = [
+    { id: 'j1', name: '젤리',   cost: 400,  cls: 'av-j1', desc: '모리와 같은 색이에요' },
+    { id: 'j2', name: '포도',   cost: 900,  cls: 'av-j2', desc: '' },
+    { id: 'j3', name: '은하',   cost: 2000, cls: 'av-j3', desc: '별가루가 흐르는 테두리예요' }
+  ];
+
   /* ------------------------------------------------------------- 테두리 색
    * 등급을 매기지 않는다. 순공 시간이 쌓이면 예쁜 색을 하나씩 더 쓸 수 있게
    * 열어 줄 뿐이고, 열린 색 중에서는 아무거나 골라도 된다. */
@@ -5237,6 +5289,17 @@ body {
   function byId(list, id) {
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
     return null;
+  }
+
+  /* 시간으로 여는 목록과 젤리로 사는 목록을 합친 것.
+   * 잠금 계산(borderIndexFor 등)은 BORDERS 만 보아야 하므로 배열을 따로 둔다 —
+   * 값이 없는 hours 가 섞이면 "다음 색까지 남은 시간" 이 NaN 이 된다. */
+  function allChars() { return CHARS.concat(SHOP_CHARS); }
+  function allBorders() { return BORDERS.concat(SHOP_BORDERS); }
+
+  /** 젤리로 사는 항목인가 (사지 않으면 못 고른다) */
+  function shopItem(id) {
+    return byId(SHOP_CHARS, id) || byId(SHOP_BORDERS, id) || null;
   }
 
   /* --------------------------------------------------- 누적 시간과 티어 */
@@ -5282,27 +5345,59 @@ body {
   /* ------------------------------------------------------------- 설정 값 */
 
   function defaults() {
-    return { char: CHARS[0].id, border: BORDERS[0].id };
+    return { char: CHARS[0].id, border: BORDERS[0].id, owned: [] };
   }
 
   /**
    * 저장값을 믿지 않고 항상 통과시킨다.
    * 모르는 항목은 기본값으로 되돌리고, 아직 못 연 테두리는 열린 것 중
    * 가장 높은 것으로 낮춘다. (공유 코드로 받은 남의 설정도 같은 문을 지난다)
+   *
+   * 젤리로 산 항목은 산 사람의 설정 안에 owned 로 함께 다닌다. 남의 캐릭터를
+   * 그릴 때 내 지갑을 볼 수는 없으므로, 잠금은 그 사람이 들고 온 owned 로 본다.
    */
   function sanitize(cfg, minutes) {
     var d = defaults();
     cfg = cfg || {};
+    var owned = [];
+    if (Object.prototype.toString.call(cfg.owned) === '[object Array]') {
+      cfg.owned.forEach(function (id) { if (shopItem(id) && owned.indexOf(id) < 0) owned.push(id); });
+    }
     var out = {
-      char: byId(CHARS, cfg.char) ? cfg.char : d.char,
-      border: byId(BORDERS, cfg.border) ? cfg.border : d.border
+      char: byId(allChars(), cfg.char) ? cfg.char : d.char,
+      border: byId(allBorders(), cfg.border) ? cfg.border : d.border,
+      owned: owned
     };
+
     if (minutes === Infinity) return out;   // 미리보기 — 잠금을 따지지 않는다
+
+    // 젤리로 사는 항목은 산 기록이 있어야 쓸 수 있다
+    if (shopItem(out.char) && owned.indexOf(out.char) < 0) out.char = d.char;
+    if (shopItem(out.border)) {
+      if (owned.indexOf(out.border) < 0) out.border = d.border;
+      return out;                            // 시간 잠금은 따지지 않는다
+    }
+
     var open = unlockedBorders(minutes === undefined ? lifetimeMinutes() : minutes);
     var okBorder = false;
     open.forEach(function (b) { if (b.id === out.border) okBorder = true; });
     if (!okBorder) out.border = open[open.length - 1].id;
     return out;
+  }
+
+  /** 젤리로 산 항목을 소유 목록에 넣는다 (실제 결제는 부르는 쪽에서) */
+  function grant(id) {
+    var p = S.profile();
+    if (!p || !shopItem(id)) return false;
+    var cur = sanitize(p.avatar);
+    if (cur.owned.indexOf(id) < 0) cur.owned.push(id);
+    p.avatar = cur;
+    return S.saveProfile(p);
+  }
+
+  function owns(id) {
+    if (!shopItem(id)) return true;         // 상점 물건이 아니면 소유를 따지지 않는다
+    return get().owned.indexOf(id) >= 0;
   }
 
   /** 내 설정 — 프로필 안에 함께 저장된다(백업에도 그대로 담긴다) */
@@ -5331,6 +5426,14 @@ body {
   /** 테두리 없이 캐릭터 그림만 */
   function figure(cfg) {
     var c = sanitize(cfg, Infinity);   // 그리기에서는 테두리 잠금을 따지지 않는다
+    // 모리는 시트에 칸이 없다 — slime.js 가 그리는 SVG 를 그대로 넣는다.
+    // 아직 slime.js 가 없는 상황(예: 옛 백업 복원 중)에서는 기본 캐릭터로 떨어진다.
+    if (c.char === 'slime') {
+      if (global.Slime && global.Slime.faceSvg) {
+        return '<i class="av-l av-slime">' + global.Slime.faceSvg() + '</i>';
+      }
+      c.char = defaults().char;
+    }
     return '<i class="av-l" style="' + cellStyle(byId(CHARS, c.char).cell) + '"></i>';
   }
 
@@ -5340,13 +5443,16 @@ body {
    */
   function html(cfg, minutes, extraCls) {
     var c = sanitize(cfg, minutes === undefined ? lifetimeMinutes() : minutes);
-    var b = byId(BORDERS, c.border);
+    var b = byId(allBorders(), c.border);
     return '<span class="av ' + b.cls + (extraCls ? ' ' + extraCls : '') + '">' +
       '<span class="av-in">' + figure(c) + '</span></span>';
   }
 
   global.Avatar = {
     CHARS: CHARS, BORDERS: BORDERS,
+    SHOP_CHARS: SHOP_CHARS, SHOP_BORDERS: SHOP_BORDERS,
+    allChars: allChars, allBorders: allBorders, shopItem: shopItem,
+    grant: grant, owns: owns,
     byId: byId,
     lifetimeMinutes: lifetimeMinutes,
     borderIndexFor: borderIndexFor, progress: progress, unlockedBorders: unlockedBorders,
@@ -9299,10 +9405,38 @@ body {
     return { jelly: Math.floor(d.jelly), level: lv.level, stage: stageFor(lv.level).name, pending: Math.round(pendingMin(d)) };
   }
 
+  /* ------------------------------------------- 다른 화면에서 젤리 쓰기
+   * 꾸미기 화면에서 아바타를 사려면 젤리 잔액을 보고 깎을 수 있어야 한다.
+   * 깎는 문은 여기 하나로 두어, 자동 생산 정산(accrue)을 빠뜨린 채
+   * 옛날 잔액에서 빼는 일이 생기지 않게 한다. */
+
+  function jelly() { var d = load(); accrue(d); save(d); return Math.floor(d.jelly); }
+
+  /** 살 수 있으면 깎고 true. 모자라면 아무것도 하지 않고 false. */
+  function spend(n) {
+    n = Math.max(0, Math.round(n || 0));
+    var d = load();
+    accrue(d);
+    if (d.jelly < n) { save(d); return false; }
+    d.jelly -= n;
+    save(d);
+    paintJelly(d.jelly);
+    return true;
+  }
+
+  /** 지금 모리의 모습 — 프로필 캐릭터로 쓸 수 있게 그림만 떼어 준다.
+   * 레벨이 오르면 프로필 사진도 같이 자란다. */
+  function faceSvg() {
+    var d = load();
+    var stage = stageFor(levelOf(d.xp).level);
+    return slimeSvg(stage, isHungry(d));
+  }
+
   global.Slime = {
     init: function (opt) { if (opt && opt.toast) toast = opt.toast; },
     open: open, stop: stop, render: render, touch: touch,
-    summary: summary, reset: reset
+    summary: summary, reset: reset,
+    jelly: jelly, spend: spend, faceSvg: faceSvg
   };
 
 })(window);
@@ -9346,6 +9480,15 @@ body {
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  /* 조사 붙이기. 사용자가 적은 이름에는 '을(를)' 로 두지만, 앱이 가진 고정된
+   * 이름(상점 물건 같은)에는 받침을 보고 하나만 골라 쓴다 — 훨씬 잘 읽힌다. */
+  function josa(word, withFinal, withoutFinal) {
+    var last = String(word || '').slice(-1);
+    var code = last.charCodeAt(0);
+    if (!(code >= 0xac00 && code <= 0xd7a3)) return withoutFinal;   // 한글이 아니면 받침 없는 쪽
+    return ((code - 0xac00) % 28) ? withFinal : withoutFinal;
+  }
 
   function displayScore(n) { return Math.max(0, Math.min(100, Math.round(Number(n || 0) / 5) * 5)); }
   function scoreBand(n) {
@@ -12715,12 +12858,15 @@ body {
             '<span>' + (t.next ? esc(t.next.name) + '까지 ' + fmtDurFine(t.remainMin) : '모든 색을 모았어요') + '</span></div>' +
           '<div class="av-prog-track"><i style="width:' + t.pct.toFixed(1) + '%"></i></div>' +
         '</div>' +
-        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다.</p>' +
+        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다. ' +
+          '가진 젤리 <b>✨' + Slime.jelly() + '</b> — 홈에서 모리를 키우면 늘어납니다.</p>' +
       '</div>';
   }
 
-  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다 */
-  function avOption(kind, item, on, locked, note) {
+  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다.
+   * buyable 은 "아직 없지만 눌러서 살 수 있는" 상태다. 시간이 차야 열리는
+   * 자물쇠와 달리 지금 당장 누를 수 있으므로 흐리게 죽이지 않는다. */
+  function avOption(kind, item, on, locked, note, buyable) {
     var preview = {};
     Object.keys(avDraft).forEach(function (k) { preview[k] = avDraft[k]; });
     preview[kind] = item.id;
@@ -12729,10 +12875,13 @@ body {
       ? Avatar.html(preview, Infinity, 'av-sm')
       : '<span class="av av-plain av-sm"><span class="av-in">' + Avatar.figure(preview) + '</span></span>';
 
-    return '<button type="button" class="av-opt' + (on ? ' on' : '') + (locked ? ' locked' : '') + '"' +
-      (locked ? ' aria-disabled="true"' : '') +
+    return '<button type="button" class="av-opt' + (on ? ' on' : '') +
+      (locked && !buyable ? ' locked' : '') + (buyable ? ' buy' : '') + '"' +
+      (locked && !buyable ? ' aria-disabled="true"' : '') +
       ' data-kind="' + kind + '" data-id="' + esc(item.id) + '">' +
-      '<span class="av-opt-fig">' + fig + (locked ? '<span class="av-lock">🔒</span>' : '') + '</span>' +
+      '<span class="av-opt-fig">' + fig +
+        (locked && !buyable ? '<span class="av-lock">🔒</span>' : '') +
+        (buyable ? '<span class="av-buy-tag">✨</span>' : '') + '</span>' +
       '<span class="av-opt-name">' + esc(item.name) + '</span>' +
       (note ? '<span class="av-opt-note">' + esc(note) + '</span>' : '') +
       '</button>';
@@ -12753,6 +12902,16 @@ body {
       return list.map(function (it) { return avOption(kind, it, avDraft[kind] === it.id); }).join('');
     }
 
+    /* 젤리로 사는 물건은 산 것만 고를 수 있다. 값은 옵션 밑에 그대로 적어 둔다 —
+     * 눌러 봐야 얼마인지 아는 상점은 불친절하다. */
+    function shopOpts(kind, list) {
+      return list.map(function (it) {
+        var got = avDraft.owned.indexOf(it.id) >= 0;
+        return avOption(kind, it, got && avDraft[kind] === it.id, !got,
+          got ? '보유 중' : '✨' + it.cost, !got);
+      }).join('');
+    }
+
     var html =
       avGroup('캐릭터 — 남학생', '3종', opts('char', bySex(Avatar.CHARS, 'm'))) +
       avGroup('캐릭터 — 여학생', '5종', opts('char', bySex(Avatar.CHARS, 'f'))) +
@@ -12760,21 +12919,46 @@ body {
         var locked = i > opened;
         return avOption('border', b, avDraft.border === b.id, locked,
           locked ? '누적 ' + b.hours + '시간' : (b.hours ? b.hours + '시간 달성' : '기본'));
-      }).join(''));
+      }).join('')) +
+      avGroup('✨ 젤리 상점', '모리를 키워 모은 젤리로 삽니다',
+        shopOpts('char', Avatar.SHOP_CHARS) + shopOpts('border', Avatar.SHOP_BORDERS));
 
     $('avPicks').innerHTML = html;
 
     $$('#avPicks .av-opt').forEach(function (b) {
       b.addEventListener('click', function () {
+        var id = b.dataset.id;
+        var shop = Avatar.shopItem(id);
+        if (shop && avDraft.owned.indexOf(id) < 0) { avBuy(shop, b.dataset.kind); return; }
         if (b.classList.contains('locked')) {
-          var need = Avatar.byId(Avatar.BORDERS, b.dataset.id);
+          var need = Avatar.byId(Avatar.BORDERS, id);
           toast('누적 ' + need.hours + '시간을 채우면 ' + need.name + ' 테두리가 열려요.', true);
           return;
         }
-        avDraft[b.dataset.kind] = b.dataset.id;
+        avDraft[b.dataset.kind] = id;
         renderAvatar();
       });
     });
+  }
+
+  /** 젤리로 사기 — 값을 보여 주고 확인을 받은 뒤에만 깎는다 */
+  function avBuy(item, kind) {
+    var have = Slime.jelly();
+    if (have < item.cost) {
+      toast('젤리가 ' + (item.cost - have) + '개 모자라요. 홈에서 공부 시간을 정산해 보세요.', true);
+      return;
+    }
+    if (!confirm(item.name + josa(item.name, '을', '를') + ' 젤리 ' + item.cost + '개로 살까요?\n\n지금 가진 젤리 ' + have + '개')) return;
+    if (!Slime.spend(item.cost)) { toast('젤리가 모자라요.', true); return; }
+
+    // 산 사실은 바로 프로필에 남긴다 — 값을 치렀는데 저장하기를 안 눌렀다고 사라지면 안 된다.
+    // 어떤 걸 입을지(char/border)만 저장하기 전까지 미리보기로 남는다.
+    if (!Avatar.grant(item.id)) { toast('저장에 실패했습니다.', true); return; }
+
+    if (avDraft.owned.indexOf(item.id) < 0) avDraft.owned.push(item.id);
+    avDraft[kind] = item.id;          // 산 것을 바로 입혀 준다
+    renderAvatar();
+    toast(item.name + josa(item.name, '을', '를') + ' 샀어요! 저장하기를 눌러 반영하세요.', 'party');
   }
 
   function renderAvatarBorders() {

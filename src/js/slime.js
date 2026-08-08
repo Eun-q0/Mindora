@@ -471,10 +471,38 @@
     return { jelly: Math.floor(d.jelly), level: lv.level, stage: stageFor(lv.level).name, pending: Math.round(pendingMin(d)) };
   }
 
+  /* ------------------------------------------- 다른 화면에서 젤리 쓰기
+   * 꾸미기 화면에서 아바타를 사려면 젤리 잔액을 보고 깎을 수 있어야 한다.
+   * 깎는 문은 여기 하나로 두어, 자동 생산 정산(accrue)을 빠뜨린 채
+   * 옛날 잔액에서 빼는 일이 생기지 않게 한다. */
+
+  function jelly() { var d = load(); accrue(d); save(d); return Math.floor(d.jelly); }
+
+  /** 살 수 있으면 깎고 true. 모자라면 아무것도 하지 않고 false. */
+  function spend(n) {
+    n = Math.max(0, Math.round(n || 0));
+    var d = load();
+    accrue(d);
+    if (d.jelly < n) { save(d); return false; }
+    d.jelly -= n;
+    save(d);
+    paintJelly(d.jelly);
+    return true;
+  }
+
+  /** 지금 모리의 모습 — 프로필 캐릭터로 쓸 수 있게 그림만 떼어 준다.
+   * 레벨이 오르면 프로필 사진도 같이 자란다. */
+  function faceSvg() {
+    var d = load();
+    var stage = stageFor(levelOf(d.xp).level);
+    return slimeSvg(stage, isHungry(d));
+  }
+
   global.Slime = {
     init: function (opt) { if (opt && opt.toast) toast = opt.toast; },
     open: open, stop: stop, render: render, touch: touch,
-    summary: summary, reset: reset
+    summary: summary, reset: reset,
+    jelly: jelly, spend: spend, faceSvg: faceSvg
   };
 
 })(window);
