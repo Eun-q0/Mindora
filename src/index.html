@@ -583,16 +583,20 @@
     </div>
 
     <div class="timer-wrap">
-      <div class="timer-dial">
-        <svg viewBox="0 0 260 260" class="dial">
-          <circle cx="130" cy="130" r="112" class="d-track"></circle>
-          <circle cx="130" cy="130" r="112" class="d-fill" id="dialFill"></circle>
-        </svg>
-        <div class="dial-center">
-          <div class="d-phase" id="phaseLabel">대기 중</div>
-          <div class="d-time" id="timeLeft">00:00</div>
-          <div class="d-subject" id="currentSubject">—</div>
+      <div class="timer-left">
+        <div class="timer-dial">
+          <svg viewBox="0 0 260 260" class="dial">
+            <circle cx="130" cy="130" r="112" class="d-track"></circle>
+            <circle cx="130" cy="130" r="112" class="d-fill" id="dialFill"></circle>
+          </svg>
+          <div class="dial-center">
+            <div class="d-phase" id="phaseLabel">대기 중</div>
+            <div class="d-time" id="timeLeft">00:00</div>
+            <div class="d-subject" id="currentSubject">—</div>
+          </div>
         </div>
+        <!-- 휴식하는 동안에만 나오는 글귀. 30분마다 하나씩 바뀐다. -->
+        <blockquote class="rest-quote is-hidden" id="restQuote"></blockquote>
       </div>
 
       <div class="timer-side">
