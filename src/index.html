@@ -5,6 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mindora — 오늘의 학습 준비도 코치</title>
 
+<!-- 일반 브라우저에서는 랜딩을 먼저 보여 주고, CTA로 들어온 뒤에는 같은 탭에서
+     다시 랜딩으로 튕기지 않는다. 설치형(PWA) 실행은 곧바로 앱을 연다. -->
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var entering = params.get('start') === '1';
+  var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  var entered = false;
+
+  try { entered = sessionStorage.getItem('mindora.landingEntered.v1') === '1'; } catch (e) { /* 무시 */ }
+
+  if (entering) {
+    try {
+      sessionStorage.setItem('mindora.landingEntered.v1', '1');
+      localStorage.setItem('neurostudy.introSeen.v1', '1');
+    } catch (e) { /* 저장소를 막은 브라우저에서도 앱은 계속 연다 */ }
+
+    params.delete('start');
+    var clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+    history.replaceState(null, '', clean);
+    return;
+  }
+
+  if (!standalone && !entered) location.replace('landing/');
+})();
+</script>
+
 <meta name="naver-site-verification" content="fa3d8aeb91cd3600bfaf8c486a86f00aba5d0cd7" />
 
 <!-- Google AdSense -->
