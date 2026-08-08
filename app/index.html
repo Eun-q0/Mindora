@@ -1763,6 +1763,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .auc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .auc-name { font-weight: 600; font-size: 14px; }
 .auc-group { font-size: 11px; color: var(--muted); margin-top: 2px; }
+/* 한 목록에 서버와 로컬이 섞이므로, 줄마다 출처를 밝힌다 */
+.auc-src {
+  display: inline-block; vertical-align: 1px; margin-left: 4px;
+  padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface-3); color: var(--muted); font-size: 10px; font-weight: 700;
+}
+.auc-src.server { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
 .auc-badge { font-size: 11px; background: var(--accent-soft); color: var(--accent-ink); padding: 2px 8px; border-radius: 4px; }
 .auc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 12px; }
 .aus-item { background: var(--surface); padding: 8px; border-radius: 6px; text-align: center; }
@@ -3429,6 +3436,20 @@ body {
       </div>
     </div>
 
+    <!-- 서버와 이 기기를 한 목록에 합쳐 보여 주므로 서버 섹션 쪽에 둔다.
+         아래 "📱 이 기기 기록" 섹션은 이름 그대로 로컬 데이터만 남긴다. -->
+    <div class="card wide is-hidden" id="adminUsersCard">
+      <div class="card-head"><span class="ci">👥</span><h3>사용자 목록</h3><span class="right" id="adminUsersCount"></span></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">서버에 올라온 학생(<b>🌐 서버</b>)과 이 브라우저에 있는 기록(<b>📱 이 기기</b> — 내 기록·공유 코드로 받은 그룹원)을
+          한 목록에 모읍니다. 줄마다 어디서 온 값인지 배지로 표시하며, 같은 사람이 양쪽에 있으면 기록이 더 자세한 이 기기 쪽을 남깁니다.</p>
+        <div class="search-box">
+          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색..." aria-label="사용자 검색">
+        </div>
+        <div id="adminUsersList" class="admin-users-list"></div>
+      </div>
+    </div>
+
     <div class="card wide is-hidden" id="adminLeagueMembersCard">
       <div class="card-head"><span class="ci">🙈</span><h3>리그 참가자 — 이번 주 (익명)</h3></div>
       <div class="card-body">
@@ -3487,16 +3508,6 @@ body {
             <div class="stat-value" id="avgScore">0</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="card wide is-hidden" id="adminUsersCard">
-      <div class="card-head"><span class="ci">👥</span><h3>사용자 목록</h3></div>
-      <div class="card-body">
-        <div class="search-box">
-          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색..." aria-label="사용자 검색">
-        </div>
-        <div id="adminUsersList" class="admin-users-list"></div>
       </div>
     </div>
 
@@ -14620,32 +14631,88 @@ body {
     $('avgScore').textContent = stats.avgScore || '—';
   }
 
+  /* 사용자 목록에 담을 줄을 모은다.
+   *
+   *  이 기기(내 기록 + 코드로 받은 그룹원)와 서버(관리자 공개를 스스로 켠 학생)는
+   *  출처가 다르고 숫자의 뜻도 다르다. 그렇다고 목록을 둘로 갈라 두면 "지금 이
+   *  앱을 쓰는 사람" 을 보려고 두 군데를 번갈아 봐야 한다. 한 목록에 합치되
+   *  줄마다 어디서 온 값인지 배지로 밝힌다.
+   *
+   *  같은 사람이 양쪽에 있으면(내 기록이 서버에도 올라간 경우) 이 기기 쪽을
+   *  남긴다 — 주간 합계보다 누적 기록이 더 많은 것을 말해 준다. */
+  function adminUserRows() {
+    var rows = adminState.users.map(function (u) {
+      var r = {};
+      for (var k in u) if (u.hasOwnProperty(k)) r[k] = u[k];
+      r.source = 'local';
+      return r;
+    });
+
+    var seen = {};
+    rows.forEach(function (u) { seen[(u.name + '|' + u.school).toLowerCase()] = true; });
+
+    adminState.students.forEach(function (s) {
+      if (seen[(s.nickname + '|' + s.schoolName).toLowerCase()]) return;
+      rows.push({
+        id: s.deviceId,
+        name: s.nickname,
+        school: s.schoolName,
+        badge: agoText(s.updatedAt),
+        groupLabel: s.schoolName,
+        totalMinutes: s.minutes,
+        avgScore: 0,                       // 컨디션 값은 서버로 보내지 않는다
+        sessionCount: 0,
+        lastActive: s.updatedAt ? Store.key(new Date(s.updatedAt)) : 'N/A',
+        self: false,
+        source: 'server'
+      });
+    });
+
+    // 내 기록을 맨 위에, 나머지는 많이 한 순서로
+    return rows.sort(function (a, b) {
+      if (a.self !== b.self) return a.self ? -1 : 1;
+      return b.totalMinutes - a.totalMinutes;
+    });
+  }
+
   function renderAdminUsersList() {
     var searchTerm = ($('adminSearch').value || '').toLowerCase();
-    var filtered = adminState.users.filter(function (u) {
+    var filtered = adminUserRows().filter(function (u) {
       return (u.name + u.school + u.groupLabel).toLowerCase().indexOf(searchTerm) >= 0;
     });
 
+    var counts = { local: 0, server: 0 };
+    filtered.forEach(function (u) { counts[u.source]++; });
+    $('adminUsersCount').textContent = filtered.length
+      ? filtered.length + '명 (서버 ' + counts.server + ' · 이 기기 ' + counts.local + ')' : '';
+
     var html = filtered.map(function (u) {
-      /* 내 기록은 누적 전체, 그룹원은 코드를 받은 시점의 주간 합계다.
+      /* 내 기록은 누적 전체, 그룹원과 서버 학생은 주간 합계다.
        * 같은 칸에 다른 뜻을 넣으면 헷갈리므로 라벨을 나눈다. */
+      var src = u.source === 'server'
+        ? '<span class="auc-src server">🌐 서버</span>'
+        : '<span class="auc-src">📱 이 기기</span>';
       return '<div class="admin-user-card">' +
         '<div class="auc-header">' +
           '<div>' +
-            '<div class="auc-name">' + esc(u.name) + (u.self ? ' (나)' : '') + '</div>' +
+            '<div class="auc-name">' + esc(u.name) + (u.self ? ' (나)' : '') + ' ' + src + '</div>' +
             '<div class="auc-group">' + esc(u.groupLabel) + '</div>' +
           '</div>' +
           '<div class="auc-badge">' + esc(u.badge) + '</div>' +
         '</div>' +
+        /* 서버 줄에는 컨디션도 연속 학습도 없다 — 애초에 전송되지 않는 값이다.
+         * 빈 칸에 0 을 적어 두면 "0일 했다" 로 읽히므로 칸 자체를 빼 버린다. */
         '<div class="auc-stats">' +
           '<div class="aus-item"><div class="aus-label">' + (u.self ? '누적 공부' : '이번 주') + '</div>' +
             '<div class="aus-value">' + fmtDur(u.totalMinutes) + '</div></div>' +
-          '<div class="aus-item"><div class="aus-label">' + (u.self ? '평균 컨디션' : '최근 컨디션') + '</div>' +
-            '<div class="aus-value">' + (u.avgScore ? u.avgScore + '점' : '—') + '</div></div>' +
+          (u.source === 'server' ? '' :
+            '<div class="aus-item"><div class="aus-label">' + (u.self ? '평균 컨디션' : '최근 컨디션') + '</div>' +
+              '<div class="aus-value">' + (u.avgScore ? u.avgScore + '점' : '—') + '</div></div>') +
         '</div>' +
         '<div class="auc-stats">' +
-          '<div class="aus-item"><div class="aus-label">' + (u.self ? '공부한 날' : '연속 학습') + '</div>' +
-            '<div class="aus-value">' + u.sessionCount + '일</div></div>' +
+          (u.source === 'server' ? '' :
+            '<div class="aus-item"><div class="aus-label">' + (u.self ? '공부한 날' : '연속 학습') + '</div>' +
+              '<div class="aus-value">' + u.sessionCount + '일</div></div>') +
           '<div class="aus-item"><div class="aus-label">마지막 활동</div>' +
             '<div class="aus-value">' + esc(u.lastActive) + '</div></div>' +
         '</div>' +
@@ -14748,6 +14815,7 @@ body {
         ? rows.length + '명 · 방금 갱신'
         : '아직 아무도 공유하지 않았습니다.';
       drawAdminStudents();
+      renderAdminUsersList();   // 아래 사용자 목록도 이 결과를 함께 보여 준다
     }, function (e) {
       if (e.status === 401) {
         statusEl.textContent = '';

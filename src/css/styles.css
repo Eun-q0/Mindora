@@ -1717,6 +1717,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .auc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .auc-name { font-weight: 600; font-size: 14px; }
 .auc-group { font-size: 11px; color: var(--muted); margin-top: 2px; }
+/* 한 목록에 서버와 로컬이 섞이므로, 줄마다 출처를 밝힌다 */
+.auc-src {
+  display: inline-block; vertical-align: 1px; margin-left: 4px;
+  padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface-3); color: var(--muted); font-size: 10px; font-weight: 700;
+}
+.auc-src.server { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
 .auc-badge { font-size: 11px; background: var(--accent-soft); color: var(--accent-ink); padding: 2px 8px; border-radius: 4px; }
 .auc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 12px; }
 .aus-item { background: var(--surface); padding: 8px; border-radius: 6px; text-align: center; }

@@ -1271,6 +1271,20 @@
       </div>
     </div>
 
+    <!-- 서버와 이 기기를 한 목록에 합쳐 보여 주므로 서버 섹션 쪽에 둔다.
+         아래 "📱 이 기기 기록" 섹션은 이름 그대로 로컬 데이터만 남긴다. -->
+    <div class="card wide is-hidden" id="adminUsersCard">
+      <div class="card-head"><span class="ci">👥</span><h3>사용자 목록</h3><span class="right" id="adminUsersCount"></span></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">서버에 올라온 학생(<b>🌐 서버</b>)과 이 브라우저에 있는 기록(<b>📱 이 기기</b> — 내 기록·공유 코드로 받은 그룹원)을
+          한 목록에 모읍니다. 줄마다 어디서 온 값인지 배지로 표시하며, 같은 사람이 양쪽에 있으면 기록이 더 자세한 이 기기 쪽을 남깁니다.</p>
+        <div class="search-box">
+          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색..." aria-label="사용자 검색">
+        </div>
+        <div id="adminUsersList" class="admin-users-list"></div>
+      </div>
+    </div>
+
     <div class="card wide is-hidden" id="adminLeagueMembersCard">
       <div class="card-head"><span class="ci">🙈</span><h3>리그 참가자 — 이번 주 (익명)</h3></div>
       <div class="card-body">
@@ -1329,16 +1343,6 @@
             <div class="stat-value" id="avgScore">0</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="card wide is-hidden" id="adminUsersCard">
-      <div class="card-head"><span class="ci">👥</span><h3>사용자 목록</h3></div>
-      <div class="card-body">
-        <div class="search-box">
-          <input type="text" id="adminSearch" class="input" placeholder="사용자명, 학교, 그룹 검색..." aria-label="사용자 검색">
-        </div>
-        <div id="adminUsersList" class="admin-users-list"></div>
       </div>
     </div>
 
