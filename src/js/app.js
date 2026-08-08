@@ -3759,7 +3759,9 @@
     $('nextWeek').disabled = state.weekOffset >= 0;
 
     var dPct = r.deltaPct === null ? null : Math.round(r.deltaPct);
-    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? '&lt;1' : Math.round(r.goalPct);
+    /* 1% 미만이라고 0% 로 반올림하면 "공부했는데 0" 이 된다.
+     * 예전엔 '<1' 로 적었는데 부등호가 숫자처럼 안 읽혀서, 소수 한 자리로 그냥 보여 준다. */
+    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? r.goalPct.toFixed(1) : Math.round(r.goalPct);
     $('repStats').innerHTML =
       '<div class="rs hi"><div class="rs-k">주간 총 순공 시간</div><div class="rs-v">' +
         durHtml(r.totalMin) + '</div>' +

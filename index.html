@@ -1387,17 +1387,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 @media (max-width: 760px) {
   body { font-size: 14.5px; }
   .wrap { padding: 24px 14px 60px; }
-  /* 탭 다섯 개 + [더보기] 면 한 줄에 들어간다 — 예전처럼 줄을 접지 않는다 */
-  .topbar-inner { gap: 8px; padding: 9px 12px; }
-  /* 부제만 접는다 — h1 은 문서를 대표하는 유일한 제목이라 남겨 둔다 */
-  .brand-text span { display: none; }
-  .brand-mark { width: 30px; height: 30px; }
-  .brand-text h1 { font-size: 13.5px; }
+  /* 탭 다섯 개 + [더보기] 가 한 줄에 들어간다 — 예전처럼 줄을 접지 않는다.
+   * 실제 치수는 파일 맨 아래 리프레시 레이어의 760px 블록에서 잡는다
+   * (그쪽이 뒤에 있어 우선한다). 여기서는 무엇을 감출지만 정한다. */
   .steps { margin-left: 4px; margin-right: auto; }
-  /* 좁은 화면에서는 번호(와 집 모양)만 남겨 폭을 아낀다 */
   .step span { display: none; }
-  .step { padding: 6px 8px; }
-  .step-div { margin: 0 3px; }
   .mb-txt { display: none; }
   .more-btn { padding: 7px 10px; }
   .pc-txt { display: none; }
@@ -1451,6 +1445,12 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .week-bars { gap: 5px; height: 160px; }
   .wb-val { font-size: 9.5px; }
   .rep-nav .wk { min-width: 0; flex: 1; font-size: 12.5px; }
+  /* 320px 급에서는 로고 글자까지 두면 탭이 밀려 '입력' 부터 잘린다.
+   * 화면에서만 걷어내고 접근성 트리에는 남긴다 — 문서의 유일한 h1 이다. */
+  .brand-text {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
   .home-hero { flex-direction: column-reverse; align-items: stretch; text-align: center; }
   .hh-when { justify-content: center; }
   .hh-ring { flex-direction: row; justify-content: center; gap: 14px; }
@@ -2071,13 +2071,17 @@ body {
 .ab-line { color: var(--text); font-weight: 700; }
 
 @media (max-width: 760px) {
-  .topbar-inner { padding-top: 9px; padding-bottom: 9px; }
+  /* 상단 바를 한 줄로 유지하려면 여기서 치수를 잡아야 한다.
+   * 이 아래 규칙들이 위쪽 반응형 블록보다 뒤에 있어 우선한다. */
+  .topbar-inner { padding-top: 9px; padding-bottom: 9px; gap: 10px; }
   .brand-text span { display: none; }
   .steps {
     gap: 3px; padding: 4px; border-radius: 14px; background: var(--surface-2);
     scroll-padding-inline: 4px;
   }
-  .step { min-height: 35px; padding: 6px 9px; }
+  /* 홈 + 1~4 다섯 개가 375px 에서 가로 스크롤 없이 다 보이는 치수 */
+  .step { min-height: 35px; padding: 6px 6px; }
+  .step-div { margin: 0; }
   .step.is-active { background: var(--surface); border-color: var(--line); }
   .wrap { padding-top: 28px; padding-bottom: 84px; }
   .sec-head { margin-bottom: 20px; }
@@ -13066,7 +13070,9 @@ body {
     $('nextWeek').disabled = state.weekOffset >= 0;
 
     var dPct = r.deltaPct === null ? null : Math.round(r.deltaPct);
-    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? '&lt;1' : Math.round(r.goalPct);
+    /* 1% 미만이라고 0% 로 반올림하면 "공부했는데 0" 이 된다.
+     * 예전엔 '<1' 로 적었는데 부등호가 숫자처럼 안 읽혀서, 소수 한 자리로 그냥 보여 준다. */
+    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? r.goalPct.toFixed(1) : Math.round(r.goalPct);
     $('repStats').innerHTML =
       '<div class="rs hi"><div class="rs-k">주간 총 순공 시간</div><div class="rs-v">' +
         durHtml(r.totalMin) + '</div>' +
