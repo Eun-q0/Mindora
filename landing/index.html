@@ -353,7 +353,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
     </a>
     <nav class="nav">
       <a href="#brain">뇌 분석</a><a href="#flow">사용 방법</a><a href="#features">기능</a><a href="#faq">FAQ</a>
-      <a class="btn primary sm" href="https://www.mindora.co.kr/">시작하기</a>
+      <a class="btn primary sm" href="/app/">시작하기</a>
     </nav>
   </div>
 </header>
@@ -370,7 +370,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <p class="sub up">어젯밤 몇 시간 잤는지만 알려 주세요. 오늘 내 뇌가 어떤 공부에 강한지 숫자로 보여주고,
         무엇부터 몇 분 할지 정해 드릴게요.</p>
       <div class="hero-cta up">
-        <a class="btn primary lg" href="https://www.mindora.co.kr/">지금 내 뇌 컨디션 보기</a>
+        <a class="btn primary lg" href="/app/">지금 내 뇌 컨디션 보기</a>
         <a class="btn line lg" href="#flow">어떻게 작동하나요?</a>
       </div>
       <div class="hero-trust up">
@@ -662,7 +662,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <span class="mask" style="--d:120ms"><span class="gray">순서대로.</span></span>
       </h2>
       <p class="up">오늘 몇 시간 잤는지만 알려 주세요. 나머지는 Mindora가 정리해 드릴게요.</p>
-      <div class="up"><a class="btn white lg" href="https://www.mindora.co.kr/">무료로 시작하기 →</a></div>
+      <div class="up"><a class="btn white lg" href="/app/">무료로 시작하기 →</a></div>
       <small class="up">설치 · 가입 · 결제 없이 바로 시작</small>
     </div>
   </section>
@@ -674,7 +674,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="url(#mk)"/><text x="256" y="358" font-size="272" text-anchor="middle">🧠</text></svg>Mindora
     </a>
     <span>뇌 컨디션 기반 학습 코치</span>
-    <nav><a href="https://www.mindora.co.kr/">앱 열기</a><a href="#features">기능</a><a href="#faq">FAQ</a></nav>
+    <nav><a href="/app/">앱 열기</a><a href="#features">기능</a><a href="#faq">FAQ</a></nav>
   </div>
   <div class="wrap" style="margin-top:18px;color:var(--dim);font-size:12.5px">
     화면 속 점수·계획은 설명을 위한 예시입니다. © 2026 Mindora
@@ -790,6 +790,22 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   var mq = document.getElementById('mq');
   if (mq && !reduce) mq.innerHTML += mq.innerHTML;
   else if (mq) mq.style.animation = 'none';
+
+  /* 7 ─ 예전에 루트(/)에 등록됐던 서비스 워커를 걷어낸다.
+   *
+   * 앱이 루트에 있던 시절에 방문한 사람은 스코프가 "/" 인 워커를 갖고 있다.
+   * 그 워커는 이 랜딩까지 포함해 사이트 전체를 가로채고, 캐시에 옛 앱을
+   * index.html 로 들고 있어서 오프라인일 때 엉뚱한 화면이 나온다.
+   * 앱은 이제 /app/ 에서 자기 워커를 새로 등록하므로 여기서는 지우기만 한다.
+   * (스코프가 /app/ 인 워커는 건드리지 않는다) */
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+    navigator.serviceWorker.getRegistrations().then(function (list) {
+      list.forEach(function (reg) {
+        var scope = reg.scope || '';
+        if (scope.replace(location.origin, '').replace(/\/+$/, '') === '') reg.unregister();
+      });
+    })['catch'](function () { /* 지원하지 않는 브라우저면 그냥 넘어간다 */ });
+  }
 })();
 </script>
 </body>
