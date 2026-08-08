@@ -466,6 +466,145 @@
 
   function clearTimetableCache() { try { localStorage.removeItem(TIMETABLE_CACHE); } catch (e) { /* 무시 */ } }
 
+  /* ----------------------------------------------------------- 학사일정
+   *
+   * SchoolSchedule 은 행사명(EVENT_NM)을 학교가 자유롭게 적어 넣는다.
+   * "중간고사" 를 "1학기 중간고사", "지필평가(1차)", "2학년 중간고사" 처럼
+   * 제각각 쓰고 표준 코드가 없다. 그래서 이름을 정규식으로 훑어 갈래만 나누고,
+   * 화면에는 학교가 올린 원래 이름을 그대로 보여 준다 — 우리가 고쳐 쓰지 않는다.
+   * (갈래를 잘못 잡아도 이름은 정확하므로 사용자가 바로 알아본다) */
+
+  var SCHEDULE_CACHE = 'neurostudy.schcache.v1';
+
+  /* 위에서부터 순서대로 본다. "영어듣기평가" 가 '평가' 때문에 시험으로 빠지지
+   * 않도록 듣기를 먼저 두었다. */
+  var EVENT_KINDS = [
+    { id: 'listen', label: '영어듣기', icon: '🎧', re: /(영어\s*듣기|듣기\s*평가|듣기평가)/ },
+    { id: 'mock',   label: '모의고사', icon: '📝', re: /(전국연합|학력평가|모의고사|모의평가|대학수학능력|수능)/ },
+    { id: 'exam',   label: '시험',     icon: '📕', re: /(중간고사|기말고사|지필|고사|평가기간|평가주간|수행평가)/ },
+    { id: 'break',  label: '방학·개학', icon: '🏖️', re: /(방학|개학|종업)/ },
+    { id: 'off',    label: '휴업일',   icon: '🏠', re: /(휴업|재량|휴일)/ },
+    { id: 'event',  label: '학사일정', icon: '🏫', re: null }
+  ];
+
+  var KIND_OFF = EVENT_KINDS[4];
+  var KIND_ETC = EVENT_KINDS[EVENT_KINDS.length - 1];
+
+  function eventKind(name, subtractDay) {
+    for (var i = 0; i < EVENT_KINDS.length; i++) {
+      if (EVENT_KINDS[i].re && EVENT_KINDS[i].re.test(name)) return EVENT_KINDS[i];
+    }
+    // 수업공제일(공휴일·휴업일)로 표시된 날은 이름이 무엇이든 쉬는 날이다
+    return subtractDay ? KIND_OFF : KIND_ETC;
+  }
+
+  /** 달력 칸에 넣을 두 글자 요약. 학교가 적은 이름에서 뽑는다. */
+  function eventShort(name, kindId) {
+    if (/중간/.test(name)) return '중간';
+    if (/기말/.test(name)) return '기말';
+    if (kindId === 'listen') return '듣기';
+    if (kindId === 'mock') return '모의';
+    if (kindId === 'exam') return '시험';
+    return '';
+  }
+
+  var GRADE_YN = ['ONE_GRADE_EVENT_YN', 'TWO_GRADE_EVENT_YN', 'THREE_GRADE_EVENT_YN',
+                  'FOUR_GRADE_EVENT_YN', 'FIVE_GRADE_EVENT_YN', 'SIX_GRADE_EVENT_YN'];
+
+  /** 내 학년 행사인가. 학년 표시가 하나도 없으면 전교 행사로 본다. */
+  function forGrade(row, grade) {
+    var any = false, i;
+    for (i = 0; i < GRADE_YN.length; i++) if (row[GRADE_YN[i]] === 'Y') any = true;
+    if (!any) return true;
+    var g = parseInt(grade, 10);
+    if (!(g >= 1 && g <= 6)) return true;   // 학년을 모르면 걸러 내지 않는다
+    return row[GRADE_YN[g - 1]] === 'Y';
+  }
+
+  function scheduleCacheRead() {
+    try { return JSON.parse(localStorage.getItem(SCHEDULE_CACHE) || '{}'); } catch (e) { return {}; }
+  }
+  function scheduleCacheWrite(o) {
+    try { localStorage.setItem(SCHEDULE_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  /**
+   * from~to (YYYYMMDD) 구간의 학사일정을 날짜별로 묶어 돌려준다.
+   * 학교 코드가 없으면(목록에서 고르지 않았으면) 조회할 수 없다.
+   */
+  function schedule(school, from, to, grade) {
+    if (!school || !school.eduCode || !school.schoolCode) return Promise.resolve({});
+
+    var f = from || ymd(new Date());
+    var t = to || f;
+    var ck = school.schoolCode + '|' + (grade || '') + '|' + f + '|' + t;
+
+    var cache = scheduleCacheRead();
+    /* 학사일정은 학기 초에 정해지고 거의 바뀌지 않는다 — 급식(6시간)보다 길게 잡는다.
+     * 중간에 일정이 바뀌면 설정의 [캐시 비우기] 로 즉시 다시 받을 수 있다. */
+    if (cache[ck] && (Date.now() - cache[ck].at) < 24 * 3600 * 1000) {
+      return Promise.resolve(cache[ck].data);
+    }
+
+    return call('SchoolSchedule', {
+      pIndex: 1, pSize: 300,
+      ATPT_OFCDC_SC_CODE: school.eduCode,
+      SD_SCHUL_CODE: school.schoolCode,
+      AA_FROM_YMD: f, AA_TO_YMD: t
+    }, 'SchoolSchedule').then(function (rows) {
+      var byDate = {};
+      rows.forEach(function (r) {
+        if (!forGrade(r, grade)) return;
+        var name = String(r.EVENT_NM || '').trim();
+        if (!name) return;
+
+        var kind = eventKind(name, String(r.SBTR_DD_SC_NM || '').trim());
+        var d = String(r.AA_YMD || '').trim();
+        if (!/^\d{8}$/.test(d)) return;
+
+        if (!byDate[d]) byDate[d] = [];
+        // 같은 날 같은 행사가 학년별로 여러 줄 올 수 있다
+        var dup = byDate[d].some(function (x) { return x.name === name; });
+        if (dup) return;
+
+        byDate[d].push({
+          date: d, name: name,
+          kind: kind.id, label: kind.label, icon: kind.icon,
+          short: eventShort(name, kind.id),
+          detail: String(r.EVENT_CNTNT || '').trim()
+        });
+      });
+
+      var c = scheduleCacheRead();
+      c[ck] = { at: Date.now(), data: byDate };
+      var keys = Object.keys(c);
+      if (keys.length > 24) {
+        keys.sort(function (a, b) { return c[a].at - c[b].at; });
+        keys.slice(0, keys.length - 24).forEach(function (k) { delete c[k]; });
+      }
+      scheduleCacheWrite(c);
+      return byDate;
+    })['catch'](function () { return {}; });
+  }
+
+  /** 그 달 1일~말일 */
+  function monthSchedule(school, year, month0, grade) {
+    return schedule(school,
+      ymd(new Date(year, month0, 1)),
+      ymd(new Date(year, month0 + 1, 0)), grade);
+  }
+
+  /** 오늘부터 days 일 뒤까지 — 다가오는 시험을 D-day 로 띄우는 데 쓴다 */
+  function upcomingSchedule(school, days, grade) {
+    var a = new Date(); a.setHours(0, 0, 0, 0);
+    var b = new Date(a.getTime()); b.setDate(b.getDate() + (days || 120));
+    return schedule(school, ymd(a), ymd(b), grade);
+  }
+
+  function clearScheduleCache() {
+    try { localStorage.removeItem(SCHEDULE_CACHE); } catch (e) { /* 무시 */ }
+  }
+
   /** 설정 화면에서 키가 살아 있는지 확인할 때 쓴다 */
   function testKey() {
     return call('schoolInfo', { pIndex: 1, pSize: 1, SCHUL_NM: '서울' }, 'schoolInfo')
@@ -479,6 +618,8 @@
     clearCache: clearCache, testKey: testKey,
     timetable: timetable, todayTimetable: todayTimetable, weekTimetable: weekTimetable,
     clearTimetableCache: clearTimetableCache, hasTimetable: function (level) { return !!TIMETABLE_ENDPOINT[level]; },
+    schedule: schedule, monthSchedule: monthSchedule, upcomingSchedule: upcomingSchedule,
+    clearScheduleCache: clearScheduleCache, EVENT_KINDS: EVENT_KINDS,
     ALLERGENS: ALLERGENS, ymd: ymd
   };
 

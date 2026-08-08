@@ -20,12 +20,12 @@
     {
       "name": "오늘의 뇌 상태 분석",
       "short_name": "분석",
-      "url": "./?go=input"
+      "url": "./#input"
     },
     {
       "name": "뽀모도로 타이머",
       "short_name": "타이머",
-      "url": "./?go=timer"
+      "url": "./#timer"
     }
   ]
 }

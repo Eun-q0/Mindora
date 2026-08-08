@@ -51,7 +51,7 @@
   /* --------------------------------------------------------------- 상태 */
 
   function load() {
-    var d = { enabled: false, classOn: false, deviceId: '', lastSync: 0, lastPush: 0, lastError: '' };
+    var d = { enabled: false, classOn: false, hidden: false, deviceId: '', lastSync: 0, lastPush: 0, lastSig: '', lastError: '' };
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (!raw) return d;
@@ -68,6 +68,9 @@
         deviceId: o.deviceId || '',
         lastSync: o.lastSync || 0,
         lastPush: o.lastPush || 0,
+        // 마지막으로 올린 값의 서명. 여기서 빠뜨리면 읽을 때마다 사라져
+        // "값이 그대로면 다시 보내지 않는다" 는 판단이 영영 성립하지 않는다.
+        lastSig: o.lastSig || '',
         lastError: o.lastError || ''
       };
     } catch (e) { return d; }

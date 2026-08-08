@@ -108,7 +108,7 @@
       </div>
       <button type="button" class="hh-ring" id="hmRing" data-goto="secResult">
         <span class="hr-dial" id="hmDial"><span class="hr-in"><b id="hmScore">—</b><i id="hmState">분석 전</i></span></span>
-        <span class="hr-cap">오늘의 뇌 컨디션</span>
+        <span class="hr-cap">오늘의 학습 준비도</span>
       </button>
     </div>
 
@@ -135,6 +135,77 @@
         <span class="right"><span class="sl-jelly" id="slJelly">✨ 0</span></span>
       </div>
       <div class="card-body" id="slimeRoot"></div>
+    </div>
+
+    <!-- ── 목표 · D-day ──────────────────────────────────────────────
+         목표 대학과 남은 날은 "왜 오늘 공부하는가" 를 붙잡아 주는 자리다.
+         시험 일정은 [입력] 화면에 이미 적어 둔 값을 그대로 끌어다 쓴다 —
+         같은 날짜를 두 번 입력하게 하지 않는다. -->
+    <div class="card wide goal-card">
+      <div class="card-head">
+        <span class="ci">🎯</span><h3>내 목표</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="goalEdit">수정</button></span>
+      </div>
+      <div class="card-body">
+        <div class="goal-hero" id="goalHero"></div>
+        <div class="dday-list" id="ddayList"></div>
+
+        <div class="goal-form is-hidden" id="goalForm">
+          <div class="two-col">
+            <div class="field">
+              <label for="goalUniv">목표 대학 · 학교</label>
+              <input type="text" id="goalUniv" class="input" maxlength="40" placeholder="예) 서울대학교">
+            </div>
+            <div class="field">
+              <label for="goalMajor">학과 · 전형</label>
+              <input type="text" id="goalMajor" class="input" maxlength="40" placeholder="예) 생명과학부">
+            </div>
+          </div>
+          <div class="field">
+            <label for="goalMotto">한 줄 다짐</label>
+            <input type="text" id="goalMotto" class="input" maxlength="60" placeholder="예) 생명과학 합격 목표!">
+          </div>
+          <div class="field">
+            <label>D-day <em>직접 등록한 날짜만 여기서 관리합니다</em></label>
+            <div id="ddayEditList" class="dday-edit"></div>
+            <button type="button" class="btn ghost sm" id="ddayAdd">＋ D-day 추가</button>
+          </div>
+          <div class="goal-form-act">
+            <button type="button" class="btn primary sm" id="goalSave">저장</button>
+            <button type="button" class="btn ghost sm" id="goalCancel">취소</button>
+          </div>
+          <p class="tiny">등록한 목표와 D-day 는 이 브라우저에만 저장되고 백업 파일에 함께 담깁니다. 서버로 전송되지 않습니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 학습 캘린더 ───────────────────────────────────────────────
+         새로 계산하는 값은 없다. 순공 기록·시험 일정·D-day 를 한 달 위에
+         겹쳐 놓기만 한다. 빈 달력이 아니라 "내가 실제로 한 것" 이 보이게. -->
+    <div class="card wide cal-card">
+      <div class="card-head">
+        <span class="ci">📅</span><h3>학습 캘린더</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="calToday">오늘</button></span>
+      </div>
+      <div class="card-body">
+        <div class="cal-nav">
+          <button type="button" class="cal-arrow" id="calPrev" aria-label="이전 달">◀</button>
+          <b id="calTitle">—</b>
+          <button type="button" class="cal-arrow" id="calNext" aria-label="다음 달">▶</button>
+        </div>
+        <div class="cal-dow" aria-hidden="true">
+          <span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <p class="cal-legend">
+          <span><i class="lg-study"></i>공부한 날</span>
+          <span><i class="lg-exam"></i>시험 · 모의고사 · 영어듣기</span>
+          <span><i class="lg-sch"></i>그 밖의 학사일정</span>
+          <span><i class="lg-dday"></i>내가 등록한 D-day</span>
+        </p>
+        <p class="cal-note" id="calNote"></p>
+        <div class="cal-day" id="calDay"></div>
+      </div>
     </div>
 
     <div class="card wide">

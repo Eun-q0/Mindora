@@ -95,8 +95,10 @@
       todayMin: Math.round(global.StudyLog.todayTotal() * 10) / 10,
       weekMin: Math.round(global.StudyLog.weekTotal(0) * 10) / 10,
       streak: global.StudyLog.streak(),
-      overall: rec && rec.date === today ? rec.overall : (rec ? rec.overall : null),
-      scores: rec ? rec.scores : null,
+      /* 랭킹에 붙는 준비도는 "오늘" 값이라야 뜻이 있다. 어제 값을 그대로
+       * 실어 보내면 오늘 아직 분석하지 않은 사람의 옛 점수가 오늘 것처럼 보인다. */
+      overall: rec && rec.date === today ? rec.overall : null,
+      scores: rec && rec.date === today ? rec.scores : null,
       date: today,
       ts: Date.now(),
       self: true

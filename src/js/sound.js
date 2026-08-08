@@ -345,7 +345,6 @@
       o.start();
       return o;
     });
-    var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
     g.gain.linearRampToValueAtTime(0.32, ctx.currentTime + 3);
     return { nodes: oscs, gain: g };
   }

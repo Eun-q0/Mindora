@@ -2161,3 +2161,151 @@ body {
   .topbar { background: color-mix(in srgb, var(--bg) 88%, transparent); }
   .btn.primary:hover { background: color-mix(in srgb, var(--accent) 86%, #fff); }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   목표 · D-day · 학습 캘린더 (홈)
+
+   달력은 "빈 표"가 되면 아무도 안 본다. 그래서 새로 입력받는 것은
+   목표 대학과 직접 등록한 D-day 뿐이고, 나머지 표시는 전부 이미 있는
+   기록(순공 시간·시험 일정)을 한 달 위에 겹쳐 놓은 것이다.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.goal-hero {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px; border-radius: var(--r);
+  background: var(--hero-grad); border: 1px solid var(--line);
+}
+.goal-hero .gh-ic { font-size: 30px; line-height: 1; flex: none; }
+.goal-hero .gh-txt { min-width: 0; }
+.goal-hero .gh-univ { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+.goal-hero .gh-major { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.goal-hero .gh-motto {
+  margin-top: 8px; font-size: 13.5px; font-weight: 700; color: var(--accent-ink);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  border-radius: 999px; padding: 4px 12px; display: inline-block;
+}
+.goal-hero.is-empty { background: var(--surface-3); }
+.goal-hero.is-empty .gh-univ { color: var(--dim); font-weight: 700; font-size: 15px; }
+
+/* D-day — 가장 가까운 하나를 크게, 나머지는 줄줄이 */
+.dday-list { display: grid; gap: 8px; margin-top: 12px; }
+.dday-list:empty { display: none; }
+
+.dd {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.dd .dd-tag {
+  flex: none; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+  background: var(--surface-2); color: var(--muted);
+}
+.dd .dd-tag.exam { background: var(--ok-bg); color: var(--ok-ink); border: 1px solid var(--ok-line); }
+.dd .dd-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd .dd-date { flex: none; font-size: 11.5px; color: var(--dim); }
+.dd .dd-num { flex: none; font-size: 16px; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; }
+.dd .dd-num.past { color: var(--dim); }
+.dd .dd-num.soon { color: var(--bad); }
+
+.dd.lead { padding: 14px 16px; border-color: var(--accent-line); background: var(--accent-soft); }
+.dd.lead .dd-name { font-size: 15px; }
+.dd.lead .dd-num { font-size: 24px; }
+
+.dday-empty { margin-top: 12px; font-size: 13px; color: var(--dim); }
+
+/* 편집 폼 */
+.goal-form { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line-2); }
+.goal-form-act { display: flex; gap: 8px; margin-top: 4px; }
+.dday-edit { display: grid; gap: 8px; margin-bottom: 8px; }
+.dday-edit:empty { display: none; }
+.dday-row { display: flex; gap: 8px; align-items: center; }
+.dday-row .input { min-width: 0; }
+.dday-row .dr-name { flex: 1 1 40%; }
+.dday-row .dr-date { flex: 1 1 60%; }
+
+/* ── 달력 ── */
+.cal-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
+.cal-nav b { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; min-width: 132px; text-align: center; }
+.cal-arrow {
+  width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer;
+}
+.cal-arrow:hover { background: var(--surface-2); color: var(--text); }
+
+.cal-dow, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-dow { margin-bottom: 6px; }
+.cal-dow span { text-align: center; font-size: 11.5px; font-weight: 700; color: var(--dim); }
+.cal-dow .sun { color: var(--bad); }
+.cal-dow .sat { color: var(--good); }
+
+.cal-cell {
+  position: relative; min-height: 60px; padding: 5px 4px 4px;
+  border: 1px solid transparent; border-radius: 10px; background: var(--surface-3);
+  font: inherit; cursor: pointer; text-align: center; color: var(--text);
+}
+.cal-cell.blank { background: transparent; cursor: default; }
+.cal-cell:not(.blank):hover { border-color: var(--line-2); }
+.cal-cell .cd-n { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cal-cell.sun .cd-n { color: var(--bad); }
+.cal-cell.sat .cd-n { color: var(--good); }
+.cal-cell.future { opacity: 0.55; }
+.cal-cell.today { border-color: var(--accent); }
+.cal-cell.today .cd-n { color: var(--accent); font-weight: 900; }
+.cal-cell.picked { background: var(--accent-soft); border-color: var(--accent-line); }
+
+/* 그날 공부한 양 — 진하기로 보여 준다 (0/·/··/···) */
+.cal-cell .cd-bar { display: block; height: 4px; margin: 5px auto 0; border-radius: 99px; background: var(--accent); }
+.cal-cell .cd-min { display: block; margin-top: 3px; font-size: 9.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.cal-cell .cd-dots { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; justify-content: center; gap: 3px; }
+.cal-cell .cd-dots i { width: 5px; height: 5px; border-radius: 50%; }
+.cd-dots i.exam { background: var(--ok-ink); }
+.cd-dots i.dday { background: var(--warn-ink); }
+.cd-dots i.sch { background: var(--line-2); }
+
+/* 시험류는 '중간'·'모의'·'듣기' 처럼 두 글자로 적어 준다 — 달력을 열자마자
+ * 시험 주간이 어디인지 읽혀야 이 화면이 쓸모가 있다. */
+.cal-cell .cd-tag {
+  display: block; margin: 3px 1px 0;
+  font-size: 9.5px; font-weight: 800; line-height: 1.6;
+  border-radius: 4px; background: var(--ok-bg); color: var(--ok-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.cal-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 0; font-size: 11.5px; color: var(--dim); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cal-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.cal-legend i.lg-study { background: var(--accent); border-radius: 99px; width: 14px; height: 4px; }
+.cal-legend i.lg-exam { background: var(--ok-ink); }
+.cal-legend i.lg-dday { background: var(--warn-ink); }
+.cal-legend i.lg-sch { background: var(--line-2); }
+.cal-note { margin: 8px 0 0; font-size: 11.5px; color: var(--dim); line-height: 1.6; }
+
+/* 고른 날짜의 상세 */
+.cal-day { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cal-day .cday-h { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+.cal-day .cday-empty { font-size: 13px; color: var(--dim); }
+.cal-day .cday-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--line); font-size: 13.5px;
+}
+.cal-day .cday-row:last-child { border-bottom: 0; }
+.cal-day .cday-row .cr-ic { flex: none; }
+.cal-day .cday-row .cr-t { flex: 1; min-width: 0; color: var(--text); }
+.cal-day .cday-row .cr-v { flex: none; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 480px) {
+  .goal-hero { padding: 14px; gap: 11px; }
+  .goal-hero .gh-univ { font-size: 16px; }
+  .cal-cell { min-height: 46px; }
+  .cal-cell .cd-min { display: none; }
+  .dd .dd-date { display: none; }
+  .dday-row { flex-wrap: wrap; }
+  .dday-row .dr-name, .dday-row .dr-date { flex: 1 1 100%; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .cal-cell { background: var(--surface-2); }
+  .cal-cell.blank { background: transparent; }
+  .dd { background: var(--surface-2); }
+}

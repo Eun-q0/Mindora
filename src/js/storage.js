@@ -241,7 +241,9 @@
     K.profile, K.input, K.history, K.sessions, K.group, K.schools,
     'neurostudy.kids.v1', 'neurostudy.sound.v1',
     // 직접 만든 계획표와 몇 주에 걸쳐 올린 리그 티어도 복원할 수 없는 기록이다
-    'neurostudy.vacplan.v1', 'neurostudy.league.v1', K.personalization
+    'neurostudy.vacplan.v1', 'neurostudy.league.v1', K.personalization,
+    // 목표 대학·한 줄 다짐·직접 등록한 D-day — 손으로 적은 값이라 되살릴 방법이 없다
+    'mindora.goal.v1', 'neurostudy.slime.v1'
   ];
 
   /* 마지막으로 백업을 내려받은 시각. 백업 자체에는 넣지 않는다 —

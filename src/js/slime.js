@@ -2,19 +2,25 @@
  * slime.js — 모리 키우기 (홈 화면의 방치형 타이쿤)
  *
  * 공부한 시간이 곧 돈이 되는 게임이다.
- *   순공 1분 → 젤리 1개  (아직 안 바꾼 시간을 '정산' 버튼으로 한 번에 받는다)
+ *   순공 30분 → 젤리 1개  (아직 안 바꾼 시간을 '정산' 버튼으로 한 번에 받는다)
  *   젤리로 밥을 주면 모리가 자라고, 농장을 사면 자는 동안에도 젤리가 쌓인다.
  *
- * "안 하면 손해" 로 몰지 않는 게 원칙이다. 오래 안 들어와도 잃는 건 없고,
- * 오프라인 생산이 접시 용량까지만 차서 멈출 뿐이다. 공부 기록을 건드리지도 않는다.
- * (StudyLog 는 읽기만 한다 — 게임 때문에 순공 시간이 늘어나는 일은 없다)
+ * 잃는 것은 모리의 경험치 하나뿐이다. 오래 안 들어오면 모리가 조금씩 작아지지만,
+ * 젤리·업그레이드·도감은 그대로 남는다 — 그건 모리가 아니라 키우는 사람이 쌓은 것이다.
+ * 공부 기록은 어떤 경우에도 건드리지 않는다.
+ * (StudyLog 는 읽기만 한다 — 게임 때문에 순공 시간이 늘거나 줄지 않는다)
  * ========================================================================= */
 (function (global) {
   'use strict';
 
   var KEY = 'neurostudy.slime.v1';
-  var MAX_PAT_PER_DAY = 20;      // 쓰다듬기로 무한정 벌지 못하게 하루 상한을 둔다
+  var MAX_PAT_PER_DAY = 5;       // 쓰다듬기로 무한정 벌지 못하게 하루 상한을 둔다
   var HUNGRY_HOURS = 18;         // 이만큼 안 먹으면 배고픔 — 자동 생산이 절반이 된다
+
+  /* 젤리 1개를 받는 데 필요한 순공 시간(분).
+   * 이 하나만 고치면 게임 전체의 속도가 함께 움직인다.
+   * '공부 특훈' 업그레이드를 올리면 이 시간이 짧아진다. */
+  var MIN_PER_JELLY = 30;
 
   var toast = function () { /* app.js 가 init 에서 꽂아 준다 */ };
   var root = null;
@@ -35,6 +41,7 @@
       ups: { farm: 0, dish: 0, train: 0 },
       dex: {},                // 떠나보낸 모리 도감 { 종류id: 마리수 }
       raised: 0,              // 지금까지 다 키워 떠나보낸 마리 수
+      decayNote: 0,           // 오래 안 와서 줄어든 경험치 (한 번 알려 주고 0 으로)
       lastTick: Date.now(),
       fedAt: Date.now(),
       born: Date.now()
@@ -179,7 +186,7 @@
       id: 'farm', icon: '🌱', name: '젤리 농장',
       desc: '자는 동안에도 젤리가 저절로 쌓입니다.',
       base: 30, mult: 1.7, max: 25,
-      effect: function (n) { return (n * 0.6).toFixed(1) + ' 젤리/분'; }
+      effect: function (n) { return (n * FARM_PER_MIN * 60).toFixed(1) + ' 젤리/시간'; }
     },
     {
       id: 'dish', icon: '🥣', name: '큰 접시',
@@ -191,7 +198,10 @@
       id: 'train', icon: '📖', name: '공부 특훈',
       desc: '순공 시간을 정산할 때 받는 젤리가 늘어납니다.',
       base: 80, mult: 1.9, max: 12,
-      effect: function (n) { return '정산 ×' + (1 + n * 0.25).toFixed(2); }
+      effect: function (n) {
+        var mult = 1 + n * 0.25;
+        return '정산 ×' + mult.toFixed(2) + ' (' + fmtMin(MIN_PER_JELLY / mult) + '에 1개)';
+      }
     }
   ];
 
@@ -202,9 +212,15 @@
 
   function costOf(u, n) { return Math.round(u.base * Math.pow(u.mult, n)); }
 
-  function farmRate(d) { return d.ups.farm * 0.6; }          // 분당 젤리
+  /* 농장도 정산과 같은 저울 위에 있어야 한다. 공부해서 버는 것보다 자동 생산이
+   * 빠르면 "공부해서 여는 게임" 이라는 전제가 무너진다. */
+  var FARM_PER_MIN = 0.02;                                   // 레벨당 분당 젤리
+  function farmRate(d) { return d.ups.farm * FARM_PER_MIN; }
   function offlineCapMin(d) { return (2 + d.ups.dish * 2) * 60; }
   function claimMult(d) { return 1 + d.ups.train * 0.25; }
+
+  /** 젤리 1개를 받는 데 필요한 순공 분 (업그레이드가 붙은 실제 값) */
+  function minPerJelly(d) { return MIN_PER_JELLY / claimMult(d); }
 
   /* ------------------------------------------------------- 배고픔·자동 생산 */
 
@@ -221,10 +237,36 @@
   /** 마지막으로 본 시각부터 지금까지 농장이 모은 젤리를 넣어 준다.
    * 접시 용량(offlineCapMin)을 넘는 시간은 버린다 — 며칠 만에 들어와서
    * 갑자기 부자가 되면 공부로 버는 쪽이 의미를 잃는다. */
+  /* ------------------------------------------------------ 오래 안 오면 작아진다
+   *
+   * 줄어드는 것은 모리의 경험치 하나뿐이다. 젤리·업그레이드·도감은 그대로 두고,
+   * 공부 기록은 어떤 경우에도 건드리지 않는다 — 그건 게임이 손댈 것이 아니다.
+   *
+   * 사흘까지는 아무 일도 없다. 시험 기간에 며칠 못 들어왔다고 벌을 주면
+   * 돌아오기가 더 싫어진다. 그 뒤로 하루에 밥 한 번(22 XP)보다 조금 적게 줄어든다.
+   * 레벨이 내려가면 stageFor 가 앞 단계를 돌려주므로 모리가 실제로 작아진다. */
+  var DECAY_GRACE_DAYS = 3;
+  var DECAY_XP_PER_DAY = 20;
+
+  function applyDecay(d, awayMs) {
+    var days = awayMs / 86400000 - DECAY_GRACE_DAYS;
+    if (!(days > 0) || !(d.xp > 0)) return 0;
+    var lost = Math.min(d.xp, Math.round(days * DECAY_XP_PER_DAY));
+    if (lost <= 0) return 0;
+    d.xp -= lost;
+    // 돌아왔을 때 한 번은 알려 줘야 한다. 말없이 작아져 있으면 버그로 보인다.
+    d.decayNote = (d.decayNote || 0) + lost;
+    return lost;
+  }
+
   function accrue(d) {
     var now = Date.now();
     var last = d.lastTick || now;
-    var mins = (now - last) / 60000;
+    var away = now - last;
+
+    applyDecay(d, away);
+
+    var mins = away / 60000;
     if (!(mins > 0)) { d.lastTick = now; return 0; }
     mins = Math.min(mins, offlineCapMin(d));
     var rate = farmRate(d) * (isHungry(d) ? 0.5 : 1);
@@ -232,6 +274,14 @@
     d.jelly += got;
     d.lastTick = now;
     return got;
+  }
+
+  /** 줄어든 경험치를 한 번만 알려 주고 지운다 */
+  function takeDecayNote() {
+    var d = load();
+    var n = d.decayNote || 0;
+    if (n) { d.decayNote = 0; save(d); }
+    return n;
   }
 
   /* ---------------------------------------------------- 순공 시간 정산 */
@@ -370,7 +420,7 @@
   function cheerFor(d) {
     if (isHungry(d)) return '배고파요… 밥 주세요!';
     if (isGrown(d)) return '다 자랐어요! 이제 떠날 준비가 됐어요.';
-    if (pendingMin(d) >= 25) return '공부한 시간이 쌓였어요. 정산해 주세요!';
+    if (pendingMin(d) >= minPerJelly(d)) return '공부한 시간이 쌓였어요. 정산해 주세요!';
     var i = Math.floor(Date.now() / CHEER_MS) % CHEERS.length;
     return CHEERS[i];
   }
@@ -408,7 +458,7 @@
     if (!root) return;
     var v = view(), d = v.d;
     var hungry = isHungry(d);
-    var pendJelly = Math.floor(v.pend * claimMult(d));
+    var pendJelly = Math.floor(v.pend / minPerJelly(d));
     var today = todayKey();
     var patsLeft = d.patDay === today ? Math.max(0, MAX_PAT_PER_DAY - d.patCount) : MAX_PAT_PER_DAY;
     var feedCost = feedCostOf(d);
@@ -445,7 +495,8 @@
               ? '📚 공부 ' + esc(fmtMin(v.pend)) + ' 정산 → ✨' + fmtJelly(pendJelly)
               : '📚 정산할 공부 시간이 없어요') +
           '</button>' +
-          '<p class="tiny sl-claim-cap">타이머로 잰 순공 시간 <b>1분이 젤리 1개</b>입니다. 공부하고 와서 정산하세요.</p>' +
+          '<p class="tiny sl-claim-cap">타이머로 잰 <b>순공 ' + fmtMin(minPerJelly(d)) + '이 젤리 1개</b>입니다. ' +
+            '‘공부 특훈’ 을 올리면 더 빨라져요.</p>' +
 
           '<div class="sl-acts">' +
             '<button type="button" class="btn sl-feed" id="slFeed"' + (d.jelly >= feedCost ? '' : ' disabled') + '>' +
@@ -544,7 +595,8 @@
       save(d);
       return;
     }
-    var got = 1 + Math.floor(Math.random() * 3);
+    // 쓰다듬기는 인사지 벌이가 아니다 — 공부해서 버는 쪽이 항상 커야 한다
+    var got = 1;
     d.patCount++; d.pats++;
     d.jelly += got;
     d.xp += 1;
@@ -576,13 +628,24 @@
     accrue(d);
     var pend = pendingMin(d);
     if (!(pend > 0)) { toast('아직 정산할 순공 시간이 없습니다. 타이머로 공부부터!', true); save(d); return; }
-    var got = Math.floor(pend * claimMult(d));
+
+    var per = minPerJelly(d);
+    var got = Math.floor(pend / per);
+    if (got < 1) {
+      toast('젤리 1개까지 ' + fmtMin(per - pend) + ' 남았어요.', true);
+      save(d);
+      return;
+    }
+
+    /* 자투리 시간은 버리지 않고 다음 정산으로 넘긴다.
+     * 통째로 없애면 50분 공부하고 정산했을 때 20분이 조용히 사라진다. */
+    var used = got * per;
     d.jelly += got;
-    d.claimedMin = totalStudyMin();
+    d.claimedMin = (d.claimedMin || 0) + used;
     save(d);
     render();
     popText('+' + fmtJelly(got));
-    toast('순공 ' + fmtMin(pend) + '을 젤리 ' + fmtJelly(got) + '개로 바꿨어요!', 'party');
+    toast('순공 ' + fmtMin(used) + '을 젤리 ' + fmtJelly(got) + '개로 바꿨어요!', 'party');
   }
 
   function feed1() {
@@ -700,7 +763,8 @@
     init: function (opt) { if (opt && opt.toast) toast = opt.toast; },
     open: open, stop: stop, render: render, touch: touch,
     summary: summary, reset: reset,
-    jelly: jelly, spend: spend, faceSvg: faceSvg
+    jelly: jelly, spend: spend, faceSvg: faceSvg,
+    takeDecayNote: takeDecayNote, MIN_PER_JELLY: MIN_PER_JELLY
   };
 
 })(window);
