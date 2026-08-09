@@ -34,10 +34,6 @@
 
 <meta name="naver-site-verification" content="fa3d8aeb91cd3600bfaf8c486a86f00aba5d0cd7" />
 
-<!-- Google AdSense -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
-     crossorigin="anonymous"></script>
-
 <!-- 방학 계획표 글씨체 (구글 폰트, 무료·상업적 사용 가능) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -86,7 +82,7 @@
     <p class="intro-body">수면·피로·스트레스와 시험 일정을 바탕으로
       오늘 시작할 과목과 공부 시간을 제안합니다.</p>
     <p class="intro-tag">로그인 없이 시작 · 기록은 기본적으로 이 기기에 저장</p>
-    <button type="button" class="btn primary intro-go" id="introGo">10초 컨디션 확인하기</button>
+    <button type="button" class="btn primary intro-go" id="introGo">오늘 컨디션 확인하기</button>
   </div>
 </div>
 
@@ -1080,7 +1076,7 @@
         <div class="cl-event" id="classEventBox">
           <p class="cl-h" style="margin:0 0 6px">🍗 학급 대항전</p>
           <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>과 <b>닉네임</b>을 함께 전송해야 합니다.
-            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 값도 다음 동기화에서 지워집니다.</p>
+            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끌 수 있고, 서버 삭제가 완료됐는지 화면에서 확인할 수 있습니다.</p>
           <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반과 닉네임 전송에 동의합니다</span></label>
           <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반이면 <b>따로 등록하지 않아도</b> 자동으로 같은 판에 들어갑니다.
             순위표에는 <b>설정한 닉네임이 그대로</b> 보입니다 — <b>실명은 권하지 않습니다.</b>
@@ -1179,8 +1175,8 @@
         <details class="privacy-details">
           <summary>동의 철회·보관 기간·삭제 방법 보기</summary>
           <p class="tiny">학교 리그·학급 대항전·관리자 공개는 위의 각 스위치에서 서로 별도로 철회할 수 있습니다.
-            끄면 새 전송이 중단되고, 학급 정보와 관리자 공개 정보는 다음 동기화에서 삭제됩니다.
-            현재 시범 버전은 서버 집계의 자동 삭제를 보장하지 않습니다. 정식 운영 전 보관 기간·삭제 절차·문의 연락처를 확정하고 실제 서버 정책과 일치시켜야 합니다.
+            끄면 새 전송이 즉시 중단되고 해당 공유 기능으로 보낸 서버 기록의 삭제를 요청합니다. 연결 문제로 실패하면 이 기기에 삭제 요청을 보관해 다음 실행 때 다시 시도합니다.
+            정기 정리 작업을 설정한 운영 환경에서는 60일이 지난 기록도 삭제하며, 철회 요청의 완료 여부는 각 공유 설정 아래에서 확인할 수 있습니다.
             이 기기의 로컬 기록은 <b>모든 기록 삭제</b>로 즉시 지울 수 있습니다. 만 14세 미만 사용자는 서버 전송 기능을 보호자와 함께 결정하세요.</p>
         </details>
       </div>
