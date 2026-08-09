@@ -27,7 +27,21 @@
 관리자 화면을 쓸 경우 Authentication에서 계정을 만든 뒤 `register-admin.sql`을 실행하고,
 `verify-admin.sql`로 등록 결과를 확인합니다.
 
-여러 번 실행해도 안전합니다.
+여러 번 실행해도 안전합니다. **다만 순서는 지켜야 합니다** — `schema.sql` 안의
+`revoke all on public.league_report from anon, authenticated` 가
+`schema_admin_league.sql` 이 관리자에게 준 select 권한까지 함께 지웁니다.
+**`schema.sql` 을 나중에 다시 실행했다면 `schema_admin_league.sql` 도 반드시 다시 실행하세요.**
+
+### 관리자 화면이 "읽을 권한이 없습니다 / 테이블이 없습니다" 라고 할 때
+
+| 증상 | 원인 | 할 일 |
+|---|---|---|
+| 익명 참가자 목록이 403 | 4번 미실행, 또는 그 뒤에 `schema.sql` 재실행 | `schema_admin_league.sql` 다시 실행 |
+| 학생 목록이 404 | 2번 미실행 (`student_report` 없음) | `schema_admin.sql` 실행 |
+| 목록은 뜨는데 **비어 있음** | 권한은 정상. 관리자 계정이 `admins` 에 없거나 아직 아무도 공유하지 않음 | `verify-admin.sql` 로 등록 확인 |
+
+마지막 줄이 중요합니다 — 관리자 등록이 안 된 경우는 **오류가 아니라 빈 목록**으로 나옵니다.
+RLS 가 행만 걸러 내므로 요청 자체는 성공(HTTP 200)하기 때문입니다.
 
 이 SQL 이 하는 일:
 

@@ -43,6 +43,9 @@ create index if not exists league_report_week_school_idx
 -- 개별 기록이 밖으로 새지 않게 하려는 것이므로 이대로 둔다.
 alter table public.league_report enable row level security;
 
+-- ⚠ 이 줄은 schema_admin_league.sql 이 관리자에게 준 select 권한까지 함께 지운다.
+--   이 파일을 나중에 다시 실행했다면 schema_admin_league.sql 도 다시 실행하세요.
+--   그러지 않으면 관리자 화면의 [익명 참가자] 목록이 403(permission denied)으로 막힙니다.
 revoke all on public.league_report from anon, authenticated;
 
 -- ──────────────────────────────────────────────────────── 집계 뷰

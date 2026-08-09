@@ -19,6 +19,10 @@
     page: 'secHome',
     pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
     vacplan: null,      // 방학 계획표 모델
+    calMonth: null,     // 학습 캘린더가 보고 있는 달 (그 달 1일)
+    calPick: null,      // 캘린더에서 고른 날짜 (없으면 오늘)
+    calSched: {},       // 나이스 학사일정 (YYYYMMDD → 행사 목록). 받은 구간을 쌓아 간다.
+    calSchedDone: {},   // 이미 받아 온 구간 표시 — 같은 달을 반복해 조회하지 않는다
     span: null,        // 진행 중인 순공 구간
     lastFlush: 0,
     lastSoundKey: null, // 같은 상태에서 사운드를 다시 트는 것을 막는다
@@ -35,6 +39,15 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  /* 조사 붙이기. 사용자가 적은 이름에는 '을(를)' 로 두지만, 앱이 가진 고정된
+   * 이름(상점 물건 같은)에는 받침을 보고 하나만 골라 쓴다 — 훨씬 잘 읽힌다. */
+  function josa(word, withFinal, withoutFinal) {
+    var last = String(word || '').slice(-1);
+    var code = last.charCodeAt(0);
+    if (!(code >= 0xac00 && code <= 0xd7a3)) return withoutFinal;   // 한글이 아니면 받침 없는 쪽
+    return ((code - 0xac00) % 28) ? withFinal : withoutFinal;
+  }
 
   function displayScore(n) { return Math.max(0, Math.min(100, Math.round(Number(n || 0) / 5) * 5)); }
   function scoreBand(n) {
@@ -500,6 +513,7 @@
       caffeine: parseInt($('caffeine').value, 10),
       exercise: parseInt($('exercise').value, 10),
       availableHours: parseFloat($('availableHours').value),
+      fixedPomodoro: $('fixedPomodoro').checked,
       subjects: readSubjects()
     };
   }
@@ -520,6 +534,7 @@
     $('caffeine').value = inp.caffeine;
     $('exercise').value = inp.exercise;
     $('availableHours').value = inp.availableHours;
+    $('fixedPomodoro').checked = !!inp.fixedPomodoro;   // 예전 기록에 없으면 꺼진 상태(자동)
     // 취침 시각은 나중에 추가된 항목이라 예전 기록에는 없다 — 기본값을 유지한다
     if (inp.bedHour !== null && inp.bedHour !== undefined) {
       $('bedTime').value = pad(Math.floor(inp.bedHour)) + ':' + pad(Math.round((inp.bedHour % 1) * 60));
@@ -757,6 +772,12 @@
 
     // 그룹이 바뀌면 이전 내 기록은 새 id 로 옮겨야 하므로 옛 항목을 지운다
     if (prev && Group.memberId(prev) !== Group.memberId(p)) Group.remove(Group.memberId(prev));
+
+    // 학교나 학년이 바뀌면 남의 학교 학사일정이 달력에 남아 있으면 안 된다
+    if (!prev || prev.school !== p.school || prev.grade !== p.grade ||
+        (prev.neis && prev.neis.schoolCode) !== (p.neis && p.neis.schoolCode)) {
+      resetSchedule();
+    }
 
     Store.saveProfile(p);
     Store.rememberSchool(school);
@@ -1177,6 +1198,7 @@
     /* 과목마다 근거·공부법·지표를 다 펼쳐 두면 화면이 너무 길어진다.
      * 기본은 "무엇을 얼마나" 한 줄만 두고, 누르면 이유가 펼쳐지게 한다. */
     $('subjectPlans').innerHTML = p.subjects.map(function (s) {
+      var act = state.planOverrides[s.name] || '';
       var dd = s.daysLeft === null ? '' :
         '<span class="sp-chip dday' + (s.daysLeft > 7 ? ' far' : '') + '">' + (s.daysLeft < 0 ? '종료' : (s.daysLeft === 0 ? 'D-DAY' : 'D-' + s.daysLeft)) + '</span>';
       return '<div class="sp" style="--c:' + s.color + '" data-subj="' + esc(s.name) + '">' +
@@ -1201,7 +1223,8 @@
           '</div>' +
           '<div class="sp-actions">' +
             '<button type="button" class="sp-action" data-plan-action="change" data-subject="' + esc(s.name) + '">과목 바꾸기</button>' +
-            '<button type="button" class="sp-action" data-plan-action="shorter" data-subject="' + esc(s.name) + '">시간 줄이기</button>' +
+            '<button type="button" class="sp-action' + (act === 'shorter' ? ' on' : '') + '" data-plan-action="shorter" data-subject="' + esc(s.name) + '">− 시간 줄이기</button>' +
+            '<button type="button" class="sp-action' + (act === 'longer' ? ' on' : '') + '" data-plan-action="longer" data-subject="' + esc(s.name) + '">＋ 시간 늘리기</button>' +
             '<button type="button" class="sp-action" data-plan-action="exclude" data-subject="' + esc(s.name) + '">오늘 제외</button>' +
             '<button type="button" class="sp-action" data-plan-action="bad" data-subject="' + esc(s.name) + '" data-type="' + esc(s.type) + '">이 추천이 맞지 않음</button>' +
           '</div>' +
@@ -1304,9 +1327,30 @@
       toast('이 추천이 맞지 않았다는 기록을 다음 추천에 반영합니다.');
       return;
     }
+    /* 블록 길이는 짧게 / 기본 / 길게 세 단계를 오간다.
+     * 줄이기만 있으면 한 번 잘못 누른 뒤 되돌릴 방법이 없어, 반대 버튼이 곧 취소가 된다. */
+    if (action === 'shorter' || action === 'longer') {
+      var LADDER = ['shorter', '', 'longer'];
+      var cur = LADDER.indexOf(state.planOverrides[subject] || '');
+      if (cur < 0) cur = 1;
+      var next = cur + (action === 'longer' ? 1 : -1);
+      if (next < 0 || next >= LADDER.length) {
+        toast(subject + ' 블록은 이미 가장 ' + (action === 'longer' ? '깁니다' : '짧습니다') +
+          '. 더 바꾸려면 [입력] 에서 학습 시간을 조정하세요.', true);
+        return;
+      }
+      if (LADDER[next]) state.planOverrides[subject] = LADDER[next];
+      else delete state.planOverrides[subject];
+      refreshPlanFromOverrides();
+      toast(LADDER[next] === 'shorter' ? subject + ' 블록을 한 단계 짧게 바꿨습니다.'
+          : LADDER[next] === 'longer' ? subject + ' 블록을 한 단계 길게 바꿨습니다.'
+          : subject + ' 블록을 기본 길이로 되돌렸습니다.');
+      return;
+    }
+
     state.planOverrides[subject] = action;
     refreshPlanFromOverrides();
-    toast(action === 'exclude' ? subject + '을(를) 오늘 플랜에서 제외했습니다.' : subject + ' 시간을 한 블록 줄였습니다.');
+    toast(subject + '을(를) 오늘 플랜에서 제외했습니다.');
   }
 
   /* 취침 커퓨 안내.
@@ -1595,11 +1639,60 @@
     });
   }
 
+  /* 휴식하는 동안 띄우는 글귀.
+   *
+   * 30분에 하나씩 바뀐다. renderTimer 는 1초에 한 번씩 도는데 그때마다 새로
+   * 뽑으면 글자가 깜빡이며 계속 갈아엎히므로, 시각을 30분 칸으로 잘라 그 칸
+   * 번호로 고른다 — 같은 30분 안에서는 몇 번을 다시 그려도 같은 글귀가 나온다.
+   *
+   * 칸 번호에 7을 곱해 고르는 이유는 7과 30이 서로소여서다. 순서대로 1·2·3…
+   * 이 아니라 흩어져 나오면서도 30개를 다 돌기 전에는 같은 글귀가 다시 나오지
+   * 않는다 (한 바퀴에 15시간). 무작위로 뽑으면 연달아 같은 게 나올 수 있다. */
+  var REST_QUOTE_MS = 30 * 60 * 1000;
+  var REST_QUOTES = [
+    '지금 잠을 자면 꿈을 꾸지만 지금 공부하면 꿈을 이룬다.',
+    '내가 헛되이 보낸 오늘은 어제 죽은 이가 갈망하던 내일이다.',
+    '늦었다고 생각했을 때가 가장 빠른 때이다',
+    '오늘 할 일을 내일로 미루지 마라.',
+    '공부할 때의 고통은 잠깐이지만 못 배운 고통은 평생이다.',
+    '공부는 시간이 부족한 것이 아니라 노력이 부족한 것이다.',
+    '행복은 성적순이 아닐지 몰라도 성공은 성적순이다.',
+    '공부가 인생의 전부는 아니다. 그러나 인생의 전부도 아닌 공부 하나도 정복하지 못한다면 과연 무슨 일을 할 수 있겠는가?',
+    '피할 수 없는 고통은 즐겨라.',
+    '남보다 더 일찍 더 부지런히 노력해야 성공을 맛 볼 수 있다.',
+    '성공은 아무나 하는 것이 아니다. 철저한 자기 관리와 노력에서 비롯된다.',
+    '시간은 간다.',
+    '지금 흘린 침은 내일 흘릴 눈물이 된다.',
+    '개같이 공부해서 정승같이 놀자.',
+    '오늘 걷지 않으면, 내일 뛰어야 한다.',
+    '미래에 투자하는 사람은 현실에 충실한 사람이다.',
+    '학벌이 돈이다.',
+    '오늘 보낸 하루는 내일 다시 돌아오지 않는다.',
+    '지금 이 순간에도 적들의 책장은 넘어가고 있다.',
+    'No pains No gains 고통이 없으면 얻는 것도 없다.',
+    '꿈이 바로 앞에 있는데, 당신은 왜 팔을 뻗지 않는가?',
+    '눈이 감기는가? 그럼 미래를 향한 눈도 감긴다.',
+    '세상의 한 조각이 되어라. 너 없이는 완성될지 않도록.',
+    '성적은 투자한 시간의 절대량에 비례한다.',
+    '가장 위대한 일은 남들이 자고 있을 때 이뤄진다.',
+    '지금 헛되이 보내는 이 시간이 시험을 코앞에 둔 시점에서 얼마나 절실하게 느껴지겠는가?',
+    '불가능이란 노력하지 않는 자의 변명이다.',
+    '노력의 대가는 이유 없이 사라지지 않는다.',
+    '오늘 걷지 않으면 내일은 뛰어야 한다.',
+    '한 시간 더 공부하면 남편 얼굴이 바뀐다'
+  ];
+
+  function restQuote() {
+    var slot = Math.floor(Date.now() / REST_QUOTE_MS);
+    return REST_QUOTES[(slot * 7) % REST_QUOTES.length];
+  }
+
   function renderTimer(s) {
     var C = 2 * Math.PI * 112;
     var dial = $('dialFill');
     dial.style.strokeDasharray = C;
 
+    var resting = false;
     if (s.done || !s.block) {
       $('phaseLabel').textContent = s.total ? '완료' : '대기 중';
       $('timeLeft').textContent = '00:00';
@@ -1615,6 +1708,18 @@
         : '화면에서 눈을 떼고 몸을 움직이세요';
       dial.style.strokeDashoffset = C * (1 - (s.totalMs ? s.remainingMs / s.totalMs : 0));
       dial.style.stroke = isStudy ? (s.block.color || '#6d4aff') : '#3f6fd1';
+      resting = !isStudy;
+    }
+
+    /* 쉬는 동안에만 글귀를 띄운다. 집중할 때 옆에 읽을거리를 두면 그게 방해다.
+     * 내용이 실제로 바뀔 때만 DOM 을 건드려 1초마다 글자가 깜빡이지 않게 한다. */
+    var qBox = $('restQuote');
+    if (qBox) {
+      qBox.classList.toggle('is-hidden', !resting);
+      if (resting) {
+        var q = restQuote();
+        if (qBox.textContent !== q) qBox.textContent = q;
+      }
     }
 
     $('btnStart').textContent = s.running ? '⏸ 일시정지' : '▶ 시작';
@@ -1635,11 +1740,11 @@
 
       var tail = editable
         ? '<span class="qe">' +
-            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="-5"' +
-              (b.minutes <= lim.min ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 줄이기">−</button>' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="-1"' +
+              (b.minutes <= lim.min ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 단위로 줄이기">−</button>' +
             '<span class="qe-v">' + b.minutes + '<small>분</small></span>' +
-            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="5"' +
-              (b.minutes >= lim.max ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 늘리기">＋</button>' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="1"' +
+              (b.minutes >= lim.max ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 단위로 늘리기">＋</button>' +
           '</span>'
         : '<span class="qt">' + b.minutes + '분</span>';
 
@@ -1653,7 +1758,7 @@
           var i = +btn.dataset.qi, d = +btn.dataset.qd;
           var cur = state.timer.queue[i];
           if (!cur) return;
-          var next = state.timer.setMinutes(i, cur.minutes + d);
+          var next = state.timer.setMinutes(i, snapMinutes(cur.minutes, d));
           if (next === null) { toast('이미 지났거나 진행 중인 블록은 바꿀 수 없어요.', true); return; }
           // setMinutes 안에서 emit() 이 돌아 목록은 이미 다시 그려졌다.
           // 여기서는 바뀐 길이에 맞춰 목표 시간만 갱신한다.
@@ -1661,6 +1766,18 @@
         });
       });
     }
+  }
+
+  /* 5분 눈금 위의 다음(이전) 칸으로 옮긴다.
+   *
+   * 예전에는 현재 값에 ±5 를 더했다. 그러면 7분에서 ＋를 누르면 12분, 17분… 이 되어
+   * 10분·15분 같은 흔한 값에는 영원히 닿지 못했다. 눈금에 붙여 주면
+   * 7 → 10 → 15, 7 → 5 → 0 처럼 항상 깔끔한 값으로 떨어진다. */
+  var MIN_STEP = 5;
+  function snapMinutes(cur, dir) {
+    return dir > 0
+      ? (Math.floor(cur / MIN_STEP) + 1) * MIN_STEP
+      : (Math.ceil(cur / MIN_STEP) - 1) * MIN_STEP;
   }
 
   /** 블록 길이를 바꾸면 목표 시간과 타임라인 표기도 같이 움직여야 한다 */
@@ -2156,7 +2273,433 @@
       b.addEventListener('click', function () { goPage(b.dataset.go); });
     });
 
+    renderGoalCard();
+    renderCalendar();
     renderHomeQuick();
+  }
+
+  /* ============================================ 목표 · D-day · 학습 캘린더 ==
+   *
+   * 달력을 새로 만들면서 지킨 것 두 가지.
+   *
+   *  1) 새로 입력받는 것은 목표 대학과 직접 등록한 D-day 뿐이다.
+   *     시험 일정은 [입력] 화면의 과목에 이미 적혀 있으므로 그대로 끌어다 쓴다 —
+   *     같은 날짜를 두 곳에 적게 하면 반드시 한쪽이 낡는다.
+   *  2) 달력 칸에는 지어낸 값을 넣지 않는다. 실제로 타이머로 잰 순공 시간과
+   *     등록된 일정만 겹쳐 놓는다. 아무것도 안 한 날은 비어 있는 게 맞다. */
+
+  var GOAL_KEY = 'mindora.goal.v1';
+  var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function goalLoad() {
+    var d = { university: '', major: '', motto: '', ddays: [] };
+    try {
+      var raw = localStorage.getItem(GOAL_KEY);
+      if (!raw) return d;
+      var o = JSON.parse(raw);
+      if (!o || typeof o !== 'object') return d;
+      return {
+        university: String(o.university || '').slice(0, 40),
+        major: String(o.major || '').slice(0, 40),
+        motto: String(o.motto || '').slice(0, 60),
+        ddays: (Array.isArray(o.ddays) ? o.ddays : [])
+          .filter(function (x) { return x && x.label && DATE_RE.test(x.date); })
+          .map(function (x) { return { label: String(x.label).slice(0, 30), date: x.date }; })
+          .slice(0, 12)
+      };
+    } catch (e) { return d; }
+  }
+
+  function goalSave(g) {
+    try { localStorage.setItem(GOAL_KEY, JSON.stringify(g)); return true; }
+    catch (e) { return false; }
+  }
+
+  /** 오늘 기준 남은 날 수 (음수면 지난 날) */
+  function dayDiff(dateKey) {
+    return Math.round((Store.parseKey(dateKey) - Store.parseKey(Store.key())) / 86400000);
+  }
+
+  function ddayText(diff) {
+    if (diff === 0) return 'D-DAY';
+    return diff > 0 ? 'D-' + diff : 'D+' + (-diff);
+  }
+
+  function firstOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+
+  /* ------------------------------------------------- 나이스 학사일정 가져오기
+   *
+   * 중간·기말·모의고사·영어듣기는 학교가 학기 초에 나이스에 올려 둔다.
+   * 사용자가 손으로 옮겨 적게 하면 반드시 틀리거나 낡으므로 그대로 받아 온다.
+   * 받은 구간은 state.calSched 에 쌓아 두고, 같은 구간은 다시 묻지 않는다
+   * (하루치 캐시는 neis.js 가 따로 맡는다). */
+
+  function mergeSched(byDate) {
+    Object.keys(byDate).forEach(function (d) {
+      var cur = state.calSched[d] || (state.calSched[d] = []);
+      byDate[d].forEach(function (e) {
+        var dup = cur.some(function (x) { return x.name === e.name; });
+        if (!dup) cur.push(e);
+      });
+    });
+  }
+
+  /** tag 는 "이 구간은 이미 물어봤다" 는 표시다 */
+  function fetchSched(tag, promise) {
+    if (state.calSchedDone[tag]) return;
+    var p = Store.profile();
+    // 학교를 목록에서 고르지 않았으면 학교 코드가 없어 조회할 수 없다
+    if (!p || !p.neis || !p.neis.schoolCode) return;
+
+    state.calSchedDone[tag] = true;
+    promise(p).then(function (byDate) {
+      if (!byDate || !Object.keys(byDate).length) return;
+      mergeSched(byDate);
+      renderCalendar();
+      renderDdayList();
+    });
+  }
+
+  function loadMonthSchedule(y, mo) {
+    fetchSched('m' + y + '-' + mo, function (p) {
+      return Neis.monthSchedule(p.neis, y, mo, p.grade);
+    });
+  }
+
+  /** 다가오는 시험을 D-day 로 띄우려면 보고 있는 달 밖도 알아야 한다 */
+  function loadUpcomingSchedule() {
+    fetchSched('upcoming', function (p) {
+      return Neis.upcomingSchedule(p.neis, 150, p.grade);
+    });
+  }
+
+  /** 학교를 바꾸면 남의 학교 일정이 남아 있으면 안 된다 */
+  function resetSchedule() {
+    state.calSched = {};
+    state.calSchedDone = {};
+  }
+
+  /* 달력 점 색은 세 갈래로만 나눈다. 갈래마다 색을 주면 알록달록해서
+   * 정작 "시험이 언제인지" 가 안 보인다. 정확한 이름은 아래 상세와 D-day 가 말한다. */
+  var EXAMISH = { exam: 1, mock: 1, listen: 1 };
+  function dotClass(kind) {
+    if (kind === 'dday') return 'dday';
+    return EXAMISH[kind] ? 'exam' : 'sch';
+  }
+
+  function ymdToKey(d) { return d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8); }
+
+  /** 날짜별 일정 — 등록한 D-day + [입력] 의 과목 시험일 + 나이스 학사일정 */
+  function calEvents() {
+    var map = {};
+    function put(k, ev) { (map[k] || (map[k] = [])).push(ev); }
+
+    goalLoad().ddays.forEach(function (d) { put(d.date, { kind: 'dday', icon: '📌', label: d.label }); });
+
+    var saved = Store.loadInput();
+    ((saved && saved.subjects) || []).forEach(function (s) {
+      if (s.examDate && DATE_RE.test(s.examDate)) {
+        put(s.examDate, { kind: 'exam', icon: '📘', label: s.name + ' 시험' });
+      }
+    });
+
+    // 학교가 올린 이름을 그대로 쓴다 — 우리가 고쳐 쓰지 않는다
+    Object.keys(state.calSched).forEach(function (d8) {
+      state.calSched[d8].forEach(function (e) {
+        put(ymdToKey(d8), {
+          kind: e.kind, icon: e.icon, label: e.name,
+          short: e.short, sub: e.label, detail: e.detail, neis: true
+        });
+      });
+    });
+    return map;
+  }
+
+  /* ------------------------------------------------------------ 목표 카드 */
+
+  function renderGoalCard() {
+    var hero = $('goalHero');
+    if (!hero) return;
+    var g = goalLoad();
+
+    if (g.university || g.major || g.motto) {
+      hero.className = 'goal-hero';
+      hero.innerHTML = '<span class="gh-ic" aria-hidden="true">🎓</span><div class="gh-txt">' +
+        '<div class="gh-univ">' + esc(g.university || '내 목표') + '</div>' +
+        (g.major ? '<div class="gh-major">' + esc(g.major) + '</div>' : '') +
+        (g.motto ? '<div class="gh-motto">' + esc(g.motto) + '</div>' : '') +
+        '</div>';
+    } else {
+      hero.className = 'goal-hero is-empty';
+      hero.innerHTML = '<span class="gh-ic" aria-hidden="true">🎓</span><div class="gh-txt">' +
+        '<div class="gh-univ">목표 대학을 아직 적지 않았습니다</div>' +
+        '<div class="gh-major">오른쪽 위 <b>수정</b> 을 눌러 목표와 한 줄 다짐, D-day 를 등록해 보세요.</div></div>';
+    }
+    renderDdayList();
+  }
+
+  /** 여러 날에 걸친 같은 시험은 첫날 하나로 접는다 (중간고사 4일 → 한 줄) */
+  function schedExamRows() {
+    var out = [], seen = {};
+    Object.keys(state.calSched).sort().forEach(function (d8) {
+      state.calSched[d8].forEach(function (e) {
+        if (!EXAMISH[e.kind] || seen[e.name]) return;
+        seen[e.name] = 1;
+        out.push({ kind: 'sched', label: e.name, sub: e.label, date: ymdToKey(d8) });
+      });
+    });
+    return out;
+  }
+
+  /** 가까운 미래 → 먼 미래 → 최근에 지난 것 순 */
+  function ddayRows() {
+    var rows = goalLoad().ddays.map(function (d) {
+      return { kind: 'dday', label: d.label, date: d.date };
+    });
+    var saved = Store.loadInput();
+    ((saved && saved.subjects) || []).forEach(function (s) {
+      if (s.examDate && DATE_RE.test(s.examDate)) rows.push({ kind: 'exam', label: s.name, date: s.examDate });
+    });
+    rows = rows.concat(schedExamRows());
+    rows.forEach(function (r) { r.diff = dayDiff(r.date); });
+    return rows.sort(function (a, b) {
+      var au = a.diff >= 0, bu = b.diff >= 0;
+      if (au !== bu) return au ? -1 : 1;         // 앞으로 올 날이 먼저
+      return au ? a.diff - b.diff : b.diff - a.diff;
+    });
+  }
+
+  function renderDdayList() {
+    var box = $('ddayList');
+    if (!box) return;
+    var rows = ddayRows();
+
+    if (!rows.length) {
+      box.className = 'dday-empty';
+      box.textContent = '등록된 D-day 가 없습니다. [입력] 화면에서 과목에 시험일을 적으면 여기에도 함께 나타납니다.';
+      return;
+    }
+
+    box.className = 'dday-list';
+    box.innerHTML = rows.slice(0, 7).map(function (r, i) {
+      var cls = r.diff < 0 ? ' past' : (r.diff <= 7 ? ' soon' : '');
+      // 학사일정은 갈래 이름(모의고사·영어듣기…)을 그대로 꼬리표로 쓴다
+      var tag = r.kind === 'sched' ? (r.sub || '학사일정') : (r.kind === 'exam' ? '시험' : 'D-day');
+      return '<div class="dd' + (i === 0 ? ' lead' : '') + '">' +
+        '<span class="dd-tag' + (r.kind === 'dday' ? '' : ' exam') + '">' + esc(tag) + '</span>' +
+        '<span class="dd-name">' + esc(r.label) + '</span>' +
+        '<span class="dd-date">' + esc(r.date) + '</span>' +
+        '<span class="dd-num' + cls + '">' + ddayText(r.diff) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* --------------------------------------------------------------- 편집 */
+
+  function addDdayRow(d) {
+    var list = $('ddayEditList');
+    if (!list) return;
+    var row = document.createElement('div');
+    row.className = 'dday-row';
+    row.innerHTML =
+      '<input type="text" class="input dr-name" maxlength="30" placeholder="예) 수능" value="' +
+        esc((d && d.label) || '') + '" aria-label="D-day 이름">' +
+      '<input type="date" class="input dr-date" value="' + esc((d && d.date) || '') + '" aria-label="D-day 날짜">' +
+      '<button type="button" class="icon-btn dr-del" title="이 줄 삭제" aria-label="이 D-day 삭제">✕</button>';
+    row.querySelector('.dr-del').addEventListener('click', function () { row.remove(); });
+    list.appendChild(row);
+  }
+
+  function openGoalForm(open) {
+    var f = $('goalForm');
+    if (!f) return;
+    var show = open === undefined ? f.classList.contains('is-hidden') : !!open;
+
+    if (show) {
+      var g = goalLoad();
+      $('goalUniv').value = g.university;
+      $('goalMajor').value = g.major;
+      $('goalMotto').value = g.motto;
+      $('ddayEditList').innerHTML = '';
+      g.ddays.forEach(addDdayRow);
+      if (!g.ddays.length) addDdayRow();
+    }
+    f.classList.toggle('is-hidden', !show);
+    $('goalEdit').textContent = show ? '접기' : '수정';
+  }
+
+  function saveGoal() {
+    var ddays = $$('.dday-row', $('ddayEditList')).map(function (row) {
+      var label = row.querySelector('.dr-name').value.trim();
+      var date = row.querySelector('.dr-date').value;
+      // 이름과 날짜가 둘 다 있어야 D-day 다. 반쯤 적다 만 줄은 조용히 버린다.
+      if (!label || !DATE_RE.test(date)) return null;
+      return { label: label, date: date };
+    }).filter(Boolean).slice(0, 12);
+
+    var ok = goalSave({
+      university: $('goalUniv').value.trim(),
+      major: $('goalMajor').value.trim(),
+      motto: $('goalMotto').value.trim(),
+      ddays: ddays
+    });
+    if (!ok) { toast('저장에 실패했습니다. 브라우저 저장소를 확인해 주세요.', true); return; }
+
+    openGoalForm(false);
+    renderGoalCard();
+    renderCalendar();
+    toast('목표를 저장했습니다.');
+  }
+
+  /* --------------------------------------------------------------- 달력 */
+
+  function shiftMonth(n) {
+    var b = state.calMonth || firstOfMonth(new Date());
+    state.calMonth = new Date(b.getFullYear(), b.getMonth() + n, 1);
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    var grid = $('calGrid');
+    if (!grid) return;
+
+    if (!state.calMonth) state.calMonth = firstOfMonth(new Date());
+    var base = state.calMonth;
+    var y = base.getFullYear(), mo = base.getMonth();
+    $('calTitle').textContent = y + '년 ' + (mo + 1) + '월';
+
+    // 보고 있는 달의 학사일정과, D-day 에 쓸 앞으로의 시험 일정을 받아 둔다
+    loadMonthSchedule(y, mo);
+    loadUpcomingSchedule();
+
+    var events = calEvents();
+    var today = Store.key();
+    var lead = new Date(y, mo, 1).getDay();          // 일=0
+    var lastDay = new Date(y, mo + 1, 0).getDate();
+
+    /* 막대 길이는 그 달에서 가장 많이 공부한 날을 기준으로 잡는다.
+     * 고정 상한을 두면 공부량이 적은 달은 전부 눈금 하나로 뭉개져 보인다. */
+    var mins = [], i;
+    for (i = 1; i <= lastDay; i++) mins.push(StudyLog.dayTotal(Store.key(new Date(y, mo, i))));
+    var max = Math.max.apply(null, mins.concat([1]));
+
+    var cells = [];
+    for (i = 0; i < lead; i++) cells.push('<div class="cal-cell blank"></div>');
+
+    for (i = 1; i <= lastDay; i++) {
+      var d = new Date(y, mo, i);
+      var k = Store.key(d);
+      var dow = d.getDay();
+      var min = mins[i - 1];
+      var evs = events[k] || [];
+
+      var cls = 'cal-cell' + (dow === 0 ? ' sun' : (dow === 6 ? ' sat' : '')) +
+        (k === today ? ' today' : '') + (k > today ? ' future' : '') +
+        (k === state.calPick ? ' picked' : '');
+
+      var label = (mo + 1) + '월 ' + i + '일' +
+        (min > 0 ? ', 순공 ' + fmtDur(min) : '') +
+        (evs.length ? ', ' + evs.map(function (e) { return e.label; }).join(', ') : '');
+
+      /* 시험류는 점만 찍지 않고 '중간'·'모의'·'듣기' 처럼 두 글자로 적어 준다.
+       * 달력을 열자마자 시험 주간이 어디인지 읽히는 것이 이 화면의 핵심이다. */
+      var badge = '';
+      for (var bi = 0; bi < evs.length; bi++) {
+        if (evs[bi].short) { badge = '<span class="cd-tag">' + esc(evs[bi].short) + '</span>'; break; }
+      }
+
+      var dots = evs.length
+        ? '<span class="cd-dots">' + evs.slice(0, 3).map(function (e) {
+            return '<i class="' + dotClass(e.kind) + '"></i>';
+          }).join('') + '</span>'
+        : '';
+
+      cells.push('<button type="button" class="' + cls + '" data-date="' + k + '"' +
+        ' aria-label="' + esc(label) + '">' +
+        '<span class="cd-n">' + i + '</span>' + badge +
+        (min > 0
+          ? '<span class="cd-bar" style="width:' + Math.max(20, min / max * 100).toFixed(0) + '%"></span>' +
+            '<span class="cd-min">' + Math.round(min) + '분</span>'
+          : '') +
+        dots + '</button>');
+    }
+
+    grid.innerHTML = cells.join('');
+    $$('.cal-cell[data-date]', grid).forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.calPick = b.dataset.date;
+        renderCalendar();
+      });
+    });
+
+    var note = $('calNote');
+    if (note) {
+      var prof = Store.profile();
+      note.innerHTML = (prof && prof.neis && prof.neis.schoolCode)
+        ? '중간·기말·모의고사·영어듣기는 <b>나이스 학사일정</b>에서 학교가 올린 이름 그대로 가져옵니다. ' +
+          '일정이 바뀌었다면 <b>설정 → 나이스 연동 → 캐시 비우기</b> 를 누르세요.'
+        : '중간·기말·모의고사·영어듣기를 자동으로 채우려면 <b>설정 → 내 프로필</b> 에서 ' +
+          '<b>학교를 검색해 목록에서 선택</b>해 주세요. 이름만 직접 입력하면 학교를 특정할 수 없습니다.';
+    }
+
+    renderCalDay();
+  }
+
+  function calRow(icon, text, value) {
+    return '<div class="cday-row"><span class="cr-ic" aria-hidden="true">' + icon + '</span>' +
+      '<span class="cr-t">' + esc(text) + '</span>' +
+      '<span class="cr-v">' + esc(value) + '</span></div>';
+  }
+
+  function renderCalDay() {
+    var box = $('calDay');
+    if (!box) return;
+
+    var k = state.calPick || Store.key();
+    var d = Store.parseKey(k);
+    var rows = [];
+
+    /* 학사일정은 학교가 올린 이름 그대로, 옆에 갈래(모의고사·영어듣기…)를 덧붙인다.
+     * 이름만으로는 무슨 날인지 모호한 학교가 많다. */
+    (calEvents()[k] || []).forEach(function (e) {
+      rows.push(calRow(e.icon, e.label + (e.sub && e.label.indexOf(e.sub) < 0 ? ' · ' + e.sub : ''),
+                       ddayText(dayDiff(k))));
+    });
+    StudyLog.daySubjects(k).forEach(function (s) { rows.push(calRow('📖', s.name, fmtDurFine(s.min))); });
+
+    var total = StudyLog.dayTotal(k);
+    if (total > 0) rows.push(calRow('⏱️', '이 날 순공 합계', fmtDurFine(total)));
+
+    var rec = Store.recordOn(k);
+    if (rec) rows.push(calRow('🧠', '학습 준비도 참고값', scoreBand(rec.overall) + ' · ' + displayScore(rec.overall) + '점'));
+
+    box.innerHTML =
+      '<div class="cday-h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + DOW_KO[d.getDay()] + ')' +
+        (k === Store.key() ? ' · 오늘' : '') + '</div>' +
+      (rows.length ? rows.join('')
+        : '<p class="cday-empty">' + (k > Store.key()
+            ? '아직 오지 않은 날입니다. 등록된 일정이 없습니다.'
+            : '이 날은 기록도 일정도 없습니다.') + '</p>');
+  }
+
+  function initGoalCalendar() {
+    if (!$('goalHero')) return;
+
+    $('goalEdit').addEventListener('click', function () { openGoalForm(); });
+    $('goalCancel').addEventListener('click', function () { openGoalForm(false); });
+    $('goalSave').addEventListener('click', saveGoal);
+    $('ddayAdd').addEventListener('click', function () { addDdayRow(); });
+
+    $('calPrev').addEventListener('click', function () { shiftMonth(-1); });
+    $('calNext').addEventListener('click', function () { shiftMonth(1); });
+    $('calToday').addEventListener('click', function () {
+      state.calMonth = firstOfMonth(new Date());
+      state.calPick = Store.key();
+      renderCalendar();
+    });
+
+    renderGoalCard();
+    renderCalendar();
   }
 
   /* ============================================================ 시간표 == */
@@ -3256,6 +3799,8 @@
       Neis.setKey($('neisKey').value);
       Neis.clearCache();
       Neis.clearTimetableCache();
+      Neis.clearScheduleCache();
+      resetSchedule();
       renderMeals();
       renderTimetable();
       renderSettingsPage();
@@ -3286,6 +3831,8 @@
       Neis.setKey('');
       Neis.clearCache();
       Neis.clearTimetableCache();
+      Neis.clearScheduleCache();
+      resetSchedule();
       neisStatus('인증키를 삭제했습니다. 키 없는 조회로 전환했습니다.', 'ok');
       renderMeals();
       renderTimetable();
@@ -3294,9 +3841,12 @@
     $('neisClearCache').addEventListener('click', function () {
       Neis.clearCache();
       Neis.clearTimetableCache();
+      Neis.clearScheduleCache();
+      resetSchedule();
       renderMeals();
       renderTimetable();
-      toast('급식·시간표 캐시를 비웠습니다.');
+      renderCalendar();
+      toast('급식·시간표·학사일정 캐시를 비웠습니다.');
     });
   }
 
@@ -3404,12 +3954,15 @@
             '<span>' + (t.next ? esc(t.next.name) + '까지 ' + fmtDurFine(t.remainMin) : '모든 색을 모았어요') + '</span></div>' +
           '<div class="av-prog-track"><i style="width:' + t.pct.toFixed(1) + '%"></i></div>' +
         '</div>' +
-        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다.</p>' +
+        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다. ' +
+          '가진 젤리 <b>✨' + Slime.jelly() + '</b> — 홈에서 모리를 키우면 늘어납니다.</p>' +
       '</div>';
   }
 
-  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다 */
-  function avOption(kind, item, on, locked, note) {
+  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다.
+   * buyable 은 "아직 없지만 눌러서 살 수 있는" 상태다. 시간이 차야 열리는
+   * 자물쇠와 달리 지금 당장 누를 수 있으므로 흐리게 죽이지 않는다. */
+  function avOption(kind, item, on, locked, note, buyable) {
     var preview = {};
     Object.keys(avDraft).forEach(function (k) { preview[k] = avDraft[k]; });
     preview[kind] = item.id;
@@ -3418,10 +3971,13 @@
       ? Avatar.html(preview, Infinity, 'av-sm')
       : '<span class="av av-plain av-sm"><span class="av-in">' + Avatar.figure(preview) + '</span></span>';
 
-    return '<button type="button" class="av-opt' + (on ? ' on' : '') + (locked ? ' locked' : '') + '"' +
-      (locked ? ' aria-disabled="true"' : '') +
+    return '<button type="button" class="av-opt' + (on ? ' on' : '') +
+      (locked && !buyable ? ' locked' : '') + (buyable ? ' buy' : '') + '"' +
+      (locked && !buyable ? ' aria-disabled="true"' : '') +
       ' data-kind="' + kind + '" data-id="' + esc(item.id) + '">' +
-      '<span class="av-opt-fig">' + fig + (locked ? '<span class="av-lock">🔒</span>' : '') + '</span>' +
+      '<span class="av-opt-fig">' + fig +
+        (locked && !buyable ? '<span class="av-lock">🔒</span>' : '') +
+        (buyable ? '<span class="av-buy-tag">✨</span>' : '') + '</span>' +
       '<span class="av-opt-name">' + esc(item.name) + '</span>' +
       (note ? '<span class="av-opt-note">' + esc(note) + '</span>' : '') +
       '</button>';
@@ -3442,6 +3998,16 @@
       return list.map(function (it) { return avOption(kind, it, avDraft[kind] === it.id); }).join('');
     }
 
+    /* 젤리로 사는 물건은 산 것만 고를 수 있다. 값은 옵션 밑에 그대로 적어 둔다 —
+     * 눌러 봐야 얼마인지 아는 상점은 불친절하다. */
+    function shopOpts(kind, list) {
+      return list.map(function (it) {
+        var got = avDraft.owned.indexOf(it.id) >= 0;
+        return avOption(kind, it, got && avDraft[kind] === it.id, !got,
+          got ? '보유 중' : '✨' + it.cost, !got);
+      }).join('');
+    }
+
     var html =
       avGroup('캐릭터 — 남학생', '3종', opts('char', bySex(Avatar.CHARS, 'm'))) +
       avGroup('캐릭터 — 여학생', '5종', opts('char', bySex(Avatar.CHARS, 'f'))) +
@@ -3449,21 +4015,46 @@
         var locked = i > opened;
         return avOption('border', b, avDraft.border === b.id, locked,
           locked ? '누적 ' + b.hours + '시간' : (b.hours ? b.hours + '시간 달성' : '기본'));
-      }).join(''));
+      }).join('')) +
+      avGroup('✨ 젤리 상점', '모리를 키워 모은 젤리로 삽니다',
+        shopOpts('char', Avatar.SHOP_CHARS) + shopOpts('border', Avatar.SHOP_BORDERS));
 
     $('avPicks').innerHTML = html;
 
     $$('#avPicks .av-opt').forEach(function (b) {
       b.addEventListener('click', function () {
+        var id = b.dataset.id;
+        var shop = Avatar.shopItem(id);
+        if (shop && avDraft.owned.indexOf(id) < 0) { avBuy(shop, b.dataset.kind); return; }
         if (b.classList.contains('locked')) {
-          var need = Avatar.byId(Avatar.BORDERS, b.dataset.id);
+          var need = Avatar.byId(Avatar.BORDERS, id);
           toast('누적 ' + need.hours + '시간을 채우면 ' + need.name + ' 테두리가 열려요.', true);
           return;
         }
-        avDraft[b.dataset.kind] = b.dataset.id;
+        avDraft[b.dataset.kind] = id;
         renderAvatar();
       });
     });
+  }
+
+  /** 젤리로 사기 — 값을 보여 주고 확인을 받은 뒤에만 깎는다 */
+  function avBuy(item, kind) {
+    var have = Slime.jelly();
+    if (have < item.cost) {
+      toast('젤리가 ' + (item.cost - have) + '개 모자라요. 홈에서 공부 시간을 정산해 보세요.', true);
+      return;
+    }
+    if (!confirm(item.name + josa(item.name, '을', '를') + ' 젤리 ' + item.cost + '개로 살까요?\n\n지금 가진 젤리 ' + have + '개')) return;
+    if (!Slime.spend(item.cost)) { toast('젤리가 모자라요.', true); return; }
+
+    // 산 사실은 바로 프로필에 남긴다 — 값을 치렀는데 저장하기를 안 눌렀다고 사라지면 안 된다.
+    // 어떤 걸 입을지(char/border)만 저장하기 전까지 미리보기로 남는다.
+    if (!Avatar.grant(item.id)) { toast('저장에 실패했습니다.', true); return; }
+
+    if (avDraft.owned.indexOf(item.id) < 0) avDraft.owned.push(item.id);
+    avDraft[kind] = item.id;          // 산 것을 바로 입혀 준다
+    renderAvatar();
+    toast(item.name + josa(item.name, '을', '를') + ' 샀어요! 저장하기를 눌러 반영하세요.', 'party');
   }
 
   function renderAvatarBorders() {
@@ -3760,7 +4351,9 @@
     $('nextWeek').disabled = state.weekOffset >= 0;
 
     var dPct = r.deltaPct === null ? null : Math.round(r.deltaPct);
-    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? '&lt;1' : Math.round(r.goalPct);
+    /* 1% 미만이라고 0% 로 반올림하면 "공부했는데 0" 이 된다.
+     * 예전엔 '<1' 로 적었는데 부등호가 숫자처럼 안 읽혀서, 소수 한 자리로 그냥 보여 준다. */
+    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? r.goalPct.toFixed(1) : Math.round(r.goalPct);
     $('repStats').innerHTML =
       '<div class="rs hi"><div class="rs-k">주간 총 순공 시간</div><div class="rs-v">' +
         durHtml(r.totalMin) + '</div>' +
@@ -4090,15 +4683,6 @@
 
   var LG_ROW_H = 56;
 
-  /** 받침 유무에 따라 을/를, 이/가 를 고른다 */
-  function josa(word, withBatchim, without) {
-    var s = String(word || '');
-    var last = s.charCodeAt(s.length - 1);
-    // 한글 음절이 아니면 받침을 알 수 없으니 없는 쪽으로 둔다
-    if (!(last >= 0xac00 && last <= 0xd7a3)) return without;
-    return ((last - 0xac00) % 28) ? withBatchim : without;
-  }
-
   /* 판을 좁혀 보는 필터. 순위 자체는 전체 기준으로 매기고, 보여 줄 때만 추린다 —
    * 학년별로 다시 1위를 매기면 "우리 학년 1등" 과 "리그 1등" 이 뒤섞여 헷갈린다. */
   function lgFilterRows(b) {
@@ -4229,7 +4813,7 @@
       var slot = filtered ? i : (s.rank - 1);
       // 판이 작아 승강선을 그리지 않을 때는 행에도 색을 넣지 않는다
       var zone = (b.promote || b.demote)
-        ? League.getZone(s.rank, { promote: b.promote, demote: b.demote }, b.size)
+        ? League.zoneOf(s.rank, { promote: b.promote, demote: b.demote }, b.size)
         : 'stay';
       var isMe = s.schoolCode === League.MY_CODE;
       var d = b.deltas[s.schoolCode];
@@ -4279,7 +4863,8 @@
       (b.capLeft <= 0 ? ' — 오늘 상한을 채웠어요. 내일 또 만나요' : '');
     $('lgCapBar').style.width = Math.min(100, (used / cap) * 100) + '%';
 
-    League.snapshot(b.ranked);
+    // 판 전체를 넘긴다 — 순위 변동(▲▼)과 다음 주 정산에 쓸 성적표를 함께 남긴다
+    League.snapshot(b);
   }
 
   /* ------------------------------------------------------- 리그 서버 연동 */
@@ -4768,32 +5353,88 @@
     $('avgScore').textContent = stats.avgScore || '—';
   }
 
+  /* 사용자 목록에 담을 줄을 모은다.
+   *
+   *  이 기기(내 기록 + 코드로 받은 그룹원)와 서버(관리자 공개를 스스로 켠 학생)는
+   *  출처가 다르고 숫자의 뜻도 다르다. 그렇다고 목록을 둘로 갈라 두면 "지금 이
+   *  앱을 쓰는 사람" 을 보려고 두 군데를 번갈아 봐야 한다. 한 목록에 합치되
+   *  줄마다 어디서 온 값인지 배지로 밝힌다.
+   *
+   *  같은 사람이 양쪽에 있으면(내 기록이 서버에도 올라간 경우) 이 기기 쪽을
+   *  남긴다 — 주간 합계보다 누적 기록이 더 많은 것을 말해 준다. */
+  function adminUserRows() {
+    var rows = adminState.users.map(function (u) {
+      var r = {};
+      for (var k in u) if (u.hasOwnProperty(k)) r[k] = u[k];
+      r.source = 'local';
+      return r;
+    });
+
+    var seen = {};
+    rows.forEach(function (u) { seen[(u.name + '|' + u.school).toLowerCase()] = true; });
+
+    adminState.students.forEach(function (s) {
+      if (seen[(s.nickname + '|' + s.schoolName).toLowerCase()]) return;
+      rows.push({
+        id: s.deviceId,
+        name: s.nickname,
+        school: s.schoolName,
+        badge: agoText(s.updatedAt),
+        groupLabel: s.schoolName,
+        totalMinutes: s.minutes,
+        avgScore: 0,                       // 컨디션 값은 서버로 보내지 않는다
+        sessionCount: 0,
+        lastActive: s.updatedAt ? Store.key(new Date(s.updatedAt)) : 'N/A',
+        self: false,
+        source: 'server'
+      });
+    });
+
+    // 내 기록을 맨 위에, 나머지는 많이 한 순서로
+    return rows.sort(function (a, b) {
+      if (a.self !== b.self) return a.self ? -1 : 1;
+      return b.totalMinutes - a.totalMinutes;
+    });
+  }
+
   function renderAdminUsersList() {
     var searchTerm = ($('adminSearch').value || '').toLowerCase();
-    var filtered = adminState.users.filter(function (u) {
+    var filtered = adminUserRows().filter(function (u) {
       return (u.name + u.school + u.groupLabel).toLowerCase().indexOf(searchTerm) >= 0;
     });
 
+    var counts = { local: 0, server: 0 };
+    filtered.forEach(function (u) { counts[u.source]++; });
+    $('adminUsersCount').textContent = filtered.length
+      ? filtered.length + '명 (서버 ' + counts.server + ' · 이 기기 ' + counts.local + ')' : '';
+
     var html = filtered.map(function (u) {
-      /* 내 기록은 누적 전체, 그룹원은 코드를 받은 시점의 주간 합계다.
+      /* 내 기록은 누적 전체, 그룹원과 서버 학생은 주간 합계다.
        * 같은 칸에 다른 뜻을 넣으면 헷갈리므로 라벨을 나눈다. */
+      var src = u.source === 'server'
+        ? '<span class="auc-src server">🌐 서버</span>'
+        : '<span class="auc-src">📱 이 기기</span>';
       return '<div class="admin-user-card">' +
         '<div class="auc-header">' +
           '<div>' +
-            '<div class="auc-name">' + esc(u.name) + (u.self ? ' (나)' : '') + '</div>' +
+            '<div class="auc-name">' + esc(u.name) + (u.self ? ' (나)' : '') + ' ' + src + '</div>' +
             '<div class="auc-group">' + esc(u.groupLabel) + '</div>' +
           '</div>' +
           '<div class="auc-badge">' + esc(u.badge) + '</div>' +
         '</div>' +
+        /* 서버 줄에는 컨디션도 연속 학습도 없다 — 애초에 전송되지 않는 값이다.
+         * 빈 칸에 0 을 적어 두면 "0일 했다" 로 읽히므로 칸 자체를 빼 버린다. */
         '<div class="auc-stats">' +
           '<div class="aus-item"><div class="aus-label">' + (u.self ? '누적 공부' : '이번 주') + '</div>' +
             '<div class="aus-value">' + fmtDur(u.totalMinutes) + '</div></div>' +
-          '<div class="aus-item"><div class="aus-label">' + (u.self ? '평균 컨디션' : '최근 컨디션') + '</div>' +
-            '<div class="aus-value">' + (u.avgScore ? u.avgScore + '점' : '—') + '</div></div>' +
+          (u.source === 'server' ? '' :
+            '<div class="aus-item"><div class="aus-label">' + (u.self ? '평균 컨디션' : '최근 컨디션') + '</div>' +
+              '<div class="aus-value">' + (u.avgScore ? u.avgScore + '점' : '—') + '</div></div>') +
         '</div>' +
         '<div class="auc-stats">' +
-          '<div class="aus-item"><div class="aus-label">' + (u.self ? '공부한 날' : '연속 학습') + '</div>' +
-            '<div class="aus-value">' + u.sessionCount + '일</div></div>' +
+          (u.source === 'server' ? '' :
+            '<div class="aus-item"><div class="aus-label">' + (u.self ? '공부한 날' : '연속 학습') + '</div>' +
+              '<div class="aus-value">' + u.sessionCount + '일</div></div>') +
           '<div class="aus-item"><div class="aus-label">마지막 활동</div>' +
             '<div class="aus-value">' + esc(u.lastActive) + '</div></div>' +
         '</div>' +
@@ -4884,6 +5525,32 @@
     renderAdminFeed();
   }
 
+  /* 관리자 조회 실패를 "고칠 수 있는 말" 로 옮긴다.
+   *
+   * 예전에는 무슨 일이 났든 "잠시 후 다시 시도해 주세요" 한 줄이라,
+   * 스키마를 안 올린 것인지·권한이 없는 것인지·인터넷이 끊긴 것인지
+   * 구분할 수가 없었다. 실제 원인은 console 에만 남아 있었다.
+   *
+   * 참고: admins 테이블에 계정이 등록되지 않은 경우는 여기로 오지 않는다.
+   * RLS 가 행만 걸러 내므로 HTTP 200 + 빈 배열이 되어 "아직 아무도 없습니다" 로 뜬다. */
+  function adminFetchError(e, what) {
+    var s = e && e.status;
+    var msg = String((e && e.message) || '');
+    var eul = josa(what, '을', '를');
+
+    if (s === 404 || /PGRST205|does not exist/i.test(msg)) {
+      return what + ' 테이블이 서버에 없습니다 — supabase/' +
+        (what === '학생 목록' ? 'schema_admin.sql' : 'schema.sql') + ' 을 아직 실행하지 않았습니다.';
+    }
+    if (s === 403 || /42501|permission denied/i.test(msg)) {
+      return what + eul + ' 읽을 권한이 없습니다 — supabase/' +
+        (what === '학생 목록' ? 'schema_admin.sql' : 'schema_admin_league.sql') + ' 을 실행하세요. ' +
+        'schema.sql 을 나중에 다시 돌렸다면 그 안의 revoke 가 권한을 지우므로 이 파일도 다시 실행해야 합니다.';
+    }
+    if (!s) return '서버에 연결하지 못했습니다 — ' + (msg || '네트워크를 확인해 주세요.');
+    return what + eul + ' 불러오지 못했습니다 (HTTP ' + s + '). 잠시 후 다시 시도해 주세요.';
+  }
+
   /** 서버에 등록된 학생 개별 기록 — 로그인된 관리자만 부를 수 있다 */
   function renderAdminStudents() {
     var wk = Store.key(Store.weekStart(new Date()));
@@ -4896,13 +5563,14 @@
         ? rows.length + '명 · 방금 갱신'
         : '아직 아무도 공유하지 않았습니다.';
       drawAdminStudents();
+      renderAdminUsersList();   // 아래 사용자 목록도 이 결과를 함께 보여 준다
     }, function (e) {
       if (e.status === 401) {
         statusEl.textContent = '';
         adminShowLoggedOut('세션이 만료됐습니다. 다시 로그인해 주세요.');
       } else {
         console.error('admin student fetch failed', e);
-        statusEl.textContent = '관리자 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+        statusEl.textContent = adminFetchError(e, '학생 목록');
       }
     });
   }
@@ -5018,7 +5686,7 @@
       }
       listEl.innerHTML = '';
       console.error('admin league fetch failed', e);
-      statusEl.textContent = '관리자 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      statusEl.textContent = adminFetchError(e, '익명 참가자 목록');
     });
   }
 
@@ -5083,10 +5751,19 @@
 
   function init() {
     moveOptionalDailyCards();
-    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
+    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan(); initGoalCalendar();
     initMore();
     Slime.init({ toast: toast });
     Slime.touch();   // 앱을 닫아 둔 동안 농장이 모은 젤리를 먼저 정리해 둔다
+
+    /* 오래 안 들어와 모리가 작아졌다면 말없이 넘어가지 않는다.
+     * 이유를 모른 채 작아져 있으면 사용자에게는 그냥 버그로 보인다. */
+    var slimeLost = Slime.takeDecayNote();
+    if (slimeLost) {
+      setTimeout(function () {
+        toast('오랜만이에요! 그동안 모리가 조금 작아졌어요 (경험치 −' + slimeLost + '). 밥을 주면 금방 돌아와요.');
+      }, 1800);
+    }
 
     /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */

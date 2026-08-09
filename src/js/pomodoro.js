@@ -108,7 +108,10 @@
 
   /* 블록 길이 조절 한도 — 계획은 추천일 뿐이라 사용자가 고칠 수 있어야 한다.
    * 다만 이미 지나갔거나 지금 돌아가는 블록을 건드리면 기록이 어긋나므로 막는다. */
-  var LIMITS = { study: { min: 5, max: 120 }, other: { min: 1, max: 60 } };
+  /* 휴식의 하한이 0 인 것은 "이 휴식은 건너뛴다" 를 고를 수 있게 하기 위해서다.
+   * 집중은 0 을 두지 않는다 — 0분짜리 집중 블록은 시작하자마자 끝나 순공 기록과
+   * 공부 후 피드백에 0분짜리 빈 줄만 남긴다. */
+  var LIMITS = { study: { min: 5, max: 120 }, other: { min: 0, max: 60 } };
 
   function limitOf(kind) { return kind === 'study' ? LIMITS.study : LIMITS.other; }
 
@@ -165,8 +168,12 @@
   };
 
   Pomodoro.prototype._advance = function () {
-    if (this.index < this.queue.length - 1) {
-      this.index++;
+    this.index++;
+    /* 0분으로 줄여 둔 블록은 "이건 건너뛴다" 는 뜻이다. 그냥 지나간다 —
+     * 실행시키면 시작하자마자 끝나 알림음과 "휴식 종료" 토스트만 튀어나온다. */
+    while (this.index < this.queue.length && !(this.queue[this.index].ms > 0)) this.index++;
+
+    if (this.index < this.queue.length) {
       this.remainingMs = this.queue[this.index].ms;
       this.onPhase(this.current(), this.index);
       return true;

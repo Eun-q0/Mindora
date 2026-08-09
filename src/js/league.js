@@ -47,11 +47,16 @@
     };
   }
 
-  function getZone(rank, tier, size) {
-    var z = zoneSizes(tier, size);
+  /** 이미 확정된 승강 구역 크기(z)로 판정한다 — 여기서 다시 비율을 곱하지 않는다 */
+  function zoneOf(rank, z, size) {
     if (z.promote > 0 && rank <= z.promote) return 'promote';
     if (z.demote > 0 && rank > size - z.demote) return 'demote';
     return 'stay';
+  }
+
+  /** 티어 정의에서 구역 크기를 뽑아 판정한다 (원본 tier 를 넘길 때만 쓴다) */
+  function getZone(rank, tier, size) {
+    return zoneOf(rank, zoneSizes(tier, size), size);
   }
 
   /** 누적 시간 → 꾸준한 인원 → 코드 순으로 줄을 세운다 */
@@ -73,7 +78,7 @@
   /* ------------------------------------------------------------ 저장 상태 */
 
   function load() {
-    var d = { tierIdx: 0, weekKey: '', prevRanks: {}, lastResult: null };
+    var d = { tierIdx: 0, weekKey: '', prevRanks: {}, standing: null, lastResult: null };
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (!raw) return d;
@@ -82,6 +87,8 @@
         tierIdx: typeof o.tierIdx === 'number' ? o.tierIdx : 0,
         weekKey: o.weekKey || '',
         prevRanks: o.prevRanks || {},
+        // 그 주에 마지막으로 본 내 성적표. 주가 바뀔 때 이걸로 정산한다.
+        standing: o.standing || null,
         lastResult: o.lastResult || null
       };
     } catch (e) { return d; }
@@ -422,7 +429,9 @@
     ranked.forEach(function (s) { if (s.schoolCode === MY_CODE) mine = s; });
     if (!mine) return null;
 
-    var myZone = z.promote || z.demote ? getZone(mine.rank, { promote: z.promote, demote: z.demote }, size) : 'stay';
+    // z 는 이미 판 크기에 맞춰 줄여 둔 값이다. getZone 에 넘기면 한 번 더 줄어들어
+    // 화면에 그린 승급선·강등선과 실제 판정이 어긋난다.
+    var myZone = (z.promote || z.demote) ? zoneOf(mine.rank, z, size) : 'stay';
 
     /* 승급선·강등선까지 남은 시간
      *  승급권: 나를 밀어낼 바로 아래 학교와 벌린 여유
@@ -469,12 +478,28 @@
     };
   }
 
-  /** 지금 순위를 기억해 둔다. 다음에 열 때 ▲▼ 로 보여 주기 위해서다. */
-  function snapshot(ranked) {
+  /**
+   * 지금 순위를 기억해 둔다. 다음에 열 때 ▲▼ 로 보여 주기 위해서고,
+   * 동시에 이번 주 정산에 쓸 "마지막으로 본 성적표" 이기도 하다.
+   * board 객체를 넘긴다 (예전처럼 ranked 배열만 넘겨도 동작한다).
+   */
+  function snapshot(board) {
+    var ranked = Array.isArray(board) ? board : ((board && board.ranked) || []);
     var st = load();
     var snap = {};
     ranked.forEach(function (s) { snap[s.schoolCode] = s.rank; });
     st.prevRanks = snap;
+
+    /* 주가 바뀐 뒤에 board() 를 다시 부르면 그 주의 합계는 아직 0 에 가까워
+     * 순위가 사실상 무작위가 된다. 그래서 지난주 안에 실제로 본 순위를 남겨 둔다.
+     * (반 대항·학교 대항이 티어를 공유하므로 마지막으로 연 판의 성적표가 남는다) */
+    if (!Array.isArray(board) && board && board.me) {
+      st.standing = {
+        weekKey: weekKey(0),
+        rank: board.me.rank, total: board.me.total,
+        size: board.size, zone: board.myZone, ranked3: board.ranked3
+      };
+    }
     save(st);
   }
 
@@ -494,24 +519,26 @@
       return null;
     }
 
-    var b = board();
-    if (!b) return null;
-
-    /* 참가 학교가 MIN_FIELD 미만이면 겨룬 상대가 없는 것이나 마찬가지다.
-     * 이런 주는 티어를 건드리지 않고 넘어간다. */
-    if (!b.ranked3) {
+    /* 지난주 안에 실제로 본 순위로 정산한다. 지금 board() 를 부르면 이번 주
+     * 합계(거의 0)로 줄을 세우게 되어 승급·강등이 무작위가 된다.
+     * 지난주에 리그를 한 번도 안 열었거나, 참가 수가 MIN_FIELD 미만이라
+     * 겨룬 상대가 없었던 주는 티어를 건드리지 않고 넘어간다. */
+    var sd = st.standing;
+    if (!sd || sd.weekKey !== st.weekKey || !sd.ranked3) {
       st.weekKey = wk;
       st.prevRanks = {};
+      st.standing = null;
       save(st);
       return null;
     }
 
-    var result = 'stay', from = b.tierIdx, to = b.tierIdx;
-    if (b.myZone === 'promote' && b.tierIdx < TIERS.length - 1) { result = 'promote'; to = b.tierIdx + 1; }
-    else if (b.myZone === 'demote' && b.tierIdx > 0) { result = 'demote'; to = b.tierIdx - 1; }
+    var from = Math.max(0, Math.min(TIERS.length - 1, st.tierIdx)), to = from;
+    var result = 'stay';
+    if (sd.zone === 'promote' && from < TIERS.length - 1) { result = 'promote'; to = from + 1; }
+    else if (sd.zone === 'demote' && from > 0) { result = 'demote'; to = from - 1; }
 
     var payload = {
-      result: result, rank: b.me.rank, total: b.me.total,
+      result: result, rank: sd.rank, total: sd.total,
       fromTier: TIERS[from].name, toTier: TIERS[to].name,
       weekKey: st.weekKey
     };
@@ -519,6 +546,7 @@
     st.tierIdx = to;
     st.weekKey = wk;
     st.prevRanks = {};
+    st.standing = null;
     st.lastResult = payload;
     save(st);
     return payload;
@@ -538,7 +566,7 @@
   global.League = {
     TIERS: TIERS, GROUP_SIZE: GROUP_SIZE, DAILY_CAP_MINUTES: DAILY_CAP_MINUTES,
     MIN_FIELD: MIN_FIELD,
-    zoneSizes: zoneSizes, getZone: getZone, rankGroup: rankGroup,
+    zoneSizes: zoneSizes, getZone: getZone, zoneOf: zoneOf, rankGroup: rankGroup,
     schools: schools, board: board, snapshot: snapshot,
     classUnits: classUnits, myClassId: myClassId, myPendingClass: myPendingClass,
     classLabel: classLabel,

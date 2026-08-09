@@ -129,7 +129,17 @@
 
   /* ------------------------------------------------------- 뽀모도로 설정 */
 
-  function pomodoroFor(overall, fatigue) {
+  /* 컨디션과 무관하게 쓰고 싶은 사람을 위한 고정 길이.
+   * 자동 조절이 맞지 않는다고 느끼는 사람에게 "매번 같은 길이" 는 그 자체로
+   * 리듬이 된다. 피로 보정도 걸지 않는다 — 고정을 골랐으면 고정이어야 한다. */
+  var FIXED_POM = { focus: 50, short: 10, long: 20, cycle: 3, name: '50/10 고정' };
+
+  function pomodoroFor(overall, fatigue, fixed) {
+    if (fixed) {
+      var f = {};
+      for (var k in FIXED_POM) if (FIXED_POM.hasOwnProperty(k)) f[k] = FIXED_POM[k];
+      return f;
+    }
     var p;
     if (overall >= 85) p = { focus: 50, short: 10, long: 20, cycle: 3, name: '딥워크 모드' };
     else if (overall >= 74) p = { focus: 45, short: 9, long: 20, cycle: 3, name: '집중 강화 모드' };
@@ -419,7 +429,7 @@
   function plan(analysis) {
     var input = analysis.input;
     var overall = analysis.overallExact;
-    var pom = pomodoroFor(overall, input.fatigue);
+    var pom = pomodoroFor(overall, input.fatigue, input.fixedPomodoro);
     var scale = totalScale(overall);
 
     var requestedMin = Math.max(0, input.availableHours * 60);
@@ -496,8 +506,12 @@
     var dropped = subjects.slice(active.length);
 
     allocateBlocks(active, totalBlocks);
+    // 블록 길이 직접 조절. 추천은 추천일 뿐이라 과목별로 한 단계씩 줄이고 늘릴 수 있다.
+    // 상한 120분은 타이머 큐 편집(pomodoro.js LIMITS.study)과 같은 값이다.
     active.forEach(function (s) {
-      s.blockMinutes = s.recommendationAction === 'shorter' ? Math.max(10, pom.focus - 10) : pom.focus;
+      if (s.recommendationAction === 'shorter') s.blockMinutes = Math.max(10, pom.focus - 10);
+      else if (s.recommendationAction === 'longer') s.blockMinutes = Math.min(120, pom.focus + 10);
+      else s.blockMinutes = pom.focus;
     });
     active = active.filter(function (s) { return s.blocks > 0; });
 
@@ -559,7 +573,7 @@
 
     return {
       pomodoro: pom,
-      pomodoroReason: pomodoroReason(overall, input.fatigue, pom),
+      pomodoroReason: pomodoroReason(overall, input.fatigue, pom, input.fixedPomodoro),
       scaleNote: scaleNote,
       curfew: curfewMin === null ? null : {
         bedHour: bedHour,
@@ -582,8 +596,13 @@
     };
   }
 
-  function pomodoroReason(overall, fatigue, pom) {
+  function pomodoroReason(overall, fatigue, pom, fixed) {
     var base;
+    if (fixed) {
+      base = '집중 ' + pom.focus + '분 / 휴식 ' + pom.short + '분 고정으로 설정해 두어 컨디션과 상관없이 이 길이로 계획했습니다.';
+      if (overall < 50) base += ' 다만 오늘은 자기보고 입력 기반 준비도가 낮은 편이라, 힘들면 과목마다 시간을 줄여도 됩니다.';
+      return base;
+    }
     if (overall >= 85) base = '자기보고 입력 기반 준비도가 높은 구간이라 ' + pom.focus + '분 블록을 제안합니다.';
     else if (overall >= 74) base = '자기보고 입력 기반 준비도가 높은 편이라 ' + pom.focus + '분 블록을 제안합니다.';
     else if (overall >= 62) base = '자기보고 입력 기반 준비도가 보통 이상이라 ' + pom.focus + '분 블록을 제안합니다.';
