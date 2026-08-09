@@ -213,7 +213,13 @@ body.intro-open { overflow: hidden; }
   border-bottom: 1px solid var(--line);
 }
 .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
-.brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+/* 로고 자체가 홈 버튼이다 — button 이지만 생김새는 예전 그대로 둔다 */
+.brand {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit;
+  cursor: pointer; text-align: left; border-radius: 10px; transition: 0.16s;
+}
+.brand:hover .brand-text h1 { color: var(--accent); }
 /* 아이콘 PNG 가 이미 둥근 모서리를 품고 있다(모서리 밖은 투명).
  * 여기서 또 border-radius 를 걸면 이중으로 깎여 모서리가 지저분해진다. */
 .brand-mark { width: 38px; height: 38px; display: block; }
@@ -247,10 +253,45 @@ body.intro-open { overflow: hidden; }
 /* 번호 없는 기능 탭 — 동그란 번호가 빠진 만큼 좌우 여백을 조금 더 준다 */
 .step.is-tool { padding: 7px 13px; }
 .step.is-tool.is-active { font-weight: 600; }
-/* 단계와 기능을 가르는 세로선 */
+/* 홈은 번호 대신 집 모양이 들어간다 */
+.step.is-home i { background: var(--accent-soft); color: var(--accent-ink); font-size: 11px; }
+.step.is-home.is-active i { background: linear-gradient(140deg, #7c5cff, #5b7cff); }
+/* 홈과 단계를 가르는 세로선 */
 .step-div { flex-shrink: 0; align-self: center; width: 1px; height: 17px; margin: 0 6px; background: var(--line-2); }
 
-.clock { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); flex-shrink: 0; }
+/* ------------------------------------------------------------- 더보기 */
+.more-wrap { position: relative; flex-shrink: 0; }
+.more-btn {
+  display: flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px;
+  background: transparent; border: 1px solid transparent; color: var(--muted);
+  font: inherit; font-size: 12.5px; cursor: pointer; transition: 0.18s;
+}
+.more-btn:hover { color: var(--text); background: var(--surface-2); }
+.more-btn.is-active { color: var(--text); background: var(--surface); border-color: var(--line-2); box-shadow: var(--shadow-sm); font-weight: 600; }
+.more-btn.is-hidden { display: none; }
+.mb-dots { font-size: 13px; }
+.more-menu {
+  position: absolute; top: calc(100% + 9px); right: 0; z-index: 60;
+  min-width: 244px; padding: 6px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 2px;
+  animation: pageIn 0.16s ease;
+}
+.more-menu.is-hidden { display: none; }
+.mm-item {
+  display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 11px;
+  border-radius: 10px; background: transparent; border: 0; cursor: pointer;
+  font: inherit; color: var(--text); text-align: left; transition: 0.14s;
+}
+.mm-item:hover { background: var(--surface-2); }
+.mm-item.is-active { background: var(--accent-soft); }
+.mm-ic { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; font-size: 15px; border-radius: 9px; background: var(--surface-2); }
+.mm-item.is-active .mm-ic { background: #fff; }
+.mm-txt { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.mm-txt b { font-size: 13px; font-weight: 600; }
+.mm-txt span { font-size: 11px; color: var(--dim); }
+
+.clock { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); padding: 5px 11px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); flex-shrink: 0; }
 
 .profile-chip {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
@@ -274,6 +315,151 @@ body.intro-open { overflow: hidden; }
 .section.is-hidden { display: none; }
 .section.is-active { animation: pageIn 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes pageIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+
+/* ------------------------------------------------------------------ 홈 */
+
+.home-hero {
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  padding: 26px 26px 24px; border-radius: var(--r);
+  background: var(--hero-grad); border: 1px solid var(--line);
+  box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.hh-text { flex: 1 1 300px; min-width: 0; }
+.hh-hello { margin: 0 0 6px; font-size: 13.5px; color: var(--muted); }
+.hh-hello b { color: var(--text); font-weight: 700; }
+.hh-line { margin: 0 0 10px; font-size: 22px; line-height: 1.35; letter-spacing: -0.02em; }
+.hh-when { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--dim); }
+
+/* 뇌 컨디션 도넛 — conic-gradient 로 그린다 (캔버스도 SVG도 필요 없다) */
+.hh-ring {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer;
+}
+.hr-dial {
+  --pct: 0%;
+  width: 118px; height: 118px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--accent) var(--pct), var(--track) 0);
+  transition: 0.4s;
+}
+.hr-dial.is-empty { background: var(--track); }
+.hr-in {
+  width: 92px; height: 92px; border-radius: 50%; background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+}
+.hr-in b { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.hr-in i { font-style: normal; font-size: 11px; color: var(--muted); }
+.hr-cap { font-size: 11.5px; color: var(--dim); }
+.hh-ring:hover .hr-in b { color: var(--accent); }
+
+.home-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.hs {
+  display: flex; flex-direction: column; gap: 3px; padding: 14px 15px; text-align: left;
+  border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line);
+  font: inherit; color: inherit; cursor: pointer; transition: 0.16s; box-shadow: var(--shadow-sm);
+}
+.hs:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.hs-k { font-size: 11.5px; color: var(--dim); font-weight: 600; }
+.hs b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.hs-s { font-size: 11px; color: var(--muted); }
+
+.home-cta, .home-cta2 { width: 100%; }
+#hmCta { display: flex; gap: 10px; margin-bottom: 18px; }
+#hmCta .btn { flex: 1; }
+
+.home-sub { font-size: 13px; color: var(--dim); font-weight: 600; margin: 26px 0 10px; }
+.home-quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.hq {
+  display: flex; flex-direction: column; gap: 3px; padding: 15px; text-align: left;
+  border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line);
+  font: inherit; color: inherit; cursor: pointer; transition: 0.16s;
+}
+.hq:hover { border-color: var(--accent); background: var(--surface-3); }
+.hq-ic { font-size: 19px; line-height: 1.2; margin-bottom: 3px; }
+.hq b { font-size: 13.5px; font-weight: 700; }
+.hq-d { font-size: 11px; color: var(--dim); line-height: 1.4; }
+
+/* ------------------------------------------------------- 모리 (슬라임) */
+
+.slime-card .card-head .right { margin-left: auto; }
+.sl-jelly {
+  font-size: 13px; font-weight: 700; color: var(--accent-ink);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  padding: 5px 12px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.sl-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 22px; align-items: start; }
+
+.sl-stage {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 18px 14px 16px; border-radius: var(--r);
+  background: radial-gradient(120% 90% at 50% 0%, #f4f0ff 0%, var(--surface-3) 70%);
+  border: 1px solid var(--line);
+}
+.sl-tap { background: none; border: 0; padding: 0; cursor: pointer; line-height: 0; }
+.sl-tap:active { transform: scale(0.97); }
+.sl-tap.is-spent { cursor: default; }
+.sl-svg { width: 176px; height: 161px; display: block; overflow: visible; }
+.sl-shadow { fill: rgba(70, 50, 140, 0.13); }
+/* 가만히 있어도 말랑말랑 움직인다 */
+.sl-body { animation: slIdle 2.6s ease-in-out infinite; }
+@keyframes slIdle {
+  0%, 100% { transform: none; }
+  50% { transform: translateY(-4px) scaleY(1.035) scaleX(0.982); }
+}
+.sl-body.is-boing { animation: slBoing 0.42s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes slBoing {
+  0% { transform: scaleY(0.82) scaleX(1.16); }
+  55% { transform: scaleY(1.1) scaleX(0.93) translateY(-8px); }
+  100% { transform: none; }
+}
+.sl-eye { animation: slBlink 4.4s infinite; transform-origin: center; }
+@keyframes slBlink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+
+.sl-pop {
+  position: absolute; top: 46%; font-size: 15px; font-weight: 800; color: var(--accent);
+  pointer-events: none; animation: slPop 0.9s ease-out forwards;
+}
+@keyframes slPop {
+  0% { opacity: 0; transform: translateY(0) scale(0.8); }
+  25% { opacity: 1; transform: translateY(-12px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-42px) scale(1); }
+}
+
+.sl-name { display: flex; align-items: baseline; gap: 8px; }
+.sl-name b { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+.sl-name span { font-size: 12px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 9px; border-radius: 999px; font-weight: 700; }
+.sl-line { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+.sl-xp { width: 100%; max-width: 260px; height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; margin-top: 4px; }
+.sl-xp span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #5b7cff); transition: width 0.4s; }
+.sl-xp-cap { margin: 0; text-align: center; }
+
+.sl-side { display: flex; flex-direction: column; gap: 12px; }
+.sl-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sl-fact {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line);
+}
+.sl-fact span { font-size: 11px; color: var(--dim); font-weight: 600; }
+.sl-fact b { font-size: 14px; font-weight: 700; }
+.sl-claim { width: 100%; }
+.sl-claim-cap { margin: -4px 0 0; }
+.sl-acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sl-feed em { font-style: normal; opacity: 0.75; margin-left: 5px; font-size: 12px; }
+.sl-pat-left { color: var(--dim); }
+
+.sl-shop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.sl-up {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px;
+  border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line);
+}
+.sl-up.is-max { opacity: 0.72; }
+.su-head { display: flex; align-items: center; gap: 10px; }
+.su-icon { width: 32px; height: 32px; display: grid; place-items: center; font-size: 16px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); }
+.su-head b { font-size: 13.5px; font-weight: 700; display: block; }
+.su-lv { font-size: 11px; color: var(--dim); }
+.su-desc { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.su-now { margin: 0 0 2px; font-size: 11.5px; color: var(--dim); }
+.su-now b { color: var(--accent-ink); font-weight: 700; }
+.sl-up .btn { width: 100%; margin-top: auto; font-variant-numeric: tabular-nums; }
 
 /* 페이지 하단 이전 / 다음 */
 .page-nav {
@@ -366,9 +552,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .meal input:checked + span b { filter: none; opacity: 1; }
 
 /* -------------------------------------------------------------- subject */
+/* 시험일 칸만 최소 폭을 준다. 날짜 입력은 "2026-08-08" 과 달력 아이콘이
+   들어갈 자리가 필요해서, 다른 칸처럼 0 까지 줄이면 글자가 잘린다. */
 .subject-head, .subject-row {
   display: grid;
-  grid-template-columns: minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1.15fr) 34px;
+  grid-template-columns: minmax(0,1.5fr) minmax(0,1.2fr) minmax(124px,1.15fr) minmax(0,1fr) minmax(0,1.15fr) 34px;
   gap: 8px; align-items: center;
 }
 .subject-head { font-size: 11px; color: var(--dim); font-weight: 600; padding: 0 2px 8px; }
@@ -377,6 +565,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
    좁은 화면에서는 .subject-head 가 사라지므로 캡션을 대신 띄운다.
    (특히 시험일은 빈 date 입력이라 라벨이 없으면 무슨 칸인지 알 수 없다) */
 .s-cell { display: grid; gap: 4px; min-width: 0; }
+/* 날짜 입력은 브라우저가 만든 내부 위젯(달력 아이콘 + yyyy. mm. dd.)을 품고 있어
+ * 기본 최소 폭이 135px 을 넘는다. 그리드 항목의 min-width 는 auto 라 그 아래로는
+ * 줄지 않고, 결국 시험일 칸만 제 칸을 넘어 오른쪽으로 삐져나왔다.
+ * min-width 를 0 으로 풀어 다른 칸과 똑같이 칸 폭을 따르게 한다. */
+.s-cell > .input { min-width: 0; }
 .s-cap { display: none; }
 .subject-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .subject-row { animation: pop 0.22s ease; }
@@ -778,8 +971,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .rk-pos.m1 { color: var(--gold); }
 .rk-pos.m2 { color: var(--silver); }
 .rk-pos.m3 { color: var(--bronze); }
-/* 캐릭터(.av)가 그 자리를 차지한다. 크기만 잡아 주면 된다. */
-.rk-av { --av: 34px; }
+/* 캐릭터(.av)가 그 자리를 차지한다. 크기는 아래 캐릭터 구역에서 .rk-av 로 잡는다
+ * — 여기서 잡으면 뒤에 오는 .av 의 기본 크기에 덮여 칸을 넘어간다. */
+
+/* 서버에서 받은 반 랭킹 줄은 캐릭터가 없다. 서버에는 초성만 올라가기 때문이다.
+ * 그래서 그 줄만 초성 원판으로 대신한다. */
+.rk-tag {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 800; color: #fff;
+}
 .rk-info { min-width: 0; }
 .rk-name { font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .rk-name .me-tag { font-size: 9.5px; padding: 1px 6px; border-radius: 5px; background: var(--accent); color: #fff; font-weight: 700; }
@@ -1203,24 +1404,43 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .pom-summary { grid-template-columns: repeat(2, 1fr); }
   .group-hero { grid-template-columns: 1fr; }
   .gh-stats { justify-content: space-around; }
+  .sl-main { grid-template-columns: 1fr; }
+  .home-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 760px) {
   body { font-size: 14.5px; }
   .wrap { padding: 24px 14px 60px; }
-  .topbar-inner { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
-  .steps { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
-  /* 좁은 화면에서는 번호만 남겨 폭을 아낀다.
-   * 다만 번호가 없는 기능 탭은 이름을 지우면 빈 칸이 되므로 이름을 남긴다. */
+  /* 탭 다섯 개 + [더보기] 면 한 줄에 들어간다 — 예전처럼 줄을 접지 않는다 */
+  .topbar-inner { gap: 8px; padding: 9px 12px; }
+  /* 부제만 접는다 — h1 은 문서를 대표하는 유일한 제목이라 남겨 둔다 */
+  .brand-text span { display: none; }
+  .brand-mark { width: 30px; height: 30px; }
+  .brand-text h1 { font-size: 13.5px; }
+  .steps { margin-left: 4px; margin-right: auto; }
+  /* 좁은 화면에서는 번호(와 집 모양)만 남겨 폭을 아낀다 */
   .step span { display: none; }
-  .step.is-tool span { display: inline; }
-  .step { padding: 7px 10px; }
-  .step.is-tool { padding: 7px 11px; }
-  .profile-chip { margin-left: auto; }
-  .clock { display: none; }
+  .step { padding: 6px 8px; }
+  .step-div { margin: 0 3px; }
+  .mb-txt { display: none; }
+  .more-btn { padding: 7px 10px; }
+  .pc-txt { display: none; }
+  .profile-chip { padding: 4px; }
   .sec-head h2 { font-size: 21px; }
+  .home-hero { padding: 20px 18px; gap: 16px; }
+  .hh-line { font-size: 19px; }
+  .hr-dial { width: 100px; height: 100px; }
+  .hr-in { width: 78px; height: 78px; }
+  .hr-in b { font-size: 25px; }
+  #hmCta { flex-direction: column; }
+  .sl-shop { grid-template-columns: 1fr; }
+  .sl-facts { grid-template-columns: 1fr 1fr; }
   .subject-head { display: none; }
   .subject-row { grid-template-columns: 1fr 1fr; gap: 10px 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
   .subject-row .s-cell-name { grid-column: 1 / -1; padding-right: 34px; }
+  /* 두 칸으로 접히면 한 칸이 130px 남짓이라 날짜 위젯이 기본 크기로는 안 들어간다.
+   * min-width 를 풀어 둔 것만으로는 안쪽이 잘리므로, 좁은 화면에서만 여백과
+   * 글자를 조금 줄여 달력 아이콘까지 통째로 칸 안에 들어오게 한다. */
+  .subject-row input[type="date"].input { padding-left: 8px; padding-right: 8px; font-size: 13px; }
   .s-cap { display: block; font-size: 11px; color: var(--dim); font-weight: 600; padding-left: 2px; }
   .subject-row .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
   .two-col { grid-template-columns: 1fr; }
@@ -1254,6 +1474,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .week-bars { gap: 5px; height: 160px; }
   .wb-val { font-size: 9.5px; }
   .rep-nav .wk { min-width: 0; flex: 1; font-size: 12.5px; }
+  .home-hero { flex-direction: column-reverse; align-items: stretch; text-align: center; }
+  .hh-when { justify-content: center; }
+  .hh-ring { flex-direction: row; justify-content: center; gap: 14px; }
+  .hr-cap { align-self: center; }
+  .home-quick { grid-template-columns: 1fr 1fr; }
+  .sl-svg { width: 148px; height: 136px; }
+  .sl-facts { grid-template-columns: 1fr; }
 }
 
 /* ============================================ 결과 요약 스트립 (secResult)
@@ -1570,6 +1797,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-sm { --av: 46px; }
 .av-lg { --av: 58px; }
 .av-xl { --av: 132px; }
+/* 랭킹 줄에 들어갈 때의 크기. 크기 지정은 반드시 .av 뒤에 와야 한다 —
+ * 앞에 두면 우선순위가 같아 .av 의 기본값(46px)이 이겨서 칸을 넘어간다. */
+.rk-av { --av: 34px; }
 
 /* 테두리 5색 — 순공 시간이 쌓이면 하나씩 열린다 (avatar.js 의 BORDERS) */
 .av-b1::before { background: var(--line-2); }
@@ -1710,6 +1940,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* 상단바 반투명 배경도 어두운 쪽으로 */
   .topbar { background: rgba(15, 18, 32, 0.84); }
+
+  /* 홈·모리에서 라이트용으로 박아 둔 밝은 면들 */
+  .mm-item.is-active .mm-ic { background: var(--surface); }
+  .sl-stage { background: radial-gradient(120% 90% at 50% 0%, #262244 0%, var(--surface-3) 70%); }
+  .sl-shadow { fill: rgba(0, 0, 0, 0.35); }
 
   /* 인트로 배경은 라이트용 파스텔 그라데이션이라 어두운 톤으로 다시 잡는다 */
   .intro { background: linear-gradient(150deg, #171a2b, #12151f 55%, #1d1726); }
@@ -1906,26 +2141,102 @@ body {
 
 <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
 
+<!-- 상단 바는 한 줄로만 둔다.
+     · 왼쪽  로고 = 홈 버튼
+     · 가운데 순서대로 밟는 4단계 (입력 → 분석 → 플랜 → 타이머)
+     · 오른쪽 나머지 기능은 [더보기] 안으로 접었다 — 예전엔 탭 10개가 한 줄에 늘어서
+       무엇이 순서고 무엇이 기능인지 구분되지 않았다. 시계는 홈 화면으로 옮겼다. -->
 <header class="topbar">
   <div class="topbar-inner">
-    <div class="brand">
+    <button type="button" class="brand" id="brandHome" aria-label="홈으로">
       <img class="brand-mark" src="icon-192.png" alt="" aria-hidden="true">
       <div class="brand-text">
         <!-- 화면마다 h2 로 제목이 붙으므로, 문서 전체를 대표하는 h1 은 여기 하나만 둔다 -->
         <h1>Mindora</h1>
         <span>나를 이해하는 학습 루틴</span>
       </div>
+    </button>
+    <nav class="steps" id="stepNav" aria-label="학습 단계"></nav>
+    <div class="more-wrap">
+      <button type="button" class="more-btn is-hidden" id="moreBtn" aria-expanded="false" aria-haspopup="true" aria-controls="moreMenu">
+        <span class="mb-dots" aria-hidden="true">☰</span><span class="mb-txt">더보기</span>
+      </button>
+      <div class="more-menu is-hidden" id="moreMenu" role="menu" aria-label="기능 바로가기"></div>
     </div>
-    <nav class="steps" id="stepNav"></nav>
     <button type="button" class="profile-chip is-hidden" id="profileChip">
       <span class="pc-av" id="pcAvatar">?</span>
       <span class="pc-txt"><b id="pcName">—</b><span id="pcGroup">—</span></span>
     </button>
-    <div class="clock" id="clock">--:--</div>
   </div>
 </header>
 
 <main class="wrap">
+
+  <!-- ══════════════════════════════ 홈 ══════════════════════════════
+       앱을 열면 제일 먼저 보이는 화면. 오늘 상태를 한눈에 요약하고,
+       나머지 화면으로는 여기서 갈라져 나간다. -->
+  <section id="secHome" class="section is-hidden">
+    <div class="home-hero">
+      <div class="hh-text">
+        <p class="hh-hello">안녕하세요, <b id="hmNick">—</b>님 👋</p>
+        <h2 class="hh-line" id="hmLine">오늘도 집중하기 좋은 날이에요.</h2>
+        <p class="hh-when"><span id="hmDate">—</span><span class="clock" id="clock">--:--</span></p>
+      </div>
+      <button type="button" class="hh-ring" id="hmRing" data-goto="secResult">
+        <span class="hr-dial" id="hmDial"><span class="hr-in"><b id="hmScore">—</b><i id="hmState">분석 전</i></span></span>
+        <span class="hr-cap">오늘의 뇌 컨디션</span>
+      </button>
+    </div>
+
+    <div class="home-stats">
+      <button type="button" class="hs" data-goto="secTimer">
+        <span class="hs-k">오늘 순공</span><b id="hmToday">0분</b><span class="hs-s" id="hmTodaySub">타이머로 재기</span>
+      </button>
+      <button type="button" class="hs" data-goto="secReport">
+        <span class="hs-k">이번 주</span><b id="hmWeek">0분</b><span class="hs-s" id="hmWeekSub">주간 목표 —</span>
+      </button>
+      <button type="button" class="hs" data-goto="secReport">
+        <span class="hs-k">연속 학습</span><b id="hmStreak">0일</b><span class="hs-s">하루도 빠지지 않기</span>
+      </button>
+      <button type="button" class="hs" data-goto="secGroup">
+        <span class="hs-k">우리 반 등수</span><b id="hmRank">—</b><span class="hs-s" id="hmRankSub">같은 반 순공 시간</span>
+      </button>
+    </div>
+
+    <div id="hmCta"></div>
+
+    <div class="card wide slime-card">
+      <div class="card-head">
+        <span class="ci">🫧</span><h3>모리 키우기</h3>
+        <span class="right"><span class="sl-jelly" id="slJelly">✨ 0</span></span>
+      </div>
+      <div class="card-body" id="slimeRoot"></div>
+    </div>
+
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🗓️</span><h3>학급 시간표</h3></div>
+      <div class="card-body">
+        <div class="two-col">
+          <div class="field">
+            <label for="ttGrade">학년</label>
+            <select id="ttGrade" class="input"></select>
+          </div>
+          <div class="field">
+            <label for="ttClass">반</label>
+            <input type="text" id="ttClass" class="input" maxlength="8" placeholder="예) 3">
+          </div>
+        </div>
+        <div class="field" id="ttField">
+          <label>이번 주 시간표 <em>나이스 교육정보 개방포털</em></label>
+          <div id="ttToday" class="meal-box"></div>
+        </div>
+        <p class="tiny">반을 바꾸면 그 반의 시간표를 바로 볼 수 있습니다. 비워 두면 내 프로필의 반으로 조회합니다.</p>
+      </div>
+    </div>
+
+    <h3 class="home-sub">전체 기능</h3>
+    <div class="home-quick" id="homeQuick"></div>
+  </section>
 
   <!-- ══════════════════════════════ 0. 프로필 ══════════════════════════════ -->
   <section id="secProfile" class="section">
@@ -2114,26 +2425,6 @@ body {
         </div>
       </div>
 
-      <div class="card" id="dailyTimetableCard">
-        <div class="card-head"><span class="ci">🗓️</span><h3>학급 시간표</h3></div>
-        <div class="card-body">
-          <div class="two-col">
-            <div class="field">
-              <label for="ttGrade">학년</label>
-              <select id="ttGrade" class="input"></select>
-            </div>
-            <div class="field">
-              <label for="ttClass">반</label>
-              <input type="text" id="ttClass" class="input" maxlength="8" placeholder="예) 3">
-            </div>
-          </div>
-          <div class="field" id="ttField">
-            <label>이번 주 시간표 <em>나이스 교육정보 개방포털</em></label>
-            <div id="ttToday" class="meal-box"></div>
-          </div>
-          <p class="tiny">반을 바꾸면 그 반의 시간표를 바로 볼 수 있습니다. 비워 두면 내 프로필의 반으로 조회합니다.</p>
-        </div>
-      </div>
     </div>
 
     <div class="collapse">
@@ -8647,6 +8938,489 @@ body {
 })(window);
 
 
+/* ===== src/js/slime.js ===== */
+/* =========================================================================
+ * slime.js — 모리 키우기 (홈 화면의 방치형 타이쿤)
+ *
+ * 공부한 시간이 곧 돈이 되는 게임이다.
+ *   순공 1분 → 젤리 1개  (아직 안 바꾼 시간을 '정산' 버튼으로 한 번에 받는다)
+ *   젤리로 밥을 주면 모리가 자라고, 농장을 사면 자는 동안에도 젤리가 쌓인다.
+ *
+ * "안 하면 손해" 로 몰지 않는 게 원칙이다. 오래 안 들어와도 잃는 건 없고,
+ * 오프라인 생산이 접시 용량까지만 차서 멈출 뿐이다. 공부 기록을 건드리지도 않는다.
+ * (StudyLog 는 읽기만 한다 — 게임 때문에 순공 시간이 늘어나는 일은 없다)
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var KEY = 'neurostudy.slime.v1';
+  var MAX_PAT_PER_DAY = 20;      // 쓰다듬기로 무한정 벌지 못하게 하루 상한을 둔다
+  var HUNGRY_HOURS = 18;         // 이만큼 안 먹으면 배고픔 — 자동 생산이 절반이 된다
+
+  var toast = function () { /* app.js 가 init 에서 꽂아 준다 */ };
+  var root = null;
+  var timer = null;
+
+  /* ------------------------------------------------------------- 저장소 */
+
+  function blank() {
+    return {
+      v: 1,
+      jelly: 0,
+      xp: 0,
+      fed: 0,
+      claimedMin: 0,          // 지금까지 젤리로 바꾼 순공 분(누적)
+      pats: 0,
+      patDay: '',
+      patCount: 0,
+      ups: { farm: 0, dish: 0, train: 0 },
+      lastTick: Date.now(),
+      fedAt: Date.now(),
+      born: Date.now()
+    };
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return blank();
+      var d = JSON.parse(raw);
+      if (!d || typeof d !== 'object') return blank();
+      var b = blank();
+      // 저장된 값이 깨져 있어도 게임이 멈추지 않게 항목별로 받아 낸다
+      Object.keys(b).forEach(function (k) {
+        if (k === 'ups') return;
+        if (typeof d[k] === typeof b[k] && d[k] !== null) b[k] = d[k];
+      });
+      if (d.ups) ['farm', 'dish', 'train'].forEach(function (k) {
+        if (typeof d.ups[k] === 'number' && d.ups[k] >= 0) b.ups[k] = Math.floor(d.ups[k]);
+      });
+      return b;
+    } catch (e) { return blank(); }
+  }
+
+  function save(d) {
+    try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { /* 무시 */ }
+  }
+
+  function reset() { try { localStorage.removeItem(KEY); } catch (e) { /* 무시 */ } }
+
+  /* 하루 상한은 앱의 다른 날짜 계산과 같은 기준(현지 시각)을 써야 한다.
+   * toISOString 은 UTC 라 한국에서는 오전 9시에 날이 바뀌어 버린다. */
+  function todayKey() {
+    if (global.Store && global.Store.key) return global.Store.key();
+    var t = new Date();
+    return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
+  }
+
+  /* --------------------------------------------------------- 성장 단계 */
+
+  /* 밸런스 기준 — 하루 2시간쯤 공부하는 학생이 이틀에 한 단계씩 자라는 속도.
+   * 순공 1분 = 젤리 1개이므로 2시간이면 120젤리, 밥값(10~60)으로 서너 번 먹인다.
+   * 너무 빨리 만렙이 되면 볼 게 없어지고, 너무 느리면 공부와 무관한 장식이 된다. */
+  /** 그 레벨을 끝내는 데 필요한 경험치 */
+  function needFor(lv) { return 50 + (lv - 1) * 30; }
+
+  function levelOf(xp) {
+    var lv = 1, rem = Math.max(0, xp);
+    while (lv < 60 && rem >= needFor(lv)) { rem -= needFor(lv); lv++; }
+    return { level: lv, inLevel: Math.round(rem), need: needFor(lv) };
+  }
+
+  /* 겉모습은 단계마다 달라진다 — scale 은 몸 크기, hue 는 보라의 밝기,
+   * deco 는 머리 위 장식. SVG 를 통째로 갈아 끼우는 대신 값만 바꾼다. */
+  var STAGES = [
+    { min: 1,  name: '아기 모리',  scale: 0.78, hue: 0,   deco: 'none',    line: '이제 막 태어난 말랑한 슬라임이에요.' },
+    { min: 3,  name: '통통 모리',  scale: 0.88, hue: -4,  deco: 'leaf',    line: '밥을 잘 먹어서 제법 통통해졌어요.' },
+    { min: 6,  name: '반짝 모리',  scale: 0.96, hue: -8,  deco: 'spark',   line: '몸에서 반짝반짝 빛이 나기 시작했어요!' },
+    { min: 10, name: '별빛 모리',  scale: 1.04, hue: -12, deco: 'star',    line: '머리 위에 작은 별이 앉았어요.' },
+    { min: 15, name: '왕관 모리',  scale: 1.10, hue: -16, deco: 'crown',   line: '슬라임 왕국의 왕이 되었어요.' },
+    { min: 22, name: '우주 모리',  scale: 1.16, hue: -22, deco: 'halo',    line: '최고 단계예요. 우주까지 갈 기세!' }
+  ];
+
+  function stageFor(level) {
+    var s = STAGES[0];
+    STAGES.forEach(function (x) { if (level >= x.min) s = x; });
+    return s;
+  }
+
+  function nextStage(level) {
+    for (var i = 0; i < STAGES.length; i++) if (STAGES[i].min > level) return STAGES[i];
+    return null;
+  }
+
+  /* ------------------------------------------------------------ 업그레이드 */
+
+  var UPGRADES = [
+    {
+      id: 'farm', icon: '🌱', name: '젤리 농장',
+      desc: '자는 동안에도 젤리가 저절로 쌓입니다.',
+      base: 30, mult: 1.7, max: 25,
+      effect: function (n) { return (n * 0.6).toFixed(1) + ' 젤리/분'; }
+    },
+    {
+      id: 'dish', icon: '🥣', name: '큰 접시',
+      desc: '앱을 닫아 둔 동안 농장이 채울 수 있는 시간이 늘어납니다.',
+      base: 60, mult: 1.8, max: 10,
+      effect: function (n) { return (2 + n * 2) + '시간까지 보관'; }
+    },
+    {
+      id: 'train', icon: '📖', name: '공부 특훈',
+      desc: '순공 시간을 정산할 때 받는 젤리가 늘어납니다.',
+      base: 80, mult: 1.9, max: 12,
+      effect: function (n) { return '정산 ×' + (1 + n * 0.25).toFixed(2); }
+    }
+  ];
+
+  function upgradeBy(id) {
+    for (var i = 0; i < UPGRADES.length; i++) if (UPGRADES[i].id === id) return UPGRADES[i];
+    return null;
+  }
+
+  function costOf(u, n) { return Math.round(u.base * Math.pow(u.mult, n)); }
+
+  function farmRate(d) { return d.ups.farm * 0.6; }          // 분당 젤리
+  function offlineCapMin(d) { return (2 + d.ups.dish * 2) * 60; }
+  function claimMult(d) { return 1 + d.ups.train * 0.25; }
+
+  /* ------------------------------------------------------- 배고픔·자동 생산 */
+
+  function hoursSinceFed(d) { return (Date.now() - (d.fedAt || Date.now())) / 3600000; }
+  function isHungry(d) { return hoursSinceFed(d) >= HUNGRY_HOURS; }
+
+  function moodOf(d) {
+    var h = hoursSinceFed(d);
+    if (h < 6) return { emoji: '😊', label: '배부름', line: '기분이 아주 좋아요.' };
+    if (h < HUNGRY_HOURS) return { emoji: '🙂', label: '보통', line: '슬슬 간식 생각이 나요.' };
+    return { emoji: '🥺', label: '배고픔', line: '배가 고파서 젤리를 반밖에 못 모아요.' };
+  }
+
+  /** 마지막으로 본 시각부터 지금까지 농장이 모은 젤리를 넣어 준다.
+   * 접시 용량(offlineCapMin)을 넘는 시간은 버린다 — 며칠 만에 들어와서
+   * 갑자기 부자가 되면 공부로 버는 쪽이 의미를 잃는다. */
+  function accrue(d) {
+    var now = Date.now();
+    var last = d.lastTick || now;
+    var mins = (now - last) / 60000;
+    if (!(mins > 0)) { d.lastTick = now; return 0; }
+    mins = Math.min(mins, offlineCapMin(d));
+    var rate = farmRate(d) * (isHungry(d) ? 0.5 : 1);
+    var got = mins * rate;
+    d.jelly += got;
+    d.lastTick = now;
+    return got;
+  }
+
+  /* ---------------------------------------------------- 순공 시간 정산 */
+
+  /** 기록에 남은 순공 시간 전체(분) */
+  function totalStudyMin() {
+    var all = global.StudyLog ? global.StudyLog.all() : {};
+    var sum = 0;
+    Object.keys(all).forEach(function (day) {
+      var m = all[day];
+      Object.keys(m).forEach(function (s) { sum += (m[s] && m[s].m) || 0; });
+    });
+    return sum;
+  }
+
+  function pendingMin(d) { return Math.max(0, totalStudyMin() - (d.claimedMin || 0)); }
+
+  /* ------------------------------------------------------------ 그리기 */
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function fmtJelly(n) {
+    n = Math.floor(n);
+    if (n >= 100000) return Math.floor(n / 1000) + 'k';
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function fmtMin(m) {
+    m = Math.round(m);
+    if (m < 60) return m + '분';
+    return Math.floor(m / 60) + '시간 ' + (m % 60) + '분';
+  }
+
+  /** 단계에 따라 달라지는 슬라임 SVG */
+  function slimeSvg(stage, hungry) {
+    var s = stage.scale;
+    var deco = '';
+    if (stage.deco === 'leaf') {
+      deco = '<path d="M60 22 q10 -12 20 -6 q-4 12 -18 12 z" fill="#7ec98f" opacity=".9"/>' +
+        '<path d="M60 22 q-2 6 0 8" stroke="#4f8f5f" stroke-width="2" fill="none"/>';
+    } else if (stage.deco === 'spark') {
+      deco = '<g fill="#ffd76a"><path d="M28 26 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z"/>' +
+        '<path d="M92 34 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z"/></g>';
+    } else if (stage.deco === 'star') {
+      deco = '<path d="M60 8 l4.6 9.6 10.4 1.5 -7.5 7.4 1.8 10.5 -9.3 -5 -9.3 5 1.8 -10.5 -7.5 -7.4 10.4 -1.5 z" ' +
+        'fill="#ffd76a" stroke="#e0ae2f" stroke-width="1.5" stroke-linejoin="round"/>';
+    } else if (stage.deco === 'crown') {
+      deco = '<path d="M42 30 l0 -16 10 8 8 -12 8 12 10 -8 0 16 z" fill="#ffcf5a" stroke="#dfa72c" stroke-width="2" stroke-linejoin="round"/>' +
+        '<circle cx="60" cy="22" r="2.6" fill="#ff7fa6"/>';
+    } else if (stage.deco === 'halo') {
+      deco = '<ellipse cx="60" cy="18" rx="26" ry="7" fill="none" stroke="#ffd76a" stroke-width="4" opacity=".95"/>' +
+        '<g fill="#fff" opacity=".85"><circle cx="24" cy="44" r="2"/><circle cx="98" cy="52" r="2.4"/><circle cx="16" cy="70" r="1.6"/></g>';
+    }
+
+    return '' +
+      '<svg class="sl-svg" viewBox="0 0 120 110" role="img" aria-label="' + esc(stage.name) + '">' +
+      '<defs>' +
+      '<radialGradient id="slBody" cx="38%" cy="30%" r="78%">' +
+      '<stop offset="0%" stop-color="#c9b6ff"/><stop offset="55%" stop-color="#9b7bff"/><stop offset="100%" stop-color="#6d4aff"/>' +
+      '</radialGradient>' +
+      '</defs>' +
+      '<ellipse class="sl-shadow" cx="60" cy="100" rx="' + (34 * s).toFixed(1) + '" ry="6"/>' +
+      deco +
+      // 크기(단계)는 SVG transform 으로, 말랑거리는 움직임은 CSS transform 으로 나눠 건다.
+      // 한 요소에 둘 다 걸면 애니메이션이 크기를 덮어써서 단계가 안 보인다.
+      '<g transform="translate(60 96) scale(' + s.toFixed(2) + ') translate(-60 -96)">' +
+      '<g class="sl-body" style="transform-origin:60px 96px">' +
+      // 몸통 — 아래는 퍼지고 위는 둥근 물방울
+      '<path d="M60 34 c20 0 34 22 34 38 c0 14 -15 22 -34 22 c-19 0 -34 -8 -34 -22 c0 -16 14 -38 34 -38 z" fill="url(#slBody)"/>' +
+      '<ellipse cx="47" cy="52" rx="9" ry="6" fill="#fff" opacity=".38"/>' +
+      (hungry
+        ? '<path d="M50 66 q3 -5 6 0" stroke="#2b1f5e" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+          '<path d="M64 66 q3 -5 6 0" stroke="#2b1f5e" stroke-width="3" fill="none" stroke-linecap="round"/>'
+        : '<ellipse class="sl-eye" cx="52" cy="66" rx="3.4" ry="4.4" fill="#2b1f5e"/>' +
+          '<ellipse class="sl-eye" cx="68" cy="66" rx="3.4" ry="4.4" fill="#2b1f5e"/>') +
+      '<ellipse cx="43" cy="74" rx="5" ry="3" fill="#ff9dbb" opacity=".55"/>' +
+      '<ellipse cx="77" cy="74" rx="5" ry="3" fill="#ff9dbb" opacity=".55"/>' +
+      '<path d="M55 74 q5 5 10 0" stroke="#2b1f5e" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+      '</g></g></svg>';
+  }
+
+  function view() {
+    var d = load();
+    accrue(d);
+    save(d);
+
+    var lv = levelOf(d.xp);
+    var stage = stageFor(lv.level);
+    var nx = nextStage(lv.level);
+    var mood = moodOf(d);
+    var pend = pendingMin(d);
+    return { d: d, lv: lv, stage: stage, next: nx, mood: mood, pend: pend };
+  }
+
+  function render() {
+    if (!root) return;
+    var v = view(), d = v.d;
+    var hungry = isHungry(d);
+    var pendJelly = Math.floor(v.pend * claimMult(d));
+    var today = todayKey();
+    var patsLeft = d.patDay === today ? Math.max(0, MAX_PAT_PER_DAY - d.patCount) : MAX_PAT_PER_DAY;
+    var feedCost = feedCostOf(d);
+
+    root.innerHTML =
+      '<div class="sl-main">' +
+        '<div class="sl-stage">' +
+          '<button type="button" class="sl-tap' + (patsLeft ? '' : ' is-spent') + '" id="slTap" ' +
+            'aria-label="모리 쓰다듬기">' + slimeSvg(v.stage, hungry) + '</button>' +
+          '<div class="sl-name"><b>' + esc(v.stage.name) + '</b><span>Lv.' + v.lv.level + '</span></div>' +
+          '<p class="sl-line">' + esc(hungry ? v.mood.line : v.stage.line) + '</p>' +
+          '<div class="sl-xp"><span style="width:' + Math.round(v.lv.inLevel / v.lv.need * 100) + '%"></span></div>' +
+          '<p class="tiny sl-xp-cap">경험치 ' + v.lv.inLevel + ' / ' + v.lv.need +
+            (v.next ? ' · Lv.' + v.next.min + ' 에 <b>' + esc(v.next.name) + '</b> 로 자라요' : ' · 최고 단계!') + '</p>' +
+        '</div>' +
+
+        '<div class="sl-side">' +
+          '<div class="sl-facts">' +
+            '<div class="sl-fact"><span>기분</span><b>' + v.mood.emoji + ' ' + esc(v.mood.label) + '</b></div>' +
+            '<div class="sl-fact"><span>자동 생산</span><b>' +
+              (farmRate(d) > 0 ? (farmRate(d) * (hungry ? 0.5 : 1)).toFixed(1) + ' /분' : '없음') + '</b></div>' +
+            '<div class="sl-fact"><span>정산 배율</span><b>×' + claimMult(d).toFixed(2) + '</b></div>' +
+            '<div class="sl-fact"><span>밥 먹인 횟수</span><b>' + d.fed + '회</b></div>' +
+          '</div>' +
+
+          '<button type="button" class="btn primary sl-claim" id="slClaim"' + (pendJelly > 0 ? '' : ' disabled') + '>' +
+            (pendJelly > 0
+              ? '📚 공부 ' + esc(fmtMin(v.pend)) + ' 정산 → ✨' + fmtJelly(pendJelly)
+              : '📚 정산할 공부 시간이 없어요') +
+          '</button>' +
+          '<p class="tiny sl-claim-cap">타이머로 잰 순공 시간 <b>1분이 젤리 1개</b>입니다. 공부하고 와서 정산하세요.</p>' +
+
+          '<div class="sl-acts">' +
+            '<button type="button" class="btn sl-feed" id="slFeed"' + (d.jelly >= feedCost ? '' : ' disabled') + '>' +
+              '🍮 밥 주기 <em>✨' + fmtJelly(feedCost) + '</em></button>' +
+            '<span class="tiny sl-pat-left">쓰다듬기 ' + patsLeft + '회 남음</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="sl-shop">' +
+        UPGRADES.map(function (u) {
+          var n = d.ups[u.id];
+          var maxed = n >= u.max;
+          var c = costOf(u, n);
+          return '<div class="sl-up' + (maxed ? ' is-max' : '') + '">' +
+            '<div class="su-head"><span class="su-icon">' + u.icon + '</span>' +
+              '<div><b>' + esc(u.name) + '</b><span class="su-lv">Lv.' + n + '</span></div></div>' +
+            '<p class="su-desc">' + esc(u.desc) + '</p>' +
+            '<p class="su-now">지금 · <b>' + esc(u.effect(n)) + '</b>' +
+              (maxed ? '' : ' → ' + esc(u.effect(n + 1))) + '</p>' +
+            (maxed
+              ? '<button type="button" class="btn ghost sm" disabled>최대</button>'
+              : '<button type="button" class="btn sm su-buy" data-up="' + u.id + '"' +
+                (d.jelly >= c ? '' : ' disabled') + '>✨' + fmtJelly(c) + '</button>') +
+            '</div>';
+        }).join('') +
+      '</div>';
+
+    var tap = document.getElementById('slTap');
+    if (tap) tap.addEventListener('click', pat);
+    var claim = document.getElementById('slClaim');
+    if (claim) claim.addEventListener('click', claim1);
+    var feed = document.getElementById('slFeed');
+    if (feed) feed.addEventListener('click', feed1);
+    Array.prototype.forEach.call(root.querySelectorAll('.su-buy'), function (b) {
+      b.addEventListener('click', function () { buy(b.dataset.up); });
+    });
+
+    paintJelly(d.jelly);
+  }
+
+  /** 젤리 숫자만 갱신한다 — 1초마다 화면 전체를 다시 그리면 버튼 포커스가 튄다 */
+  function paintJelly(n) {
+    var el = document.getElementById('slJelly');
+    if (el) el.textContent = '✨ ' + fmtJelly(n);
+  }
+
+  /** 밥값은 먹일수록 오르되 60에서 멈춘다 — 끝없이 오르면 후반이 벽이 된다 */
+  function feedCostOf(d) { return Math.min(60, 10 + d.fed * 2); }
+  var XP_PER_FEED = 22;
+
+  /* ------------------------------------------------------------ 동작 */
+
+  function pat() {
+    var d = load();
+    accrue(d);
+    var today = todayKey();
+    if (d.patDay !== today) { d.patDay = today; d.patCount = 0; }
+    if (d.patCount >= MAX_PAT_PER_DAY) {
+      toast('오늘은 충분히 쓰다듬었어요. 젤리는 공부해서 모아 주세요!');
+      save(d);
+      return;
+    }
+    var got = 1 + Math.floor(Math.random() * 3);
+    d.patCount++; d.pats++;
+    d.jelly += got;
+    d.xp += 1;
+    save(d);
+
+    var el = root && root.querySelector('.sl-body');
+    if (el) { el.classList.remove('is-boing'); void el.offsetWidth; el.classList.add('is-boing'); }
+    popText('+' + got);
+    paintJelly(d.jelly);
+    // 남은 횟수·경험치 막대도 따라가야 하므로 다시 그린다 (튐 방지용으로 살짝 미룬다)
+    clearTimeout(pat._t);
+    pat._t = setTimeout(render, 420);
+  }
+
+  function popText(txt) {
+    if (!root) return;
+    var stage = root.querySelector('.sl-stage');
+    if (!stage) return;
+    var s = document.createElement('span');
+    s.className = 'sl-pop';
+    s.textContent = txt;
+    s.style.left = (38 + Math.random() * 24) + '%';
+    stage.appendChild(s);
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 900);
+  }
+
+  function claim1() {
+    var d = load();
+    accrue(d);
+    var pend = pendingMin(d);
+    if (!(pend > 0)) { toast('아직 정산할 순공 시간이 없습니다. 타이머로 공부부터!', true); save(d); return; }
+    var got = Math.floor(pend * claimMult(d));
+    d.jelly += got;
+    d.claimedMin = totalStudyMin();
+    save(d);
+    render();
+    popText('+' + fmtJelly(got));
+    toast('순공 ' + fmtMin(pend) + '을 젤리 ' + fmtJelly(got) + '개로 바꿨어요!', 'party');
+  }
+
+  function feed1() {
+    var d = load();
+    accrue(d);
+    var cost = feedCostOf(d);
+    if (d.jelly < cost) { toast('젤리가 모자라요. 공부 시간을 정산해 보세요.', true); save(d); return; }
+    var before = levelOf(d.xp).level;
+    d.jelly -= cost;
+    d.fed++;
+    d.fedAt = Date.now();
+    d.xp += XP_PER_FEED;
+    save(d);
+    var after = levelOf(d.xp).level;
+    render();
+    popText('🍮');
+    if (after > before) {
+      var st = stageFor(after), prev = stageFor(before);
+      if (st.name !== prev.name) toast('모리가 ' + st.name + ' 로 자랐어요! 🎉', 'party');
+      else toast('레벨 ' + after + ' 이 됐어요!', 'party');
+    } else {
+      toast('모리가 맛있게 먹었어요.');
+    }
+  }
+
+  function buy(id) {
+    var u = upgradeBy(id);
+    if (!u) return;
+    var d = load();
+    accrue(d);
+    var n = d.ups[id];
+    if (n >= u.max) { save(d); return; }
+    var c = costOf(u, n);
+    if (d.jelly < c) { toast('젤리가 모자라요.', true); save(d); return; }
+    d.jelly -= c;
+    d.ups[id] = n + 1;
+    save(d);
+    render();
+    toast(u.name + ' Lv.' + (n + 1) + ' — ' + u.effect(n + 1));
+  }
+
+  /* ------------------------------------------------------------ 수명주기 */
+
+  /** 홈 화면에 들어올 때 부른다 */
+  function open(el) {
+    root = el || root;
+    render();
+    stop();
+    // 자동 생산이 쌓이는 걸 눈으로 보게 한다. 화면 전체가 아니라 숫자만 바꾼다.
+    timer = setInterval(function () {
+      var d = load();
+      var got = accrue(d);
+      if (got > 0) { save(d); paintJelly(d.jelly); }
+    }, 5000);
+  }
+
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+  /** 홈에 안 들어가도 오프라인 생산 기준 시각은 살아 있어야 한다 */
+  function touch() { var d = load(); accrue(d); save(d); }
+
+  function summary() {
+    var d = load();
+    var lv = levelOf(d.xp);
+    return { jelly: Math.floor(d.jelly), level: lv.level, stage: stageFor(lv.level).name, pending: Math.round(pendingMin(d)) };
+  }
+
+  global.Slime = {
+    init: function (opt) { if (opt && opt.toast) toast = opt.toast; },
+    open: open, stop: stop, render: render, touch: touch,
+    summary: summary, reset: reset
+  };
+
+})(window);
+
+
 /* ===== src/js/app.js ===== */
 /* =========================================================================
  * app.js — UI 바인딩 및 렌더링
@@ -8666,7 +9440,7 @@ body {
     lgSchool: '', lgGrade: '',
     weekOffset: 0,
     queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
-    page: 'secToday',
+    page: 'secHome',
     pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
     vacplan: null,      // 방학 계획표 모델
     span: null,        // 진행 중인 순공 구간
@@ -8793,23 +9567,27 @@ body {
    * 한 번에 한 페이지만 보여 준다. 길게 스크롤할 필요가 없도록
    * 상단 탭으로 전환하고 주소창 해시(#timer 등)로도 이동할 수 있게 한다. */
 
-  /* 상단 탭은 두 묶음이다.
-   *   번호가 붙은 앞의 넷 — 순서대로 밟는 실제 단계 (입력 → 분석 → 플랜 → 타이머)
-   *   tool 로 표시한 뒤쪽   — 아무 때나 열어 보는 기능들 (번호도 이모지도 안 붙인다)
-   * 예전에는 숫자와 이모지가 1 2 3 4 📅 ★ 5 🏆 6 ⚙ 처럼 섞여 있어서
-   * 무엇이 순서고 무엇이 기능인지 한눈에 들어오지 않았다. */
+  /* 상단 바에는 홈과 번호 붙은 4단계만 남긴다.
+   *   home            — 앱을 열면 처음 보이는 요약 화면
+   *   번호가 붙은 넷   — 순서대로 밟는 실제 단계 (입력 → 분석 → 플랜 → 타이머)
+   *   tool 로 표시한 것 — 아무 때나 열어 보는 기능들. 상단 바에 늘어놓지 않고
+   *                      [더보기] 메뉴와 홈 화면의 바로가기 타일에서만 들어간다.
+   * 예전에는 탭 10개가 한 줄에 늘어서서 무엇이 순서고 무엇이 기능인지
+   * 한눈에 들어오지 않았고, 좁은 화면에서는 가로로 스크롤해야 했다. */
   var PAGES = [
-    { id: 'secToday', num: '⌂', label: '오늘', hash: 'today' },
+    /* 홈은 모리를 키우는 화면이 맡는다. 개편 때 들어온 [오늘] 화면(secToday)의
+     * 코드는 지우지 않고 남겨 두었다 — 탭 목록에만 없어서 열리지 않을 뿐이다. */
+    { id: 'secHome', label: '홈', hash: 'home', home: true, icon: '🏠' },
     { id: 'secInput', num: '1', label: '입력', hash: 'input' },
     { id: 'secResult', num: '2', label: '준비도', hash: 'result', needAnalysis: true },
     { id: 'secPlan', num: '3', label: '학습 플랜', hash: 'plan', needAnalysis: true },
     { id: 'secTimer', num: '4', label: '타이머', hash: 'timer', needAnalysis: true },
-    { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true },
-    { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true },
-    { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true },
-    { id: 'secLeague', label: '리그', hash: 'league', tool: true },
-    { id: 'secReport', label: '리포트', hash: 'report', tool: true },
-    { id: 'secSettings', label: '설정', hash: 'settings', tool: true }
+    { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true, icon: '📅', desc: '방학·주간 계획표 만들기' },
+    { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true, icon: '★', desc: '경험치 · 배지 · 미션' },
+    { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true, icon: '🏅', desc: '같은 반 순공 시간 등수' },
+    { id: 'secLeague', label: '리그', hash: 'league', tool: true, icon: '🏆', desc: '반 대항 · 학교 대항 주간 리그' },
+    { id: 'secReport', label: '리포트', hash: 'report', tool: true, icon: '📈', desc: '주간 학습 리포트' },
+    { id: 'secSettings', label: '설정', hash: 'settings', tool: true, icon: '⚙️', desc: '프로필 · 사운드 · 데이터' }
   ];
 
   /* 상단 탭에는 없지만 이동은 되는 페이지들.
@@ -8838,21 +9616,54 @@ body {
 
   function renderNav() {
     var open = openPages();
-    var dividerDone = false;
+    var steps = open.filter(function (p) { return !p.tool; });
+    var tools = open.filter(function (p) { return p.tool; });
 
-    $('stepNav').innerHTML = open.map(function (p) {
-      // 단계와 기능 사이에 한 번만 선을 그어 두 묶음을 구분한다
-      var div = '';
-      if (p.tool && !dividerDone) { div = '<span class="step-div" aria-hidden="true"></span>'; dividerDone = true; }
-      var accessibleName = p.tool ? p.label : p.num + ' ' + p.label;
-      return div + '<button type="button" class="step' + (p.tool ? ' is-tool' : '') + '" data-go="' + p.id + '" aria-label="' + esc(accessibleName) + '">' +
-        (p.tool ? '' : '<i>' + p.num + '</i>') +
+    $('stepNav').innerHTML = steps.map(function (p) {
+      // 홈과 단계 사이에 한 번만 선을 그어 "요약" 과 "순서" 를 갈라 준다
+      var div = p.num === '1' ? '<span class="step-div" aria-hidden="true"></span>' : '';
+      var accessibleName = p.home ? p.label : p.num + ' ' + p.label;
+      return div + '<button type="button" class="step' + (p.home ? ' is-home' : '') + '" data-go="' + p.id + '" aria-label="' + esc(accessibleName) + '">' +
+        (p.home ? '<i aria-hidden="true">' + p.icon + '</i>' : '<i>' + p.num + '</i>') +
         '<span>' + esc(p.label) + '</span></button>';
     }).join('');
-    $$('.step').forEach(function (b) {
-      b.addEventListener('click', function () { goPage(b.dataset.go); });
+
+    $('moreBtn').classList.toggle('is-hidden', !tools.length);
+    $('moreMenu').innerHTML = tools.map(function (p) {
+      return '<button type="button" class="mm-item" role="menuitem" data-go="' + p.id + '">' +
+        '<span class="mm-ic" aria-hidden="true">' + esc(p.icon || '•') + '</span>' +
+        '<span class="mm-txt"><b>' + esc(p.label) + '</b><span>' + esc(p.desc || '') + '</span></span></button>';
+    }).join('');
+
+    $$('.step, .mm-item').forEach(function (b) {
+      b.addEventListener('click', function () { closeMore(); goPage(b.dataset.go); });
     });
     setActiveStep(state.page);
+    renderHomeQuick();
+  }
+
+  /* ------------------------------------------------------------- 더보기 */
+
+  function closeMore() {
+    $('moreMenu').classList.add('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleMore() {
+    var open = $('moreMenu').classList.toggle('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', open ? 'false' : 'true');
+  }
+
+  function initMore() {
+    $('moreBtn').addEventListener('click', function (e) { e.stopPropagation(); toggleMore(); });
+    // 바깥을 누르거나 Esc 를 누르면 닫힌다 — 메뉴가 열린 채 화면을 가리지 않게
+    document.addEventListener('click', function (e) {
+      if (!$('moreMenu').contains(e.target) && e.target !== $('moreBtn')) closeMore();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMore(); });
+    $('brandHome').addEventListener('click', function () {
+      goPage(Store.profile() ? 'secHome' : 'secProfile');
+    });
   }
 
   function setActiveStep(id) {
@@ -8863,6 +9674,15 @@ body {
       else b.removeAttribute('aria-current');
       if (on && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
+    // 지금 보고 있는 화면이 [더보기] 안에 있으면 버튼 자체를 켜 둔다.
+    // 안 그러면 상단 바 어디에도 표시가 없어 길을 잃는다.
+    var inMore = false;
+    $$('.mm-item').forEach(function (b) {
+      var on = b.dataset.go === id;
+      b.classList.toggle('is-active', on);
+      if (on) inMore = true;
+    });
+    $('moreBtn').classList.toggle('is-active', inMore);
   }
 
   function renderPageNav() {
@@ -8920,6 +9740,8 @@ body {
     renderPageNav();
 
     // 들어올 때마다 최신 값으로 다시 그린다
+    if (id === 'secHome') { renderHome(); Slime.open($('slimeRoot')); }
+    else Slime.stop();   // 홈을 떠나면 자동 생산 타이머를 멈춘다 (기록은 시각으로 남는다)
     if (id === 'secLeague') { renderLeague(); leagueSync(false); }
     if (id === 'secToday') renderTodayHome();
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
@@ -9385,7 +10207,7 @@ body {
     // 조용히 넘어갔었다 — 이제 프로필이 생겼으니 한 번 밀어 준다.
     if (Cloud.enabled()) leagueSync(true);
     toast(Group.groupLabel(p) + ' 그룹으로 설정했습니다.');
-    goPage(prev ? 'secSettings' : 'secToday');
+    goPage(prev ? 'secSettings' : 'secHome');
   }
 
   function unlockApp() { renderNav(); renderPageNav(); }
@@ -10020,6 +10842,7 @@ body {
       : '아직 기록된 순공 시간이 없습니다.';
 
     $('recDot').className = 'rec-dot' + (state.span ? ' live' : '');
+    renderHome();   // 홈의 '오늘 순공' 타일도 같은 숫자를 본다
   }
 
   /* ------------------------------------------------------------- 타이머 */
@@ -10668,6 +11491,96 @@ body {
       box.innerHTML = '<div class="meal-empty">급식을 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
         '<b>인터넷 연결이나 설정의 API 키를 확인해 주세요.</b></div>';
     });
+  }
+
+  /* ============================================================== 홈 ==
+   * 앱을 열면 처음 보이는 화면. 새로 계산하는 값은 없고, 다른 화면이 이미
+   * 갖고 있는 숫자(뇌 컨디션 · 순공 시간 · 등수)를 모아 보여 주기만 한다. */
+
+  function renderHomeQuick() {
+    var box = $('homeQuick');
+    if (!box) return;
+    var open = openPages().filter(function (p) { return p.tool; });
+    box.innerHTML = open.map(function (p) {
+      return '<button type="button" class="hq" data-go="' + p.id + '">' +
+        '<span class="hq-ic" aria-hidden="true">' + esc(p.icon || '•') + '</span>' +
+        '<b>' + esc(p.label) + '</b><span class="hq-d">' + esc(p.desc || '') + '</span></button>';
+    }).join('');
+    $$('.hq', box).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.go); });
+    });
+  }
+
+  function renderHome() {
+    // 홈을 보고 있을 때만 그린다. 다른 화면에서 순공 시간이 바뀔 때마다
+    // 여기까지 계산할 이유가 없고, 홈에 들어오는 순간 goPage 가 다시 부른다.
+    if (state.page !== 'secHome') return;
+    var p = Store.profile();
+    if (!p) return;
+
+    $('hmNick').textContent = p.nick || '학습자';
+
+    var now = new Date();
+    $('hmDate').textContent = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 (' + DOW_KO[now.getDay()] + ')';
+
+    /* 뇌 컨디션 도넛 — 오늘 분석한 적이 없으면 저장된 마지막 기록을 쓰고,
+     * 그것도 없으면 빈 상태로 둔다. 없는 점수를 지어내지 않는다. */
+    var a = state.analysis;
+    var hist = Store.history();
+    var last = hist.length ? hist[hist.length - 1] : null;
+    var score = null, label = '', fresh = false;
+    if (a) { score = a.overall; label = a.state.label; fresh = true; }
+    else if (last) { score = last.overall; label = last.date === Store.key() ? '오늘 기록' : '지난 기록'; fresh = last.date === Store.key(); }
+
+    var dial = $('hmDial');
+    if (score == null) {
+      $('hmScore').textContent = '—';
+      $('hmState').textContent = '분석 전';
+      dial.style.setProperty('--pct', '0%');
+      dial.classList.add('is-empty');
+    } else {
+      $('hmScore').textContent = score;
+      $('hmState').textContent = label;
+      dial.style.setProperty('--pct', score + '%');
+      dial.classList.remove('is-empty');
+    }
+
+    $('hmLine').textContent = a ? a.state.line
+      : (last && last.date === Store.key() ? '오늘 분석한 결과가 남아 있어요.' : '오늘 컨디션을 넣으면 맞춤 플랜을 짜 드릴게요.');
+
+    /* 숫자 타일 */
+    var todayMin = StudyLog.todayTotal();
+    var weekMin = StudyLog.weekTotal(0);
+    var dailyGoal = (p.goal || 25) * 60 / 7;
+    $('hmToday').textContent = fmtDur(todayMin);
+    $('hmTodaySub').textContent = todayMin > 0
+      ? '오늘 목표의 ' + Math.round(Math.min(999, todayMin / dailyGoal * 100)) + '%'
+      : '타이머로 재기';
+    $('hmWeek').textContent = fmtDur(weekMin);
+    $('hmWeekSub').textContent = '주간 목표 ' + (p.goal || 25) + '시간';
+    $('hmStreak').textContent = StudyLog.streak() + '일';
+
+    // 혼자뿐일 때 '1위' 는 등수가 아니라 착시다 — 사람이 둘 이상일 때만 순위를 말한다
+    var r = Group.rank('today');
+    $('hmRank').textContent = (r.me && r.count > 1) ? r.me.rank + '위' : '—';
+    $('hmRankSub').textContent = r.count > 1 ? '같은 반 ' + r.count + '명 중' : '같은 반 친구를 기다리는 중';
+
+    /* 큰 버튼은 지금 할 일 하나만 가리킨다 */
+    var cta = $('hmCta');
+    if (!state.analysis) {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secInput">' +
+        '🧠 오늘의 데이터 넣고 분석하기</button>';
+    } else if (state.timer && state.timer.running) {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secTimer">⏱️ 타이머로 돌아가기</button>';
+    } else {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secTimer">▶ 공부 시작하기</button>' +
+        '<button type="button" class="btn lg home-cta2" data-go="secPlan">오늘의 플랜 보기</button>';
+    }
+    $$('[data-go]', cta).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.go); });
+    });
+
+    renderHomeQuick();
   }
 
   /* ============================================================ 시간표 == */
@@ -12136,7 +13049,7 @@ body {
         var color = Group.avatarColor(r.tag);
         return '<div class="rank' + (r.me ? ' is-me' : '') + (rank === 1 ? ' top1' : '') + '">' +
           '<div class="rk-pos' + medal + '">' + badge + '</div>' +
-          '<div class="rk-av" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
+          '<div class="rk-tag" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
           '<div class="rk-info">' +
             '<div class="rk-name">' + esc(r.tag) +
               (r.me ? '<span class="me-tag">나</span>' : '') +
@@ -12196,6 +13109,8 @@ body {
         Avatar.html(av, lifeMin || 0, 'rk-av') +
         '<div class="rk-info">' +
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
+  
+    
             (m.overall != null ? '<span class="brain" title="학습 준비도 참고값">준비도 ' + displayScore(m.overall) + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
           '<div class="rk-date">' + (m.self ? '실시간 반영'
@@ -13593,6 +14508,9 @@ body {
   function init() {
     moveOptionalDailyCards();
     initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan();
+    initMore();
+    Slime.init({ toast: toast });
+    Slime.touch();   // 앱을 닫아 둔 동안 농장이 모은 젤리를 먼저 정리해 둔다
 
     /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
@@ -13635,8 +14553,10 @@ body {
     if (Store.profile()) {
       renderProfileChip();
       renderNav();
-      // 주소창 해시가 있으면 그 페이지로, 없으면 오늘 홈으로 시작
+      // 주소창 해시가 있으면 그 페이지로, 없으면 홈에서 시작.
+      // 해시가 열 수 없는 페이지를 가리키면 goPage 가 false 를 주므로 홈으로 떨어진다.
       var pg = pageByHash((location.hash || '').replace('#', ''));
+  
       if (pg && pg.needAnalysis && !state.analysis) {
         // 설치형 바로가기에서 타이머를 눌러도 새 실행에는 아직 오늘 플랜이 없다.
         // 막힌 홈으로 돌려보내지 않고 곧바로 입력 화면에서 시작하게 한다.
@@ -13645,6 +14565,7 @@ body {
       } else if (!pg || !goPage(pg.id, true)) {
         goPage('secToday', false, true);
       }
+  
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';
@@ -13711,10 +14632,13 @@ body {
     });
 
     $('clearHistory').addEventListener('click', function () {
-      if (!confirm('학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹원을 모두 삭제할까요?\n모은 배지와 경험치도 함께 사라지며 되돌릴 수 없습니다.')) return;
+      if (!confirm('학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹원을 모두 삭제할까요?\n모은 배지와 경험치, 키우던 모리도 함께 사라지며 되돌릴 수 없습니다.')) return;
       Store.clearAll();
       Kids.reset();
       League.reset();
+      // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
+      // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
+      Slime.reset();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
       renderLeague();
       toast('모든 기록을 삭제했습니다.');

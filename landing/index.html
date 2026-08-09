@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+ 
 <title>Mindora — 오늘 상태에 맞는 공부부터</title>
 <meta name="description" content="수면·피로·스트레스 등 오늘 상태를 바탕으로 학습 준비도 참고값을 만들고, 무엇부터 몇 분 공부할지 정리해 드립니다. 설치 없이 바로 시작하세요.">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -18,6 +19,7 @@
 <meta property="og:url" content="https://www.mindora.co.kr/landing/">
 <meta property="og:image" content="https://www.mindora.co.kr/icon-512.png">
 <meta name="twitter:card" content="summary">
+  
 
 <style>
 /* ══════════════════════════════════════════════════════════
@@ -32,7 +34,9 @@
 :root{
   --bg:#ffffff; --soft:#f6f8fb; --surface:#ffffff;
   --line:#eaeef5; --line-2:#d4dbe6;
+  
   --text:#151b26; --muted:#5f6b7a; --dim:#687588;
+  
   --accent:#6d4aff; --accent-2:#5b7cff; --cyan:#22b8d8;
   --accent-soft:#f1edff; --accent-line:#e0d8ff; --accent-ink:#4a37a0;
   --track:#eef1f7;
@@ -48,7 +52,9 @@
   :root{
     --bg:#0f1220; --soft:#141828; --surface:#181c2b;
     --line:#272d3e; --line-2:#3a4258;
+  
     --text:#e9ecf5; --muted:#aeb7cc; --dim:#909ab3;
+  
     --accent:#9b83ff; --accent-2:#8fa5ff; --cyan:#5ad2ec;
     --accent-soft:#241f42; --accent-line:#413873; --accent-ink:#cabfff;
     --track:#272d3e; --ink:#06080f;
@@ -68,7 +74,9 @@ body{
 h1,h2,h3{margin:0; font-weight:800; line-height:1.36; letter-spacing:-.042em; text-wrap:balance}
 p{margin:0; text-wrap:pretty}
 a{color:inherit; text-decoration:none}
+  
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--cyan); outline-offset:3px; border-radius:9px}
+  
 .wrap{width:min(1100px,100% - 48px); margin-inline:auto}
 @media (max-width:640px){ .wrap{width:calc(100% - 32px)} }
 .soft{background:var(--soft)}
@@ -107,7 +115,9 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var
 }
 .btn:hover{--lift:-2px}
 .btn:active{--lift:0; transition-duration:.09s}
+  
 .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff;
+  
   box-shadow:0 12px 28px -14px color-mix(in srgb,var(--accent) 95%,transparent)}
 .btn.primary:hover{box-shadow:0 20px 40px -16px color-mix(in srgb,var(--accent) 95%,transparent)}
 .btn.primary::after{content:''; position:absolute; inset:0; opacity:0; transition:opacity .4s;
@@ -120,8 +130,10 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var
 .btn.white{background:#fff; color:#2a2350}
 
 /* ── 섹션 리듬 (여백을 크게) ────────────── */
+  
 section{padding:108px 0; position:relative}
 @media (max-width:820px){ section{padding:68px 0} }
+  
 .label{display:block; font-size:15px; font-weight:800; color:var(--accent); letter-spacing:-.02em; margin-bottom:16px}
 .h2{font-size:clamp(27px,4.6vw,44px)}
 .h2 .gray{color:var(--dim)}
@@ -140,6 +152,7 @@ section{padding:108px 0; position:relative}
 .js .mask.in > span{transform:none}
 
 /* ══ 히어로 ═══════════════════════════════ */
+  
 .hero{padding:142px 0 0; text-align:center; overflow:hidden; isolation:isolate}
 .hero::before{content:''; position:absolute; z-index:-1; inset:0 0 auto; height:680px; pointer-events:none;
   background:radial-gradient(circle at 50% 18%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 44%),
@@ -150,11 +163,14 @@ section{padding:108px 0; position:relative}
 .hero-kicker::before{content:''; width:7px; height:7px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--cyan)); box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent)}
 .hero h1{font-size:clamp(33px,6.4vw,62px); line-height:1.32; letter-spacing:-.05em}
 .hero h1 .accent{background:linear-gradient(100deg,var(--accent),var(--accent-2) 54%,var(--cyan)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  
 .hero .sub{color:var(--muted); font-size:clamp(16px,2vw,19px); margin:24px auto 0; max-width:30em}
 .hero-cta{display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:36px}
 .hero-trust{display:flex; justify-content:center; flex-wrap:wrap; gap:8px 24px; margin-top:26px; color:var(--dim); font-size:14px}
 .hero-trust span{display:inline-flex; align-items:center; gap:7px}
+
 .hero-note{max-width:600px; margin:14px auto 0; color:var(--dim); font-size:12.5px}
+  
 .tick{width:16px; height:16px; color:var(--accent); flex:none}
 
 /* 히어로 이미지 영역 — 폰 하나 + 양옆 카드 둘, 겹침 없이 나란히 */
@@ -244,7 +260,9 @@ section{padding:108px 0; position:relative}
 
 /* ══ 교차 배치 섹션 ═══════════════════════ */
 .alt{display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center}
+  
 .alt > *{min-width:0}
+  
 .alt.rev .alt-media{order:-1}
 @media (max-width:900px){ .alt{grid-template-columns:1fr; gap:44px} .alt.rev .alt-media{order:0} }
 .bullets{margin:24px 0 0; padding:0; list-style:none; display:grid; gap:12px}
@@ -293,12 +311,14 @@ section{padding:108px 0; position:relative}
 .feat .note{display:block; margin-top:12px; font-size:12.5px; color:var(--dim); position:relative}
 
 /* ══ 근거 ════════════════════════════════ */
+  
 .formula{max-width:100%; background:var(--soft); border:1px solid var(--line); border-radius:16px; padding:20px 22px; margin-top:24px;
   font-family:ui-monospace,SFMono-Regular,'Cascadia Mono',Consolas,monospace; font-size:13.5px; line-height:2;
   overflow-x:auto; white-space:pre}
 .formula .k{color:var(--accent); font-weight:700}
 .disclaimer{margin-top:14px; color:var(--dim); font-size:13px}
 @media (max-width:600px){.formula{padding:16px; font-size:11.5px; line-height:1.8; white-space:pre-wrap; overflow-wrap:anywhere}}
+  
 .reason{display:grid; gap:10px}
 .reason-row{display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--line);
   border-radius:14px; background:var(--surface); font-size:14.5px}
@@ -342,7 +362,9 @@ details[open] .ans{grid-template-rows:1fr}
 .final .gray{color:rgba(255,255,255,.45)}
 .final p{color:rgba(255,255,255,.62); font-size:17.5px; margin:22px auto 0; max-width:30em}
 .final .btn{margin-top:38px}
+  
 .final small{display:block; margin-top:18px; color:rgba(255,255,255,.72); font-size:13px}
+  
 
 /* ══ 푸터 ════════════════════════════════ */
 footer{padding:56px 0 70px; border-top:1px solid var(--line)}
@@ -376,8 +398,10 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="url(#mk)"/><text x="256" y="358" font-size="272" text-anchor="middle">🧠</text></svg>Mindora
     </a>
     <nav class="nav">
+  
       <a href="#brain">준비도</a><a href="#flow">사용 방법</a><a href="#features">기능</a><a href="#faq">FAQ</a>
       <a class="btn primary sm" href="../?start=1">시작하기</a>
+  
     </nav>
   </div>
 </header>
@@ -387,6 +411,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   <!-- ══ 히어로 ══════════════════════════ -->
   <section class="hero">
     <div class="wrap">
+  
       <div class="hero-kicker up">30초 체크 · 자가보고 기반 참고값</div>
       <h1>
         <span class="mask" style="--d:40ms"><span>무작정 오래 앉아 있는</span></span>
@@ -396,15 +421,18 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         공부 시간을 한눈에 정리해 드릴게요.</p>
       <div class="hero-cta up">
         <a class="btn primary lg" href="../?start=1">오늘의 공부 계획 만들기</a>
+  
         <a class="btn line lg" href="#flow">어떻게 작동하나요?</a>
       </div>
       <div class="hero-trust up">
         <span><svg class="tick" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>회원가입 없음</span>
         <span><svg class="tick" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>설치 없음</span>
+  
         <span><svg class="tick" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>기본 기록은 내 브라우저에</span>
         <span><svg class="tick" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>선택 전송은 언제든 철회</span>
       </div>
       <p class="hero-note up">능력 검사나 의학적 진단이 아닌, 입력한 상태를 규칙으로 정리한 학습 참고값입니다.</p>
+  
 
       <!-- 폰 하나 + 양옆에 뜨는 카드 둘. 절대좌표 없이 나란히 두어 겹칠 일이 없다 -->
       <div class="hero-shot up">
@@ -414,7 +442,9 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <div class="phone floaty">
           <div class="screen">
             <div class="scr">
+  
               <div class="scr-h"><span>오늘의 준비도</span><span>예시 화면</span></div>
+  
               <div class="scr-t">종합 컨디션</div>
               <div class="total"><em>61</em><small>표준 플러스 · 35분 / 7분</small></div>
               <div class="abil">
@@ -424,7 +454,9 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
                 <div class="abil-row"><b>💡 창의력</b><span class="bar"><span style="width:78%"></span></span><i>78</i></div>
                 <div class="abil-row"><b>📖 언어이해</b><span class="bar"><span style="width:66%"></span></span><i>66</i></div>
               </div>
+  
               <p class="why"><b>왜 집중 준비도가 낮을까요?</b><br>입력한 피로도와 수면 시간이 오늘 참고값에 가장 크게 반영됐어요.</p>
+  
               <div class="row" style="margin-top:auto"><span class="dot"></span><b>오늘은 창의·서술형부터</b><span class="m">19:00</span></div>
             </div>
           </div>
@@ -439,11 +471,13 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   <!-- ══ 흐르는 띠 ═══════════════════════ -->
   <div class="marquee" aria-hidden="true">
     <div class="mq" id="mq">
+  
       <span class="chip">🧠 학습 준비도 5영역</span><span class="chip">📅 과목별 시간 배분</span>
       <span class="chip">⏳ 컨디션 맞춤 뽀모도로</span><span class="chip">🎧 실시간 합성 집중 사운드</span>
       <span class="chip">🏆 우리 반 순공 리그</span><span class="chip">📊 주간 리포트</span>
       <span class="chip">🍱 오늘의 급식</span><span class="chip">⭐ 초·중 성장 모드</span>
       <span class="chip">🔒 기본 기록은 내 브라우저에</span><span class="chip">💸 0원</span>
+  
     </div>
   </div>
 
@@ -451,6 +485,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   <section class="quote">
     <div class="wrap up">
       <p>어제는 4시간 자고, 오늘은 8시간 잤습니다.<br>그런데 계획표는 두 날을 <em>똑같이</em> 취급합니다.</p>
+  
       <small>같은 계획이 매일 맞지는 않습니다 — 그래서 오늘의 상태부터 확인합니다.</small>
     </div>
   </section>
@@ -467,6 +502,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
           <li>🎯 집중 · 🧠 기억 · 🔢 계산 · 💡 창의 · 📖 언어 이해 과제</li>
           <li>입력한 시간대에 따른 보정값을 함께 참고합니다</li>
           <li>추천마다 <b>왜 그런지</b>를 입력 요인별로 펼쳐 보여줍니다</li>
+  
         </ul>
         <div class="stat-mini">
           <div><b>−4.2</b>피로도의 영향</div>
@@ -478,8 +514,10 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <div class="phone">
           <div class="screen">
             <div class="scr">
+  
               <div class="scr-h"><span>2 · 준비도</span><span>근거까지</span></div>
               <div class="scr-t">오늘의 과제 준비도</div>
+  
               <div class="total"><em>61</em><small>종합 컨디션</small></div>
               <div class="abil">
                 <div class="abil-row"><b>🎯 집중력</b><span class="bar"><span style="width:39%"></span></span><i>39</i></div>
@@ -488,8 +526,10 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
                 <div class="abil-row"><b>💡 창의력</b><span class="bar"><span style="width:78%"></span></span><i>78</i></div>
                 <div class="abil-row"><b>📖 언어이해</b><span class="bar"><span style="width:66%"></span></span><i>66</i></div>
               </div>
+  
               <p class="why"><b>오늘은 창의·서술형부터 제안해요.</b><br>입력한 상태에서 계산형보다 부담이 적은 순서로 배치했어요.</p>
               <div class="row" style="margin-top:auto"><span class="dot"></span><b>현재 시간대 보정</b><span class="m">−2%</span></div>
+  
             </div>
           </div>
         </div>
@@ -567,7 +607,9 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <article class="step">
           <span class="n">2</span>
           <h3>순서와 시간을 받아요</h3>
+  
           <p>시험 D-day·과제별 준비도·중요도·현재 시간대를 함께 보고 우선순위를 정리합니다. 결과는 정답이 아니라, 바로 시작할 수 있게 돕는 초안입니다.</p>
+  
         </article>
         <article class="step">
           <span class="n">3</span>
@@ -582,7 +624,9 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   <section style="padding:0">
     <div class="wrap">
       <div class="stats" data-stagger>
+  
         <div><b data-count="5" data-suffix="영역">0영역</b><span>매일 확인하는 학습 준비도</span></div>
+  
         <div><b data-count="10" data-suffix="종">0종</b><span>실시간 합성 집중 사운드</span></div>
         <div><b data-count="16" data-suffix="종">0종</b><span>초·중학생 성장 배지</span></div>
         <div><b data-count="0" data-suffix="원">0원</b><span>가입도 결제도 없음</span></div>
@@ -598,10 +642,12 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <h2 class="h2">입력 한 번으로<br><span class="gray">공부 한 판이 끝까지</span></h2>
       </div>
       <div class="feat-grid" data-stagger>
+  
         <article class="feat"><div class="ico">🧠</div><h3>학습 준비도 5영역</h3>
           <p>자가보고로 입력한 수면·피로·스트레스 등을 규칙 기반 참고값으로 정리하고 시간대 보정을 더합니다.</p></article>
         <article class="feat"><div class="ico">📅</div><h3>과목별 시간 배분</h3>
           <p>블록을 놓을 때마다 그 시각의 준비도 참고값을 다시 계산해 순서를 정합니다.</p>
+  
           <span class="note">같은 과목을 연달아 붙이지 않습니다 (인터리빙)</span></article>
         <article class="feat"><div class="ico">⏳</div><h3>컨디션 맞춤 뽀모도로</h3>
           <p>85점 이상은 딥워크 50분, 38점 아래는 회복 우선 15분 — 무리시키지 않습니다.</p></article>
@@ -621,6 +667,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   <section class="soft">
     <div class="wrap alt">
       <div class="alt-text up">
+  
         <span class="label">투명한 기준</span>
         <h2 class="h2">"왜 이런 추천이 나왔지?"<br><span class="gray">근거를 숨기지 않아요</span></h2>
         <p class="lead">기준점에서 시작해 입력한 요인이 얼마나 더해지고 빠졌는지, 시간대 보정이 어떻게 적용됐는지
@@ -628,6 +675,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <pre class="formula"><span class="k">최종 점수</span> = ( 기준점 50 + Σ 요인별 기여 ) × 생체리듬 보정
 <span class="k">요인 기여</span> = 100 × 가중치 × (요인값 − 0.5)</pre>
         <p class="disclaimer">이 계산은 자가보고 입력을 정리하는 제품 내 규칙이며, 인지능력 측정이나 의학적 판단을 대신하지 않습니다.</p>
+  
       </div>
       <div class="up">
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:28px;box-shadow:var(--shadow-sm)">
@@ -649,11 +697,14 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   </section>
 
   <!-- ══ 프라이버시 ══════════════════════ -->
+  
   <section id="privacy">
+  
     <div class="wrap">
       <div class="privacy up">
         <div class="lock">🔒</div>
         <div>
+  
           <h3>기본 학습 기록은 내 브라우저에 저장됩니다</h3>
           <p>회원가입 없이 시작하며, 외부 전송 기능은 각각 동의해야만 켜집니다.</p>
           <ul>
@@ -661,6 +712,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
             <li>등록한 음악 파일도 기기 안에만 남습니다 (전송 없음)</li>
             <li>학교·학급 리그와 관리자 공유는 별도 동의 시에만 필요한 항목을 전송합니다</li>
             <li>학교 검색·급식 조회와 선택한 공유 기능 외에는 오프라인에서도 쓸 수 있습니다</li>
+  
             <li>백업 파일로 내려받아 다른 기기로 옮길 수 있습니다</li>
           </ul>
         </div>
@@ -675,7 +727,9 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <div class="faq" data-stagger>
         <details open><summary>정말 무료인가요?</summary><div class="ans"><div><p>네. 결제도 구독도 없고 회원가입도 받지 않습니다. 링크를 열면 바로 씁니다.</p></div></div></details>
         <details><summary>앱을 설치해야 하나요?</summary><div class="ans"><div><p>아니요, 브라우저에서 그대로 돌아갑니다. 홈 화면에 추가하면 앱처럼 전체 화면으로 열리고, 인터넷이 끊겨도 대부분의 기능이 동작합니다.</p></div></div></details>
+  
         <details><summary>친구들과 등수는 어떻게 겨루나요?</summary><div class="ans"><div><p>학교 리그에 동의하면 학교별 주간 순공 시간이 집계됩니다. 학급 대항전에도 별도로 동의하면 같은 학교·학년·반 친구들과 자동으로 순위표가 만들어지며, 닉네임과 학급 정보가 전송된다는 안내를 먼저 확인합니다.</p></div></div></details>
+  
         <details><summary>초등학생·중학생도 쓸 수 있나요?</summary><div class="ans"><div><p>학교급을 초등학교나 중학교로 고르면 성장 모드가 켜집니다. 순공 1분이 1 경험치가 되고, 레벨이 오르면 캐릭터가 자라며, 배지 16종과 주간 도장판이 생깁니다. 설명 문구도 쉬운 말로 바뀝니다.</p></div></div></details>
         <details><summary>기기를 바꾸면 기록이 사라지나요?</summary><div class="ans"><div><p>기록은 그 브라우저 안에 저장되므로, 옮길 때는 설정에서 백업 파일을 내려받아 새 기기에서 불러오면 됩니다.</p></div></div></details>
         <details><summary>점수가 낮게 나오면 어떻게 되나요?</summary><div class="ans"><div><p>더 몰아붙이는 대신 집중 시간을 줄입니다. 38점 아래면 15분 집중 / 10분 휴식의 회복 우선 모드로 바뀌고, 난도 높은 과제 대신 오답노트처럼 부담이 적은 학습법을 제안합니다.</p></div></div></details>
@@ -690,8 +744,10 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <span class="mask"><span>잘 되는 공부부터,</span></span>
         <span class="mask" style="--d:120ms"><span class="gray">순서대로.</span></span>
       </h2>
+  
       <p class="up">오늘 상태를 짧게 알려 주세요. 시작하기 좋은 순서는 Mindora가 정리해 드릴게요.</p>
       <div class="up"><a class="btn white lg" href="../?start=1">오늘 계획 시작하기 →</a></div>
+  
       <small class="up">설치 · 가입 · 결제 없이 바로 시작</small>
     </div>
   </section>
@@ -702,11 +758,13 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
     <a class="brand" href="#top">
       <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="url(#mk)"/><text x="256" y="358" font-size="272" text-anchor="middle">🧠</text></svg>Mindora
     </a>
+ 
     <span>오늘 상태에 맞는 학습 루틴</span>
     <nav><a href="../?start=1">앱 열기</a><a href="#features">기능</a><a href="#privacy">데이터 안내</a><a href="#faq">FAQ</a></nav>
   </div>
   <div class="wrap" style="margin-top:18px;color:var(--dim);font-size:12.5px">
     화면 속 점수·계획은 설명을 위한 예시이며 진단 결과가 아닙니다. © 2026 Mindora
+ 
   </div>
 </footer>
 

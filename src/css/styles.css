@@ -144,7 +144,13 @@ body.intro-open { overflow: hidden; }
   border-bottom: 1px solid var(--line);
 }
 .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
-.brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+/* 로고 자체가 홈 버튼이다 — button 이지만 생김새는 예전 그대로 둔다 */
+.brand {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit;
+  cursor: pointer; text-align: left; border-radius: 10px; transition: 0.16s;
+}
+.brand:hover .brand-text h1 { color: var(--accent); }
 /* 아이콘 PNG 가 이미 둥근 모서리를 품고 있다(모서리 밖은 투명).
  * 여기서 또 border-radius 를 걸면 이중으로 깎여 모서리가 지저분해진다. */
 .brand-mark { width: 38px; height: 38px; display: block; }
@@ -178,10 +184,45 @@ body.intro-open { overflow: hidden; }
 /* 번호 없는 기능 탭 — 동그란 번호가 빠진 만큼 좌우 여백을 조금 더 준다 */
 .step.is-tool { padding: 7px 13px; }
 .step.is-tool.is-active { font-weight: 600; }
-/* 단계와 기능을 가르는 세로선 */
+/* 홈은 번호 대신 집 모양이 들어간다 */
+.step.is-home i { background: var(--accent-soft); color: var(--accent-ink); font-size: 11px; }
+.step.is-home.is-active i { background: linear-gradient(140deg, #7c5cff, #5b7cff); }
+/* 홈과 단계를 가르는 세로선 */
 .step-div { flex-shrink: 0; align-self: center; width: 1px; height: 17px; margin: 0 6px; background: var(--line-2); }
 
-.clock { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); flex-shrink: 0; }
+/* ------------------------------------------------------------- 더보기 */
+.more-wrap { position: relative; flex-shrink: 0; }
+.more-btn {
+  display: flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px;
+  background: transparent; border: 1px solid transparent; color: var(--muted);
+  font: inherit; font-size: 12.5px; cursor: pointer; transition: 0.18s;
+}
+.more-btn:hover { color: var(--text); background: var(--surface-2); }
+.more-btn.is-active { color: var(--text); background: var(--surface); border-color: var(--line-2); box-shadow: var(--shadow-sm); font-weight: 600; }
+.more-btn.is-hidden { display: none; }
+.mb-dots { font-size: 13px; }
+.more-menu {
+  position: absolute; top: calc(100% + 9px); right: 0; z-index: 60;
+  min-width: 244px; padding: 6px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 2px;
+  animation: pageIn 0.16s ease;
+}
+.more-menu.is-hidden { display: none; }
+.mm-item {
+  display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 11px;
+  border-radius: 10px; background: transparent; border: 0; cursor: pointer;
+  font: inherit; color: var(--text); text-align: left; transition: 0.14s;
+}
+.mm-item:hover { background: var(--surface-2); }
+.mm-item.is-active { background: var(--accent-soft); }
+.mm-ic { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; font-size: 15px; border-radius: 9px; background: var(--surface-2); }
+.mm-item.is-active .mm-ic { background: #fff; }
+.mm-txt { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.mm-txt b { font-size: 13px; font-weight: 600; }
+.mm-txt span { font-size: 11px; color: var(--dim); }
+
+.clock { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); padding: 5px 11px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); flex-shrink: 0; }
 
 .profile-chip {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
@@ -205,6 +246,151 @@ body.intro-open { overflow: hidden; }
 .section.is-hidden { display: none; }
 .section.is-active { animation: pageIn 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes pageIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+
+/* ------------------------------------------------------------------ 홈 */
+
+.home-hero {
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  padding: 26px 26px 24px; border-radius: var(--r);
+  background: var(--hero-grad); border: 1px solid var(--line);
+  box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.hh-text { flex: 1 1 300px; min-width: 0; }
+.hh-hello { margin: 0 0 6px; font-size: 13.5px; color: var(--muted); }
+.hh-hello b { color: var(--text); font-weight: 700; }
+.hh-line { margin: 0 0 10px; font-size: 22px; line-height: 1.35; letter-spacing: -0.02em; }
+.hh-when { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--dim); }
+
+/* 뇌 컨디션 도넛 — conic-gradient 로 그린다 (캔버스도 SVG도 필요 없다) */
+.hh-ring {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer;
+}
+.hr-dial {
+  --pct: 0%;
+  width: 118px; height: 118px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--accent) var(--pct), var(--track) 0);
+  transition: 0.4s;
+}
+.hr-dial.is-empty { background: var(--track); }
+.hr-in {
+  width: 92px; height: 92px; border-radius: 50%; background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+}
+.hr-in b { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.hr-in i { font-style: normal; font-size: 11px; color: var(--muted); }
+.hr-cap { font-size: 11.5px; color: var(--dim); }
+.hh-ring:hover .hr-in b { color: var(--accent); }
+
+.home-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.hs {
+  display: flex; flex-direction: column; gap: 3px; padding: 14px 15px; text-align: left;
+  border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line);
+  font: inherit; color: inherit; cursor: pointer; transition: 0.16s; box-shadow: var(--shadow-sm);
+}
+.hs:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.hs-k { font-size: 11.5px; color: var(--dim); font-weight: 600; }
+.hs b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.hs-s { font-size: 11px; color: var(--muted); }
+
+.home-cta, .home-cta2 { width: 100%; }
+#hmCta { display: flex; gap: 10px; margin-bottom: 18px; }
+#hmCta .btn { flex: 1; }
+
+.home-sub { font-size: 13px; color: var(--dim); font-weight: 600; margin: 26px 0 10px; }
+.home-quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.hq {
+  display: flex; flex-direction: column; gap: 3px; padding: 15px; text-align: left;
+  border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line);
+  font: inherit; color: inherit; cursor: pointer; transition: 0.16s;
+}
+.hq:hover { border-color: var(--accent); background: var(--surface-3); }
+.hq-ic { font-size: 19px; line-height: 1.2; margin-bottom: 3px; }
+.hq b { font-size: 13.5px; font-weight: 700; }
+.hq-d { font-size: 11px; color: var(--dim); line-height: 1.4; }
+
+/* ------------------------------------------------------- 모리 (슬라임) */
+
+.slime-card .card-head .right { margin-left: auto; }
+.sl-jelly {
+  font-size: 13px; font-weight: 700; color: var(--accent-ink);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  padding: 5px 12px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.sl-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 22px; align-items: start; }
+
+.sl-stage {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 18px 14px 16px; border-radius: var(--r);
+  background: radial-gradient(120% 90% at 50% 0%, #f4f0ff 0%, var(--surface-3) 70%);
+  border: 1px solid var(--line);
+}
+.sl-tap { background: none; border: 0; padding: 0; cursor: pointer; line-height: 0; }
+.sl-tap:active { transform: scale(0.97); }
+.sl-tap.is-spent { cursor: default; }
+.sl-svg { width: 176px; height: 161px; display: block; overflow: visible; }
+.sl-shadow { fill: rgba(70, 50, 140, 0.13); }
+/* 가만히 있어도 말랑말랑 움직인다 */
+.sl-body { animation: slIdle 2.6s ease-in-out infinite; }
+@keyframes slIdle {
+  0%, 100% { transform: none; }
+  50% { transform: translateY(-4px) scaleY(1.035) scaleX(0.982); }
+}
+.sl-body.is-boing { animation: slBoing 0.42s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes slBoing {
+  0% { transform: scaleY(0.82) scaleX(1.16); }
+  55% { transform: scaleY(1.1) scaleX(0.93) translateY(-8px); }
+  100% { transform: none; }
+}
+.sl-eye { animation: slBlink 4.4s infinite; transform-origin: center; }
+@keyframes slBlink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+
+.sl-pop {
+  position: absolute; top: 46%; font-size: 15px; font-weight: 800; color: var(--accent);
+  pointer-events: none; animation: slPop 0.9s ease-out forwards;
+}
+@keyframes slPop {
+  0% { opacity: 0; transform: translateY(0) scale(0.8); }
+  25% { opacity: 1; transform: translateY(-12px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-42px) scale(1); }
+}
+
+.sl-name { display: flex; align-items: baseline; gap: 8px; }
+.sl-name b { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+.sl-name span { font-size: 12px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 9px; border-radius: 999px; font-weight: 700; }
+.sl-line { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+.sl-xp { width: 100%; max-width: 260px; height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; margin-top: 4px; }
+.sl-xp span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #5b7cff); transition: width 0.4s; }
+.sl-xp-cap { margin: 0; text-align: center; }
+
+.sl-side { display: flex; flex-direction: column; gap: 12px; }
+.sl-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sl-fact {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line);
+}
+.sl-fact span { font-size: 11px; color: var(--dim); font-weight: 600; }
+.sl-fact b { font-size: 14px; font-weight: 700; }
+.sl-claim { width: 100%; }
+.sl-claim-cap { margin: -4px 0 0; }
+.sl-acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sl-feed em { font-style: normal; opacity: 0.75; margin-left: 5px; font-size: 12px; }
+.sl-pat-left { color: var(--dim); }
+
+.sl-shop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.sl-up {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px;
+  border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line);
+}
+.sl-up.is-max { opacity: 0.72; }
+.su-head { display: flex; align-items: center; gap: 10px; }
+.su-icon { width: 32px; height: 32px; display: grid; place-items: center; font-size: 16px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); }
+.su-head b { font-size: 13.5px; font-weight: 700; display: block; }
+.su-lv { font-size: 11px; color: var(--dim); }
+.su-desc { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.su-now { margin: 0 0 2px; font-size: 11.5px; color: var(--dim); }
+.su-now b { color: var(--accent-ink); font-weight: 700; }
+.sl-up .btn { width: 100%; margin-top: auto; font-variant-numeric: tabular-nums; }
 
 /* 페이지 하단 이전 / 다음 */
 .page-nav {
@@ -297,9 +483,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .meal input:checked + span b { filter: none; opacity: 1; }
 
 /* -------------------------------------------------------------- subject */
+/* 시험일 칸만 최소 폭을 준다. 날짜 입력은 "2026-08-08" 과 달력 아이콘이
+   들어갈 자리가 필요해서, 다른 칸처럼 0 까지 줄이면 글자가 잘린다. */
 .subject-head, .subject-row {
   display: grid;
-  grid-template-columns: minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1.15fr) 34px;
+  grid-template-columns: minmax(0,1.5fr) minmax(0,1.2fr) minmax(124px,1.15fr) minmax(0,1fr) minmax(0,1.15fr) 34px;
   gap: 8px; align-items: center;
 }
 .subject-head { font-size: 11px; color: var(--dim); font-weight: 600; padding: 0 2px 8px; }
@@ -308,6 +496,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
    좁은 화면에서는 .subject-head 가 사라지므로 캡션을 대신 띄운다.
    (특히 시험일은 빈 date 입력이라 라벨이 없으면 무슨 칸인지 알 수 없다) */
 .s-cell { display: grid; gap: 4px; min-width: 0; }
+/* 날짜 입력은 브라우저가 만든 내부 위젯(달력 아이콘 + yyyy. mm. dd.)을 품고 있어
+ * 기본 최소 폭이 135px 을 넘는다. 그리드 항목의 min-width 는 auto 라 그 아래로는
+ * 줄지 않고, 결국 시험일 칸만 제 칸을 넘어 오른쪽으로 삐져나왔다.
+ * min-width 를 0 으로 풀어 다른 칸과 똑같이 칸 폭을 따르게 한다. */
+.s-cell > .input { min-width: 0; }
 .s-cap { display: none; }
 .subject-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .subject-row { animation: pop 0.22s ease; }
@@ -709,8 +902,16 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .rk-pos.m1 { color: var(--gold); }
 .rk-pos.m2 { color: var(--silver); }
 .rk-pos.m3 { color: var(--bronze); }
-/* 캐릭터(.av)가 그 자리를 차지한다. 크기만 잡아 주면 된다. */
-.rk-av { --av: 34px; }
+/* 캐릭터(.av)가 그 자리를 차지한다. 크기는 아래 캐릭터 구역에서 .rk-av 로 잡는다
+ * — 여기서 잡으면 뒤에 오는 .av 의 기본 크기에 덮여 칸을 넘어간다. */
+
+/* 서버에서 받은 반 랭킹 줄은 캐릭터가 없다. 서버에는 초성만 올라가기 때문이다.
+ * 그래서 그 줄만 초성 원판으로 대신한다. */
+.rk-tag {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 800; color: #fff;
+}
 .rk-info { min-width: 0; }
 .rk-name { font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .rk-name .me-tag { font-size: 9.5px; padding: 1px 6px; border-radius: 5px; background: var(--accent); color: #fff; font-weight: 700; }
@@ -1134,24 +1335,43 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .pom-summary { grid-template-columns: repeat(2, 1fr); }
   .group-hero { grid-template-columns: 1fr; }
   .gh-stats { justify-content: space-around; }
+  .sl-main { grid-template-columns: 1fr; }
+  .home-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 760px) {
   body { font-size: 14.5px; }
   .wrap { padding: 24px 14px 60px; }
-  .topbar-inner { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
-  .steps { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
-  /* 좁은 화면에서는 번호만 남겨 폭을 아낀다.
-   * 다만 번호가 없는 기능 탭은 이름을 지우면 빈 칸이 되므로 이름을 남긴다. */
+  /* 탭 다섯 개 + [더보기] 면 한 줄에 들어간다 — 예전처럼 줄을 접지 않는다 */
+  .topbar-inner { gap: 8px; padding: 9px 12px; }
+  /* 부제만 접는다 — h1 은 문서를 대표하는 유일한 제목이라 남겨 둔다 */
+  .brand-text span { display: none; }
+  .brand-mark { width: 30px; height: 30px; }
+  .brand-text h1 { font-size: 13.5px; }
+  .steps { margin-left: 4px; margin-right: auto; }
+  /* 좁은 화면에서는 번호(와 집 모양)만 남겨 폭을 아낀다 */
   .step span { display: none; }
-  .step.is-tool span { display: inline; }
-  .step { padding: 7px 10px; }
-  .step.is-tool { padding: 7px 11px; }
-  .profile-chip { margin-left: auto; }
-  .clock { display: none; }
+  .step { padding: 6px 8px; }
+  .step-div { margin: 0 3px; }
+  .mb-txt { display: none; }
+  .more-btn { padding: 7px 10px; }
+  .pc-txt { display: none; }
+  .profile-chip { padding: 4px; }
   .sec-head h2 { font-size: 21px; }
+  .home-hero { padding: 20px 18px; gap: 16px; }
+  .hh-line { font-size: 19px; }
+  .hr-dial { width: 100px; height: 100px; }
+  .hr-in { width: 78px; height: 78px; }
+  .hr-in b { font-size: 25px; }
+  #hmCta { flex-direction: column; }
+  .sl-shop { grid-template-columns: 1fr; }
+  .sl-facts { grid-template-columns: 1fr 1fr; }
   .subject-head { display: none; }
   .subject-row { grid-template-columns: 1fr 1fr; gap: 10px 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
   .subject-row .s-cell-name { grid-column: 1 / -1; padding-right: 34px; }
+  /* 두 칸으로 접히면 한 칸이 130px 남짓이라 날짜 위젯이 기본 크기로는 안 들어간다.
+   * min-width 를 풀어 둔 것만으로는 안쪽이 잘리므로, 좁은 화면에서만 여백과
+   * 글자를 조금 줄여 달력 아이콘까지 통째로 칸 안에 들어오게 한다. */
+  .subject-row input[type="date"].input { padding-left: 8px; padding-right: 8px; font-size: 13px; }
   .s-cap { display: block; font-size: 11px; color: var(--dim); font-weight: 600; padding-left: 2px; }
   .subject-row .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
   .two-col { grid-template-columns: 1fr; }
@@ -1185,6 +1405,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .week-bars { gap: 5px; height: 160px; }
   .wb-val { font-size: 9.5px; }
   .rep-nav .wk { min-width: 0; flex: 1; font-size: 12.5px; }
+  .home-hero { flex-direction: column-reverse; align-items: stretch; text-align: center; }
+  .hh-when { justify-content: center; }
+  .hh-ring { flex-direction: row; justify-content: center; gap: 14px; }
+  .hr-cap { align-self: center; }
+  .home-quick { grid-template-columns: 1fr 1fr; }
+  .sl-svg { width: 148px; height: 136px; }
+  .sl-facts { grid-template-columns: 1fr; }
 }
 
 /* ============================================ 결과 요약 스트립 (secResult)
@@ -1501,6 +1728,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-sm { --av: 46px; }
 .av-lg { --av: 58px; }
 .av-xl { --av: 132px; }
+/* 랭킹 줄에 들어갈 때의 크기. 크기 지정은 반드시 .av 뒤에 와야 한다 —
+ * 앞에 두면 우선순위가 같아 .av 의 기본값(46px)이 이겨서 칸을 넘어간다. */
+.rk-av { --av: 34px; }
 
 /* 테두리 5색 — 순공 시간이 쌓이면 하나씩 열린다 (avatar.js 의 BORDERS) */
 .av-b1::before { background: var(--line-2); }
@@ -1641,6 +1871,11 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
   /* 상단바 반투명 배경도 어두운 쪽으로 */
   .topbar { background: rgba(15, 18, 32, 0.84); }
+
+  /* 홈·모리에서 라이트용으로 박아 둔 밝은 면들 */
+  .mm-item.is-active .mm-ic { background: var(--surface); }
+  .sl-stage { background: radial-gradient(120% 90% at 50% 0%, #262244 0%, var(--surface-3) 70%); }
+  .sl-shadow { fill: rgba(0, 0, 0, 0.35); }
 
   /* 인트로 배경은 라이트용 파스텔 그라데이션이라 어두운 톤으로 다시 잡는다 */
   .intro { background: linear-gradient(150deg, #171a2b, #12151f 55%, #1d1726); }
