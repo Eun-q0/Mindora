@@ -5,11 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mindora — 오늘의 학습 준비도 코치</title>
 
-<meta name="naver-site-verification" content="fa3d8aeb91cd3600bfaf8c486a86f00aba5d0cd7" />
+<!-- 일반 브라우저에서는 랜딩을 먼저 보여 주고, CTA로 들어온 뒤에는 같은 탭에서
+     다시 랜딩으로 튕기지 않는다. 설치형(PWA) 실행은 곧바로 앱을 연다. -->
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var entering = params.get('start') === '1';
+  var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  var entered = false;
 
-<!-- Google AdSense -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
-     crossorigin="anonymous"></script>
+  try { entered = sessionStorage.getItem('mindora.landingEntered.v1') === '1'; } catch (e) { /* 무시 */ }
+
+  if (entering) {
+    try {
+      sessionStorage.setItem('mindora.landingEntered.v1', '1');
+      localStorage.setItem('neurostudy.introSeen.v1', '1');
+    } catch (e) { /* 저장소를 막은 브라우저에서도 앱은 계속 연다 */ }
+
+    params.delete('start');
+    var clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+    history.replaceState(null, '', clean);
+    return;
+  }
+
+  if (!standalone && !entered) location.replace('landing/');
+})();
+</script>
+
+<meta name="naver-site-verification" content="fa3d8aeb91cd3600bfaf8c486a86f00aba5d0cd7" />
 
 <!-- 방학 계획표 글씨체 (구글 폰트, 무료·상업적 사용 가능) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2112,7 +2135,7 @@ body {
     <p class="intro-body">수면·피로·스트레스와 시험 일정을 바탕으로
       오늘 시작할 과목과 공부 시간을 제안합니다.</p>
     <p class="intro-tag">로그인 없이 시작 · 기록은 기본적으로 이 기기에 저장</p>
-    <button type="button" class="btn primary intro-go" id="introGo">10초 컨디션 확인하기</button>
+    <button type="button" class="btn primary intro-go" id="introGo">오늘 컨디션 확인하기</button>
   </div>
 </div>
 
@@ -3162,7 +3185,7 @@ body {
         <div class="cl-event" id="classEventBox">
           <p class="cl-h" style="margin:0 0 6px">🍗 학급 대항전</p>
           <p class="tiny" style="margin:0 0 10px">우리 반이 학급 순위에 참여하려면 <b>학년·반</b>과 <b>닉네임</b>을 함께 전송해야 합니다.
-            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끄면 서버에 저장된 값도 다음 동기화에서 지워집니다.</p>
+            학교 리그만 켠 경우에는 전송되지 않습니다. 언제든 끌 수 있고, 서버 삭제가 완료됐는지 화면에서 확인할 수 있습니다.</p>
           <label class="toggle"><input type="checkbox" id="classEventOn"><span><b>학급 대항전에 참가합니다</b> — 학년·반과 닉네임 전송에 동의합니다</span></label>
           <p class="tiny" style="margin:8px 0 0">같은 학교·학년·반이면 <b>따로 등록하지 않아도</b> 자동으로 같은 판에 들어갑니다.
             순위표에는 <b>설정한 닉네임이 그대로</b> 보입니다 — <b>실명은 권하지 않습니다.</b>
@@ -3261,8 +3284,8 @@ body {
         <details class="privacy-details">
           <summary>동의 철회·보관 기간·삭제 방법 보기</summary>
           <p class="tiny">학교 리그·학급 대항전·관리자 공개는 위의 각 스위치에서 서로 별도로 철회할 수 있습니다.
-            끄면 새 전송이 중단되고, 학급 정보와 관리자 공개 정보는 다음 동기화에서 삭제됩니다.
-            현재 시범 버전은 서버 집계의 자동 삭제를 보장하지 않습니다. 정식 운영 전 보관 기간·삭제 절차·문의 연락처를 확정하고 실제 서버 정책과 일치시켜야 합니다.
+            끄면 새 전송이 즉시 중단되고 해당 공유 기능으로 보낸 서버 기록의 삭제를 요청합니다. 연결 문제로 실패하면 이 기기에 삭제 요청을 보관해 다음 실행 때 다시 시도합니다.
+            정기 정리 작업을 설정한 운영 환경에서는 60일이 지난 기록도 삭제하며, 철회 요청의 완료 여부는 각 공유 설정 아래에서 확인할 수 있습니다.
             이 기기의 로컬 기록은 <b>모든 기록 삭제</b>로 즉시 지울 수 있습니다. 만 14세 미만 사용자는 서버 전송 기능을 보호자와 함께 결정하세요.</p>
         </details>
       </div>
@@ -5696,6 +5719,7 @@ body {
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0bHZ1aHpkeG94bnZzZHJwZnFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMTg4NzcsImV4cCI6MjEwMDg5NDg3N30.6-If6Q47kXkdOxmkt8QNiYzxhqWMDl3dnGC1pMYQLGQ';
 
   var STORE_KEY = 'neurostudy.cloud.v1';
+  var DELETE_KEY = 'neurostudy.cloudDeletePending.v1';
   var TIMEOUT_MS = 8000;
   var MIN_PUSH_GAP = 60 * 1000;   // 같은 값을 계속 밀어 올리지 않는다
 
@@ -5704,7 +5728,7 @@ body {
   /* --------------------------------------------------------------- 상태 */
 
   function load() {
-    var d = { enabled: false, classOn: false, deviceId: '', lastSync: 0, lastPush: 0, lastError: '' };
+    var d = { enabled: false, classOn: false, hidden: false, deviceId: '', lastSync: 0, lastPush: 0, lastSig: '', lastError: '' };
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (!raw) return d;
@@ -5721,6 +5745,7 @@ body {
         deviceId: o.deviceId || '',
         lastSync: o.lastSync || 0,
         lastPush: o.lastPush || 0,
+        lastSig: o.lastSig || '',
         lastError: o.lastError || ''
       };
     } catch (e) { return d; }
@@ -5782,13 +5807,15 @@ body {
 
   function status() {
     var st = load();
+    var pending = pendingLoad();
     return {
       configured: configured(),
       enabled: configured() && st.enabled,
       classOn: configured() && st.enabled && st.classOn,
       deviceId: st.deviceId,
       lastSync: st.lastSync,
-      lastError: st.lastError
+      lastError: st.lastError,
+      pendingDelete: !!pending.league
     };
   }
 
@@ -5796,6 +5823,64 @@ body {
     var st = load();
     st.lastError = String(msg || '');
     save(st);
+  }
+
+  /* 서버 삭제가 끊기면 기기 번호를 먼저 버려서는 다시 요청할 수 없다.
+   * 삭제할 범위와 번호를 별도 보관했다가 다음 앱 실행에서 재시도한다. */
+  function pendingLoad() {
+    try {
+      var o = JSON.parse(localStorage.getItem(DELETE_KEY) || '{}');
+      return { league: o.league || '', student: o.student || '' };
+    } catch (e) { return { league: '', student: '' }; }
+  }
+
+  function pendingSave(o) {
+    try {
+      if (!o.league && !o.student) localStorage.removeItem(DELETE_KEY);
+      else localStorage.setItem(DELETE_KEY, JSON.stringify(o));
+    } catch (e) { /* 저장소가 막혀 있어도 앱은 계속 쓴다 */ }
+  }
+
+  function queueDelete(scope, id) {
+    var p = pendingLoad();
+    p[scope] = id;
+    pendingSave(p);
+  }
+
+  function clearPending(scope, id) {
+    var p = pendingLoad();
+    if (p[scope] === id) p[scope] = '';
+    pendingSave(p);
+  }
+
+  function clearUnusedDevice(id) {
+    var st = load();
+    if (st.deviceId !== id || st.enabled) return;
+    // 관리자 공개가 켜져 있으면 같은 번호를 계속 써야 예전 행이 고아가 되지 않는다.
+    if (typeof studentLoad === 'function' && studentLoad().enabled) return;
+    st.deviceId = '';
+    st.lastPush = 0;
+    st.lastSig = '';
+    save(st);
+  }
+
+  function requestDelete(scope, id) {
+    if (!configured() || !id) return Promise.resolve(false);
+    queueDelete(scope, id);
+    var rpc = scope === 'student' ? 'delete_own_student_reports' : 'delete_own_league_reports';
+    return req('/rest/v1/rpc/' + rpc, {
+      method: 'POST', body: { p_device: id }
+    }).then(function () {
+      clearPending(scope, id);
+      clearUnusedDevice(id);
+      if (scope === 'league') noteError('');
+      else {
+        var student = studentLoad();
+        student.lastError = '';
+        studentSave(student);
+      }
+      return true;
+    });
   }
 
   /* --------------------------------------------------------------- 통신 */
@@ -5927,12 +6012,17 @@ body {
     if (!configured()) return Promise.resolve(false);
     var st = load();
     if (!st.deviceId) return Promise.resolve(false);
-    // 분을 0 으로 만들 수는 없다(감소 불가). 대신 기기 ID 를 버려 연결을 끊는다.
-    st.deviceId = '';
-    st.lastPush = 0;
-    st.lastSig = '';
-    save(st);
-    return Promise.resolve(true);
+    return requestDelete('league', st.deviceId).then(function (ok) {
+      var next = load();
+      next.lastPush = 0;
+      next.lastSig = '';
+      next.lastError = '';
+      save(next);
+      return ok;
+    }, function (e) {
+      noteError('서버 삭제 대기 — ' + (e.message || '연결 실패'));
+      throw e;
+    });
   }
 
   /* ===================================================== 학생 개별 공유
@@ -5964,7 +6054,11 @@ body {
 
   function studentShareStatus() {
     var st = studentLoad();
-    return { configured: configured(), enabled: configured() && st.enabled, lastPush: st.lastPush, lastError: st.lastError };
+    return {
+      configured: configured(), enabled: configured() && st.enabled,
+      lastPush: st.lastPush, lastError: st.lastError,
+      pendingDelete: !!pendingLoad().student
+    };
   }
 
   /** 닉네임을 포함해 개별 기록을 올린다. 학생 쪽은 로그인이 필요 없다(anon 키). */
@@ -6001,13 +6095,36 @@ body {
     });
   }
 
-  /** 리그와 마찬가지로, 기기 ID 를 버려 서버 기록과의 연결을 끊는다. */
+  /** 관리자 공개 기록을 서버에서 삭제한다. 실패한 요청은 다음 실행에 재시도한다. */
   function forgetStudent() {
+    var id = load().deviceId;
     var st = studentLoad();
     st.lastPush = 0;
     st.lastSig = '';
     studentSave(st);
-    return Promise.resolve(true);
+    if (!id) return Promise.resolve(false);
+    return requestDelete('student', id).then(function (ok) {
+      var next = studentLoad();
+      next.lastError = '';
+      studentSave(next);
+      return ok;
+    }, function (e) {
+      var next = studentLoad();
+      next.lastError = '서버 삭제 대기 — ' + (e.message || '연결 실패');
+      studentSave(next);
+      throw e;
+    });
+  }
+
+  function retryPendingDeletions() {
+    if (!configured()) return Promise.resolve(false);
+    var p = pendingLoad();
+    var jobs = [];
+    if (p.league) jobs.push(requestDelete('league', p.league)['catch'](function () { return false; }));
+    if (p.student) jobs.push(requestDelete('student', p.student)['catch'](function () { return false; }));
+    return Promise.all(jobs).then(function (rows) {
+      return rows.some(function (ok) { return ok; });
+    });
   }
 
   /* ============================================================ 관리자 로그인
@@ -6235,7 +6352,7 @@ body {
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
     classEnabled: classEnabled, setClassEnabled: setClassEnabled,
-    deviceId: deviceId, forget: forget,
+    deviceId: deviceId, forget: forget, retryPendingDeletions: retryPendingDeletions,
     push: push, fetchWeek: fetchWeek, test: test,
 
     studentShareEnabled: studentShareEnabled, setStudentShareEnabled: setStudentShareEnabled,
@@ -12992,7 +13109,8 @@ body {
         Avatar.html(av, lifeMin || 0, 'rk-av') +
         '<div class="rk-info">' +
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
-            /* 티어 배지는 없앴다 — 테두리 색으로 바뀌면서 Avatar.tierChip 도 함께 사라졌다 */
+  
+    
             (m.overall != null ? '<span class="brain" title="학습 준비도 참고값">준비도 ' + displayScore(m.overall) + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
           '<div class="rk-date">' + (m.self ? '실시간 반영'
@@ -13639,8 +13757,10 @@ body {
       return;
     }
     if (!s.enabled) {
-      el.className = 'neis-status show';
-      el.textContent = '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
+      el.className = 'neis-status show' + (s.pendingDelete ? ' warn' : '');
+      el.textContent = s.pendingDelete
+        ? '전송은 꺼졌습니다. 서버 기록 삭제를 다시 시도하고 있어요 — 이 탭을 닫아도 다음 실행에 이어집니다.'
+        : '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
       return;
     }
     el.className = 'neis-status show ok';
@@ -13686,11 +13806,18 @@ body {
          * 학년·반이 남아 정리(60일) 때까지 떠 있게 된다. */
         var offNow = function () {
           Cloud.setEnabled(false);
-          Cloud.forget();
+          var deletion = Cloud.forget();
           League.setCloudRows([], '');
           renderCloudSettings();
           renderLeague();
-          toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
+          toast('전송을 껐습니다. 서버 기록을 삭제하고 있어요.');
+          deletion.then(function () {
+            renderCloudSettings();
+            toast('서버의 학교·학급 리그 기록도 삭제했습니다.');
+          }, function () {
+            renderCloudSettings();
+            toast('전송은 꺼졌습니다. 서버 삭제는 연결될 때 자동으로 다시 시도합니다.', true);
+          });
         };
 
         if (Cloud.classEnabled()) {
@@ -13784,6 +13911,10 @@ body {
 
     renderCloudSettings();
     initStudentShare();
+    Cloud.retryPendingDeletions().then(function () {
+      renderCloudSettings();
+      renderStudentShareSettings();
+    });
   }
 
   /* ============================================================ 링크 공유
@@ -13874,11 +14005,13 @@ body {
       el.textContent = '서버가 연결되지 않아 이 기능을 쓸 수 없습니다.';
       return;
     }
-    el.className = s.enabled ? 'neis-status show ok' : 'neis-status show';
+    el.className = s.enabled ? 'neis-status show ok' : 'neis-status show' + (s.pendingDelete ? ' warn' : '');
     el.innerHTML = s.enabled
       ? '공유 중 · ' + (s.lastPush ? '마지막 전송 ' + agoText(s.lastPush) : '아직 전송 전') +
         (s.lastError ? '<br><span style="color:var(--bad)">오류 — ' + esc(s.lastError) + '</span>' : '')
-      : '꺼져 있습니다. 닉네임이 서버로 나가지 않습니다.';
+      : (s.pendingDelete
+          ? '전송은 꺼졌습니다. 관리자 공개 기록 삭제를 연결될 때까지 자동으로 다시 시도합니다.'
+          : '꺼져 있습니다. 닉네임이 서버로 나가지 않습니다.');
   }
 
   function studentShareSync(force) {
@@ -13908,9 +14041,16 @@ body {
         studentShareSync(true);
       } else {
         Cloud.setStudentShareEnabled(false);
-        Cloud.forgetStudent();
+        var deletion = Cloud.forgetStudent();
         renderStudentShareSettings();
-        toast('공유를 껐습니다. 앞으로 닉네임이 전송되지 않습니다.');
+        toast('공유를 껐습니다. 관리자 공개 기록을 삭제하고 있어요.');
+        deletion.then(function () {
+          renderStudentShareSettings();
+          toast('서버의 관리자 공개 기록도 삭제했습니다.');
+        }, function () {
+          renderStudentShareSettings();
+          toast('전송은 꺼졌습니다. 서버 삭제는 연결될 때 자동으로 다시 시도합니다.', true);
+        });
       }
     });
 
@@ -14416,7 +14556,16 @@ body {
       // 주소창 해시가 있으면 그 페이지로, 없으면 홈에서 시작.
       // 해시가 열 수 없는 페이지를 가리키면 goPage 가 false 를 주므로 홈으로 떨어진다.
       var pg = pageByHash((location.hash || '').replace('#', ''));
-      if (!pg || !goPage(pg.id, true)) goPage('secHome', false, true);
+  
+      if (pg && pg.needAnalysis && !state.analysis) {
+        // 설치형 바로가기에서 타이머를 눌러도 새 실행에는 아직 오늘 플랜이 없다.
+        // 막힌 홈으로 돌려보내지 않고 곧바로 입력 화면에서 시작하게 한다.
+        goPage('secInput', false, true);
+        setTimeout(function () { toast('타이머를 만들려면 오늘 상태를 먼저 확인해 주세요.'); }, 250);
+      } else if (!pg || !goPage(pg.id, true)) {
+        goPage('secToday', false, true);
+      }
+  
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';

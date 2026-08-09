@@ -17,12 +17,13 @@
 'use strict';
 
 /* 정책을 바꿀 때마다 올린다. activate 에서 옛 버전 캐시를 통째로 지운다. */
-var VERSION = 'neurostudy-v5';
+var VERSION = 'neurostudy-v7';
 var SHELL = ['./', './index.html', './manifest.webmanifest',
              './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png',
              './icon.svg', './icon-maskable.svg',
              // 프로필 캐릭터 그림 — 이것만 없으면 랭킹·설정 화면이 텅 비어 보인다
-             './avatar-sheet.png'];
+             './avatar-sheet.png',
+             './landing/', './landing/index.html'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
@@ -64,13 +65,21 @@ self.addEventListener('fetch', function (e) {
     e.respondWith(
       fetch(req)
         .then(function (res) {
-          var copy = res.clone();
-          caches.open(VERSION).then(function (c) { c.put('./index.html', copy); });
+          // 랜딩과 앱 문서는 각자 요청 URL 로 보관한다. 하나의 index 키를
+          // 공유하면 랜딩 응답이 앱 셸을 덮어써 오프라인 진입이 꼬인다.
+          if (res && res.status === 200 && res.type === 'basic') {
+            var copy = res.clone();
+            caches.open(VERSION).then(function (c) { c.put(req, copy); });
+          }
           return res;
         })
         ['catch'](function () {
-          return caches.match('./index.html').then(function (hit) {
-            return hit || caches.match('./');
+          return caches.match(req).then(function (hit) {
+            if (hit) return hit;
+            var isLanding = /\/landing\/?$/.test(url.pathname) || /\/landing\/index\.html$/.test(url.pathname);
+            return caches.match(isLanding ? './landing/index.html' : './index.html').then(function (fallback) {
+              return fallback || caches.match('./');
+            });
           });
         })
     );

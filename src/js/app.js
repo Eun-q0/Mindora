@@ -3685,7 +3685,8 @@
         Avatar.html(av, lifeMin || 0, 'rk-av') +
         '<div class="rk-info">' +
           '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
-            /* 티어 배지는 없앴다 — 테두리 색으로 바뀌면서 Avatar.tierChip 도 함께 사라졌다 */
+  
+  
             (m.overall != null ? '<span class="brain" title="학습 준비도 참고값">준비도 ' + displayScore(m.overall) + '</span>' : '') + '</div>' +
           '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
           '<div class="rk-date">' + (m.self ? '실시간 반영'
@@ -4332,8 +4333,10 @@
       return;
     }
     if (!s.enabled) {
-      el.className = 'neis-status show';
-      el.textContent = '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
+      el.className = 'neis-status show' + (s.pendingDelete ? ' warn' : '');
+      el.textContent = s.pendingDelete
+        ? '전송은 꺼졌습니다. 서버 기록 삭제를 다시 시도하고 있어요 — 이 탭을 닫아도 다음 실행에 이어집니다.'
+        : '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
       return;
     }
     el.className = 'neis-status show ok';
@@ -4379,11 +4382,18 @@
          * 학년·반이 남아 정리(60일) 때까지 떠 있게 된다. */
         var offNow = function () {
           Cloud.setEnabled(false);
-          Cloud.forget();
+          var deletion = Cloud.forget();
           League.setCloudRows([], '');
           renderCloudSettings();
           renderLeague();
-          toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
+          toast('전송을 껐습니다. 서버 기록을 삭제하고 있어요.');
+          deletion.then(function () {
+            renderCloudSettings();
+            toast('서버의 학교·학급 리그 기록도 삭제했습니다.');
+          }, function () {
+            renderCloudSettings();
+            toast('전송은 꺼졌습니다. 서버 삭제는 연결될 때 자동으로 다시 시도합니다.', true);
+          });
         };
 
         if (Cloud.classEnabled()) {
@@ -4477,6 +4487,10 @@
 
     renderCloudSettings();
     initStudentShare();
+    Cloud.retryPendingDeletions().then(function () {
+      renderCloudSettings();
+      renderStudentShareSettings();
+    });
   }
 
   /* ============================================================ 링크 공유
@@ -4567,11 +4581,13 @@
       el.textContent = '서버가 연결되지 않아 이 기능을 쓸 수 없습니다.';
       return;
     }
-    el.className = s.enabled ? 'neis-status show ok' : 'neis-status show';
+    el.className = s.enabled ? 'neis-status show ok' : 'neis-status show' + (s.pendingDelete ? ' warn' : '');
     el.innerHTML = s.enabled
       ? '공유 중 · ' + (s.lastPush ? '마지막 전송 ' + agoText(s.lastPush) : '아직 전송 전') +
         (s.lastError ? '<br><span style="color:var(--bad)">오류 — ' + esc(s.lastError) + '</span>' : '')
-      : '꺼져 있습니다. 닉네임이 서버로 나가지 않습니다.';
+      : (s.pendingDelete
+          ? '전송은 꺼졌습니다. 관리자 공개 기록 삭제를 연결될 때까지 자동으로 다시 시도합니다.'
+          : '꺼져 있습니다. 닉네임이 서버로 나가지 않습니다.');
   }
 
   function studentShareSync(force) {
@@ -4601,9 +4617,16 @@
         studentShareSync(true);
       } else {
         Cloud.setStudentShareEnabled(false);
-        Cloud.forgetStudent();
+        var deletion = Cloud.forgetStudent();
         renderStudentShareSettings();
-        toast('공유를 껐습니다. 앞으로 닉네임이 전송되지 않습니다.');
+        toast('공유를 껐습니다. 관리자 공개 기록을 삭제하고 있어요.');
+        deletion.then(function () {
+          renderStudentShareSettings();
+          toast('서버의 관리자 공개 기록도 삭제했습니다.');
+        }, function () {
+          renderStudentShareSettings();
+          toast('전송은 꺼졌습니다. 서버 삭제는 연결될 때 자동으로 다시 시도합니다.', true);
+        });
       }
     });
 
@@ -5109,7 +5132,16 @@
       // 주소창 해시가 있으면 그 페이지로, 없으면 홈에서 시작.
       // 해시가 열 수 없는 페이지를 가리키면 goPage 가 false 를 주므로 홈으로 떨어진다.
       var pg = pageByHash((location.hash || '').replace('#', ''));
-      if (!pg || !goPage(pg.id, true)) goPage('secHome', false, true);
+  
+      if (pg && pg.needAnalysis && !state.analysis) {
+        // 설치형 바로가기에서 타이머를 눌러도 새 실행에는 아직 오늘 플랜이 없다.
+        // 막힌 홈으로 돌려보내지 않고 곧바로 입력 화면에서 시작하게 한다.
+        goPage('secInput', false, true);
+        setTimeout(function () { toast('타이머를 만들려면 오늘 상태를 먼저 확인해 주세요.'); }, 250);
+      } else if (!pg || !goPage(pg.id, true)) {
+        goPage('secToday', false, true);
+      }
+  
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';
