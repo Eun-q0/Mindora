@@ -9,20 +9,19 @@
 
 ## 실행 방법
 
-`app/index.html` 을 더블클릭하세요. 설치가 필요 없습니다.
-(루트의 `index.html` 은 소개용 랜딩 페이지입니다)
+루트의 `index.html` 을 더블클릭하세요. 설치가 필요 없습니다.
 
 ### 주소 구조
 
 | 주소 | 내용 | 원본 |
 |---|---|---|
-| `/` | 소개(랜딩) 페이지 | `landing/index.html` |
-| `/app/` | 앱 본체 + PWA 자원 | `src/` 를 `build.ps1` 로 묶은 결과 |
+| `/` | **앱 본체** + PWA 자원 | `src/` 를 `build.ps1` 로 묶은 결과 |
+| `/landing/` | 소개 페이지 | `landing/index.html` |
 | `/robots.txt` `/sitemap.xml` `/ads.txt` | 크롤러가 도메인 루트에서 찾는 파일 | `src/` |
 
-처음 오는 사람이 소개를 먼저 보고 들어오도록 루트를 랜딩에 내주었습니다.
-localStorage 는 도메인 단위라 **기존 사용자의 기록은 주소가 바뀌어도 그대로** 남습니다.
-서비스 워커는 `/app/` 만 맡고, 예전에 루트에 등록됐던 워커는 랜딩 페이지가 한 번 걷어냅니다.
+매일 여는 앱이 루트에 있습니다. 북마크와 홈 화면에 설치된 PWA 가 모두 `/` 를 가리키고
+있어서, 여기를 소개 페이지로 바꾸면 설치한 사용자에게는 앱이 사라진 것처럼 보입니다.
+그래서 소개는 `/landing/` 에 두고 루트는 앱이 지킵니다.
 
 학습 기록·프로필·과목·시험·수면·스트레스·학습 준비도·공부 후 피드백은 기본적으로 이 브라우저에 저장됩니다.
 인터넷 연결은 나이스 학교 정보와 사용자가 동의한 학교 리그·학급 대항전·관리자 공개에만 사용합니다.
@@ -387,14 +386,12 @@ Supabase 테이블·함수·관리자 계정 설정은 [`supabase/README.md`](su
 
 ```
 brain-study-coach/
-├─ index.html      ← 랜딩 페이지 (자동 생성물 = landing/index.html 복사본)
-├─ app/            ← 앱 배포본 (자동 생성물)
-│  ├─ index.html      src/ 를 CSS·JS까지 통째로 인라인한 단일 파일
-│  └─ …              manifest·sw.js·아이콘·avatar-sheet.png (src/ 에서 복사)
-├─ landing/        ← 소개 페이지 원본
+├─ index.html      ← 앱 배포본 (자동 생성물). src/ 를 CSS·JS까지 인라인한 단일 파일
+├─ sw.js · manifest.webmanifest · 아이콘 · avatar-sheet.png   ← PWA 자원 (src/ 에서 복사)
+├─ robots.txt · sitemap.xml · ads.txt            ← 크롤러용 (자동 생성물)
+├─ landing/        ← 소개 페이지 (/landing/ 로 서빙)
 │  └─ index.html
-├─ robots.txt · sitemap.xml · ads.txt · 아이콘   ← 크롤러용 (자동 생성물)
-├─ build.ps1       ← src/ 와 landing/ 에서 위 산출물을 만드는 빌드 스크립트
+├─ build.ps1       ← src/ 를 루트 index.html 하나로 묶는 빌드 스크립트
 ├─ README.md
 ├─ supabase/       ← 리그·학급 순위·관리자용 SQL과 설정 안내
 ├─ tools/          ← 빌드에 쓰이지 않는 제작 도구 (배포물이 아닙니다)

@@ -52,6 +52,7 @@
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mbHBodmNqYnB2amV2Y21tcW95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDY2NDksImV4cCI6MjEwMTQyMjY0OX0.K-_VE14ZGQFA6jEN9PBjRs60KfE0dlyZbt13smZDixw';
 
   var STORE_KEY = 'neurostudy.cloud.v1';
+  var DELETE_KEY = 'neurostudy.cloudDeletePending.v1';
   var TIMEOUT_MS = 8000;
   var MIN_PUSH_GAP = 60 * 1000;   // 같은 값을 계속 밀어 올리지 않는다
 
@@ -77,8 +78,6 @@
         deviceId: o.deviceId || '',
         lastSync: o.lastSync || 0,
         lastPush: o.lastPush || 0,
-        // 마지막으로 올린 값의 서명. 여기서 빠뜨리면 읽을 때마다 사라져
-        // "값이 그대로면 다시 보내지 않는다" 는 판단이 영영 성립하지 않는다.
         lastSig: o.lastSig || '',
         lastError: o.lastError || ''
       };
@@ -141,13 +140,15 @@
 
   function status() {
     var st = load();
+    var pending = pendingLoad();
     return {
       configured: configured(),
       enabled: configured() && st.enabled,
       classOn: configured() && st.enabled && st.classOn,
       deviceId: st.deviceId,
       lastSync: st.lastSync,
-      lastError: st.lastError
+      lastError: st.lastError,
+      pendingDelete: !!pending.league
     };
   }
 
@@ -155,6 +156,64 @@
     var st = load();
     st.lastError = String(msg || '');
     save(st);
+  }
+
+  /* 서버 삭제가 끊기면 기기 번호를 먼저 버려서는 다시 요청할 수 없다.
+   * 삭제할 범위와 번호를 별도 보관했다가 다음 앱 실행에서 재시도한다. */
+  function pendingLoad() {
+    try {
+      var o = JSON.parse(localStorage.getItem(DELETE_KEY) || '{}');
+      return { league: o.league || '', student: o.student || '' };
+    } catch (e) { return { league: '', student: '' }; }
+  }
+
+  function pendingSave(o) {
+    try {
+      if (!o.league && !o.student) localStorage.removeItem(DELETE_KEY);
+      else localStorage.setItem(DELETE_KEY, JSON.stringify(o));
+    } catch (e) { /* 저장소가 막혀 있어도 앱은 계속 쓴다 */ }
+  }
+
+  function queueDelete(scope, id) {
+    var p = pendingLoad();
+    p[scope] = id;
+    pendingSave(p);
+  }
+
+  function clearPending(scope, id) {
+    var p = pendingLoad();
+    if (p[scope] === id) p[scope] = '';
+    pendingSave(p);
+  }
+
+  function clearUnusedDevice(id) {
+    var st = load();
+    if (st.deviceId !== id || st.enabled) return;
+    // 관리자 공개가 켜져 있으면 같은 번호를 계속 써야 예전 행이 고아가 되지 않는다.
+    if (typeof studentLoad === 'function' && studentLoad().enabled) return;
+    st.deviceId = '';
+    st.lastPush = 0;
+    st.lastSig = '';
+    save(st);
+  }
+
+  function requestDelete(scope, id) {
+    if (!configured() || !id) return Promise.resolve(false);
+    queueDelete(scope, id);
+    var rpc = scope === 'student' ? 'delete_own_student_reports' : 'delete_own_league_reports';
+    return req('/rest/v1/rpc/' + rpc, {
+      method: 'POST', body: { p_device: id }
+    }).then(function () {
+      clearPending(scope, id);
+      clearUnusedDevice(id);
+      if (scope === 'league') noteError('');
+      else {
+        var student = studentLoad();
+        student.lastError = '';
+        studentSave(student);
+      }
+      return true;
+    });
   }
 
   /* --------------------------------------------------------------- 통신 */
@@ -286,12 +345,17 @@
     if (!configured()) return Promise.resolve(false);
     var st = load();
     if (!st.deviceId) return Promise.resolve(false);
-    // 분을 0 으로 만들 수는 없다(감소 불가). 대신 기기 ID 를 버려 연결을 끊는다.
-    st.deviceId = '';
-    st.lastPush = 0;
-    st.lastSig = '';
-    save(st);
-    return Promise.resolve(true);
+    return requestDelete('league', st.deviceId).then(function (ok) {
+      var next = load();
+      next.lastPush = 0;
+      next.lastSig = '';
+      next.lastError = '';
+      save(next);
+      return ok;
+    }, function (e) {
+      noteError('서버 삭제 대기 — ' + (e.message || '연결 실패'));
+      throw e;
+    });
   }
 
   /* ===================================================== 학생 개별 공유
@@ -323,7 +387,11 @@
 
   function studentShareStatus() {
     var st = studentLoad();
-    return { configured: configured(), enabled: configured() && st.enabled, lastPush: st.lastPush, lastError: st.lastError };
+    return {
+      configured: configured(), enabled: configured() && st.enabled,
+      lastPush: st.lastPush, lastError: st.lastError,
+      pendingDelete: !!pendingLoad().student
+    };
   }
 
   /** 닉네임을 포함해 개별 기록을 올린다. 학생 쪽은 로그인이 필요 없다(anon 키). */
@@ -360,13 +428,36 @@
     });
   }
 
-  /** 리그와 마찬가지로, 기기 ID 를 버려 서버 기록과의 연결을 끊는다. */
+  /** 관리자 공개 기록을 서버에서 삭제한다. 실패한 요청은 다음 실행에 재시도한다. */
   function forgetStudent() {
+    var id = load().deviceId;
     var st = studentLoad();
     st.lastPush = 0;
     st.lastSig = '';
     studentSave(st);
-    return Promise.resolve(true);
+    if (!id) return Promise.resolve(false);
+    return requestDelete('student', id).then(function (ok) {
+      var next = studentLoad();
+      next.lastError = '';
+      studentSave(next);
+      return ok;
+    }, function (e) {
+      var next = studentLoad();
+      next.lastError = '서버 삭제 대기 — ' + (e.message || '연결 실패');
+      studentSave(next);
+      throw e;
+    });
+  }
+
+  function retryPendingDeletions() {
+    if (!configured()) return Promise.resolve(false);
+    var p = pendingLoad();
+    var jobs = [];
+    if (p.league) jobs.push(requestDelete('league', p.league)['catch'](function () { return false; }));
+    if (p.student) jobs.push(requestDelete('student', p.student)['catch'](function () { return false; }));
+    return Promise.all(jobs).then(function (rows) {
+      return rows.some(function (ok) { return ok; });
+    });
   }
 
   /* ============================================================ 관리자 로그인
@@ -681,7 +772,7 @@
     configured: configured, status: status,
     enabled: enabled, setEnabled: setEnabled,
     classEnabled: classEnabled, setClassEnabled: setClassEnabled,
-    deviceId: deviceId, forget: forget,
+    deviceId: deviceId, forget: forget, retryPendingDeletions: retryPendingDeletions,
     push: push, fetchWeek: fetchWeek, test: test,
 
     studentShareEnabled: studentShareEnabled, setStudentShareEnabled: setStudentShareEnabled,

@@ -1,7 +1,7 @@
 {
-  "name": "Mindora — 뇌 컨디션 기반 학습 코치",
+  "name": "Mindora — 오늘의 학습 준비도 코치",
   "short_name": "Mindora",
-  "description": "수면·스트레스·피로를 넣으면 오늘 내 뇌가 어떤 공부에 맞는지 5가지 능력으로 계산하고, 과목별 공부 시간까지 짜 줍니다.",
+  "description": "수면·스트레스·피로 등 오늘 상태를 바탕으로 과제별 학습 준비도 참고값과 공부 순서를 정리합니다.",
   "lang": "ko",
   "dir": "ltr",
   "start_url": "./",
@@ -18,8 +18,8 @@
   ],
   "shortcuts": [
     {
-      "name": "오늘의 뇌 상태 분석",
-      "short_name": "분석",
+      "name": "오늘 상태 입력",
+      "short_name": "상태 입력",
       "url": "./#input"
     },
     {
