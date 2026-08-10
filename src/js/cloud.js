@@ -15,6 +15,10 @@
  *   학년, 반, 과목, 시험 일정, 뇌 컨디션 점수, 수면·스트레스 같은 입력값,
  *   배지, 사운드 설정, 나이스 인증키 — 전부 기기에만 남는다.
  *
+ * 학급 대항전에 동의하면 여기에 학교급·학년·반·닉네임이 더해지고,
+ * 포스트잇을 붙이면 그 쪽지의 내용·색·붙인 자리·사라질 시각이 함께 올라간다.
+ * 쪽지는 길어야 30분이면 서버에서 지워진다 (supabase/schema_league_notes.sql).
+ *
  * 기본값은 "꺼짐" 이다. 설정에서 켜야 처음으로 통신이 일어난다.
  * SDK 를 쓰지 않고 REST 로 직접 호출한다. 빌드가 단일 파일이라 의존성을 늘리지 않는다.
  *
@@ -39,8 +43,13 @@
    * 그래서 서버 쪽에서 RLS 로 잠그고 검증 함수 하나만 열어 뒀다 —
    * supabase/schema.sql 참고.
    * 두 값이 비어 있으면 동기화 기능 자체가 꺼진 것처럼 동작한다. */
-  var SUPABASE_URL = 'https://vtlvuhzdxoxnvsdrpfqb.supabase.co';
-  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0bHZ1aHpkeG94bnZzZHJwZnFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMTg4NzcsImV4cCI6MjEwMDg5NDg3N30.6-If6Q47kXkdOxmkt8QNiYzxhqWMDl3dnGC1pMYQLGQ';
+  /* 2026-08-10: 프로젝트를 옮겼다.
+   * 예전 프로젝트(vtlvuhzdxoxnvsdrpfqb)는 계정을 잃어 스키마를 갱신할 수 없었다.
+   * 그래서 2026-08-04 에 추가된 9-인자 report_league 가 서버에 없었고, 그날부터
+   * 모든 전송이 404 로 실패하고 있었다. 새 프로젝트에 스키마를 전부 올리고 갈아탄다.
+   * 예전 주차의 학교 합계는 넘어오지 않는다 — 개인 기록은 각 브라우저에 있으므로 그대로다. */
+  var SUPABASE_URL = 'https://nflphvcjbpvjevcmmqoy.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mbHBodmNqYnB2amV2Y21tcW95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDY2NDksImV4cCI6MjEwMTQyMjY0OX0.K-_VE14ZGQFA6jEN9PBjRs60KfE0dlyZbt13smZDixw';
 
   var STORE_KEY = 'neurostudy.cloud.v1';
   var TIMEOUT_MS = 8000;
@@ -531,6 +540,93 @@
       }, function () { return []; });
   }
 
+  /* ══════════════════════════════════════════════════ 우리 반 포스트잇
+   *
+   * 같은 반 사람들이 서로 보는 쪽지 벽이다. 리그 순위와 달리 합계가 아니라
+   * 사람이 쓴 글이 그대로 오간다. 그래서 학급 대항전(classEnabled)에 동의한
+   * 경우에만 열린다 — 그 동의가 곧 "학년·반과 닉네임을 보낸다" 는 약속이고,
+   * 쪽지는 그 위에서만 성립한다.
+   *
+   * 욕설을 거르는 일은 여기서 하지 않는다. 목록은 filter.js 한 곳에만 두고,
+   * 부르는 쪽(app.js)이 올리기 전과 그리기 전에 각각 한 번씩 태운다. */
+
+  function notesReady(cls) {
+    return !!(classEnabled() && cls && cls.school && cls.grade && cls.klass);
+  }
+
+  /** 쪽지를 붙인다. 수명(minutes)은 서버에서도 10~30분으로 잘린다. */
+  function postClassNote(cls, note) {
+    if (!notesReady(cls)) return Promise.reject(new Error('학급 대항전을 켜야 포스트잇을 쓸 수 있습니다.'));
+
+    var body = String((note && note.body) || '').trim();
+    if (!body) return Promise.reject(new Error('내용을 입력하세요.'));
+
+    return req('/rest/v1/rpc/post_class_note', {
+      method: 'POST',
+      body: {
+        p_device: deviceId(),
+        p_school: String(cls.school || ''), p_level: String(cls.level || ''),
+        p_grade: String(cls.grade || ''), p_klass: String(cls.klass || ''),
+        p_nick: String((note && note.nick) || ''),
+        p_body: body.slice(0, 100),
+        p_minutes: Math.max(10, Math.min(30, Math.round((note && note.minutes) || 15))),
+        p_color: Math.max(0, Math.min(15, Math.round((note && note.color) || 0))),
+        p_tilt: Math.max(-6, Math.min(6, Math.round((note && note.tilt) || 0))),
+        p_x: Math.max(0, Math.min(100, Math.round((note && note.x) || 50))),
+        p_y: Math.max(0, Math.min(100, Math.round((note && note.y) || 40)))
+      }
+    }).then(function (id) { return typeof id === 'string' ? id : ''; });
+  }
+
+  /** 아직 살아 있는 우리 반 쪽지. 실패하면 빈 벽으로 둔다(있던 쪽지를 지우진 않는다). */
+  function fetchClassNotes(cls) {
+    if (!notesReady(cls)) return Promise.resolve([]);
+
+    return req('/rest/v1/rpc/fetch_class_notes', {
+      method: 'POST',
+      body: {
+        p_school: String(cls.school || ''), p_level: String(cls.level || ''),
+        p_grade: String(cls.grade || ''), p_klass: String(cls.klass || ''),
+        p_device: deviceId() || null
+      }
+    }).then(function (rows) {
+      return (rows || []).map(function (r) {
+        return {
+          id: String(r.id || ''),
+          nick: String(r.nickname || '').trim(),
+          body: String(r.body || ''),
+          color: r.color | 0, tilt: r.tilt | 0,
+          x: r.x | 0, y: r.y | 0,
+          createdAt: r.created_at ? Date.parse(r.created_at) : 0,
+          expiresAt: r.expires_at ? Date.parse(r.expires_at) : 0,
+          me: !!r.is_me
+        };
+      }).filter(function (n) { return n.id && n.body; });
+    });
+  }
+
+  /** 내가 붙인 쪽지의 자리를 옮긴다 */
+  function moveClassNote(id, x, y) {
+    if (!id) return Promise.resolve(false);
+    return req('/rest/v1/rpc/move_class_note', {
+      method: 'POST',
+      body: {
+        p_id: id, p_device: deviceId(),
+        p_x: Math.max(0, Math.min(100, Math.round(x))),
+        p_y: Math.max(0, Math.min(100, Math.round(y)))
+      }
+    }).then(function () { return true; });
+  }
+
+  /** 내가 붙인 쪽지를 모두의 화면에서 뗀다 (남의 쪽지는 서버가 거절한다) */
+  function removeClassNote(id) {
+    if (!id) return Promise.resolve(false);
+    return req('/rest/v1/rpc/remove_class_note', {
+      method: 'POST',
+      body: { p_id: id, p_device: deviceId() }
+    }).then(function () { return true; });
+  }
+
   /**
    * 관리자가 잘못 올라온 기록을 지운다. 리그·학생 목록 양쪽에서 함께 사라진다.
    * week 를 비우면 그 기기의 모든 주차를 지운다.
@@ -596,6 +692,8 @@
     fetchLeagueMembers: fetchLeagueMembers,
     fetchClassWeek: fetchClassWeek, fetchClassPending: fetchClassPending,
     fetchClassMembers: fetchClassMembers,
+    postClassNote: postClassNote, fetchClassNotes: fetchClassNotes,
+    moveClassNote: moveClassNote, removeClassNote: removeClassNote,
     hiddenOn: hiddenOn, setHidden: setHidden,
     adminDeleteDevice: adminDeleteDevice,
 

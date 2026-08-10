@@ -37,6 +37,109 @@
 
   function round1(v) { return Math.round(v * 10) / 10; }
 
+  function hhmm(h) {
+    var t = ((h % 24) + 24) % 24;
+    var hh = Math.floor(t), mm = Math.round((t - hh) * 60);
+    if (mm >= 60) { mm -= 60; hh = (hh + 1) % 24; }
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  /* ------------------------------------------------------------ 식사 채점
+   *
+   * 끼니는 "먹었나 / 안 먹었나" 가 아니라 **"그 끼니를 먹을 때가 지났나"** 를
+   * 먼저 물어야 한다. 아침 8시에 점심·저녁을 안 먹은 것은 결식이 아니라
+   * 아직 시간이 아닌 것이고, 그걸 감점하면 점수 자체를 못 믿게 된다.
+   *
+   * 기준 시각은 계획표에서 읽어 온다(meals.js → input.mealPlan).
+   * 계획표가 없으면 아래 표준 시각을 쓰는데, 유예 30분을 더하면
+   * 8:30 / 13:00 / 19:00 — 계획표를 쓰지 않는 사용자에게는 종전과 같은 기준이다. */
+
+  var MEAL_STD = [
+    { id: 'breakfast', label: '아침', hour: 8.0, weight: 0.40, counts: true },
+    { id: 'lunch', label: '점심', hour: 12.5, weight: 0.35, counts: true },
+    { id: 'dinner', label: '저녁', hour: 18.5, weight: 0.25, counts: true }
+  ];
+
+  var MEAL_GRACE = 0.5;   // 계획 시각에서 이만큼은 "아직 먹을 시간" 으로 둔다
+  var MEAL_RAMP = 0.5;    // 유예가 끝난 뒤 이 시간에 걸쳐 서서히 채점에 넣는다
+
+  function mealSlots(i) {
+    var given = i.mealPlan && i.mealPlan.meals;
+    if (!given || !given.length) return MEAL_STD;
+    return given;
+  }
+
+  /** 계획 시각을 얼마나 지났나. 0 = 아직 시간 전, 1 = 완전히 지났다.
+   *  칼같이 끊으면 1분 차이로 점수가 몇 점씩 튀므로 30분에 걸쳐 서서히 반영한다. */
+  function dueRatio(hour, mealHour) {
+    return clamp((hour - (mealHour + MEAL_GRACE)) / MEAL_RAMP, 0, 1);
+  }
+
+  /** 공복 시간(시간 단위)을 "깨어 있는 동안 굶은 시간" 으로 환산한다.
+   *
+   *  오늘 아직 아무것도 안 먹었다면 마지막 식사는 어젯밤이고, 그 공복에는
+   *  잠든 시간이 통째로 들어 있다. 자는 동안의 공복은 누구에게나 정상인데
+   *  그대로 감점하면 아침에 앱을 열 때마다 점수가 낮게 나온다.
+   *  (예: 19시 저녁 → 7시 30분 확인 = 12.5시간, 그중 7.5시간은 자던 시간이므로 5시간) */
+  function fastHours(i, anyEaten) {
+    var raw = isFinite(i.hoursSinceMeal) ? Math.max(0, i.hoursSinceMeal) : 2;
+    if (anyEaten) return raw;
+    var slept = i.sleep && isFinite(i.sleep.hours) ? Math.max(0, i.sleep.hours) : 0;
+    if (raw <= slept) return raw;   // 잔 시간보다 짧은 공복이면 밤을 넘긴 공복이 아니다
+    return raw - slept;
+  }
+
+  var BLOOD = [
+    [0, 0.86], [0.5, 0.94], [1, 1.00], [2, 1.00], [3, 0.96], [4, 0.87],
+    [5, 0.75], [6, 0.62], [8, 0.44], [10, 0.32], [14, 0.20]
+  ];
+
+  /** 지금 시각 기준으로 식사 상태를 한 번에 계산한다.
+   *  화면 문구·경고·점수가 모두 이 결과 하나만 본다 — 세 곳이 어긋나지 않도록. */
+  function mealState(i) {
+    var slots = mealSlots(i);
+    var due = 0, ate = 0;
+    var skipped = [], eatenLabels = [], pending = [], anyEaten = false;
+    var firstSlot = null;
+
+    slots.forEach(function (m) {
+      var eaten = !!(i.meals && i.meals[m.id]);
+      if (eaten) { anyEaten = true; eatenLabels.push(m.label); }
+      if (m.counts && (firstSlot === null || m.hour < firstSlot.hour)) firstSlot = m;
+
+      // 계획에 없는 끼니는 채점하지 않는다. 다만 그래도 먹었다면 이행으로 세 준다.
+      if (!m.counts && !eaten) return;
+
+      var d = eaten ? 1 : dueRatio(i.hour, m.hour);
+      if (d <= 0) { pending.push(m); return; }
+
+      due += m.weight * d;
+      if (eaten) ate += m.weight * d;
+      else if (d >= 0.999) skipped.push(m.label);
+    });
+
+    pending.sort(function (a, b) { return a.hour - b.hour; });
+
+    var fast = fastHours(i, anyEaten);
+    return {
+      slots: slots,
+      due: due, ate: ate,
+      adherence: due > 1e-6 ? ate / due : null,   // null = 아직 채점할 끼니가 없다
+      skipped: skipped,
+      eatenLabels: eatenLabels,
+      pending: pending,
+      nextMeal: pending.length ? pending[0] : null,
+      firstSlot: firstSlot,
+      anyEaten: anyEaten,
+      fastHours: fast,
+      /* 잠자는 시간을 빼기 전 원본. 문구에서 "마지막 식사 후 N시간" 은 이 값을 쓴다. */
+      rawFastHours: isFinite(i.hoursSinceMeal) ? Math.max(0, i.hoursSinceMeal) : 2,
+      sleptOff: !anyEaten && fast < (isFinite(i.hoursSinceMeal) ? i.hoursSinceMeal : 2) - 0.01,
+      blood: pw(fast, BLOOD),
+      planned: !!(i.mealPlan && i.mealPlan.hasPlan)
+    };
+  }
+
   /* -------------------------------------------------------------- 요인 정의
    * 각 요인은 사용자의 자기보고 입력을 0~1 사이의 상대적 적합도로 변환한다.
    * 0.5 = 중립. 0.5보다 높으면 가점, 낮으면 감점으로 해석된다.
@@ -156,37 +259,48 @@
       label: '식사 / 혈당',
       icon: '🍚',
       display: function (i) {
-        var m = [];
-        if (i.meals.breakfast) m.push('아침');
-        if (i.meals.lunch) m.push('점심');
-        if (i.meals.dinner) m.push('저녁');
-        var eaten = m.length ? m.join('·') + ' 섭취' : '결식';
-        return eaten + ' · 마지막 식사 ' + round1(i.hoursSinceMeal) + '시간 전';
+        var st = mealState(i);
+        var head;
+        if (st.eatenLabels.length) head = st.eatenLabels.join('·') + ' 섭취';
+        else if (st.adherence === null) head = '아직 식사 시간 전';
+        else head = '결식';
+
+        var tail = '마지막 식사 ' + round1(st.rawFastHours) + '시간 전';
+        if (st.nextMeal) tail = '다음 ' + st.nextMeal.label + ' ' + hhmm(st.nextMeal.hour) + ' · ' + tail;
+        return head + ' · ' + tail;
       },
       value: function (i) {
-        var h = i.hour, due = 0, ate = 0;
-        if (h >= 8.5) { due += 0.40; if (i.meals.breakfast) ate += 0.40; }
-        if (h >= 13.0) { due += 0.35; if (i.meals.lunch) ate += 0.35; }
-        if (h >= 19.0) { due += 0.25; if (i.meals.dinner) ate += 0.25; }
-        var mealScore = due > 0 ? ate / due : (i.meals.breakfast ? 1 : 0.72);
-        var blood = pw(i.hoursSinceMeal, [
-          [0, 0.86], [0.5, 0.94], [1, 1.00], [2, 1.00], [3, 0.96], [4, 0.87],
-          [5, 0.75], [6, 0.62], [8, 0.44], [10, 0.32], [14, 0.20]
-        ]);
-        return clamp(0.58 * mealScore + 0.42 * blood, 0, 1);
+        var st = mealState(i);
+        /* 아직 계획된 끼니가 하나도 지나지 않았다면 이행은 채점하지 않는다.
+         * 먹지 않은 게 아니라 먹을 때가 아닌 것이므로 공복만 보고 판단한다. */
+        if (st.adherence === null) return clamp(st.blood, 0, 1);
+        return clamp(0.58 * st.adherence + 0.42 * st.blood, 0, 1);
       },
       note: function (i) {
-        var skipped = [];
-        var h = i.hour;
-        if (h >= 8.5 && !i.meals.breakfast) skipped.push('아침');
-        if (h >= 13.0 && !i.meals.lunch) skipped.push('점심');
-        if (h >= 19.0 && !i.meals.dinner) skipped.push('저녁');
-        var t = i.hoursSinceMeal;
-        if (skipped.length >= 2) return skipped.join('·') + '을 걸렀습니다. 긴 공복은 일부 사람에게 집중과 작업기억에 불리할 수 있어요.';
-        if (skipped.length === 1) return skipped[0] + ' 식사 기록이 없습니다. 배고픔이 느껴진다면 과제 전에 가벼운 간식과 물을 고려하세요.';
-        if (t >= 6) return '마지막 식사 후 ' + round1(t) + '시간이 지났습니다. 배고픔이 느껴진다면 가벼운 간식과 물을 고려하세요.';
-        if (t <= 0.5) return '식사 직후라 소화로 혈류가 몰리는 시간대예요. 20~30분 뒤가 집중에 더 유리합니다.';
-        return '입력한 식사 간격은 무난한 편입니다. 실제 배고픔과 몸 상태를 함께 확인하세요.';
+        var st = mealState(i);
+        var t = round1(st.rawFastHours);
+
+        if (st.adherence === null) {
+          var when = st.nextMeal
+            ? '계획한 ' + st.nextMeal.label + ' 시각(' + hhmm(st.nextMeal.hour) + ')'
+            : '오늘 첫 끼니';
+          return when + ' 이 아직 지나지 않아 끼니는 채점하지 않고 공복만 반영했습니다.' +
+            (st.sleptOff ? ' 자는 동안 흐른 시간은 공복에서 빼고 계산합니다.' : '');
+        }
+        if (st.skipped.length >= 2) {
+          return st.skipped.join('·') + '을 걸렀습니다(계획 시각 기준). 긴 공복은 일부 사람에게 집중과 작업기억에 불리할 수 있어요.';
+        }
+        if (st.skipped.length === 1) {
+          return '계획한 ' + st.skipped[0] + ' 시각이 지났는데 식사 기록이 없습니다. 배고픔이 느껴진다면 과제 전에 가벼운 간식과 물을 고려하세요.';
+        }
+        if (st.fastHours >= 6) {
+          return '마지막 식사 후 ' + t + '시간이 지났습니다. 배고픔이 느껴진다면 가벼운 간식과 물을 고려하세요.';
+        }
+        if (st.rawFastHours <= 0.5) {
+          return '식사 직후라 소화로 혈류가 몰리는 시간대예요. 20~30분 뒤가 집중에 더 유리합니다.';
+        }
+        var head = st.planned ? '계획한 끼니를 지금까지 모두 챙겼습니다.' : '입력한 식사 간격은 무난한 편입니다.';
+        return head + ' 실제 배고픔과 몸 상태를 함께 확인하세요.';
       }
     },
 
@@ -419,13 +533,18 @@
     if (i.stress >= 8) out.push({ level: 'bad', text: '스트레스 체감 ' + i.stress + '/10 — 새 과제보다 익숙한 복습을 짧게 시작해 보세요.' });
     if (i.fatigue >= 8) out.push({ level: 'bad', text: '피로 체감 ' + i.fatigue + '/10 — 집중 시간을 줄이고 충분히 쉬어도 괜찮습니다.' });
 
-    var h = i.hour, skipped = [];
-    if (h >= 8.5 && !i.meals.breakfast) skipped.push('아침');
-    if (h >= 13 && !i.meals.lunch) skipped.push('점심');
-    if (h >= 19 && !i.meals.dinner) skipped.push('저녁');
-    if (skipped.length) out.push({ level: skipped.length >= 2 ? 'bad' : 'warn', text: skipped.join('·') + ' 식사 기록 없음 — 배고픔이 느껴지면 부담이 적은 간식과 물을 고려하세요.' });
+    /* 식사 경고는 반드시 계획 시각을 지난 끼니만 걸어야 한다.
+     * 아침에 "점심·저녁 결식" 이 뜨면 나머지 경고까지 같이 못 믿게 된다. */
+    var ms = mealState(i);
+    if (ms.skipped.length) {
+      out.push({
+        level: ms.skipped.length >= 2 ? 'bad' : 'warn',
+        text: ms.skipped.join('·') + ' 식사 기록 없음 (계획 시각 기준) — 배고픔이 느껴지면 부담이 적은 간식과 물을 고려하세요.'
+      });
+    }
 
-    if (i.hoursSinceMeal >= 6) out.push({ level: 'warn', text: '마지막 식사 후 ' + round1(i.hoursSinceMeal) + '시간 — 첫 휴식 때 간단히라도 먹으세요.' });
+    // 잠든 사이의 공복까지 세어 아침마다 경고가 뜨지 않도록 환산값으로 판단한다
+    if (ms.fastHours >= 6) out.push({ level: 'warn', text: '마지막 식사 후 ' + round1(ms.rawFastHours) + '시간 — 첫 휴식 때 간단히라도 먹으세요.' });
     if (i.caffeine >= 4) out.push({ level: 'warn', text: '카페인 ' + i.caffeine + '잔 — 오늘은 추가 섭취를 피하고 잠드는 데 불편함이 없는지 기록해 보세요.' });
     if (i.water <= 2) out.push({ level: 'warn', text: '수분 ' + i.water + '컵 — 목마름이나 두통이 있다면 물을 조금씩 보충하세요.' });
     if (i.mood <= 2) out.push({ level: 'warn', text: '기분 체감이 낮은 편입니다 — 새 개념보다 익숙한 복습을 짧게 시작해 보세요.' });
@@ -530,6 +649,8 @@
       // 편차가 이 정도는 돼야 "오늘은 A가 낫다" 고 말할 근거가 생긴다
       capMeaningful: spread >= 8,
       alerts: buildAlerts(input),
+      // 화면에서 "무엇을 기준으로 채점했는지" 를 그대로 보여 줄 수 있게 함께 넘긴다
+      meal: mealState(input),
       circMultAt: circMultiplier
     };
   }
@@ -580,6 +701,53 @@
       });
     });
 
+    /* 식사 요인은 "아직 시간이 안 된 끼니" 를 절대 감점하지 않아야 한다.
+     * 이게 깨지면 아침마다 점수가 낮게 나와 앱 전체를 못 믿게 되므로 못으로 박아 둔다. */
+    (function () {
+      function nut(over) {
+        var base = {
+          hour: 8, sleep: { hours: 7.5, quality: 3, regularity: 3 },
+          stress: 4, fatigue: 4, mood: 3,
+          meals: { breakfast: true, lunch: false, dinner: false },
+          hoursSinceMeal: 0.5, water: 5, caffeine: 1, exercise: 0
+        };
+        Object.keys(over || {}).forEach(function (k) { base[k] = over[k]; });
+        return FACTORS.nutrition.value(base);
+      }
+
+      // 아침 8시 · 아침만 먹음 = 계획을 다 지킨 것이므로 중립보다 높아야 한다
+      var morning = nut({});
+      if (!(morning > 0.5)) issues.push('식사: 아침 8시에 아침만 먹은 상태가 감점됨 (' + round1(morning * 100) / 100 + ')');
+
+      // 점심·저녁을 체크해도 아침 시각의 점수는 달라지면 안 된다 (아직 시간 전이므로)
+      var withLater = nut({ meals: { breakfast: true, lunch: true, dinner: true } });
+      if (Math.abs(withLater - morning) > 1e-9) issues.push('식사: 아직 시간이 안 된 끼니가 아침 점수를 바꿈');
+
+      // 기상 직후(아무것도 안 먹음)는 판단 보류라 중립을 크게 밑돌면 안 된다
+      var justWoke = nut({ hour: 7, hoursSinceMeal: 12, meals: { breakfast: false, lunch: false, dinner: false } });
+      if (justWoke < 0.5) issues.push('식사: 기상 직후 공복이 감점으로 잡힘 (' + Math.round(justWoke * 100) / 100 + ')');
+
+      // 반대로 계획 시각이 지났는데 안 먹었으면 반드시 감점이어야 한다
+      var skipped = nut({ hour: 14, hoursSinceMeal: 12, meals: { breakfast: false, lunch: false, dinner: false } });
+      if (skipped >= 0.5) issues.push('식사: 아침·점심 결식이 감점되지 않음 (' + Math.round(skipped * 100) / 100 + ')');
+
+      // 계획표에 없는 끼니(저녁)는 결식으로 세지 않는다
+      var noDinnerPlan = {
+        hour: 20, sleep: { hours: 7.5, quality: 3, regularity: 3 },
+        stress: 4, fatigue: 4, mood: 3,
+        meals: { breakfast: true, lunch: true, dinner: false },
+        hoursSinceMeal: 3, water: 5, caffeine: 1, exercise: 0,
+        mealPlan: {
+          hasPlan: true, wakeHour: 7, meals: [
+            { id: 'breakfast', label: '아침', hour: 8, weight: 0.40, counts: true },
+            { id: 'lunch', label: '점심', hour: 12.5, weight: 0.35, counts: true },
+            { id: 'dinner', label: '저녁', hour: 18.5, weight: 0.25, counts: false }
+          ]
+        }
+      };
+      if (mealState(noDinnerPlan).skipped.length) issues.push('식사: 계획표에 없는 끼니가 결식으로 잡힘');
+    })();
+
     // 요인 곡선이 0~1 을 벗어나지 않는지
     Object.keys(FACTORS).forEach(function (fid) {
       for (var t = 0; t <= 24; t += 2) {
@@ -602,7 +770,8 @@
     FACTORS: FACTORS,
     OVERALL_WEIGHTS: OVERALL_WEIGHTS,
     circMultiplier: circMultiplier,
-    _util: { clamp: clamp, pw: pw, round1: round1 }
+    mealState: mealState, MEAL_STD: MEAL_STD, MEAL_GRACE: MEAL_GRACE,
+    _util: { clamp: clamp, pw: pw, round1: round1, hhmm: hhmm }
   };
 
 })(window);

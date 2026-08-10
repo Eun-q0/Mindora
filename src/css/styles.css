@@ -53,6 +53,10 @@
   --shadow: 0 2px 4px -1px rgba(22, 26, 39, 0.05), 0 12px 32px -12px rgba(22, 26, 39, 0.14);
   --shadow-sm: 0 1px 2px rgba(22, 26, 39, 0.05), 0 4px 12px -6px rgba(22, 26, 39, 0.12);
 
+  /* 입력 칸 제목. 본문(--text)보다 한 단계 연해서 값과 라벨이 구분된다.
+   * 색을 직접 박아 두면 다크 모드에서 배경과 붙어 안 보이므로 반드시 이 변수를 쓸 것. */
+  --label: #333b4d;
+
   /* 새 화면에서 쓰는 이름. 기존 구성요소와 같은 팔레트를 가리켜 색이 어긋나지 않게 한다. */
   --brand: var(--accent);
   --ink: var(--text);
@@ -398,8 +402,37 @@ body.intro-open { overflow: hidden; }
 }
 
 .sl-grad { width: 100%; max-width: 280px; margin-top: 4px; }
-/* 전설의 무지개 모리만 은은하게 빛난다 */
+/* 전설의 와꾸볼만 은은하게 빛난다 */
 .sl-svg.is-shine { filter: drop-shadow(0 0 7px rgba(160, 130, 255, 0.75)); }
+
+/* ---------------------------------------------------------- 말랑이 홈
+   다 키워 보낸 말랑이들이 실제로 모여 사는 자리. 도감이 "무엇을 모았는가" 라면
+   여기는 "모아 둔 것들이 지금 어떻게 지내는가" 를 보여 준다. */
+.sl-home { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.sl-room {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px;
+  padding: 14px 12px 8px; border-radius: var(--r);
+  background: radial-gradient(120% 100% at 50% 0%, #f4f0ff 0%, var(--surface-3) 72%);
+  border: 1px solid var(--line);
+}
+.sh-one {
+  background: none; border: 0; padding: 0; border-radius: 12px;
+  cursor: pointer; line-height: 0; transition: background 0.16s;
+}
+.sh-one .sl-svg { width: 62px; height: 57px; }
+.sh-one:hover { background: var(--surface); }
+.sh-one:active { transform: scale(0.94); }
+/* 다 같이 같은 박자로 흔들리면 인형 진열장처럼 보인다 — 어긋나게 흔든다 */
+.sh-one .sl-body { animation-duration: 3.1s; }
+.sh-one:nth-child(3n + 2) .sl-body { animation-delay: -0.9s; }
+.sh-one:nth-child(3n + 3) .sl-body { animation-delay: -1.7s; }
+.sh-more { align-self: center; padding: 0 8px; font-size: 12px; font-weight: 700; color: var(--dim); }
+.sl-room-empty {
+  margin: 0; padding: 24px 14px; text-align: center; line-height: 1.7;
+  font-size: 12.5px; color: var(--dim);
+  border: 1px dashed var(--line-2); border-radius: var(--r);
+}
+.sl-home-cap { margin: 8px 0 0; }
 
 /* --------------------------------------------------------------- 도감 */
 .sl-dex { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
@@ -480,7 +513,7 @@ body.intro-open { overflow: hidden; }
 /* ---------------------------------------------------------------- field */
 .field { margin-bottom: 20px; }
 .field:last-child { margin-bottom: 0; }
-.field > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; color: #333b4d; }
+.field > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; color: var(--label); }
 .field > label em { font-style: normal; font-weight: 400; color: var(--dim); font-size: 11.5px; margin-left: 6px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
@@ -532,6 +565,69 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .meal input:checked + span { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); font-weight: 600; }
 .meal input:checked + span b { filter: none; opacity: 1; }
 
+/* 채점 기준이 된 식사 시각. 왜 감점됐는지(또는 안 됐는지)를 여기서 바로 읽는다. */
+.meal-sched { margin-top: 10px; font-size: 11.5px; color: var(--muted); line-height: 1.65; }
+.ms-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ms-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ms-chip.done { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); }
+.ms-chip.miss { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad-ink); }
+.ms-chip.soon { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.ms-chip.off { opacity: 0.55; text-decoration: line-through; }
+.ms-chip i { font-style: normal; font-weight: 400; opacity: 0.85; }
+.ms-why { margin: 0; }
+.ms-why b { color: var(--text); }
+
+/* ------------------------------------------------- 식사 시간 알리미 (설정) */
+.ma-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.ma-row {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  gap: 10px; align-items: center;
+  padding: 10px 12px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.ma-row.is-off { opacity: 0.6; }
+.ma-ic { font-size: 18px; text-align: center; }
+.ma-name { display: grid; gap: 2px; min-width: 0; }
+.ma-name b { font-size: 13px; }
+.ma-name span { font-size: 11px; color: var(--dim); }
+.ma-time { width: 118px; }
+.ma-row .toggle { margin: 0; }
+#maBody.is-off { opacity: 0.5; pointer-events: none; }
+
+/* ------------------------------------------------- 식사 시간 알리미 (배너) */
+.meal-alarm {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 18px);
+  z-index: 210; width: min(460px, calc(100vw - 32px));
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center;
+  padding: 14px 16px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--accent-line);
+  box-shadow: 0 22px 48px -18px rgba(22, 26, 39, 0.45);
+  opacity: 0; pointer-events: none; transition: 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.meal-alarm.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.meal-alarm.is-hidden { display: none; }
+.mab-ic {
+  grid-row: span 2; width: 44px; height: 44px; border-radius: 14px;
+  display: grid; place-items: center; font-size: 22px;
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+}
+.mab-text { display: grid; gap: 2px; min-width: 0; padding-right: 22px; }
+.mab-text b { font-size: 14.5px; letter-spacing: -0.01em; }
+.mab-text span { font-size: 11.5px; color: var(--muted); }
+.mab-act { grid-column: 2; display: flex; gap: 8px; flex-wrap: wrap; }
+.mab-x { position: absolute; top: 8px; right: 8px; }
+
+@media (max-width: 560px) {
+  .ma-row { grid-template-columns: 26px minmax(0, 1fr); }
+  .ma-row .ma-time, .ma-row .toggle { grid-column: 2; }
+  .meal-alarm { bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+
 /* -------------------------------------------------------------- subject */
 /* 시험일 칸만 최소 폭을 준다. 날짜 입력은 "2026-08-08" 과 달력 아이콘이
    들어갈 자리가 필요해서, 다른 칸처럼 0 까지 줄이면 글자가 잘린다. */
@@ -576,6 +672,21 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .vs-hours-row { display: flex; align-items: center; gap: 7px; }
 .vs-hours-row .vs-hours { width: 78px; }
 .vs-hours-row span { font-size: 12.5px; color: var(--dim); }
+/* 학기 중 / 방학 — 두 갈래뿐이라 화면 폭을 다 쓰면 오히려 안 읽힌다 */
+.vpai-mode { max-width: 340px; }
+.vpai-mode button { padding: 10px 6px; font-size: 13px; }
+
+/* 학기 중일 때만 열리는 묶음. 위 선택에 딸린 입력이라는 걸 들여쓰기로 보여 준다. */
+#vpAiSchoolBox {
+  margin: 0 0 4px; padding: 14px 16px 4px;
+  border: 1px solid var(--accent-line); border-radius: var(--r-sm);
+  background: var(--accent-soft);
+}
+#vpAiSchoolBox.is-hidden { display: none; }
+#vpAiSchoolBox .field { margin-bottom: 14px; }
+/* 이 묶음은 배경이 카드보다 진해서, 안내 문구에 기본 --dim 을 쓰면 대비가 모자란다 */
+#vpAiSchoolBox .tiny { color: var(--muted); }
+
 .vpai-meals { display: flex; gap: 16px; flex-wrap: wrap; }
 .vpai-meal { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .vpai-meal .input { width: 110px; }
@@ -1123,7 +1234,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 /* ==================================================== 집중 사운드 ==== */
 .snd-bar { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: center; margin-bottom: 14px; }
-.snd-vol > label { display: block; font-size: 12px; font-weight: 600; color: #333b4d; margin-bottom: 7px; }
+.snd-vol > label { display: block; font-size: 12px; font-weight: 600; color: var(--label); margin-bottom: 7px; }
 
 .snd-now {
   display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 14px; align-items: center;
@@ -1475,11 +1586,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .home-quick { grid-template-columns: 1fr 1fr; }
   .sl-svg { width: 148px; height: 136px; }
   .sl-facts { grid-template-columns: 1fr; }
-  /* 8종을 두 줄에 담는다 — 두 칸씩 네 줄이면 도감이 화면을 다 잡아먹는다 */
+  /* 9종을 세 줄에 담는다 — 두 칸씩 다섯 줄이면 도감이 화면을 다 잡아먹는다 */
   .sl-dex-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .sd-fig { width: 58px; height: 54px; }
   .sd-fig .sl-svg { width: 58px; height: 54px; }
   .sd-cell b { font-size: 11.5px; }
+  .sl-room { gap: 2px; padding: 12px 8px 6px; }
+  .sh-one .sl-svg { width: 52px; height: 48px; }
 }
 
 /* ============================================ 결과 요약 스트립 (secResult)
@@ -1685,6 +1798,170 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .lg-row .r-name { font-size: 13.5px; }
   .lg-row .r-total { font-size: 13px; }
   .lg-board-head { font-size: 11.5px; flex-direction: column; align-items: flex-start; gap: 3px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   우리 반 포스트잇
+
+   쪽지는 화면 위에 떠 있는 층(.pin-layer)에 붙는다. 자리는 화면 크기에
+   대한 백분율로 저장하므로, 휴대폰과 노트북에서 대체로 같은 자리에 보인다.
+
+   층은 상단 바(z-index:50)보다 아래에 둔다. 쪽지가 화면을 가리는 것은
+   의도된 동작이지만, 그것 때문에 화면 이동까지 막히면 안 되기 때문이다.
+
+   색은 여덟 가지다. 흔한 노란 포스트잇을 넣지 않은 것은 이 앱 전체가
+   초록·노랑(색상각 40~170도)을 쓰지 않기 때문이다 — 파일 머리말 참고.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.pin-layer {
+  position: fixed; inset: 0; z-index: 45; pointer-events: none;
+  overflow: hidden;
+}
+.pin-layer.is-off { display: none; }
+
+.pin {
+  position: absolute; width: 168px; min-height: 96px; pointer-events: auto;
+  padding: 12px 13px 10px; border-radius: 3px;
+  background: var(--pin-bg); color: var(--pin-ink);
+  box-shadow: 0 1px 1px rgba(22, 26, 39, .10), 0 10px 22px -12px rgba(22, 26, 39, .5);
+  display: flex; flex-direction: column; gap: 7px;
+  transform: translate(-50%, -50%) rotate(var(--pin-tilt, 0deg));
+  animation: pin-in .32s cubic-bezier(.2, 1.2, .3, 1);
+  /* 붙였던 자리에서 살짝 접힌 모서리 — 종이처럼 보이게 하는 최소한의 장치 */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+.pin::after {
+  content: ""; position: absolute; right: 0; bottom: 0; width: 14px; height: 14px;
+  background: linear-gradient(135deg, transparent 50%, rgba(22, 26, 39, .16) 50%);
+}
+.pin.is-mine { box-shadow: 0 1px 1px rgba(22, 26, 39, .10), 0 12px 26px -12px rgba(109, 74, 255, .55); }
+.pin.is-going { opacity: .45; }
+
+@keyframes pin-in {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(var(--pin-tilt, 0deg)) scale(.6); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(var(--pin-tilt, 0deg)) scale(1); }
+}
+
+.pin-body {
+  font-size: 13.5px; line-height: 1.5; font-weight: 600; word-break: break-word;
+  white-space: pre-wrap; flex: 1;
+}
+.pin-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  font-size: 10.5px; font-weight: 700; opacity: .72;
+}
+.pin-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pin-left { flex: none; font-variant-numeric: tabular-nums; }
+
+/* 쪽지 위 단추 — 평소에는 흐리게 두고 가까이 가면 또렷해진다 */
+.pin-btn {
+  position: absolute; top: 4px; width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+  font: inherit; font-size: 12px; line-height: 22px; color: var(--pin-ink);
+  opacity: .42; transition: opacity .15s, background .15s;
+}
+.pin-btn:hover, .pin-btn:focus-visible { opacity: 1; background: rgba(255, 255, 255, .55); }
+.pin-x { right: 4px; }
+.pin-del { right: 26px; font-size: 11px; }
+
+/* 내 쪽지는 끌어서 옮길 수 있다.
+ * touch-action 을 꺼야 손가락으로 끌 때 화면이 같이 스크롤되지 않는다. */
+.pin.is-mine { touch-action: none; }
+.pin.is-mine .pin-body { cursor: grab; }
+.pin.is-dragging { cursor: grabbing; z-index: 2; animation: none; transition: none; }
+.pin.is-dragging .pin-body { cursor: grabbing; }
+
+/* 여덟 가지 색. --pin-ink 는 각 배경 위에서 대비가 나오는 같은 계열 진한 색이다.
+ * 색 고르는 단추(.pin-sw)도 같은 규칙을 쓰게 묶어 둔다 — 두 곳에 색을 따로
+ * 적어 두면 다크 모드에서 견본과 실제 쪽지 색이 어긋난다. */
+.pin.c0, .pin-sw.c0 { --pin-bg: #ede6ff; --pin-ink: #40308a; }
+.pin.c1, .pin-sw.c1 { --pin-bg: #e3e9ff; --pin-ink: #2d3f86; }
+.pin.c2, .pin-sw.c2 { --pin-bg: #dceefb; --pin-ink: #1f4a70; }
+.pin.c3, .pin-sw.c3 { --pin-bg: #d9f0f4; --pin-ink: #1d4e57; }
+.pin.c4, .pin-sw.c4 { --pin-bg: #ffe1ec; --pin-ink: #8b2a52; }
+.pin.c5, .pin-sw.c5 { --pin-bg: #ffe0dc; --pin-ink: #8e3a2f; }
+.pin.c6, .pin-sw.c6 { --pin-bg: #ffe8d6; --pin-ink: #7f4c22; }
+.pin.c7, .pin-sw.c7 { --pin-bg: #f7e1fa; --pin-ink: #6d2b7a; }
+
+/* ── 붙일 자리 고르기 */
+.pin-place { position: fixed; inset: 0; z-index: 1100; cursor: crosshair; touch-action: none; }
+.pin-place.is-hidden { display: none; }
+.pin-place-bar {
+  position: absolute; left: 50%; top: 18px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px;
+  border-radius: 999px; background: #171a27; color: #fff;
+  font-size: 13px; font-weight: 700; box-shadow: var(--shadow); white-space: nowrap;
+}
+.pin-place-bar .btn { background: rgba(255, 255, 255, .16); border-color: transparent; color: #fff; }
+.pin-place-bar .btn:hover { background: rgba(255, 255, 255, .28); }
+.pin-ghost { opacity: .92; pointer-events: none; animation: none; }
+
+/* ── 리그 화면의 작성 칸 */
+.pin-text { resize: vertical; min-height: 62px; font-size: 14px; line-height: 1.55; }
+
+.pin-opt { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.pin-opt-l { flex: none; width: 62px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+
+.pin-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+.pin-sw {
+  width: 30px; height: 30px; padding: 0; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(22, 26, 39, .10);
+  background: var(--pin-bg, var(--surface-2)); color: var(--pin-ink, var(--muted));
+  transition: transform .14s, border-color .14s;
+}
+.pin-sw:hover { transform: translateY(-2px); }
+.pin-sw.on { border-color: var(--accent); transform: translateY(-2px); }
+.pin-sw.rand {
+  background: conic-gradient(#ede6ff, #e3e9ff, #dceefb, #d9f0f4, #ffe1ec, #ffe0dc, #ffe8d6, #f7e1fa, #ede6ff);
+  font-size: 13px; line-height: 1;
+}
+
+.pin-lifes { display: flex; gap: 6px; flex-wrap: wrap; }
+.pin-life {
+  padding: 7px 13px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 700;
+  color: var(--muted); cursor: pointer; transition: all .15s;
+}
+.pin-life:hover { border-color: var(--line-2); }
+.pin-life.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.pin-act { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+.pin-count { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.pin-count b { color: var(--muted); }
+.pin-count.is-full b { color: var(--bad); }
+
+.pin-warn {
+  margin: 10px 0 0; padding: 10px 13px; border-radius: var(--r-sm);
+  background: var(--bad-bg); color: var(--bad-ink); border: 1px solid var(--bad-line);
+  line-height: 1.6;
+}
+
+.pin-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line);
+  font-size: 12.5px; color: var(--muted); font-weight: 600; flex-wrap: wrap;
+}
+.pin-bar-act { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.pin-locked {
+  padding: 14px 16px; border-radius: var(--r-sm); line-height: 1.65;
+  background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent-ink);
+  font-size: 13px;
+}
+.pin-locked.is-hidden { display: none; }
+.pin-locked b { color: var(--text); }
+.pin-locked .btn { margin-top: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pin { animation: none; }
+  .pin-sw:hover, .pin-sw.on { transform: none; }
+}
+
+@media (max-width: 560px) {
+  .pin { width: 142px; min-height: 84px; padding: 10px 11px 9px; }
+  .pin-body { font-size: 12.5px; }
+  .pin-opt-l { width: 100%; }
+  .pin-place-bar { font-size: 12px; padding: 9px 10px 9px 14px; gap: 8px; left: 12px; right: 12px; transform: none; justify-content: space-between; }
 }
 
 /* =============================================== 관리자 대시보드 스타일 */
@@ -1946,6 +2223,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     --text: #e9ecf5;
     --muted: #a2abc2;
     --dim: #7b849b;
+    --label: #cfd6e6;   /* 라이트의 #333b4d 를 뒤집은 자리. 빠뜨리면 입력 칸 제목이 통째로 안 보인다 */
     --track: #2b3143;
 
     --accent: #9b83ff;          /* 어두운 배경에서 대비를 맞추려면 라이트보다 밝아야 한다 */
@@ -1983,6 +2261,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 홈·모리에서 라이트용으로 박아 둔 밝은 면들 */
   .mm-item.is-active .mm-ic { background: var(--surface); }
   .sl-stage { background: radial-gradient(120% 90% at 50% 0%, #262244 0%, var(--surface-3) 70%); }
+  .sl-room { background: radial-gradient(120% 100% at 50% 0%, #232041 0%, var(--surface-3) 72%); }
   .sl-shadow { fill: rgba(0, 0, 0, 0.35); }
 
   /* 인트로 배경은 라이트용 파스텔 그라데이션이라 어두운 톤으로 다시 잡는다 */
@@ -1992,6 +2271,20 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 컬러 배경 위 흰 글자는 그대로 두되, 흰 면 위 검은 글자는 뒤집어야 한다 */
   .toast { background: #e9ecf5; color: #12151f; }
   .toast.party { color: #fff; }
+
+  /* 포스트잇 — 파스텔 여덟 가지를 색상은 그대로 두고 명도만 뒤집는다.
+     라이트용 색을 그대로 쓰면 어두운 화면에서 종이가 전등처럼 빛난다. */
+  .pin.c0, .pin-sw.c0 { --pin-bg: #322a52; --pin-ink: #ded4ff; }
+  .pin.c1, .pin-sw.c1 { --pin-bg: #26305a; --pin-ink: #d3ddff; }
+  .pin.c2, .pin-sw.c2 { --pin-bg: #1e3450; --pin-ink: #cbe4fa; }
+  .pin.c3, .pin-sw.c3 { --pin-bg: #1c3b42; --pin-ink: #c8e9ef; }
+  .pin.c4, .pin-sw.c4 { --pin-bg: #4a2334; --pin-ink: #ffd4e3; }
+  .pin.c5, .pin-sw.c5 { --pin-bg: #4c2a24; --pin-ink: #ffd6cf; }
+  .pin.c6, .pin-sw.c6 { --pin-bg: #472f1c; --pin-ink: #ffdfc4; }
+  .pin.c7, .pin-sw.c7 { --pin-bg: #402046; --pin-ink: #f3d3f8; }
+  .pin::after { background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, .45) 50%); }
+  .pin-btn:hover, .pin-btn:focus-visible { background: rgba(255, 255, 255, .14); }
+  .pin-sw { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
 
   /* 급식 종류 배지 — 라이트용 파스텔이라 어두운 톤으로 다시 잡는다 */
   .mc-type.조식 { background: var(--warn-bg); color: var(--warn-ink); }

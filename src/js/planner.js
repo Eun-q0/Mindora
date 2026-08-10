@@ -375,8 +375,20 @@
     if (i.exercise === 0) {
       out.push({ icon: '🚶', title: '10분 빠른 걷기', text: '긴 휴식 때 가능하면 10분 정도 걸어 보세요. 몸을 움직이면 각성을 높이고 다음 블록을 준비하는 데 도움이 될 수 있습니다.' });
     }
-    if (i.hoursSinceMeal >= 5) {
+    /* 잠든 사이의 공복까지 세면 아침마다 간식 안내가 뜬다.
+     * engine 이 환산해 둔 '깨어 있는 동안의 공복' 을 기준으로 판단한다. */
+    var fast = analysis.meal ? analysis.meal.fastHours : i.hoursSinceMeal;
+    if (fast >= 5) {
       out.push({ icon: '🍎', title: '첫 휴식에 가벼운 간식', text: '마지막 식사 후 시간이 오래 지났습니다. 배고픔이 느껴진다면 견과류나 과일처럼 부담이 적은 간식과 물을 고려하세요.' });
+    }
+
+    // 계획표에 다음 끼니가 있으면 휴식과 함께 잡아 준다 — 휴식 시각과 식사 시각이 따로 놀지 않게
+    if (analysis.meal && analysis.meal.nextMeal) {
+      var nm = analysis.meal.nextMeal;
+      out.push({
+        icon: '🍚', title: '다음 끼니는 ' + nm.label + ' ' + fmtHour(nm.hour),
+        text: '계획표에 적어 둔 시각입니다. 그 앞뒤 블록은 짧게 잡고, 식사 직후 20~30분은 가벼운 과제로 두세요.'
+      });
     }
     if (i.sleep.hours < 6) {
       out.push({ icon: '🛏️', title: '오늘은 취침 시각이 최우선', text: '수면 부족이 오늘 점수를 가장 크게 끌어내렸습니다. 학습 종료 시각을 앞당겨서라도 평소보다 일찍 자는 게 내일까지 합산하면 이득입니다.' });

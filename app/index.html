@@ -99,6 +99,10 @@
   --shadow: 0 2px 4px -1px rgba(22, 26, 39, 0.05), 0 12px 32px -12px rgba(22, 26, 39, 0.14);
   --shadow-sm: 0 1px 2px rgba(22, 26, 39, 0.05), 0 4px 12px -6px rgba(22, 26, 39, 0.12);
 
+  /* 입력 칸 제목. 본문(--text)보다 한 단계 연해서 값과 라벨이 구분된다.
+   * 색을 직접 박아 두면 다크 모드에서 배경과 붙어 안 보이므로 반드시 이 변수를 쓸 것. */
+  --label: #333b4d;
+
   /* 새 화면에서 쓰는 이름. 기존 구성요소와 같은 팔레트를 가리켜 색이 어긋나지 않게 한다. */
   --brand: var(--accent);
   --ink: var(--text);
@@ -444,8 +448,37 @@ body.intro-open { overflow: hidden; }
 }
 
 .sl-grad { width: 100%; max-width: 280px; margin-top: 4px; }
-/* 전설의 무지개 모리만 은은하게 빛난다 */
+/* 전설의 와꾸볼만 은은하게 빛난다 */
 .sl-svg.is-shine { filter: drop-shadow(0 0 7px rgba(160, 130, 255, 0.75)); }
+
+/* ---------------------------------------------------------- 말랑이 홈
+   다 키워 보낸 말랑이들이 실제로 모여 사는 자리. 도감이 "무엇을 모았는가" 라면
+   여기는 "모아 둔 것들이 지금 어떻게 지내는가" 를 보여 준다. */
+.sl-home { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.sl-room {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px;
+  padding: 14px 12px 8px; border-radius: var(--r);
+  background: radial-gradient(120% 100% at 50% 0%, #f4f0ff 0%, var(--surface-3) 72%);
+  border: 1px solid var(--line);
+}
+.sh-one {
+  background: none; border: 0; padding: 0; border-radius: 12px;
+  cursor: pointer; line-height: 0; transition: background 0.16s;
+}
+.sh-one .sl-svg { width: 62px; height: 57px; }
+.sh-one:hover { background: var(--surface); }
+.sh-one:active { transform: scale(0.94); }
+/* 다 같이 같은 박자로 흔들리면 인형 진열장처럼 보인다 — 어긋나게 흔든다 */
+.sh-one .sl-body { animation-duration: 3.1s; }
+.sh-one:nth-child(3n + 2) .sl-body { animation-delay: -0.9s; }
+.sh-one:nth-child(3n + 3) .sl-body { animation-delay: -1.7s; }
+.sh-more { align-self: center; padding: 0 8px; font-size: 12px; font-weight: 700; color: var(--dim); }
+.sl-room-empty {
+  margin: 0; padding: 24px 14px; text-align: center; line-height: 1.7;
+  font-size: 12.5px; color: var(--dim);
+  border: 1px dashed var(--line-2); border-radius: var(--r);
+}
+.sl-home-cap { margin: 8px 0 0; }
 
 /* --------------------------------------------------------------- 도감 */
 .sl-dex { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
@@ -526,7 +559,7 @@ body.intro-open { overflow: hidden; }
 /* ---------------------------------------------------------------- field */
 .field { margin-bottom: 20px; }
 .field:last-child { margin-bottom: 0; }
-.field > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; color: #333b4d; }
+.field > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; color: var(--label); }
 .field > label em { font-style: normal; font-weight: 400; color: var(--dim); font-size: 11.5px; margin-left: 6px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
@@ -578,6 +611,69 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .meal input:checked + span { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); font-weight: 600; }
 .meal input:checked + span b { filter: none; opacity: 1; }
 
+/* 채점 기준이 된 식사 시각. 왜 감점됐는지(또는 안 됐는지)를 여기서 바로 읽는다. */
+.meal-sched { margin-top: 10px; font-size: 11.5px; color: var(--muted); line-height: 1.65; }
+.ms-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ms-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ms-chip.done { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); }
+.ms-chip.miss { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad-ink); }
+.ms-chip.soon { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.ms-chip.off { opacity: 0.55; text-decoration: line-through; }
+.ms-chip i { font-style: normal; font-weight: 400; opacity: 0.85; }
+.ms-why { margin: 0; }
+.ms-why b { color: var(--text); }
+
+/* ------------------------------------------------- 식사 시간 알리미 (설정) */
+.ma-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.ma-row {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  gap: 10px; align-items: center;
+  padding: 10px 12px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.ma-row.is-off { opacity: 0.6; }
+.ma-ic { font-size: 18px; text-align: center; }
+.ma-name { display: grid; gap: 2px; min-width: 0; }
+.ma-name b { font-size: 13px; }
+.ma-name span { font-size: 11px; color: var(--dim); }
+.ma-time { width: 118px; }
+.ma-row .toggle { margin: 0; }
+#maBody.is-off { opacity: 0.5; pointer-events: none; }
+
+/* ------------------------------------------------- 식사 시간 알리미 (배너) */
+.meal-alarm {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 18px);
+  z-index: 210; width: min(460px, calc(100vw - 32px));
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center;
+  padding: 14px 16px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--accent-line);
+  box-shadow: 0 22px 48px -18px rgba(22, 26, 39, 0.45);
+  opacity: 0; pointer-events: none; transition: 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.meal-alarm.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.meal-alarm.is-hidden { display: none; }
+.mab-ic {
+  grid-row: span 2; width: 44px; height: 44px; border-radius: 14px;
+  display: grid; place-items: center; font-size: 22px;
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+}
+.mab-text { display: grid; gap: 2px; min-width: 0; padding-right: 22px; }
+.mab-text b { font-size: 14.5px; letter-spacing: -0.01em; }
+.mab-text span { font-size: 11.5px; color: var(--muted); }
+.mab-act { grid-column: 2; display: flex; gap: 8px; flex-wrap: wrap; }
+.mab-x { position: absolute; top: 8px; right: 8px; }
+
+@media (max-width: 560px) {
+  .ma-row { grid-template-columns: 26px minmax(0, 1fr); }
+  .ma-row .ma-time, .ma-row .toggle { grid-column: 2; }
+  .meal-alarm { bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+
 /* -------------------------------------------------------------- subject */
 /* 시험일 칸만 최소 폭을 준다. 날짜 입력은 "2026-08-08" 과 달력 아이콘이
    들어갈 자리가 필요해서, 다른 칸처럼 0 까지 줄이면 글자가 잘린다. */
@@ -622,6 +718,21 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .vs-hours-row { display: flex; align-items: center; gap: 7px; }
 .vs-hours-row .vs-hours { width: 78px; }
 .vs-hours-row span { font-size: 12.5px; color: var(--dim); }
+/* 학기 중 / 방학 — 두 갈래뿐이라 화면 폭을 다 쓰면 오히려 안 읽힌다 */
+.vpai-mode { max-width: 340px; }
+.vpai-mode button { padding: 10px 6px; font-size: 13px; }
+
+/* 학기 중일 때만 열리는 묶음. 위 선택에 딸린 입력이라는 걸 들여쓰기로 보여 준다. */
+#vpAiSchoolBox {
+  margin: 0 0 4px; padding: 14px 16px 4px;
+  border: 1px solid var(--accent-line); border-radius: var(--r-sm);
+  background: var(--accent-soft);
+}
+#vpAiSchoolBox.is-hidden { display: none; }
+#vpAiSchoolBox .field { margin-bottom: 14px; }
+/* 이 묶음은 배경이 카드보다 진해서, 안내 문구에 기본 --dim 을 쓰면 대비가 모자란다 */
+#vpAiSchoolBox .tiny { color: var(--muted); }
+
 .vpai-meals { display: flex; gap: 16px; flex-wrap: wrap; }
 .vpai-meal { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .vpai-meal .input { width: 110px; }
@@ -1169,7 +1280,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 /* ==================================================== 집중 사운드 ==== */
 .snd-bar { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: center; margin-bottom: 14px; }
-.snd-vol > label { display: block; font-size: 12px; font-weight: 600; color: #333b4d; margin-bottom: 7px; }
+.snd-vol > label { display: block; font-size: 12px; font-weight: 600; color: var(--label); margin-bottom: 7px; }
 
 .snd-now {
   display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 14px; align-items: center;
@@ -1521,11 +1632,13 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .home-quick { grid-template-columns: 1fr 1fr; }
   .sl-svg { width: 148px; height: 136px; }
   .sl-facts { grid-template-columns: 1fr; }
-  /* 8종을 두 줄에 담는다 — 두 칸씩 네 줄이면 도감이 화면을 다 잡아먹는다 */
+  /* 9종을 세 줄에 담는다 — 두 칸씩 다섯 줄이면 도감이 화면을 다 잡아먹는다 */
   .sl-dex-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .sd-fig { width: 58px; height: 54px; }
   .sd-fig .sl-svg { width: 58px; height: 54px; }
   .sd-cell b { font-size: 11.5px; }
+  .sl-room { gap: 2px; padding: 12px 8px 6px; }
+  .sh-one .sl-svg { width: 52px; height: 48px; }
 }
 
 /* ============================================ 결과 요약 스트립 (secResult)
@@ -1731,6 +1844,170 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .lg-row .r-name { font-size: 13.5px; }
   .lg-row .r-total { font-size: 13px; }
   .lg-board-head { font-size: 11.5px; flex-direction: column; align-items: flex-start; gap: 3px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   우리 반 포스트잇
+
+   쪽지는 화면 위에 떠 있는 층(.pin-layer)에 붙는다. 자리는 화면 크기에
+   대한 백분율로 저장하므로, 휴대폰과 노트북에서 대체로 같은 자리에 보인다.
+
+   층은 상단 바(z-index:50)보다 아래에 둔다. 쪽지가 화면을 가리는 것은
+   의도된 동작이지만, 그것 때문에 화면 이동까지 막히면 안 되기 때문이다.
+
+   색은 여덟 가지다. 흔한 노란 포스트잇을 넣지 않은 것은 이 앱 전체가
+   초록·노랑(색상각 40~170도)을 쓰지 않기 때문이다 — 파일 머리말 참고.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.pin-layer {
+  position: fixed; inset: 0; z-index: 45; pointer-events: none;
+  overflow: hidden;
+}
+.pin-layer.is-off { display: none; }
+
+.pin {
+  position: absolute; width: 168px; min-height: 96px; pointer-events: auto;
+  padding: 12px 13px 10px; border-radius: 3px;
+  background: var(--pin-bg); color: var(--pin-ink);
+  box-shadow: 0 1px 1px rgba(22, 26, 39, .10), 0 10px 22px -12px rgba(22, 26, 39, .5);
+  display: flex; flex-direction: column; gap: 7px;
+  transform: translate(-50%, -50%) rotate(var(--pin-tilt, 0deg));
+  animation: pin-in .32s cubic-bezier(.2, 1.2, .3, 1);
+  /* 붙였던 자리에서 살짝 접힌 모서리 — 종이처럼 보이게 하는 최소한의 장치 */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+.pin::after {
+  content: ""; position: absolute; right: 0; bottom: 0; width: 14px; height: 14px;
+  background: linear-gradient(135deg, transparent 50%, rgba(22, 26, 39, .16) 50%);
+}
+.pin.is-mine { box-shadow: 0 1px 1px rgba(22, 26, 39, .10), 0 12px 26px -12px rgba(109, 74, 255, .55); }
+.pin.is-going { opacity: .45; }
+
+@keyframes pin-in {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(var(--pin-tilt, 0deg)) scale(.6); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(var(--pin-tilt, 0deg)) scale(1); }
+}
+
+.pin-body {
+  font-size: 13.5px; line-height: 1.5; font-weight: 600; word-break: break-word;
+  white-space: pre-wrap; flex: 1;
+}
+.pin-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  font-size: 10.5px; font-weight: 700; opacity: .72;
+}
+.pin-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pin-left { flex: none; font-variant-numeric: tabular-nums; }
+
+/* 쪽지 위 단추 — 평소에는 흐리게 두고 가까이 가면 또렷해진다 */
+.pin-btn {
+  position: absolute; top: 4px; width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+  font: inherit; font-size: 12px; line-height: 22px; color: var(--pin-ink);
+  opacity: .42; transition: opacity .15s, background .15s;
+}
+.pin-btn:hover, .pin-btn:focus-visible { opacity: 1; background: rgba(255, 255, 255, .55); }
+.pin-x { right: 4px; }
+.pin-del { right: 26px; font-size: 11px; }
+
+/* 내 쪽지는 끌어서 옮길 수 있다.
+ * touch-action 을 꺼야 손가락으로 끌 때 화면이 같이 스크롤되지 않는다. */
+.pin.is-mine { touch-action: none; }
+.pin.is-mine .pin-body { cursor: grab; }
+.pin.is-dragging { cursor: grabbing; z-index: 2; animation: none; transition: none; }
+.pin.is-dragging .pin-body { cursor: grabbing; }
+
+/* 여덟 가지 색. --pin-ink 는 각 배경 위에서 대비가 나오는 같은 계열 진한 색이다.
+ * 색 고르는 단추(.pin-sw)도 같은 규칙을 쓰게 묶어 둔다 — 두 곳에 색을 따로
+ * 적어 두면 다크 모드에서 견본과 실제 쪽지 색이 어긋난다. */
+.pin.c0, .pin-sw.c0 { --pin-bg: #ede6ff; --pin-ink: #40308a; }
+.pin.c1, .pin-sw.c1 { --pin-bg: #e3e9ff; --pin-ink: #2d3f86; }
+.pin.c2, .pin-sw.c2 { --pin-bg: #dceefb; --pin-ink: #1f4a70; }
+.pin.c3, .pin-sw.c3 { --pin-bg: #d9f0f4; --pin-ink: #1d4e57; }
+.pin.c4, .pin-sw.c4 { --pin-bg: #ffe1ec; --pin-ink: #8b2a52; }
+.pin.c5, .pin-sw.c5 { --pin-bg: #ffe0dc; --pin-ink: #8e3a2f; }
+.pin.c6, .pin-sw.c6 { --pin-bg: #ffe8d6; --pin-ink: #7f4c22; }
+.pin.c7, .pin-sw.c7 { --pin-bg: #f7e1fa; --pin-ink: #6d2b7a; }
+
+/* ── 붙일 자리 고르기 */
+.pin-place { position: fixed; inset: 0; z-index: 1100; cursor: crosshair; touch-action: none; }
+.pin-place.is-hidden { display: none; }
+.pin-place-bar {
+  position: absolute; left: 50%; top: 18px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px;
+  border-radius: 999px; background: #171a27; color: #fff;
+  font-size: 13px; font-weight: 700; box-shadow: var(--shadow); white-space: nowrap;
+}
+.pin-place-bar .btn { background: rgba(255, 255, 255, .16); border-color: transparent; color: #fff; }
+.pin-place-bar .btn:hover { background: rgba(255, 255, 255, .28); }
+.pin-ghost { opacity: .92; pointer-events: none; animation: none; }
+
+/* ── 리그 화면의 작성 칸 */
+.pin-text { resize: vertical; min-height: 62px; font-size: 14px; line-height: 1.55; }
+
+.pin-opt { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.pin-opt-l { flex: none; width: 62px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+
+.pin-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+.pin-sw {
+  width: 30px; height: 30px; padding: 0; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(22, 26, 39, .10);
+  background: var(--pin-bg, var(--surface-2)); color: var(--pin-ink, var(--muted));
+  transition: transform .14s, border-color .14s;
+}
+.pin-sw:hover { transform: translateY(-2px); }
+.pin-sw.on { border-color: var(--accent); transform: translateY(-2px); }
+.pin-sw.rand {
+  background: conic-gradient(#ede6ff, #e3e9ff, #dceefb, #d9f0f4, #ffe1ec, #ffe0dc, #ffe8d6, #f7e1fa, #ede6ff);
+  font-size: 13px; line-height: 1;
+}
+
+.pin-lifes { display: flex; gap: 6px; flex-wrap: wrap; }
+.pin-life {
+  padding: 7px 13px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 700;
+  color: var(--muted); cursor: pointer; transition: all .15s;
+}
+.pin-life:hover { border-color: var(--line-2); }
+.pin-life.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.pin-act { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+.pin-count { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.pin-count b { color: var(--muted); }
+.pin-count.is-full b { color: var(--bad); }
+
+.pin-warn {
+  margin: 10px 0 0; padding: 10px 13px; border-radius: var(--r-sm);
+  background: var(--bad-bg); color: var(--bad-ink); border: 1px solid var(--bad-line);
+  line-height: 1.6;
+}
+
+.pin-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line);
+  font-size: 12.5px; color: var(--muted); font-weight: 600; flex-wrap: wrap;
+}
+.pin-bar-act { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.pin-locked {
+  padding: 14px 16px; border-radius: var(--r-sm); line-height: 1.65;
+  background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent-ink);
+  font-size: 13px;
+}
+.pin-locked.is-hidden { display: none; }
+.pin-locked b { color: var(--text); }
+.pin-locked .btn { margin-top: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pin { animation: none; }
+  .pin-sw:hover, .pin-sw.on { transform: none; }
+}
+
+@media (max-width: 560px) {
+  .pin { width: 142px; min-height: 84px; padding: 10px 11px 9px; }
+  .pin-body { font-size: 12.5px; }
+  .pin-opt-l { width: 100%; }
+  .pin-place-bar { font-size: 12px; padding: 9px 10px 9px 14px; gap: 8px; left: 12px; right: 12px; transform: none; justify-content: space-between; }
 }
 
 /* =============================================== 관리자 대시보드 스타일 */
@@ -1992,6 +2269,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
     --text: #e9ecf5;
     --muted: #a2abc2;
     --dim: #7b849b;
+    --label: #cfd6e6;   /* 라이트의 #333b4d 를 뒤집은 자리. 빠뜨리면 입력 칸 제목이 통째로 안 보인다 */
     --track: #2b3143;
 
     --accent: #9b83ff;          /* 어두운 배경에서 대비를 맞추려면 라이트보다 밝아야 한다 */
@@ -2029,6 +2307,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 홈·모리에서 라이트용으로 박아 둔 밝은 면들 */
   .mm-item.is-active .mm-ic { background: var(--surface); }
   .sl-stage { background: radial-gradient(120% 90% at 50% 0%, #262244 0%, var(--surface-3) 70%); }
+  .sl-room { background: radial-gradient(120% 100% at 50% 0%, #232041 0%, var(--surface-3) 72%); }
   .sl-shadow { fill: rgba(0, 0, 0, 0.35); }
 
   /* 인트로 배경은 라이트용 파스텔 그라데이션이라 어두운 톤으로 다시 잡는다 */
@@ -2038,6 +2317,20 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   /* 컬러 배경 위 흰 글자는 그대로 두되, 흰 면 위 검은 글자는 뒤집어야 한다 */
   .toast { background: #e9ecf5; color: #12151f; }
   .toast.party { color: #fff; }
+
+  /* 포스트잇 — 파스텔 여덟 가지를 색상은 그대로 두고 명도만 뒤집는다.
+     라이트용 색을 그대로 쓰면 어두운 화면에서 종이가 전등처럼 빛난다. */
+  .pin.c0, .pin-sw.c0 { --pin-bg: #322a52; --pin-ink: #ded4ff; }
+  .pin.c1, .pin-sw.c1 { --pin-bg: #26305a; --pin-ink: #d3ddff; }
+  .pin.c2, .pin-sw.c2 { --pin-bg: #1e3450; --pin-ink: #cbe4fa; }
+  .pin.c3, .pin-sw.c3 { --pin-bg: #1c3b42; --pin-ink: #c8e9ef; }
+  .pin.c4, .pin-sw.c4 { --pin-bg: #4a2334; --pin-ink: #ffd4e3; }
+  .pin.c5, .pin-sw.c5 { --pin-bg: #4c2a24; --pin-ink: #ffd6cf; }
+  .pin.c6, .pin-sw.c6 { --pin-bg: #472f1c; --pin-ink: #ffdfc4; }
+  .pin.c7, .pin-sw.c7 { --pin-bg: #402046; --pin-ink: #f3d3f8; }
+  .pin::after { background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, .45) 50%); }
+  .pin-btn:hover, .pin-btn:focus-visible { background: rgba(255, 255, 255, .14); }
+  .pin-sw { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
 
   /* 급식 종류 배지 — 라이트용 파스텔이라 어두운 톤으로 다시 잡는다 */
   .mc-type.조식 { background: var(--warn-bg); color: var(--warn-ink); }
@@ -2715,7 +3008,9 @@ body {
               <label class="meal"><input type="checkbox" id="mealLunch" checked><span><b>🌞</b>점심</span></label>
               <label class="meal"><input type="checkbox" id="mealDinner"><span><b>🌙</b>저녁</span></label>
             </div>
-            <p class="tiny">아직 시간이 되지 않은 끼니는 감점되지 않습니다.</p>
+            <!-- 어떤 시각을 기준으로 채점했는지 그대로 보여 준다.
+                 "왜 감점됐는지" 를 화면에서 바로 확인할 수 있어야 점수를 믿을 수 있다. -->
+            <div class="meal-sched" id="mealSched"></div>
           </div>
 
           <div class="field" id="mealField">
@@ -3089,10 +3384,59 @@ body {
       </div>
       <div class="card-body is-hidden" id="vpAiBody">
         <p class="tiny" style="margin:0 0 12px">기상·취침·식사·학원처럼 <b>이미 정해진 일정</b>을 먼저 넣으면, 남는 시간을 과목별 주간 목표 시간에 맞춰 규칙에 따라 배분합니다. 만들어진 뒤에는 아래 시간표에서 자유롭게 고칠 수 있습니다.</p>
+
+        <!-- ── 학기 중 / 방학 ───────────────────────────────────────
+             둘은 하루의 뼈대가 아예 다르다. 학기 중은 낮이 통째로 학교에
+             묶여 있고, 방학은 아침부터 전부 내 시간이다. 이걸 먼저 고르게
+             해야 뒤따르는 입력칸도 필요한 것만 보여 줄 수 있다. -->
+        <div class="field">
+          <label>언제 쓰는 계획표인가요</label>
+          <div class="seg vpai-mode" data-target="vpAiMode" role="group" aria-label="계획표 종류">
+            <button type="button" data-v="term">🏫 학기 중</button>
+            <button type="button" data-v="vacation">🏖️ 방학</button>
+          </div>
+          <input type="hidden" id="vpAiMode" value="term">
+          <p class="tiny" id="vpAiModeHint" style="margin:8px 0 0">—</p>
+        </div>
+
+        <div id="vpAiSchoolBox">
+          <div class="two-col">
+            <div class="field">
+              <label for="vpAiSchoolStart">등교 시각</label>
+              <input type="time" id="vpAiSchoolStart" class="input" value="08:00">
+            </div>
+            <div class="field">
+              <label for="vpAiSchoolEnd">하교 시각 <em>시간표를 넣으면 교시 수에 맞춰 늘어납니다</em></label>
+              <input type="time" id="vpAiSchoolEnd" class="input" value="16:00">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>등교하는 요일</label>
+            <div class="va-days" id="vpAiSchoolDays"></div>
+          </div>
+
+          <div class="field">
+            <label class="toggle"><input type="checkbox" id="vpAiUseTimetable" checked><span><b>학교 시간표 반영</b> — 학교 시간을 과목명(국어·수학…)으로 채웁니다</span></label>
+            <div class="two-col" style="margin-top:10px">
+              <div class="field">
+                <label for="vpAiTtGrade">학년</label>
+                <select id="vpAiTtGrade" class="input"></select>
+              </div>
+              <div class="field">
+                <label for="vpAiTtClass">반</label>
+                <input type="text" id="vpAiTtClass" class="input" maxlength="8" placeholder="예) 3">
+              </div>
+            </div>
+            <p class="tiny" id="vpAiTtStatus">—</p>
+          </div>
+        </div>
+
         <div class="two-col">
           <div class="field">
             <label for="vpAiWake">기상 시각</label>
-            <input type="time" id="vpAiWake" class="input" value="07:00">
+            <!-- 기본값은 기본 모드(학기 중)에 맞춘다. 방학을 고르면 07:00 으로 옮겨 준다. -->
+            <input type="time" id="vpAiWake" class="input" value="06:30">
           </div>
           <div class="field">
             <label for="vpAiSleep">취침 시각</label>
@@ -3103,7 +3447,7 @@ body {
         <div class="field">
           <label>식사 시간</label>
           <div class="vpai-meals" id="vpAiMeals">
-            <label class="vpai-meal"><input type="checkbox" id="vpAiBreakfastOn" checked> 아침 <input type="time" id="vpAiBreakfastTime" class="input" value="08:00"></label>
+            <label class="vpai-meal"><input type="checkbox" id="vpAiBreakfastOn" checked> 아침 <input type="time" id="vpAiBreakfastTime" class="input" value="07:00"></label>
             <label class="vpai-meal"><input type="checkbox" id="vpAiLunchOn" checked> 점심 <input type="time" id="vpAiLunchTime" class="input" value="12:00"></label>
             <label class="vpai-meal"><input type="checkbox" id="vpAiDinnerOn" checked> 저녁 <input type="time" id="vpAiDinnerTime" class="input" value="18:00"></label>
           </div>
@@ -3290,6 +3634,59 @@ body {
     </div>
     <div class="lg-board" id="lgBoard"></div>
 
+    <!-- ─────────────────── 우리 반 포스트잇 ───────────────────
+         순위표가 "얼마나 했는가" 라면 여기는 서로 말을 주고받는 자리다.
+         붙인 쪽지는 화면 위에 떠 있는 층(#pinLayer)에 그려진다. -->
+    <div class="card wide" id="pinCard">
+      <div class="card-head">
+        <span class="ci">📌</span><h3>우리 반 포스트잇</h3>
+        <span class="right">
+          <button type="button" class="btn ghost sm" id="pinWallToggle">벽 숨기기</button>
+        </span>
+      </div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">같은 <b>학교·학년·반</b> 친구들이 서로 보는 쪽지 벽입니다.
+          화면 <b>아무 자리</b>에나 붙일 수 있고, 고른 시간이 지나면 <b>저절로 사라집니다.</b>
+          남의 쪽지의 <b>✕</b>는 <b>내 화면에서만</b> 치웁니다 — 다른 사람 화면에는 그대로 남아요.</p>
+
+        <!-- 리그·학급 대항전을 켜야 열리는 기능이라, 꺼져 있으면 이유를 여기에 적는다 -->
+        <div id="pinLocked" class="pin-locked is-hidden"></div>
+
+        <div id="pinCompose">
+          <textarea id="pinText" class="input pin-text" rows="2" maxlength="100"
+                    placeholder="같이 힘내자! · 오늘 3시간 채웠다 · 수학 몇 페이지까지 했어?"></textarea>
+
+          <div class="pin-opt">
+            <span class="pin-opt-l">색</span>
+            <div class="pin-colors" id="pinColors" role="radiogroup" aria-label="포스트잇 색"></div>
+          </div>
+
+          <div class="pin-opt">
+            <span class="pin-opt-l">띄울 시간</span>
+            <div class="pin-lifes" id="pinLifes" role="radiogroup" aria-label="포스트잇이 사라지기까지 걸리는 시간"></div>
+          </div>
+
+          <div class="pin-act">
+            <button type="button" class="btn primary" id="pinPost">📌 붙일 자리 고르기</button>
+            <span class="pin-count"><b id="pinLeft">100</b>자 남음</span>
+          </div>
+          <p class="tiny pin-warn" id="pinWarn" hidden></p>
+        </div>
+
+        <div class="pin-bar">
+          <span id="pinCount">—</span>
+          <span class="pin-bar-act">
+            <button type="button" class="btn ghost sm" id="pinRestore">치운 쪽지 다시 보기</button>
+            <button type="button" class="btn ghost sm" id="pinRefresh">새로고침</button>
+          </span>
+        </div>
+
+        <p class="tiny" style="margin:14px 0 0">🔒 쪽지는 <b>같은 학교·학년·반</b>이면 볼 수 있습니다.
+          <b>욕설과 비하하는 말은 붙기 전에 걸러집니다.</b> 개인적인 이야기나 연락처는 적지 마세요.
+          한 번에 <b>5장</b>까지, <b>100자</b>까지 붙일 수 있습니다.</p>
+      </div>
+    </div>
+
     <div class="card wide">
       <div class="card-head"><span class="ci">⏱️</span><h3>오늘 인정된 시간</h3></div>
       <div class="card-body">
@@ -3306,7 +3703,7 @@ body {
     <p class="tiny lg-disclaimer">🔒 <b>리그에는 실제 기록이 있는 반·학교만 올라갑니다.</b> 지어낸 상대는 넣지 않습니다.
       <b>리그 참가를 켜면</b> 같은 리그를 켠 다른 반·학교의 집계가 서버에서 내려와 순위가 됩니다.
       <b>끄면</b> 우리 반만 보입니다. 반 대항에 들어가려면 <b>설정 → 학급 대항전</b>도 함께 켜야 합니다.
-      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부이며, 학급 대항을 켜면 학교급·학년·반과 닉네임이 더해집니다.
+      전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부이며, 학급 대항을 켜면 학교급·학년·반과 닉네임, 그리고 붙인 <b>포스트잇 내용</b>이 더해집니다.
       참가 여부는 [설정]에서 언제든 바꿀 수 있습니다.</p>
   </section>
 
@@ -3444,6 +3841,53 @@ body {
       </div>
     </div>
 
+    <!-- ─────────────────── 식사 시간 알리미 ───────────────────
+         시각은 계획표에서 읽어 온다. 여기서는 켜고 끄는 것과
+         계획표와 다르게 하고 싶을 때의 예외만 정한다. -->
+    <div class="card wide">
+      <div class="card-head">
+        <span class="ci">🍚</span><h3>식사 시간 알리미</h3>
+        <span class="right"><button type="button" class="btn ghost sm" id="maTest">지금 테스트</button></span>
+      </div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px"><b>계획표</b>에 적어 둔 식사 시각이 되면 알려 줍니다.
+          같은 시각을 <b>학습 준비도</b>도 그대로 씁니다 — 아직 시간이 안 된 끼니는 감점되지 않고,
+          계획표에 없는 끼니는 아예 세지 않습니다.</p>
+
+        <label class="toggle"><input type="checkbox" id="maOn" checked><span><b>식사 시간에 알려 주기</b></span></label>
+
+        <div id="maBody">
+          <div class="ma-rows" id="maRows"></div>
+
+          <div class="two-col" style="margin-top:16px">
+            <div class="field">
+              <label for="maLead">언제 알릴지</label>
+              <select id="maLead" class="input">
+                <option value="0">식사 시각 정각에</option>
+                <option value="5">5분 전에</option>
+                <option value="10">10분 전에</option>
+                <option value="30">30분 전에</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>소리</label>
+              <label class="toggle" style="margin-top:6px"><input type="checkbox" id="maSound"><span>알릴 때 소리도 내기</span></label>
+            </div>
+          </div>
+
+          <div id="maStatus" class="neis-status"></div>
+          <div class="file-row" style="margin-top:12px">
+            <button type="button" class="btn sm" id="maPerm">🔔 알림 권한 허용하기</button>
+            <button type="button" class="btn ghost sm" id="maGoPlan">📅 계획표에서 식사 시간 정하기</button>
+          </div>
+
+          <p class="tiny" style="margin-top:14px">⚠ 이 알림은 <b>앱 화면이 열려 있을 때</b>만 울립니다.
+            브라우저 알림을 허용해 두면 다른 탭을 보고 있어도 뜨지만, 앱을 완전히 닫아 두면 울리지 않습니다.
+            닫아 둔 사이에 지난 끼니는 앱을 다시 열었을 때 <b>1시간 30분 안쪽이면</b> 한 번 따라잡아 알려 줍니다.</p>
+        </div>
+      </div>
+    </div>
+
     <div class="card wide">
       <div class="card-head"><span class="ci">🎧</span><h3>과목 유형별 사운드</h3></div>
       <div class="card-body">
@@ -3506,6 +3950,9 @@ body {
             순위표에는 <b>설정한 닉네임이 그대로</b> 보입니다 — <b>실명은 권하지 않습니다.</b>
             이름을 보이고 싶지 않으면 아래 <b>내 랭킹 숨기기</b>를 켜세요.
             같은 반에서 <b>5명 이상</b>이 참가해야 순위가 공개됩니다.</p>
+          <p class="tiny" style="margin:8px 0 0">📌 이 스위치를 켜면 <b>우리 반 포스트잇</b>도 함께 열립니다.
+            쪽지를 붙이면 그 <b>내용과 닉네임</b>이 서버에 저장되어 같은 반 사람들에게 보이고,
+            고른 시간(<b>10~30분</b>)이 지나면 서버에서도 지워집니다. 붙이지 않으면 아무것도 저장되지 않습니다.</p>
         </div>
 
         <div class="cl-event" style="margin-top:12px">
@@ -3786,7 +4233,8 @@ body {
 <footer class="foot">
   <p><b>Mindora</b> — 기본적으로 입력한 데이터는 이 브라우저에만 저장됩니다.
     <b>학교 리그</b>를 켜면 학교명·주차·순공 시간·무작위 기기 번호·랭킹 숨김 여부가 전송됩니다.
-    <b>학급 대항전</b>을 따로 켜면 학년·반·닉네임이 추가로 전송되며, <b>관리자 공개</b>를 켜면 닉네임·학교명·주차·순공 시간·기기 번호가 서버에 저장되어 등록된 관리자에게 보입니다.
+    <b>학급 대항전</b>을 따로 켜면 학년·반·닉네임이 추가로 전송되고 <b>우리 반 포스트잇</b>이 열립니다 — 붙인 쪽지의 내용은 10~30분 뒤 서버에서 지워집니다.
+    <b>관리자 공개</b>를 켜면 닉네임·학교명·주차·순공 시간·기기 번호가 서버에 저장되어 등록된 관리자에게 보입니다.
     과목·시험·수면·스트레스·학습 준비도 참고값은 어느 기능에서도 전송되지 않습니다.</p>
   <p class="tiny">학습 준비도 참고값은 자기보고한 수면·피로·스트레스·생활 정보와 시험 일정을 규칙 모델에 넣어 추정합니다. 능력·지능을 측정하지 않으며, 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
 </footer>
@@ -3863,6 +4311,35 @@ body {
   </div>
 </template>
 
+<!-- 포스트잇 벽 — 앱 화면 위에 떠 있는 층.
+     상단 바(z-index:50)보다 아래에 두어, 쪽지가 아무리 많이 붙어도
+     화면 이동은 막히지 않는다. 자세한 규칙은 js/notes.js 머리말 참고. -->
+<div id="pinLayer" class="pin-layer" aria-live="polite" aria-label="우리 반 포스트잇"></div>
+
+<!-- 붙일 자리를 고르는 동안만 뜨는 층 -->
+<div id="pinPlace" class="pin-place is-hidden">
+  <div class="pin-place-bar">
+    <span id="pinPlaceMsg">붙일 자리를 눌러 주세요</span>
+    <button type="button" class="btn sm" id="pinPlaceCancel">취소</button>
+  </div>
+  <div class="pin pin-ghost" id="pinGhost" aria-hidden="true"></div>
+</div>
+
+<!-- 식사 시간 알리미 배너 — 어느 화면에 있든 같은 자리에 뜬다.
+     토스트로만 알리면 3초 뒤 사라져서 "먹었어요" 를 누를 새가 없다. -->
+<div id="mealAlarm" class="meal-alarm is-hidden" role="alertdialog" aria-live="assertive" aria-labelledby="maBnTitle">
+  <span class="mab-ic" id="maBnIcon" aria-hidden="true">🍚</span>
+  <div class="mab-text">
+    <b id="maBnTitle">식사 시간이에요</b>
+    <span id="maBnSub">계획표 기준</span>
+  </div>
+  <div class="mab-act">
+    <button type="button" class="btn primary sm" id="maBnAte">먹었어요</button>
+    <button type="button" class="btn ghost sm" id="maBnLater">나중에</button>
+  </div>
+  <button type="button" class="icon-btn mab-x" id="maBnClose" title="닫기" aria-label="알림 닫기">✕</button>
+</div>
+
 <script>
 /* ===== src/js/engine.js ===== */
 /* =========================================================================
@@ -3903,6 +4380,109 @@ body {
   }
 
   function round1(v) { return Math.round(v * 10) / 10; }
+
+  function hhmm(h) {
+    var t = ((h % 24) + 24) % 24;
+    var hh = Math.floor(t), mm = Math.round((t - hh) * 60);
+    if (mm >= 60) { mm -= 60; hh = (hh + 1) % 24; }
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  /* ------------------------------------------------------------ 식사 채점
+   *
+   * 끼니는 "먹었나 / 안 먹었나" 가 아니라 **"그 끼니를 먹을 때가 지났나"** 를
+   * 먼저 물어야 한다. 아침 8시에 점심·저녁을 안 먹은 것은 결식이 아니라
+   * 아직 시간이 아닌 것이고, 그걸 감점하면 점수 자체를 못 믿게 된다.
+   *
+   * 기준 시각은 계획표에서 읽어 온다(meals.js → input.mealPlan).
+   * 계획표가 없으면 아래 표준 시각을 쓰는데, 유예 30분을 더하면
+   * 8:30 / 13:00 / 19:00 — 계획표를 쓰지 않는 사용자에게는 종전과 같은 기준이다. */
+
+  var MEAL_STD = [
+    { id: 'breakfast', label: '아침', hour: 8.0, weight: 0.40, counts: true },
+    { id: 'lunch', label: '점심', hour: 12.5, weight: 0.35, counts: true },
+    { id: 'dinner', label: '저녁', hour: 18.5, weight: 0.25, counts: true }
+  ];
+
+  var MEAL_GRACE = 0.5;   // 계획 시각에서 이만큼은 "아직 먹을 시간" 으로 둔다
+  var MEAL_RAMP = 0.5;    // 유예가 끝난 뒤 이 시간에 걸쳐 서서히 채점에 넣는다
+
+  function mealSlots(i) {
+    var given = i.mealPlan && i.mealPlan.meals;
+    if (!given || !given.length) return MEAL_STD;
+    return given;
+  }
+
+  /** 계획 시각을 얼마나 지났나. 0 = 아직 시간 전, 1 = 완전히 지났다.
+   *  칼같이 끊으면 1분 차이로 점수가 몇 점씩 튀므로 30분에 걸쳐 서서히 반영한다. */
+  function dueRatio(hour, mealHour) {
+    return clamp((hour - (mealHour + MEAL_GRACE)) / MEAL_RAMP, 0, 1);
+  }
+
+  /** 공복 시간(시간 단위)을 "깨어 있는 동안 굶은 시간" 으로 환산한다.
+   *
+   *  오늘 아직 아무것도 안 먹었다면 마지막 식사는 어젯밤이고, 그 공복에는
+   *  잠든 시간이 통째로 들어 있다. 자는 동안의 공복은 누구에게나 정상인데
+   *  그대로 감점하면 아침에 앱을 열 때마다 점수가 낮게 나온다.
+   *  (예: 19시 저녁 → 7시 30분 확인 = 12.5시간, 그중 7.5시간은 자던 시간이므로 5시간) */
+  function fastHours(i, anyEaten) {
+    var raw = isFinite(i.hoursSinceMeal) ? Math.max(0, i.hoursSinceMeal) : 2;
+    if (anyEaten) return raw;
+    var slept = i.sleep && isFinite(i.sleep.hours) ? Math.max(0, i.sleep.hours) : 0;
+    if (raw <= slept) return raw;   // 잔 시간보다 짧은 공복이면 밤을 넘긴 공복이 아니다
+    return raw - slept;
+  }
+
+  var BLOOD = [
+    [0, 0.86], [0.5, 0.94], [1, 1.00], [2, 1.00], [3, 0.96], [4, 0.87],
+    [5, 0.75], [6, 0.62], [8, 0.44], [10, 0.32], [14, 0.20]
+  ];
+
+  /** 지금 시각 기준으로 식사 상태를 한 번에 계산한다.
+   *  화면 문구·경고·점수가 모두 이 결과 하나만 본다 — 세 곳이 어긋나지 않도록. */
+  function mealState(i) {
+    var slots = mealSlots(i);
+    var due = 0, ate = 0;
+    var skipped = [], eatenLabels = [], pending = [], anyEaten = false;
+    var firstSlot = null;
+
+    slots.forEach(function (m) {
+      var eaten = !!(i.meals && i.meals[m.id]);
+      if (eaten) { anyEaten = true; eatenLabels.push(m.label); }
+      if (m.counts && (firstSlot === null || m.hour < firstSlot.hour)) firstSlot = m;
+
+      // 계획에 없는 끼니는 채점하지 않는다. 다만 그래도 먹었다면 이행으로 세 준다.
+      if (!m.counts && !eaten) return;
+
+      var d = eaten ? 1 : dueRatio(i.hour, m.hour);
+      if (d <= 0) { pending.push(m); return; }
+
+      due += m.weight * d;
+      if (eaten) ate += m.weight * d;
+      else if (d >= 0.999) skipped.push(m.label);
+    });
+
+    pending.sort(function (a, b) { return a.hour - b.hour; });
+
+    var fast = fastHours(i, anyEaten);
+    return {
+      slots: slots,
+      due: due, ate: ate,
+      adherence: due > 1e-6 ? ate / due : null,   // null = 아직 채점할 끼니가 없다
+      skipped: skipped,
+      eatenLabels: eatenLabels,
+      pending: pending,
+      nextMeal: pending.length ? pending[0] : null,
+      firstSlot: firstSlot,
+      anyEaten: anyEaten,
+      fastHours: fast,
+      /* 잠자는 시간을 빼기 전 원본. 문구에서 "마지막 식사 후 N시간" 은 이 값을 쓴다. */
+      rawFastHours: isFinite(i.hoursSinceMeal) ? Math.max(0, i.hoursSinceMeal) : 2,
+      sleptOff: !anyEaten && fast < (isFinite(i.hoursSinceMeal) ? i.hoursSinceMeal : 2) - 0.01,
+      blood: pw(fast, BLOOD),
+      planned: !!(i.mealPlan && i.mealPlan.hasPlan)
+    };
+  }
 
   /* -------------------------------------------------------------- 요인 정의
    * 각 요인은 사용자의 자기보고 입력을 0~1 사이의 상대적 적합도로 변환한다.
@@ -4023,37 +4603,48 @@ body {
       label: '식사 / 혈당',
       icon: '🍚',
       display: function (i) {
-        var m = [];
-        if (i.meals.breakfast) m.push('아침');
-        if (i.meals.lunch) m.push('점심');
-        if (i.meals.dinner) m.push('저녁');
-        var eaten = m.length ? m.join('·') + ' 섭취' : '결식';
-        return eaten + ' · 마지막 식사 ' + round1(i.hoursSinceMeal) + '시간 전';
+        var st = mealState(i);
+        var head;
+        if (st.eatenLabels.length) head = st.eatenLabels.join('·') + ' 섭취';
+        else if (st.adherence === null) head = '아직 식사 시간 전';
+        else head = '결식';
+
+        var tail = '마지막 식사 ' + round1(st.rawFastHours) + '시간 전';
+        if (st.nextMeal) tail = '다음 ' + st.nextMeal.label + ' ' + hhmm(st.nextMeal.hour) + ' · ' + tail;
+        return head + ' · ' + tail;
       },
       value: function (i) {
-        var h = i.hour, due = 0, ate = 0;
-        if (h >= 8.5) { due += 0.40; if (i.meals.breakfast) ate += 0.40; }
-        if (h >= 13.0) { due += 0.35; if (i.meals.lunch) ate += 0.35; }
-        if (h >= 19.0) { due += 0.25; if (i.meals.dinner) ate += 0.25; }
-        var mealScore = due > 0 ? ate / due : (i.meals.breakfast ? 1 : 0.72);
-        var blood = pw(i.hoursSinceMeal, [
-          [0, 0.86], [0.5, 0.94], [1, 1.00], [2, 1.00], [3, 0.96], [4, 0.87],
-          [5, 0.75], [6, 0.62], [8, 0.44], [10, 0.32], [14, 0.20]
-        ]);
-        return clamp(0.58 * mealScore + 0.42 * blood, 0, 1);
+        var st = mealState(i);
+        /* 아직 계획된 끼니가 하나도 지나지 않았다면 이행은 채점하지 않는다.
+         * 먹지 않은 게 아니라 먹을 때가 아닌 것이므로 공복만 보고 판단한다. */
+        if (st.adherence === null) return clamp(st.blood, 0, 1);
+        return clamp(0.58 * st.adherence + 0.42 * st.blood, 0, 1);
       },
       note: function (i) {
-        var skipped = [];
-        var h = i.hour;
-        if (h >= 8.5 && !i.meals.breakfast) skipped.push('아침');
-        if (h >= 13.0 && !i.meals.lunch) skipped.push('점심');
-        if (h >= 19.0 && !i.meals.dinner) skipped.push('저녁');
-        var t = i.hoursSinceMeal;
-        if (skipped.length >= 2) return skipped.join('·') + '을 걸렀습니다. 긴 공복은 일부 사람에게 집중과 작업기억에 불리할 수 있어요.';
-        if (skipped.length === 1) return skipped[0] + ' 식사 기록이 없습니다. 배고픔이 느껴진다면 과제 전에 가벼운 간식과 물을 고려하세요.';
-        if (t >= 6) return '마지막 식사 후 ' + round1(t) + '시간이 지났습니다. 배고픔이 느껴진다면 가벼운 간식과 물을 고려하세요.';
-        if (t <= 0.5) return '식사 직후라 소화로 혈류가 몰리는 시간대예요. 20~30분 뒤가 집중에 더 유리합니다.';
-        return '입력한 식사 간격은 무난한 편입니다. 실제 배고픔과 몸 상태를 함께 확인하세요.';
+        var st = mealState(i);
+        var t = round1(st.rawFastHours);
+
+        if (st.adherence === null) {
+          var when = st.nextMeal
+            ? '계획한 ' + st.nextMeal.label + ' 시각(' + hhmm(st.nextMeal.hour) + ')'
+            : '오늘 첫 끼니';
+          return when + ' 이 아직 지나지 않아 끼니는 채점하지 않고 공복만 반영했습니다.' +
+            (st.sleptOff ? ' 자는 동안 흐른 시간은 공복에서 빼고 계산합니다.' : '');
+        }
+        if (st.skipped.length >= 2) {
+          return st.skipped.join('·') + '을 걸렀습니다(계획 시각 기준). 긴 공복은 일부 사람에게 집중과 작업기억에 불리할 수 있어요.';
+        }
+        if (st.skipped.length === 1) {
+          return '계획한 ' + st.skipped[0] + ' 시각이 지났는데 식사 기록이 없습니다. 배고픔이 느껴진다면 과제 전에 가벼운 간식과 물을 고려하세요.';
+        }
+        if (st.fastHours >= 6) {
+          return '마지막 식사 후 ' + t + '시간이 지났습니다. 배고픔이 느껴진다면 가벼운 간식과 물을 고려하세요.';
+        }
+        if (st.rawFastHours <= 0.5) {
+          return '식사 직후라 소화로 혈류가 몰리는 시간대예요. 20~30분 뒤가 집중에 더 유리합니다.';
+        }
+        var head = st.planned ? '계획한 끼니를 지금까지 모두 챙겼습니다.' : '입력한 식사 간격은 무난한 편입니다.';
+        return head + ' 실제 배고픔과 몸 상태를 함께 확인하세요.';
       }
     },
 
@@ -4286,13 +4877,18 @@ body {
     if (i.stress >= 8) out.push({ level: 'bad', text: '스트레스 체감 ' + i.stress + '/10 — 새 과제보다 익숙한 복습을 짧게 시작해 보세요.' });
     if (i.fatigue >= 8) out.push({ level: 'bad', text: '피로 체감 ' + i.fatigue + '/10 — 집중 시간을 줄이고 충분히 쉬어도 괜찮습니다.' });
 
-    var h = i.hour, skipped = [];
-    if (h >= 8.5 && !i.meals.breakfast) skipped.push('아침');
-    if (h >= 13 && !i.meals.lunch) skipped.push('점심');
-    if (h >= 19 && !i.meals.dinner) skipped.push('저녁');
-    if (skipped.length) out.push({ level: skipped.length >= 2 ? 'bad' : 'warn', text: skipped.join('·') + ' 식사 기록 없음 — 배고픔이 느껴지면 부담이 적은 간식과 물을 고려하세요.' });
+    /* 식사 경고는 반드시 계획 시각을 지난 끼니만 걸어야 한다.
+     * 아침에 "점심·저녁 결식" 이 뜨면 나머지 경고까지 같이 못 믿게 된다. */
+    var ms = mealState(i);
+    if (ms.skipped.length) {
+      out.push({
+        level: ms.skipped.length >= 2 ? 'bad' : 'warn',
+        text: ms.skipped.join('·') + ' 식사 기록 없음 (계획 시각 기준) — 배고픔이 느껴지면 부담이 적은 간식과 물을 고려하세요.'
+      });
+    }
 
-    if (i.hoursSinceMeal >= 6) out.push({ level: 'warn', text: '마지막 식사 후 ' + round1(i.hoursSinceMeal) + '시간 — 첫 휴식 때 간단히라도 먹으세요.' });
+    // 잠든 사이의 공복까지 세어 아침마다 경고가 뜨지 않도록 환산값으로 판단한다
+    if (ms.fastHours >= 6) out.push({ level: 'warn', text: '마지막 식사 후 ' + round1(ms.rawFastHours) + '시간 — 첫 휴식 때 간단히라도 먹으세요.' });
     if (i.caffeine >= 4) out.push({ level: 'warn', text: '카페인 ' + i.caffeine + '잔 — 오늘은 추가 섭취를 피하고 잠드는 데 불편함이 없는지 기록해 보세요.' });
     if (i.water <= 2) out.push({ level: 'warn', text: '수분 ' + i.water + '컵 — 목마름이나 두통이 있다면 물을 조금씩 보충하세요.' });
     if (i.mood <= 2) out.push({ level: 'warn', text: '기분 체감이 낮은 편입니다 — 새 개념보다 익숙한 복습을 짧게 시작해 보세요.' });
@@ -4397,6 +4993,8 @@ body {
       // 편차가 이 정도는 돼야 "오늘은 A가 낫다" 고 말할 근거가 생긴다
       capMeaningful: spread >= 8,
       alerts: buildAlerts(input),
+      // 화면에서 "무엇을 기준으로 채점했는지" 를 그대로 보여 줄 수 있게 함께 넘긴다
+      meal: mealState(input),
       circMultAt: circMultiplier
     };
   }
@@ -4447,6 +5045,53 @@ body {
       });
     });
 
+    /* 식사 요인은 "아직 시간이 안 된 끼니" 를 절대 감점하지 않아야 한다.
+     * 이게 깨지면 아침마다 점수가 낮게 나와 앱 전체를 못 믿게 되므로 못으로 박아 둔다. */
+    (function () {
+      function nut(over) {
+        var base = {
+          hour: 8, sleep: { hours: 7.5, quality: 3, regularity: 3 },
+          stress: 4, fatigue: 4, mood: 3,
+          meals: { breakfast: true, lunch: false, dinner: false },
+          hoursSinceMeal: 0.5, water: 5, caffeine: 1, exercise: 0
+        };
+        Object.keys(over || {}).forEach(function (k) { base[k] = over[k]; });
+        return FACTORS.nutrition.value(base);
+      }
+
+      // 아침 8시 · 아침만 먹음 = 계획을 다 지킨 것이므로 중립보다 높아야 한다
+      var morning = nut({});
+      if (!(morning > 0.5)) issues.push('식사: 아침 8시에 아침만 먹은 상태가 감점됨 (' + round1(morning * 100) / 100 + ')');
+
+      // 점심·저녁을 체크해도 아침 시각의 점수는 달라지면 안 된다 (아직 시간 전이므로)
+      var withLater = nut({ meals: { breakfast: true, lunch: true, dinner: true } });
+      if (Math.abs(withLater - morning) > 1e-9) issues.push('식사: 아직 시간이 안 된 끼니가 아침 점수를 바꿈');
+
+      // 기상 직후(아무것도 안 먹음)는 판단 보류라 중립을 크게 밑돌면 안 된다
+      var justWoke = nut({ hour: 7, hoursSinceMeal: 12, meals: { breakfast: false, lunch: false, dinner: false } });
+      if (justWoke < 0.5) issues.push('식사: 기상 직후 공복이 감점으로 잡힘 (' + Math.round(justWoke * 100) / 100 + ')');
+
+      // 반대로 계획 시각이 지났는데 안 먹었으면 반드시 감점이어야 한다
+      var skipped = nut({ hour: 14, hoursSinceMeal: 12, meals: { breakfast: false, lunch: false, dinner: false } });
+      if (skipped >= 0.5) issues.push('식사: 아침·점심 결식이 감점되지 않음 (' + Math.round(skipped * 100) / 100 + ')');
+
+      // 계획표에 없는 끼니(저녁)는 결식으로 세지 않는다
+      var noDinnerPlan = {
+        hour: 20, sleep: { hours: 7.5, quality: 3, regularity: 3 },
+        stress: 4, fatigue: 4, mood: 3,
+        meals: { breakfast: true, lunch: true, dinner: false },
+        hoursSinceMeal: 3, water: 5, caffeine: 1, exercise: 0,
+        mealPlan: {
+          hasPlan: true, wakeHour: 7, meals: [
+            { id: 'breakfast', label: '아침', hour: 8, weight: 0.40, counts: true },
+            { id: 'lunch', label: '점심', hour: 12.5, weight: 0.35, counts: true },
+            { id: 'dinner', label: '저녁', hour: 18.5, weight: 0.25, counts: false }
+          ]
+        }
+      };
+      if (mealState(noDinnerPlan).skipped.length) issues.push('식사: 계획표에 없는 끼니가 결식으로 잡힘');
+    })();
+
     // 요인 곡선이 0~1 을 벗어나지 않는지
     Object.keys(FACTORS).forEach(function (fid) {
       for (var t = 0; t <= 24; t += 2) {
@@ -4469,7 +5114,8 @@ body {
     FACTORS: FACTORS,
     OVERALL_WEIGHTS: OVERALL_WEIGHTS,
     circMultiplier: circMultiplier,
-    _util: { clamp: clamp, pw: pw, round1: round1 }
+    mealState: mealState, MEAL_STD: MEAL_STD, MEAL_GRACE: MEAL_GRACE,
+    _util: { clamp: clamp, pw: pw, round1: round1, hhmm: hhmm }
   };
 
 })(window);
@@ -4853,8 +5499,20 @@ body {
     if (i.exercise === 0) {
       out.push({ icon: '🚶', title: '10분 빠른 걷기', text: '긴 휴식 때 가능하면 10분 정도 걸어 보세요. 몸을 움직이면 각성을 높이고 다음 블록을 준비하는 데 도움이 될 수 있습니다.' });
     }
-    if (i.hoursSinceMeal >= 5) {
+    /* 잠든 사이의 공복까지 세면 아침마다 간식 안내가 뜬다.
+     * engine 이 환산해 둔 '깨어 있는 동안의 공복' 을 기준으로 판단한다. */
+    var fast = analysis.meal ? analysis.meal.fastHours : i.hoursSinceMeal;
+    if (fast >= 5) {
       out.push({ icon: '🍎', title: '첫 휴식에 가벼운 간식', text: '마지막 식사 후 시간이 오래 지났습니다. 배고픔이 느껴진다면 견과류나 과일처럼 부담이 적은 간식과 물을 고려하세요.' });
+    }
+
+    // 계획표에 다음 끼니가 있으면 휴식과 함께 잡아 준다 — 휴식 시각과 식사 시각이 따로 놀지 않게
+    if (analysis.meal && analysis.meal.nextMeal) {
+      var nm = analysis.meal.nextMeal;
+      out.push({
+        icon: '🍚', title: '다음 끼니는 ' + nm.label + ' ' + fmtHour(nm.hour),
+        text: '계획표에 적어 둔 시각입니다. 그 앞뒤 블록은 짧게 잡고, 식사 직후 20~30분은 가벼운 과제로 두세요.'
+      });
     }
     if (i.sleep.hours < 6) {
       out.push({ icon: '🛏️', title: '오늘은 취침 시각이 최우선', text: '수면 부족이 오늘 점수를 가장 크게 끌어내렸습니다. 학습 종료 시각을 앞당겨서라도 평소보다 일찍 자는 게 내일까지 합산하면 이득입니다.' });
@@ -5346,7 +6004,9 @@ body {
     // 직접 만든 계획표와 몇 주에 걸쳐 올린 리그 티어도 복원할 수 없는 기록이다
     'neurostudy.vacplan.v1', 'neurostudy.league.v1', K.personalization,
     // 목표 대학·한 줄 다짐·직접 등록한 D-day — 손으로 적은 값이라 되살릴 방법이 없다
-    'mindora.goal.v1', 'neurostudy.slime.v1'
+    'mindora.goal.v1', 'neurostudy.slime.v1',
+    // 식사 시간 알리미 — 직접 지정한 시각은 계획표에서 되살릴 수 없다
+    'mindora.mealalarm.v1'
   ];
 
   /* 마지막으로 백업을 내려받은 시각. 백업 자체에는 넣지 않는다 —
@@ -5412,6 +6072,359 @@ body {
     lastBackupAt: lastBackupAt, markBackedUp: markBackedUp,
     persistStatus: persistStatus, requestPersist: requestPersist, estimate: estimate,
     clearAll: clearAll
+  };
+
+})(window);
+
+
+/* ===== src/js/meals.js ===== */
+/* =========================================================================
+ * meals.js — 계획표에서 읽은 식사 시각 + 식사 시간 알리미
+ *
+ * 이 파일이 "오늘 몇 시에 무엇을 먹기로 했는가" 의 유일한 출처다.
+ * 두 곳에서 같은 답을 쓴다.
+ *
+ *   1) 알리미  — 그 시각이 되면 알려 준다
+ *   2) 준비도  — engine.js 의 식사 요인이 이 시각을 기준으로 채점한다
+ *
+ * 시각을 정하는 순서 (앞이 이기면 뒤는 보지 않는다)
+ *
+ *   ① 설정에서 직접 넣은 시각            source: 'manual'
+ *   ② 계획표(오늘 요일 칸)에 적힌 식사    source: 'plan'
+ *   ③ 계획표의 다른 요일에 적힌 식사      source: 'plan-other'
+ *   ④ 계획표는 있는데 그 끼니만 없음      source: 'unplanned'  ← 채점도 알림도 하지 않는다
+ *   ⑤ 계획표 자체가 없음                  source: 'default'    ← 표준 시각으로 채점만 한다
+ *
+ * ④ 가 핵심이다. "저녁은 원래 안 먹는다" 는 사람에게 저녁 결식을 감점하면
+ * 그 점수는 그 사람에게 아무 의미가 없다.
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  /* 계획표 모델의 저장 키. app.js 의 VP_KEY 와 같은 값이어야 한다. */
+  var VP_KEY = 'neurostudy.vacplan.v1';
+  var KEY = 'mindora.mealalarm.v1';
+
+  /* 알림이 늦게 울리는 것을 어디까지 허용할지.
+   * 화면을 닫아 두면 타이머가 멈추므로, 다시 열었을 때 지난 알림을 한 번 따라잡는다.
+   * 두 시간 지난 "점심 드세요" 는 알림이 아니라 잔소리라서 그 뒤로는 조용히 넘긴다. */
+  var LATE_H = 1.5;
+
+  var MEALS = [
+    { id: 'breakfast', label: '아침', icon: '🌅', words: ['아침', '조식'], fallback: 8.0, weight: 0.40 },
+    { id: 'lunch', label: '점심', icon: '🌞', words: ['점심', '중식'], fallback: 12.5, weight: 0.35 },
+    { id: 'dinner', label: '저녁', icon: '🌙', words: ['저녁', '석식'], fallback: 18.5, weight: 0.25 }
+  ];
+
+  /* 계획표에서 이 끼니를 못 찾았을 때 쓰는 표준 시각(fallback)에 engine.js 의
+   * 유예 30분을 더하면 8:30 / 13:00 / 19:00 — 계획표를 쓰지 않는 사용자는
+   * 기존과 똑같은 기준으로 채점된다. */
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function clampHour(h) { return Math.max(0, Math.min(23.99, h)); }
+
+  /** 소수 시각 → "HH:MM" */
+  function fmtHour(h) {
+    var t = ((h % 24) + 24) % 24;
+    var hh = Math.floor(t), mm = Math.round((t - hh) * 60);
+    if (mm >= 60) { mm -= 60; hh = (hh + 1) % 24; }
+    return pad(hh) + ':' + pad(mm);
+  }
+
+  /** "HH:MM" → 소수 시각. 못 읽으면 null */
+  function parseHM(s) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(s == null ? '' : s).trim());
+    if (!m) return null;
+    var h = parseInt(m[1], 10), mi = parseInt(m[2], 10);
+    if (!(h >= 0 && h <= 23 && mi >= 0 && mi <= 59)) return null;
+    return h + mi / 60;
+  }
+
+  function dateKey(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /* ------------------------------------------------------ 계획표 읽기 */
+
+  /** 계획표 칸의 글자가 어떤 끼니인지. 식사가 아니면 null.
+   *
+   *  '아침' 한 글자만 보고 판단하면 '아침 운동' 까지 식사로 잡힌다.
+   *  그래서 끼니 낱말이 통째로 칸을 이루거나(= '아침'),
+   *  먹는다는 표시가 함께 있을 때만(= '아침식사', '저녁 먹기') 식사로 본다.
+   *  조식·중식·석식은 그 자체가 식사를 뜻하므로 바로 통과시킨다. */
+  var EAT_MARKS = ['식사', '급식', '밥', '먹', '식당'];
+
+  function mealIdOf(text) {
+    var t = String(text == null ? '' : text).replace(/\s+/g, '');
+    if (!t) return null;
+    for (var i = 0; i < MEALS.length; i++) {
+      var words = MEALS[i].words;
+      for (var j = 0; j < words.length; j++) {
+        var w = words[j];
+        if (t.indexOf(w) < 0) continue;
+        if (w.charAt(1) === '식') return MEALS[i].id;   // 조식 · 중식 · 석식
+        if (t === w) return MEALS[i].id;                // '아침' · '점심' · '저녁'
+        for (var k = 0; k < EAT_MARKS.length; k++) {
+          if (t.indexOf(EAT_MARKS[k]) >= 0) return MEALS[i].id;
+        }
+      }
+    }
+    return null;
+  }
+
+  function isWake(text) {
+    var t = String(text == null ? '' : text).replace(/\s+/g, '');
+    return !!t && t.indexOf('기상') >= 0;
+  }
+
+  function planModel() {
+    try {
+      var raw = localStorage.getItem(VP_KEY);
+      if (!raw) return null;
+      var m = JSON.parse(raw);
+      if (!m || !m.rows || !m.rows.length || !m.days || !m.days.length) return null;
+      if (!m.rows[0] || !m.rows[0].cells) return null;
+      return m;
+    } catch (e) { return null; }
+  }
+
+  /** 계획표의 열 번호 (0 = 월요일). 요일 수가 7개가 아니어도 넘치지 않게 자른다. */
+  function columnOf(model, date) {
+    var idx = ((date || new Date()).getDay() + 6) % 7;   // 일=0 → 6
+    return Math.min(idx, model.days.length - 1);
+  }
+
+  /** 주어진 열들에서 끼니별 가장 이른 시각을 모은다 */
+  function scan(model, cols) {
+    var out = {};
+    model.rows.forEach(function (r) {
+      var t = parseHM(r && r.time);
+      if (t === null || !r.cells) return;
+      cols.forEach(function (c) {
+        var cell = r.cells[c];
+        var id = mealIdOf(cell);
+        if (id && (out[id] === undefined || t < out[id])) out[id] = t;
+        if (isWake(cell) && (out.wake === undefined || t < out.wake)) out.wake = t;
+      });
+    });
+    return out;
+  }
+
+  /** 계획표에서 읽은 오늘의 시각들. 계획표가 없으면 빈 객체. */
+  function planTimes(date) {
+    var m = planModel();
+    if (!m) return { found: false };
+
+    var col = columnOf(m, date);
+    var allCols = [];
+    for (var i = 0; i < m.days.length; i++) allCols.push(i);
+
+    var mine = scan(m, [col]);
+    var any = scan(m, allCols);
+
+    var out = { found: true, wake: mine.wake !== undefined ? mine.wake : any.wake };
+    var hasMeal = false;
+    MEALS.forEach(function (def) {
+      if (mine[def.id] !== undefined) { out[def.id] = { hour: mine[def.id], source: 'plan' }; hasMeal = true; }
+      else if (any[def.id] !== undefined) { out[def.id] = { hour: any[def.id], source: 'plan-other' }; hasMeal = true; }
+    });
+    out.hasMeal = hasMeal;
+    return out;
+  }
+
+  /* ------------------------------------------------------------- 설정 */
+
+  function defaults() {
+    return {
+      on: true,
+      leadMin: 0,                                       // 몇 분 전에 알릴지
+      sound: false,                                     // 소리는 사용자가 켜야 난다
+      times: { breakfast: '', lunch: '', dinner: '' },  // 비우면 계획표를 따른다
+      enabled: { breakfast: true, lunch: true, dinner: true },
+      fired: { date: '', ids: [] }                      // 오늘 이미 울린 끼니
+    };
+  }
+
+  var LEADS = [0, 5, 10, 30];
+
+  function settings() {
+    var d = defaults(), v = null;
+    try { v = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { v = null; }
+    if (!v || typeof v !== 'object') return d;
+
+    if (typeof v.on === 'boolean') d.on = v.on;
+    if (typeof v.sound === 'boolean') d.sound = v.sound;
+    if (LEADS.indexOf(v.leadMin) >= 0) d.leadMin = v.leadMin;
+    MEALS.forEach(function (m) {
+      if (v.times && parseHM(v.times[m.id]) !== null) d.times[m.id] = String(v.times[m.id]).trim();
+      if (v.enabled && typeof v.enabled[m.id] === 'boolean') d.enabled[m.id] = v.enabled[m.id];
+    });
+    if (v.fired && typeof v.fired.date === 'string' && v.fired.ids instanceof Array) {
+      d.fired = { date: v.fired.date, ids: v.fired.ids.slice(0, 8) };
+    }
+    return d;
+  }
+
+  function save(v) {
+    try { localStorage.setItem(KEY, JSON.stringify(v)); return true; }
+    catch (e) { return false; }
+  }
+
+  /** 설정 일부만 바꿔 저장한다 */
+  function patch(changes) {
+    var s = settings();
+    Object.keys(changes || {}).forEach(function (k) {
+      if (k === 'times' || k === 'enabled') {
+        Object.keys(changes[k]).forEach(function (id) { s[k][id] = changes[k][id]; });
+      } else {
+        s[k] = changes[k];
+      }
+    });
+    save(s);
+    return s;
+  }
+
+  /* --------------------------------------------------------- 오늘 일정 */
+
+  /** 오늘의 식사 시각. 알리미와 준비도가 같은 값을 본다. */
+  function schedule(date) {
+    date = date || new Date();
+    var s = settings();
+    var p = planTimes(date);
+
+    var meals = MEALS.map(function (def) {
+      var manual = parseHM(s.times[def.id]);
+      var hour, source;
+
+      if (manual !== null) { hour = manual; source = 'manual'; }
+      else if (p[def.id]) { hour = p[def.id].hour; source = p[def.id].source; }
+      else if (p.hasMeal) { hour = def.fallback; source = 'unplanned'; }
+      else { hour = def.fallback; source = 'default'; }
+
+      return {
+        id: def.id, label: def.label, icon: def.icon, weight: def.weight,
+        hour: clampHour(hour), source: source,
+        /* 채점 대상인가. 계획표에 다른 끼니는 적어 두고 이 끼니만 빠져 있다면
+         * 안 먹기로 한 것이므로 결식으로 세지 않는다. */
+        counts: source !== 'unplanned',
+        /* 알림 대상인가. 표준 시각은 우리가 찍어 준 값이라 알림까지 울리지 않는다 —
+         * 사용자가 계획표에 적었거나 직접 시각을 넣은 끼니만 알려 준다. */
+        alarmable: source === 'manual' || source === 'plan' || source === 'plan-other',
+        on: s.enabled[def.id] !== false
+      };
+    });
+
+    meals.sort(function (a, b) { return a.hour - b.hour; });
+
+    return {
+      meals: meals,
+      wakeHour: p.wake === undefined ? null : p.wake,
+      hasPlan: !!p.found,
+      planHasMeal: !!p.hasMeal,
+      /* 알림을 걸 수 있는 끼니가 하나도 없으면 화면에서 이유를 알려 줘야 한다 */
+      alarmable: meals.filter(function (m) { return m.alarmable; }).length
+    };
+  }
+
+  /** engine.js 의 식사 요인에 넘길 형태 */
+  function engineInput(date) {
+    var sc = schedule(date);
+    return {
+      wakeHour: sc.wakeHour,
+      hasPlan: sc.hasPlan,
+      meals: sc.meals.map(function (m) {
+        return { id: m.id, label: m.label, hour: m.hour, weight: m.weight, counts: m.counts, source: m.source };
+      })
+    };
+  }
+
+  /** 지금 기준 다음 끼니. 오늘 남은 게 없으면 내일 첫 끼니를 준다. */
+  function next(date) {
+    date = date || new Date();
+    var nowH = date.getHours() + date.getMinutes() / 60;
+    var sc = schedule(date);
+    var list = sc.meals.filter(function (m) { return m.counts; });
+    if (!list.length) return null;
+
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].hour > nowH) return { meal: list[i], inHours: list[i].hour - nowH, tomorrow: false };
+    }
+    var first = list[0];
+    return { meal: first, inHours: 24 - nowH + first.hour, tomorrow: true };
+  }
+
+  /* --------------------------------------------------------- 알리미 */
+
+  var timer = null, hooks = {};
+
+  function firedToday(s, date) {
+    var dk = dateKey(date);
+    return (s.fired && s.fired.date === dk) ? s.fired.ids : [];
+  }
+
+  function markFired(id, date) {
+    var s = settings();
+    var dk = dateKey(date);
+    var ids = (s.fired && s.fired.date === dk) ? s.fired.ids.slice() : [];
+    if (ids.indexOf(id) < 0) ids.push(id);
+    s.fired = { date: dk, ids: ids };
+    save(s);
+  }
+
+  /** 오늘 이 끼니 알림을 이미 처리했는지 (테스트·되돌리기용) */
+  function resetFired(date) {
+    var s = settings();
+    s.fired = { date: dateKey(date), ids: [] };
+    save(s);
+  }
+
+  /** 지금 울려야 할 끼니가 있는지 확인한다. 30초마다, 그리고 화면이 돌아올 때마다 부른다. */
+  function check(date) {
+    date = date || new Date();
+    var s = settings();
+    if (!s.on) return;
+
+    var nowH = date.getHours() + date.getMinutes() / 60;
+    var done = firedToday(s, date);
+    var sc = schedule(date);
+
+    sc.meals.forEach(function (m) {
+      if (!m.alarmable || !m.on) return;
+      if (done.indexOf(m.id) >= 0) return;
+
+      var at = m.hour - (s.leadMin || 0) / 60;
+      if (nowH < at) return;
+
+      // 여기까지 왔으면 오늘 이 끼니는 한 번만 다룬다 — 늦었든, 이미 먹었든, 울리든.
+      markFired(m.id, date);
+      if (nowH > at + LATE_H) return;                          // 너무 늦게 열었다
+      if (hooks.isEaten && hooks.isEaten(m.id)) return;        // 이미 먹었다고 체크해 뒀다
+      if (hooks.onFire) hooks.onFire(m, { leadMin: s.leadMin || 0, sound: !!s.sound, at: at });
+    });
+  }
+
+  function start(opts) {
+    hooks = opts || {};
+    stop();
+    timer = setInterval(function () { check(); }, 30000);
+    check();
+  }
+
+  function stop() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  global.MealPlan = {
+    MEALS: MEALS, LEADS: LEADS, LATE_H: LATE_H,
+    settings: settings, save: save, patch: patch,
+    schedule: schedule, engineInput: engineInput, next: next,
+    planTimes: planTimes, mealIdOf: mealIdOf,
+    start: start, stop: stop, check: check,
+    markFired: markFired, resetFired: resetFired,
+    fmtHour: fmtHour, parseHM: parseHM, STORAGE_KEY: KEY
   };
 
 })(window);
@@ -6105,6 +7118,10 @@ body {
  *   학년, 반, 과목, 시험 일정, 뇌 컨디션 점수, 수면·스트레스 같은 입력값,
  *   배지, 사운드 설정, 나이스 인증키 — 전부 기기에만 남는다.
  *
+ * 학급 대항전에 동의하면 여기에 학교급·학년·반·닉네임이 더해지고,
+ * 포스트잇을 붙이면 그 쪽지의 내용·색·붙인 자리·사라질 시각이 함께 올라간다.
+ * 쪽지는 길어야 30분이면 서버에서 지워진다 (supabase/schema_league_notes.sql).
+ *
  * 기본값은 "꺼짐" 이다. 설정에서 켜야 처음으로 통신이 일어난다.
  * SDK 를 쓰지 않고 REST 로 직접 호출한다. 빌드가 단일 파일이라 의존성을 늘리지 않는다.
  *
@@ -6129,8 +7146,13 @@ body {
    * 그래서 서버 쪽에서 RLS 로 잠그고 검증 함수 하나만 열어 뒀다 —
    * supabase/schema.sql 참고.
    * 두 값이 비어 있으면 동기화 기능 자체가 꺼진 것처럼 동작한다. */
-  var SUPABASE_URL = 'https://vtlvuhzdxoxnvsdrpfqb.supabase.co';
-  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0bHZ1aHpkeG94bnZzZHJwZnFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMTg4NzcsImV4cCI6MjEwMDg5NDg3N30.6-If6Q47kXkdOxmkt8QNiYzxhqWMDl3dnGC1pMYQLGQ';
+  /* 2026-08-10: 프로젝트를 옮겼다.
+   * 예전 프로젝트(vtlvuhzdxoxnvsdrpfqb)는 계정을 잃어 스키마를 갱신할 수 없었다.
+   * 그래서 2026-08-04 에 추가된 9-인자 report_league 가 서버에 없었고, 그날부터
+   * 모든 전송이 404 로 실패하고 있었다. 새 프로젝트에 스키마를 전부 올리고 갈아탄다.
+   * 예전 주차의 학교 합계는 넘어오지 않는다 — 개인 기록은 각 브라우저에 있으므로 그대로다. */
+  var SUPABASE_URL = 'https://nflphvcjbpvjevcmmqoy.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mbHBodmNqYnB2amV2Y21tcW95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDY2NDksImV4cCI6MjEwMTQyMjY0OX0.K-_VE14ZGQFA6jEN9PBjRs60KfE0dlyZbt13smZDixw';
 
   var STORE_KEY = 'neurostudy.cloud.v1';
   var TIMEOUT_MS = 8000;
@@ -6621,6 +7643,93 @@ body {
       }, function () { return []; });
   }
 
+  /* ══════════════════════════════════════════════════ 우리 반 포스트잇
+   *
+   * 같은 반 사람들이 서로 보는 쪽지 벽이다. 리그 순위와 달리 합계가 아니라
+   * 사람이 쓴 글이 그대로 오간다. 그래서 학급 대항전(classEnabled)에 동의한
+   * 경우에만 열린다 — 그 동의가 곧 "학년·반과 닉네임을 보낸다" 는 약속이고,
+   * 쪽지는 그 위에서만 성립한다.
+   *
+   * 욕설을 거르는 일은 여기서 하지 않는다. 목록은 filter.js 한 곳에만 두고,
+   * 부르는 쪽(app.js)이 올리기 전과 그리기 전에 각각 한 번씩 태운다. */
+
+  function notesReady(cls) {
+    return !!(classEnabled() && cls && cls.school && cls.grade && cls.klass);
+  }
+
+  /** 쪽지를 붙인다. 수명(minutes)은 서버에서도 10~30분으로 잘린다. */
+  function postClassNote(cls, note) {
+    if (!notesReady(cls)) return Promise.reject(new Error('학급 대항전을 켜야 포스트잇을 쓸 수 있습니다.'));
+
+    var body = String((note && note.body) || '').trim();
+    if (!body) return Promise.reject(new Error('내용을 입력하세요.'));
+
+    return req('/rest/v1/rpc/post_class_note', {
+      method: 'POST',
+      body: {
+        p_device: deviceId(),
+        p_school: String(cls.school || ''), p_level: String(cls.level || ''),
+        p_grade: String(cls.grade || ''), p_klass: String(cls.klass || ''),
+        p_nick: String((note && note.nick) || ''),
+        p_body: body.slice(0, 100),
+        p_minutes: Math.max(10, Math.min(30, Math.round((note && note.minutes) || 15))),
+        p_color: Math.max(0, Math.min(15, Math.round((note && note.color) || 0))),
+        p_tilt: Math.max(-6, Math.min(6, Math.round((note && note.tilt) || 0))),
+        p_x: Math.max(0, Math.min(100, Math.round((note && note.x) || 50))),
+        p_y: Math.max(0, Math.min(100, Math.round((note && note.y) || 40)))
+      }
+    }).then(function (id) { return typeof id === 'string' ? id : ''; });
+  }
+
+  /** 아직 살아 있는 우리 반 쪽지. 실패하면 빈 벽으로 둔다(있던 쪽지를 지우진 않는다). */
+  function fetchClassNotes(cls) {
+    if (!notesReady(cls)) return Promise.resolve([]);
+
+    return req('/rest/v1/rpc/fetch_class_notes', {
+      method: 'POST',
+      body: {
+        p_school: String(cls.school || ''), p_level: String(cls.level || ''),
+        p_grade: String(cls.grade || ''), p_klass: String(cls.klass || ''),
+        p_device: deviceId() || null
+      }
+    }).then(function (rows) {
+      return (rows || []).map(function (r) {
+        return {
+          id: String(r.id || ''),
+          nick: String(r.nickname || '').trim(),
+          body: String(r.body || ''),
+          color: r.color | 0, tilt: r.tilt | 0,
+          x: r.x | 0, y: r.y | 0,
+          createdAt: r.created_at ? Date.parse(r.created_at) : 0,
+          expiresAt: r.expires_at ? Date.parse(r.expires_at) : 0,
+          me: !!r.is_me
+        };
+      }).filter(function (n) { return n.id && n.body; });
+    });
+  }
+
+  /** 내가 붙인 쪽지의 자리를 옮긴다 */
+  function moveClassNote(id, x, y) {
+    if (!id) return Promise.resolve(false);
+    return req('/rest/v1/rpc/move_class_note', {
+      method: 'POST',
+      body: {
+        p_id: id, p_device: deviceId(),
+        p_x: Math.max(0, Math.min(100, Math.round(x))),
+        p_y: Math.max(0, Math.min(100, Math.round(y)))
+      }
+    }).then(function () { return true; });
+  }
+
+  /** 내가 붙인 쪽지를 모두의 화면에서 뗀다 (남의 쪽지는 서버가 거절한다) */
+  function removeClassNote(id) {
+    if (!id) return Promise.resolve(false);
+    return req('/rest/v1/rpc/remove_class_note', {
+      method: 'POST',
+      body: { p_id: id, p_device: deviceId() }
+    }).then(function () { return true; });
+  }
+
   /**
    * 관리자가 잘못 올라온 기록을 지운다. 리그·학생 목록 양쪽에서 함께 사라진다.
    * week 를 비우면 그 기기의 모든 주차를 지운다.
@@ -6686,6 +7795,8 @@ body {
     fetchLeagueMembers: fetchLeagueMembers,
     fetchClassWeek: fetchClassWeek, fetchClassPending: fetchClassPending,
     fetchClassMembers: fetchClassMembers,
+    postClassNote: postClassNote, fetchClassNotes: fetchClassNotes,
+    moveClassNote: moveClassNote, removeClassNote: removeClassNote,
     hiddenOn: hiddenOn, setHidden: setHidden,
     adminDeleteDevice: adminDeleteDevice,
 
@@ -7271,6 +8382,559 @@ body {
     syncNow: syncNow, setCloudRows: setCloudRows, setCloudClassRows: setCloudClassRows,
     settleIfNeeded: settleIfNeeded, clearResult: clearResult, reset: reset,
     myCappedWeek: myCappedWeek, MY_CODE: MY_CODE
+  };
+
+})(window);
+
+
+/* ===== src/js/filter.js ===== */
+/* =========================================================================
+ * filter.js — 포스트잇에 올라오는 말 거르기
+ *
+ * 같은 반 친구들이 서로 보는 벽이라, 욕설과 비하 표현은 붙기 전에 막는다.
+ *
+ * 어려운 점은 "시발" 을 막는 게 아니라 "시1발", "시.발", "ㅅㅣㅂㅏㄹ",
+ * "시발발발" 같은 우회를 같이 막는 것이다. 그래서 글자를 그대로 비교하지 않고
+ * 먼저 한 줄로 펴 놓는다.
+ *
+ *   1. 숫자·공백·기호를 버린다        시1발 · 시 발 · 시.발  →  시발
+ *   2. 흩어진 낱자모를 다시 합친다     ㅅㅣㅂㅏㄹ            →  시발
+ *   3. 3번 이상 반복은 접는다          시발발발              →  시발발
+ *   4. 영문은 따로 한 번 더 편다       f0ck · fuuuck         →  fock · fuck
+ *
+ * 거꾸로, 이렇게 펴 놓으면 멀쩡한 말이 걸린다. "시발점", "새끼손가락",
+ * "졸라매다", "한남동" 이 그렇다. 그래서 ALLOW 에 적어 둔 말은 검사 전에
+ * 지워 버린다 — 정상적인 글이 막히는 쪽이 욕 하나 놓치는 것보다 나쁘다.
+ * 같은 이유로 "자지"(자지 않았다)·"보지"(보지 못했다)처럼 흔한 말에
+ * 그대로 들어 있는 단어는 아예 목록에 넣지 않았다.
+ *
+ * ⚠ 목록은 완벽할 수 없다. 새 표현이 보이면 아래 BLOCK 에 한 줄 더하면 된다.
+ *   목록은 이 파일 한 곳에만 둔다. 서버(SQL)에 같은 목록을 한 벌 더 두면
+ *   두 규칙이 조금씩 어긋나고, 쓰는 쪽은 느슨한 통로만 골라 쓰게 된다.
+ *   그래서 서버는 길이·개수·시간만 보고, 말을 보는 일은 여기서만 한다.
+ *   대신 화면에 그릴 때도 한 번 더 걸러(clean) 다른 통로로 들어온 글도 가린다.
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  /* ------------------------------------------------------------ 낱자모 표 */
+
+  var CHO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ',
+             'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+  var JUNG = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ',
+              'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+  var JONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ',
+              'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
+  /* --------------------------------------------------------------- 목록 */
+
+  /* 검사 전에 지워 두는 말. 아래 BLOCK 의 단어를 통째로 품고 있는 멀쩡한 낱말이다.
+   * (지운 자리는 빈칸이 아니라 막음 문자로 채워 앞뒤가 붙지 않게 한다) */
+  var ALLOW = [
+    '시발점', '시발역', '시발택시', '시발자동차', '시바견', '시바이누',
+    '새끼손가락', '새끼발가락', '새끼줄', '새끼손톱', '새끼발톱',
+    '고양이새끼', '강아지새끼', '호랑이새끼', '새끼고양이', '새끼강아지', '새끼오리',
+    '졸라매', '한남동', '한남대', '걸레질', '걸레받이',
+    '등신대', '애자일', '고자질', '벙어리장갑', '호모사피엔스', '호모에렉투스',
+    '자위대', '자위권', '호로록'
+  ];
+
+  /* 붙기 전에 막는 말. 한글은 위에서 편 형태(공백·숫자 없음)로 적는다. */
+  var BLOCK = [
+    /* 욕설 */
+    '씨발', '시발', '씨빨', '시빨', '씨팔', '시팔', '씹할', '씹새', '씹창', '개씹',
+    '쓰발', '쒸발', '슈발', '쉬발', '씨바', '썅', '쌍놈', '쌍년',
+    /* "새끼" 는 그 자체로는 동물의 어린 것이기도 해서 홀로 두지 않는다.
+     * ("고양이가 새끼를 낳았다" 가 걸리면 안 된다)
+     * 대신 욕으로 쓰일 때 거의 항상 붙는 앞뒤 말과 함께 본다. */
+    '개새', '이새끼', '저새끼', '그새끼', '니새끼', '새끼야', '새끼들', '씹새끼',
+    '좆', '졷', '존나', '존내', '졸라', '지랄', '지럴', '니미', '애미', '애비',
+    '미친놈', '미친년', '미친새', '또라이', '꼴통', '싸가지', '염병', '옘병',
+    '제기랄', '우라질', '호로자식', '호로새끼', '후레자식', '썩을놈', '썩을년',
+    '뒈져', '죽여버', '개소리', '개년', '개놈', '개자식', '지랄맞',
+
+    /* 비하 — 장애 */
+    '병신', '븅신', '빙신', '등신', '머저리', '저능아', '지진아', '정신병자',
+    '애자', '찐따', '벙어리', '귀머거리', '절름발이', '앉은뱅이', '불구자', '고자',
+
+    /* 비하 — 성별·나이·지역·인종 */
+    '김치녀', '된장녀', '한남', '맘충', '급식충', '진지충', '설명충', '틀딱',
+    '잼민이', '짱깨', '짱께', '쪽바리', '쪽발이', '깜둥이', '조센징', '흑형',
+    '전라디언', '개쌍도',
+
+    /* 성적 표현 */
+    '섹스', '야동', '자위', '딸딸이', '꼬추', '보빨', '창녀', '매춘'
+  ];
+
+  /* 영문. 위 4번 규칙(leet 되돌리기)을 거친 뒤 비교한다. */
+  var BLOCK_EN = [
+    'fuck', 'fuk', 'fck', 'fock', 'fuq', 'phuck', 'shit', 'bitch', 'bastard', 'asshole', 'dick',
+    'cunt', 'whore', 'slut', 'nigger', 'nigga', 'retard', 'faggot',
+    'wtf', 'stfu'
+  ];
+
+  /* 초성체. 낱자모만 늘어놓은 구간에서만 찾는다.
+   * (음절까지 초성으로 바꿔 비교하면 "수박"·"사방"이 전부 걸린다) */
+  var BLOCK_CHO = [
+    'ㅅㅂ', 'ㅆㅂ', 'ㅄ', 'ㅂㅅ', 'ㅂㅅㄴ', 'ㅈㄹ', 'ㅁㅊ', 'ㄲㅈ',
+    'ㅅㄲ', 'ㄱㅅㄲ', 'ㅈㄹㄴ', 'ㅆㄺ'
+  ];
+
+  /* 영문 우회 되돌리기 — 숫자·기호를 닮은 글자로 바꾼다 */
+  var LEET = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', '$': 's', '!': 'i', '|': 'i' };
+
+  var MASK = '·';   // 검사에서 제외한 자리. 어떤 목록에도 없는 글자여야 한다.
+
+  /* 반복 접기는 글과 목록에 똑같이 해야 한다.
+   * 글만 접으면 "nigga" 가 "niga" 로 바뀌어 목록의 "nigga" 와 어긋난다. */
+  var KO_KEEP = 2;   // "ㅋㅋ"·"ㅜㅜ" 는 살려야 하므로 두 개까지 둔다
+  var EN_KEEP = 1;   // fuuuck 을 잡으려면 하나까지 줄여야 한다
+
+  function collapse(s, keep) {
+    var out = '', run = 0;
+    for (var i = 0; i < s.length; i++) {
+      run = (i > 0 && s.charAt(i) === s.charAt(i - 1)) ? run + 1 : 0;
+      if (run < keep) out += s.charAt(i);
+    }
+    return out;
+  }
+  function collapseList(list, keep) {
+    return list.map(function (w) { return collapse(w, keep); });
+  }
+
+  ALLOW = collapseList(ALLOW, KO_KEEP);
+  BLOCK = collapseList(BLOCK, KO_KEEP);
+  BLOCK_CHO = collapseList(BLOCK_CHO, KO_KEEP);
+  BLOCK_EN = collapseList(BLOCK_EN, EN_KEEP);
+
+  /* ----------------------------------------------------------- 펴기(정규화)
+   *
+   * 원문의 어디가 걸렸는지 알아야 가릴 수 있으므로, 편 글자마다
+   * 원문에서의 구간(st ~ en)을 같이 들고 다닌다. */
+
+  function isLetter(c) { return /[a-z가-힣ㄱ-ㅎㅏ-ㅣ]/.test(c); }
+
+  /**
+   * @param {string} text  원문
+   * @param {string} mode  'ko' = 한글용, 'en' = 영문용(leet 되돌리기)
+   * @return {{s:string, st:number[], en:number[]}}
+   */
+  function build(text, mode) {
+    var src = String(text == null ? '' : text);
+    try { src = src.normalize('NFC'); } catch (e) { /* 구형 브라우저 — 원문 그대로 간다 */ }
+
+    var en2 = mode === 'en';
+
+    /* 1) 글자만 남긴다.
+     *
+     *    버린 자리는 바로 앞 글자의 구간에 넣어 둔다 — "시1발" 을 가릴 때
+     *    가운데 1 까지 함께 가려져야 하기 때문이다. 다만 공백은 넣지 않는다.
+     *    넣으면 "시발 뭐야" 를 가릴 때 뒤 띄어쓰기까지 먹어 "○○뭐야" 가 된다.
+     *
+     *    띄어쓰기가 있었는지는 따로 적어 둔다(sp). 초성체를 볼 때만 쓰는데,
+     *    이게 없으면 "ㅇㅈ ㄹㅇ" 이 한 덩어리로 붙어 "ㅈㄹ" 로 읽힌다. */
+    var ch = [], st = [], ed = [], sp = [];
+    var gapSpace = false;
+    for (var i = 0; i < src.length; i++) {
+      var c = src.charAt(i);
+      var lc = c.toLowerCase();
+      if (lc.length !== 1) lc = c;              // 길이가 바뀌는 글자는 원문 그대로 둔다
+      if (en2 && LEET[lc]) lc = LEET[lc];
+      if (isLetter(lc)) {
+        ch.push(lc); st.push(i); ed.push(i + 1); sp.push(gapSpace);
+        gapSpace = false;
+      } else if (/\s/.test(c)) {
+        gapSpace = true;
+      } else if (ch.length) {
+        ed[ed.length - 1] = i + 1;
+      }
+    }
+
+    /* 2) 흩어진 낱자모를 음절로 합친다 (한글용에서만 뜻이 있다) */
+    if (!en2) {
+      var mc = [], ms = [], me = [], mp = [];
+      var k = 0;
+      while (k < ch.length) {
+        var ci = CHO.indexOf(ch[k]);
+        var vi = k + 1 < ch.length ? JUNG.indexOf(ch[k + 1]) : -1;
+        if (ci >= 0 && vi >= 0) {
+          var ti = 0;
+          if (k + 2 < ch.length) {
+            var t = JONG.indexOf(ch[k + 2]);
+            // 다음이 모음이면 그 글자는 다음 음절의 초성이다 (ㅂㅏㄴㅏ → 바나)
+            var nextIsV = k + 3 < ch.length && JUNG.indexOf(ch[k + 3]) >= 0;
+            if (t > 0 && !nextIsV) ti = t;
+          }
+          var used = ti ? 3 : 2;
+          mc.push(String.fromCharCode(0xac00 + (ci * 21 + vi) * 28 + ti));
+          ms.push(st[k]);
+          me.push(ed[k + used - 1]);
+          mp.push(sp[k]);
+          k += used;
+        } else {
+          mc.push(ch[k]); ms.push(st[k]); me.push(ed[k]); mp.push(sp[k]); k++;
+        }
+      }
+      ch = mc; st = ms; ed = me; sp = mp;
+    }
+
+    /* 3) 반복을 접는다 (목록도 같은 규칙으로 접어 두었다) */
+    var keep = en2 ? EN_KEEP : KO_KEEP;
+    var fc = [], fs = [], fe = [], fp = [];
+    for (var j = 0; j < ch.length; j++) {
+      var same = 0;
+      for (var q = fc.length - 1; q >= 0 && fc[q] === ch[j]; q--) same++;
+      if (same >= keep) { fe[fe.length - 1] = ed[j]; continue; }
+      fc.push(ch[j]); fs.push(st[j]); fe.push(ed[j]); fp.push(sp[j]);
+    }
+
+    /* 4) 멀쩡한 낱말을 검사 대상에서 빼 둔다 */
+    var s = fc.join('');
+    if (!en2) {
+      ALLOW.forEach(function (w) {
+        var at = s.indexOf(w);
+        while (at >= 0) {
+          var blank = '';
+          for (var n = 0; n < w.length; n++) blank += MASK;
+          s = s.slice(0, at) + blank + s.slice(at + w.length);
+          at = s.indexOf(w, at + w.length);
+        }
+      });
+    }
+
+    return { s: s, st: fs, en: fe, sp: fp };
+  }
+
+  /* --------------------------------------------------------------- 찾기 */
+
+  function scan(b, words, out) {
+    words.forEach(function (w) {
+      var from = 0, at;
+      while ((at = b.s.indexOf(w, from)) >= 0) {
+        out.push({ word: w, start: b.st[at], end: b.en[at + w.length - 1] });
+        from = at + w.length;
+      }
+    });
+  }
+
+  /**
+   * 낱자모만 늘어놓은 구간(ㅅㅂ, ㅗ)을 따로 본다.
+   * 띄어쓰기에서 끊는다 — "ㅇㅈ ㄹㅇ" 은 두 덩어리지 "ㅈㄹ" 이 아니다.
+   */
+  function scanCho(b, out) {
+    var i = 0;
+    while (i < b.s.length) {
+      if (!/[ㄱ-ㅎㅏ-ㅣ]/.test(b.s.charAt(i))) { i++; continue; }
+
+      var j = i + 1;
+      while (j < b.s.length && /[ㄱ-ㅎㅏ-ㅣ]/.test(b.s.charAt(j)) && !b.sp[j]) j++;
+
+      var run = b.s.slice(i, j), hit = null;
+      // 손가락 욕은 그 덩어리가 통째로 ㅗ 일 때만 본다 ("ㅗㅜㅑ" 는 감탄사다)
+      if (/^ㅗ+$/.test(run)) hit = 'ㅗ';
+      else {
+        for (var k = 0; k < BLOCK_CHO.length; k++) {
+          if (run.indexOf(BLOCK_CHO[k]) >= 0) { hit = BLOCK_CHO[k]; break; }
+        }
+      }
+      if (hit) out.push({ word: hit, start: b.st[i], end: b.en[j - 1] });
+      i = j;
+    }
+  }
+
+  function findHits(text) {
+    var out = [];
+    var ko = build(text, 'ko');
+    scan(ko, BLOCK, out);
+    scanCho(ko, out);
+    scan(build(text, 'en'), BLOCK_EN, out);
+    return out;
+  }
+
+  /** 겹치는 구간을 하나로 합친다 */
+  function merge(hits) {
+    var r = hits.slice().sort(function (a, b) { return a.start - b.start; });
+    var out = [];
+    r.forEach(function (h) {
+      var last = out[out.length - 1];
+      if (last && h.start <= last.end) { if (h.end > last.end) last.end = h.end; return; }
+      out.push({ start: h.start, end: h.end });
+    });
+    return out;
+  }
+
+  /* --------------------------------------------------------------- 바깥 */
+
+  /**
+   * 올려도 되는 글인가.
+   * @return {{ok:boolean, words:string[]}} words 는 걸린 표현(중복 없이)
+   */
+  function check(text) {
+    var hits = findHits(text);
+    var words = [];
+    hits.forEach(function (h) { if (words.indexOf(h.word) < 0) words.push(h.word); });
+    return { ok: hits.length === 0, words: words };
+  }
+
+  /**
+   * 걸린 부분만 가린 글. 이미 서버에 들어온 글을 화면에 그릴 때 쓴다.
+   * (앱을 거치지 않고 올린 글이 남의 화면에 그대로 뜨는 것을 막는다)
+   */
+  function clean(text) {
+    var src = String(text == null ? '' : text);
+    var spans = merge(findHits(src));
+    if (!spans.length) return src;
+    var out = '', at = 0;
+    spans.forEach(function (s) {
+      out += src.slice(at, s.start) + '○○';
+      at = s.end;
+    });
+    return out + src.slice(at);
+  }
+
+  global.Filter = { check: check, clean: clean, BLOCK: BLOCK, ALLOW: ALLOW };
+
+})(window);
+
+
+/* ===== src/js/notes.js ===== */
+/* =========================================================================
+ * notes.js — 우리 반 포스트잇
+ *
+ * 같은 반 사람들이 서로 보는 쪽지 벽이다. 순위표가 "얼마나 했는가" 라면
+ * 이건 그냥 말을 주고받는 자리다.
+ *
+ * 세 가지 규칙이 이 기능의 성격을 정한다.
+ *
+ *   1. 오래 남지 않는다. 붙일 때 10~30분 사이에서 고른 시간이 지나면 사라진다.
+ *      쌓이면 화면을 가려 못 쓰게 되는 기능이라, 지우는 일을 사람이 하게
+ *      두지 않고 시간이 하게 했다.
+ *   2. 엑스는 "내 화면에서만" 치운다. 남이 붙인 쪽지를 한 사람이 눌렀다고
+ *      모두의 화면에서 사라지면, 그건 대화가 아니라 검열이 된다. 그래서
+ *      치운 목록은 서버에 올리지 않고 이 기기에만 남는다.
+ *      내가 붙인 쪽지만 [떼기]로 모두의 화면에서 없앨 수 있다.
+ *   3. 걸러진 말은 붙지 않는다. 판단은 filter.js 한 곳에서만 하고,
+ *      여기서는 올리기 전과 받아 온 뒤에 그 함수를 부르기만 한다.
+ *      (받아 온 뒤에도 거르는 이유: 앱을 거치지 않고 올린 글이 있을 수 있다)
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var HIDDEN_KEY = 'mindora.notes.hidden.v1';   // 내 화면에서 치운 쪽지
+  var WALL_KEY   = 'mindora.notes.wall.v1';     // 벽을 띄워 둘지
+  var DRAFT_KEY  = 'mindora.notes.draft.v1';    // 마지막으로 고른 색·시간
+
+  /* 팔레트 — 실제 색은 CSS(.pin.c0 …)에 있다. 여기에는 번호와 이름만 둔다.
+   * 초록·노랑을 뺀 것은 이 앱 전체의 규칙이다(styles.css 머리말 참고).
+   * 그래서 흔한 노란 포스트잇 대신 보라·파랑·분홍 계열로 여덟 가지를 골랐다. */
+  var COLORS = [
+    { id: 0, name: '라벤더' },
+    { id: 1, name: '페리윙클' },
+    { id: 2, name: '스카이' },
+    { id: 3, name: '아쿠아' },
+    { id: 4, name: '로즈' },
+    { id: 5, name: '코랄' },
+    { id: 6, name: '피치' },
+    { id: 7, name: '라일락' }
+  ];
+
+  var LIFE = [10, 15, 20, 30];   // 고를 수 있는 수명(분)
+  var MAX_LEN = 100;
+
+  var cache = [];        // 마지막으로 받아 온 쪽지 (만료·치움 반영 전)
+  var lastFetch = 0;
+
+  /* ------------------------------------------------------------ 저장 상태 */
+
+  function readJson(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function writeJson(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* 무시 */ }
+  }
+
+  /** 내가 치운 쪽지 { id: 사라질시각 }. 사라질 시각이 지나면 목록에서도 턴다. */
+  function hiddenMap() {
+    var m = readJson(HIDDEN_KEY, {}) || {};
+    var now = Date.now(), changed = false;
+    Object.keys(m).forEach(function (id) {
+      if (!m[id] || m[id] < now) { delete m[id]; changed = true; }
+    });
+    if (changed) writeJson(HIDDEN_KEY, m);
+    return m;
+  }
+
+  function dismiss(id, expiresAt) {
+    if (!id) return;
+    var m = hiddenMap();
+    // 만료 시각을 같이 적어 두어야, 그 쪽지가 사라진 뒤 이 목록도 스스로 줄어든다
+    m[id] = expiresAt || (Date.now() + 31 * 60 * 1000);
+    writeJson(HIDDEN_KEY, m);
+  }
+
+  function dismissed(id) { return !!hiddenMap()[id]; }
+
+  /** 치운 쪽지를 다시 불러온다 (아직 살아 있는 것만 돌아온다) */
+  function restoreAll() {
+    var n = Object.keys(hiddenMap()).length;
+    writeJson(HIDDEN_KEY, {});
+    return n;
+  }
+
+  /** 지금 내가 치워 둔 쪽지 수 */
+  function hiddenCount() {
+    var hid = hiddenMap(), now = Date.now(), n = 0;
+    cache.forEach(function (c) { if (hid[c.id] && c.expiresAt > now) n++; });
+    return n;
+  }
+
+  function wallOn() {
+    var o = readJson(WALL_KEY, null);
+    return o ? !!o.on : true;      // 처음에는 켜져 있다
+  }
+  function setWallOn(on) { writeJson(WALL_KEY, { on: !!on }); }
+
+  /** 마지막으로 고른 색·시간을 기억한다 (매번 다시 고르게 하지 않으려고) */
+  function draft() {
+    var o = readJson(DRAFT_KEY, null) || {};
+    var life = LIFE.indexOf(o.life | 0) >= 0 ? (o.life | 0) : 15;
+    var color = (o.color | 0) >= 0 && (o.color | 0) < COLORS.length ? (o.color | 0) : -1;
+    return { color: color, life: life };   // color -1 = 아무 색이나
+  }
+  function setDraft(color, life) { writeJson(DRAFT_KEY, { color: color, life: life }); }
+
+  /* ------------------------------------------------------------ 벽 상태 */
+
+  /** 지금 화면에 있어야 할 쪽지 — 만료된 것과 내가 치운 것을 뺀다 */
+  function list() {
+    var now = Date.now();
+    var hid = hiddenMap();
+    return cache.filter(function (n) {
+      return n.expiresAt > now && !hid[n.id];
+    });
+  }
+
+  /** 서버에서 받아 온 그대로(치움만 반영 안 함) — 내 쪽지 수를 셀 때 쓴다 */
+  function mine() {
+    var now = Date.now();
+    return cache.filter(function (n) { return n.me && n.expiresAt > now; });
+  }
+
+  function remain(note) { return Math.max(0, (note.expiresAt || 0) - Date.now()); }
+
+  /** "12분 남음" · "40초 남음" */
+  function remainText(note) {
+    var ms = remain(note);
+    if (ms <= 0) return '사라지는 중';
+    var s = Math.round(ms / 1000);
+    if (s < 60) return s + '초 남음';
+    return Math.ceil(s / 60) + '분 남음';
+  }
+
+  /* 삐뚤게 붙은 각도. 자리와 함께 저장해 두어야 모두의 화면에서 같게 보인다. */
+  function pickTilt() { return Math.round((Math.random() * 12) - 6); }
+  function pickColor() { return Math.floor(Math.random() * COLORS.length); }
+
+  /* ------------------------------------------------------------ 서버 오가기 */
+
+  function clean(rows) {
+    var F = global.Filter;
+    return (rows || []).map(function (n) {
+      // 앱을 거치지 않고 올라온 글이 남의 화면에 그대로 뜨지 않게 한 번 더 거른다
+      if (F) n.body = F.clean(n.body);
+      return n;
+    });
+  }
+
+  function refresh(cls) {
+    var C = global.Cloud;
+    if (!C || !C.fetchClassNotes) return Promise.resolve([]);
+    return C.fetchClassNotes(cls).then(function (rows) {
+      cache = clean(rows);
+      lastFetch = Date.now();
+      return list();
+    }, function () {
+      return list();   // 못 받아 왔다고 붙어 있던 쪽지를 걷어내진 않는다
+    });
+  }
+
+  /**
+   * 쪽지를 붙인다. 걸러진 말이면 서버에 가지 않고 여기서 막는다.
+   * @return {Promise<{ok:boolean, words?:string[]}>}
+   */
+  function post(cls, note) {
+    var F = global.Filter;
+    var body = String((note && note.body) || '').trim().slice(0, MAX_LEN);
+    if (!body) return Promise.reject(new Error('내용을 입력하세요.'));
+
+    if (F) {
+      var v = F.check(body);
+      if (!v.ok) {
+        var err = new Error('욕설이나 비하하는 말은 붙일 수 없어요.');
+        err.words = v.words;
+        err.filtered = true;
+        return Promise.reject(err);
+      }
+    }
+
+    var payload = {
+      body: body,
+      nick: note.nick || '',
+      minutes: LIFE.indexOf(note.minutes | 0) >= 0 ? (note.minutes | 0) : 15,
+      color: (note.color | 0) >= 0 ? (note.color | 0) : pickColor(),
+      tilt: typeof note.tilt === 'number' ? note.tilt : pickTilt(),
+      x: note.x, y: note.y
+    };
+
+    return global.Cloud.postClassNote(cls, payload).then(function (id) {
+      /* 서버가 준 번호로 내 쪽지를 바로 벽에 올린다.
+       * 다음 새로고침을 기다리면 붙인 게 잠깐 사라진 것처럼 보인다. */
+      if (id) {
+        cache.push({
+          id: id, nick: payload.nick, body: payload.body,
+          color: payload.color, tilt: payload.tilt, x: payload.x, y: payload.y,
+          createdAt: Date.now(), expiresAt: Date.now() + payload.minutes * 60000,
+          me: true
+        });
+      }
+      return { ok: true, id: id };
+    });
+  }
+
+  /** 내 쪽지 자리 옮기기 — 화면을 먼저 바꾸고 서버에 알린다 */
+  function move(id, x, y) {
+    cache.forEach(function (n) { if (n.id === id) { n.x = x; n.y = y; } });
+    return global.Cloud.moveClassNote(id, x, y).then(null, function () { return false; });
+  }
+
+  /** 내 쪽지를 모두의 화면에서 뗀다 */
+  function remove(id) {
+    cache = cache.filter(function (n) { return n.id !== id; });
+    return global.Cloud.removeClassNote(id).then(null, function () { return false; });
+  }
+
+  function reset() {
+    cache = [];
+    lastFetch = 0;
+    try {
+      localStorage.removeItem(HIDDEN_KEY);
+      localStorage.removeItem(WALL_KEY);
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) { /* 무시 */ }
+  }
+
+  global.Notes = {
+    COLORS: COLORS, LIFE: LIFE, MAX_LEN: MAX_LEN,
+    list: list, mine: mine, refresh: refresh, post: post, move: move, remove: remove,
+    dismiss: dismiss, dismissed: dismissed, restoreAll: restoreAll, hiddenCount: hiddenCount,
+    wallOn: wallOn, setWallOn: setWallOn, draft: draft, setDraft: setDraft,
+    remain: remain, remainText: remainText,
+    pickTilt: pickTilt, pickColor: pickColor,
+    lastFetch: function () { return lastFetch; },
+    reset: reset
   };
 
 })(window);
@@ -9444,8 +11108,13 @@ body {
  *   순공 30분 → 젤리 1개  (아직 안 바꾼 시간을 '정산' 버튼으로 한 번에 받는다)
  *   젤리로 밥을 주면 모리가 자라고, 농장을 사면 자는 동안에도 젤리가 쌓인다.
  *
+ * 모리는 아기 슬라임으로 태어나 5단계를 거쳐 9종류의 '말랑이' 중 하나가 된다.
+ * 무엇이 될지는 태어날 때 이미 정해져 있지만 3단계에서야 겉모습으로 드러난다 —
+ * 그 순간이 이 게임에서 제일 재미있는 대목이라 일부러 미뤄 두었다.
+ * 다 자란 말랑이는 '말랑이 홈' 으로 보내면 거기서 함께 살고 도감에 남는다.
+ *
  * 잃는 것은 모리의 경험치 하나뿐이다. 오래 안 들어오면 모리가 조금씩 작아지지만,
- * 젤리·업그레이드·도감은 그대로 남는다 — 그건 모리가 아니라 키우는 사람이 쌓은 것이다.
+ * 젤리·업그레이드·도감·홈은 그대로 남는다 — 그건 모리가 아니라 키우는 사람이 쌓은 것이다.
  * 공부 기록은 어떤 경우에도 건드리지 않는다.
  * (StudyLog 는 읽기만 한다 — 게임 때문에 순공 시간이 늘거나 줄지 않는다)
  * ========================================================================= */
@@ -9479,8 +11148,9 @@ body {
       patDay: '',
       patCount: 0,
       ups: { farm: 0, dish: 0, train: 0 },
-      dex: {},                // 떠나보낸 모리 도감 { 종류id: 마리수 }
-      raised: 0,              // 지금까지 다 키워 떠나보낸 마리 수
+      dex: {},                // 홈으로 보낸 말랑이 도감 { 종류id: 마리수 }
+      sp: '',                 // 지금 키우는 아이가 될 종류 (태어날 때 정해진다)
+      raised: 0,              // 지금까지 다 키워 홈으로 보낸 마리 수
       decayNote: 0,           // 오래 안 와서 줄어든 경험치 (한 번 알려 주고 0 으로)
       lastTick: Date.now(),
       fedAt: Date.now(),
@@ -9488,16 +11158,33 @@ body {
     };
   }
 
+  /* 옛 도감(색깔 이름 8종)을 새 말랑이 9종으로 옮긴다.
+   * 같은 희귀도끼리 맞바꿔 두어 모아 둔 값어치가 그대로 남게 했다.
+   * 만두 말랑이 한 자리는 비워 둔다 — 새로 모을 것이 하나는 있어야 한다. */
+  var OLD_DEX_MAP = {
+    grape: 'putty', sky: 'cheese', sunset: 'mango', cloud: 'potato',
+    amethyst: 'bear', night: 'butter', ghost: 'soap', rainbow: 'wakku'
+  };
+
+  /* 처음 오는 사람에게도 종류는 정해져 있어야 한다.
+   * blank() 가 그냥 빈 문자열을 주면 curSpecies 가 늘 첫 종류로 떨어져
+   * 새로 시작한 사람은 영영 퍼티 슬라임만 만나게 된다. */
+  function fresh() {
+    var b = blank();
+    b.sp = rollSpecies().id;
+    return b;
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
-      if (!raw) return blank();
+      if (!raw) return fresh();
       var d = JSON.parse(raw);
-      if (!d || typeof d !== 'object') return blank();
+      if (!d || typeof d !== 'object') return fresh();
       var b = blank();
       // 저장된 값이 깨져 있어도 게임이 멈추지 않게 항목별로 받아 낸다
       Object.keys(b).forEach(function (k) {
-        if (k === 'ups' || k === 'dex') return;
+        if (k === 'ups' || k === 'dex' || k === 'sp') return;
         if (typeof d[k] === typeof b[k] && d[k] !== null) b[k] = d[k];
       });
       if (d.ups) ['farm', 'dish', 'train'].forEach(function (k) {
@@ -9505,13 +11192,17 @@ body {
       });
       // 도감은 아는 종류만 받는다 — 손댄 저장값으로 없는 칸이 생기지 않게
       if (d.dex && typeof d.dex === 'object') {
-        SPECIES.forEach(function (s) {
-          var n = d.dex[s.id];
-          if (typeof n === 'number' && n > 0) b.dex[s.id] = Math.floor(n);
+        Object.keys(d.dex).forEach(function (id) {
+          var to = speciesBy(id) ? id : OLD_DEX_MAP[id];
+          var n = d.dex[id];
+          if (!to || !speciesBy(to)) return;
+          if (typeof n === 'number' && n > 0) b.dex[to] = (b.dex[to] || 0) + Math.floor(n);
         });
       }
+      // 지금 키우는 종류. 예전 저장본에는 없으므로 그 자리에서 하나 뽑아 준다.
+      b.sp = (typeof d.sp === 'string' && speciesBy(d.sp)) ? d.sp : rollSpecies().id;
       return b;
-    } catch (e) { return blank(); }
+    } catch (e) { return fresh(); }
   }
 
   function save(d) {
@@ -9528,16 +11219,220 @@ body {
     return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
   }
 
-  /* --------------------------------------------------------- 성장 단계 */
+  /* ============================================================== 겉모습
+   *
+   * 몸 모양(FORMS) · 장식(DECOS) · 색(팔레트) 세 가지를 조합해 한 마리를 그린다.
+   * 종류마다 SVG 를 통째로 쓰면 45장(9종 × 5단계)이 되어 손댈 수가 없다.
+   * ========================================================================= */
 
-  /* 밸런스 기준 — 한 마리를 다 키우는 데 순공 10시간 안팎.
-   * 순공 1분 = 젤리 1개, 밥 한 번에 22 경험치이므로 Lv.6(450 경험치)까지는
-   * 스무 번 남짓 먹이면 된다. 다 키우면 떠나보내고 새로 받으므로, 한 판이
+  /* --- 팔레트. 가운데에서 바깥으로 가는 세 정거장이다. --- */
+  var PURPLE    = ['#d3c2ff', '#9b7bff', '#6d4aff'];   // 아기 모리의 기본 보라
+  /* 퍼티는 금속처럼 번들거려야 한다. 밝음→어두움 한 방향으로만 가면 무광 고무가 되므로
+   * 흰 하이라이트 → 짙은 속 → 다시 밝은 테두리(바닥 반사) 로 다섯 정거장을 겹쳐
+   * 크롬 구슬 같은 띠를 만든다. */
+  var PUTTY     = ['#ffffff', '#ded1ff', '#9d80f5', '#5d3fc4', '#a184f5'];
+  var WARMIX    = ['#f6dcff', '#b98cf0', '#f0a03a'];   // 보라 → 노랑 넘어가는 중
+  var CHEESE    = ['#ffeaa8', '#ffcc4d', '#e0a114'];
+  var BEAR      = ['#f4e4c8', '#d8bb92', '#a9855c'];   // 진한 갈색이 아니라 따뜻한 베이지
+  var MANGOMIX  = ['#ffeec2', '#d9a6ee', '#f2c024'];
+  var MANGO     = ['#fff4c2', '#ffd93d', '#f0a81c'];   // 주황보다 노랑 쪽으로
+  var CREAM     = ['#fffaf0', '#f2e4c8', '#d4bd95'];
+  /* 딸기 와꾸볼과 비누는 둘 다 분홍이라 색이 겹쳤다.
+   * 와꾸볼은 따뜻한 산딸기 쪽, 비누는 차가운 장미 쪽으로 갈라 둔다. */
+  var PINK      = ['#ffdee2', '#ff9aa6', '#e05f70'];
+  var BLUE      = ['#dcf0ff', '#8ecbf6', '#4f96d8'];
+  /* 무지개만 다섯 정거장을 쓴다 — 세 개로는 파스텔 하나로 뭉개져
+   * 바로 앞 단계인 소다 와꾸볼과 구별이 안 됐다. */
+  var RAINBOW   = ['#ffd9ec', '#ffe9b4', '#bff2d8', '#a8d9ff', '#cdb7ff'];
+  var POTATOMIX = ['#e6d4ff', '#b294ee', '#c9a877'];
+  var POTATO    = ['#f6e7cc', '#ddc296', '#ae8d59'];
+  var BUTTER_L  = ['#fff7c8', '#ffe27a', '#eec33a'];
+  var BUTTER    = ['#fff3b0', '#ffd63f', '#e8ae10'];
+  var SOAP      = ['#ffe0f6', '#f78ac8', '#c94590'];   // 장미 비누 — 흰 거품이 잘 받는다
+  var DOUGH     = ['#ffffff', '#f6efe4', '#dccdb8'];
+
+  /* --- 몸 모양. 얼굴 자리(ey·ex·my·chy·chx)를 모양마다 함께 들고 있어야
+   *     네모난 치즈에도 길쭉한 망고에도 눈코입이 제자리에 붙는다.
+   *     pre 는 몸 뒤(곰 귀처럼), post 는 몸 위(치즈 구멍처럼) 에 그린다.
+   *     {g} 는 그 마리의 그라데이션으로 바뀐다. --- */
+  var FORMS = {
+    /* 갓 태어난 물방울 — 아래는 퍼지고 위는 둥글다 */
+    blob: {
+      d: 'M60 34 c20 0 34 22 34 38 c0 14 -15 22 -34 22 c-19 0 -34 -8 -34 -22 c0 -16 14 -38 34 -38 z',
+      ey: 66, ex: 8, my: 74, chy: 74, chx: 17, sh: [47, 52, 9, 6]
+    },
+    /* 낮고 둥근 돔 — 치즈알·와꾸볼·버터알 */
+    dome: {
+      d: 'M60 38 c21 0 35 16 35 34 c0 13 -15 22 -35 22 c-20 0 -35 -9 -35 -22 c0 -18 14 -34 35 -34 z',
+      ey: 68, ex: 9, my: 77, chy: 77, chx: 19, sh: [47, 55, 10, 6]
+    },
+    /* 네모난 덩어리 — 치즈 블록·버터 조각·비누 */
+    cube: {
+      d: 'M33 46 h54 a9 9 0 0 1 9 9 v30 a9 9 0 0 1 -9 9 h-54 a9 9 0 0 1 -9 -9 v-30 a9 9 0 0 1 9 -9 z',
+      ey: 68, ex: 9, my: 78, chy: 78, chx: 20, sh: [42, 56, 9, 5]
+    },
+    /* 곰 — 몸 뒤로 큼직하고 동그란 귀 두 개.
+     * 귀가 작으면 그냥 젤리에 뿔 난 것처럼 보인다. 머리 폭의 3분의 1은 돼야 곰으로 읽힌다. */
+    bear: {
+      /* 세로로 긴 젤리가 아니라 옆으로 퍼진 둥근 사각형이라야 곰 머리로 읽힌다 */
+      d: 'M60 40 c24 0 39 14 39 32 c0 14 -17 22 -39 22 c-22 0 -39 -8 -39 -22 c0 -18 15 -32 39 -32 z',
+      pre: '<circle cx="30" cy="45" r="15" fill="{g}"/><circle cx="90" cy="45" r="15" fill="{g}"/>' +
+           '<circle cx="30" cy="45" r="7.5" fill="#ffffff" opacity=".26"/>' +
+           '<circle cx="90" cy="45" r="7.5" fill="#ffffff" opacity=".26"/>',
+      /* 볼터치는 거의 지운다 — 진하면 곰이 아니라 인형 얼굴이 된다 */
+      ey: 65, ex: 13, my: 78, chy: 78, chx: 27, sh: [43, 52, 10, 5], er: [3.6, 3.6], cho: 0.3
+    },
+    /* 망고 — 오른쪽으로 살짝 기운 물방울 */
+    mango: {
+      d: 'M64 34 c19 4 29 22 26 40 c-3 15 -19 21 -36 18 c-17 -3 -29 -13 -26 -28 c3 -18 17 -34 36 -30 z',
+      ey: 68, ex: 9, my: 78, chy: 78, chx: 19, sh: [48, 52, 8, 5]
+    },
+    /* 감자 — 옆으로 퍼진 타원 */
+    potato: {
+      d: 'M60 42 c23 0 37 11 37 26 c0 16 -16 26 -37 26 c-21 0 -37 -10 -37 -26 c0 -15 14 -26 37 -26 z',
+      ey: 68, ex: 9, my: 78, chy: 78, chx: 21, sh: [46, 56, 10, 5]
+    },
+    /* 만두 — 정수리에 주름과 꼭지 */
+    bun: {
+      d: 'M60 44 c22 0 37 13 37 29 c0 13 -17 21 -37 21 c-20 0 -37 -8 -37 -21 c0 -16 15 -29 37 -29 z',
+      post: '<g stroke="#d9cab4" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7">' +
+            '<path d="M60 47 q-9 6 -13 12"/><path d="M60 47 q0 8 0 13"/><path d="M60 47 q9 6 13 12"/></g>' +
+            '<circle cx="60" cy="46" r="4.5" fill="{g}"/>',
+      ey: 72, ex: 9, my: 81, chy: 81, chx: 21, sh: [45, 61, 8, 4]
+    },
+    /* 버터 스틱 — 네모로만 그리면 치즈·비누와 실루엣이 겹친다.
+     * 윗면·옆면이 보이는 입체 막대라야 '잘라 쓰는 버터 한 개' 로 읽힌다.
+     * 윗면·옆면은 몸 색 위에 흰색·검은색을 얇게 덮어 만들므로 색이 바뀌어도 따라온다. */
+    stick: {
+      /* 가로보다 세로가 길어야 '한 개씩 파는 버터 막대' 가 된다.
+       * 정사각형에 가까우면 치즈·비누 덩어리와 실루엣이 겹친다. */
+      d: 'M42 32 h36 v60 h-36 z',
+      pre: '<path d="M42 32 l9 -9 h36 l-9 9 z" fill="{g}"/>' +
+           '<path d="M42 32 l9 -9 h36 l-9 9 z" fill="#ffffff" opacity=".45"/>' +
+           '<path d="M78 32 l9 -9 v60 l-9 9 z" fill="{g}"/>' +
+           '<path d="M78 32 l9 -9 v60 l-9 9 z" fill="#000000" opacity=".15"/>',
+      post: '<g fill="none" stroke="#000000" stroke-opacity=".13" stroke-width="1.5">' +
+            '<path d="M42 32 l9 -9 h36 l-9 9 z"/><path d="M78 32 l9 -9 v60 l-9 9 z"/>' +
+            '<path d="M42 32 h36 v60 h-36 z"/></g>',
+      fx: 60, ey: 48, ex: 8, my: 57, chy: 57, chx: 13, sh: [51, 40, 5, 3], cho: 0.42
+    },
+    /* 퍼티 통 — 몸은 통 안을 채우고, 유리는 얼굴 위에 겹쳐 그린다 */
+    jar: {
+      d: 'M29 60 h62 v24 a10 10 0 0 1 -10 10 h-42 a10 10 0 0 1 -10 -10 z',
+      post: '<rect x="25" y="52" width="70" height="42" rx="11" fill="#ffffff" opacity=".18"/>' +
+            '<rect x="25" y="52" width="70" height="42" rx="11" fill="none" stroke="#cdbdf5" stroke-width="2.6"/>' +
+            '<ellipse cx="60" cy="55" rx="35" ry="7" fill="#efe8ff" opacity=".5" stroke="#cdbdf5" stroke-width="2"/>',
+      ey: 74, ex: 9, my: 82, chy: 82, chx: 21, sh: [42, 66, 8, 4]
+    }
+  };
+
+  /* --- 장식. noMouth 는 그 장식이 입을 대신 그린다는 뜻이다. --- */
+  var DECOS = {
+    spark: {
+      over: '<g fill="#ffd76a"><path d="M26 34 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z"/>' +
+            '<path d="M94 44 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z"/></g>'
+    },
+    /* 금속 광택 — 팔레트가 만든 띠 위에 날카로운 반사 두 개를 더 얹는다.
+     * 번짐 없는 또렷한 경계가 금속처럼 보이게 하는 핵심이라, 몸통 기본 하이라이트와
+     * 달리 흐린 타원 대신 각진 조각으로 그린다. */
+    gloss: {
+      post: '<path d="M40 44 q9 -9 19 -9 q-6 6 -9 14 q-8 3 -10 -5 z" fill="#ffffff" opacity=".82"/>' +
+            '<path d="M34 62 q3 -8 7 -11 q1 8 -2 14 q-5 2 -5 -3 z" fill="#ffffff" opacity=".45"/>' +
+            '<path d="M31 82 q10 10 29 11" stroke="#ffffff" stroke-width="3" fill="none" ' +
+            'stroke-linecap="round" opacity=".38"/>'
+    },
+    /* 통에 담긴 퍼티용 광택. gloss 의 좌표는 몸통 위쪽(y 35~62)을 기준으로 잡혀 있어
+     * 통 안에만 몸이 있는 jar 에 그대로 쓰면 반사가 뚜껑 위 허공에 뜬다. */
+    glossJar: {
+      post: '<path d="M36 68 q7 -6 15 -6 q-5 5 -7 10 q-7 2 -8 -4 z" fill="#ffffff" opacity=".72"/>' +
+            '<path d="M34 84 q9 7 21 8" stroke="#ffffff" stroke-width="2.6" fill="none" ' +
+            'stroke-linecap="round" opacity=".32"/>'
+    },
+    glitter: {
+      over: '<g fill="#ffffff"><circle cx="30" cy="44" r="2.4" opacity=".9"/><circle cx="93" cy="54" r="2" opacity=".85"/>' +
+            '<circle cx="80" cy="32" r="1.8" opacity=".8"/><circle cx="24" cy="72" r="1.6" opacity=".8"/></g>'
+    },
+    /* 치즈 구멍 — 얼굴을 피해 가장자리로 돌린다 */
+    cheeseHole: {
+      post: '<g fill="#d99a12" opacity=".5"><ellipse cx="32" cy="62" rx="5" ry="4"/><ellipse cx="86" cy="56" rx="6" ry="5"/>' +
+            '<ellipse cx="89" cy="80" rx="4" ry="3.4"/><ellipse cx="66" cy="88" rx="4.5" ry="3.4"/>' +
+            '<ellipse cx="38" cy="88" rx="3.4" ry="2.8"/></g>'
+    },
+    /* 곰 주둥이 — 넓고 낮게. 코와 입을 함께 들고 있다.
+     * 주둥이가 좁으면 강아지가 되고, 넓고 낮아야 느긋한 곰 얼굴이 된다. */
+    muzzle: {
+      post: '<ellipse cx="60" cy="79" rx="21" ry="13" fill="#fdf4e6" opacity=".97"/>' +
+            '<path d="M53 70 h14 a5 5 0 0 1 -7 7 a5 5 0 0 1 -7 -7 z" fill="#6b4b34"/>' +
+            '<path d="M60 77 v4 M60 81 q-5 4.5 -9 .5 M60 81 q5 4.5 9 .5" stroke="#6b4b34" ' +
+            'stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+      noMouth: true
+    },
+    bubble: {
+      over: '<circle cx="78" cy="36" r="6.5" fill="#ffffff" opacity=".85"/><circle cx="76" cy="34" r="2" fill="#ffffff"/>'
+    },
+    foam: {
+      pre: '<g fill="#ffffff" opacity=".92"><circle cx="34" cy="45" r="7"/><circle cx="46" cy="38" r="9"/>' +
+           '<circle cx="60" cy="34" r="7"/><circle cx="74" cy="39" r="8.5"/><circle cx="86" cy="46" r="6.5"/></g>',
+      over: '<g fill="#ffffff" opacity=".85"><circle cx="26" cy="86" r="6"/><circle cx="95" cy="84" r="5"/>' +
+            '<circle cx="36" cy="95" r="4.5"/><circle cx="86" cy="94" r="4"/></g>'
+    },
+    /* 버터 포장지 — stick 모양 전용. 밑으로 녹아 흐른 자국과 노란 종이에 찍힌 파란 글씨.
+     *
+     * 크림색 띠를 둘러 봤더니 그냥 라벨 붙인 상자였다. 실물 버터는 노란 종이 자체에
+     * 파란 잉크로 바로 찍혀 있어서, 글씨를 몸 위에 얹는 편이 훨씬 버터답다.
+     * 작은 칸(62px)에서는 글자가 뭉개지지만 '파란 인쇄가 있는 노란 막대' 로는 읽힌다. */
+    pat: {
+      pre: '<ellipse cx="62" cy="93" rx="38" ry="7.5" fill="#ffd84f" opacity=".6"/>',
+      post: '<g text-anchor="middle" font-family="Arial, Helvetica, sans-serif" fill="#2f5fb8">' +
+            '<text x="60" y="70" font-size="6">4oz</text>' +
+            '<text x="60" y="84" font-size="7.5" font-weight="700" letter-spacing="0.3">BUTTER</text>' +
+            '</g>' +
+            '<g stroke="#2f5fb8" stroke-linecap="round">' +
+            '<path d="M47 73.5 h26" stroke-width="1.1" opacity=".75"/>' +
+            '<path d="M52 88 h16" stroke-width="1" opacity=".4"/></g>'
+    },
+    speck: {
+      post: '<g fill="#8f6f42" opacity=".45"><circle cx="33" cy="62" r="1.8"/><circle cx="79" cy="53" r="1.6"/>' +
+            '<circle cx="89" cy="73" r="2"/><circle cx="29" cy="80" r="1.7"/><circle cx="70" cy="89" r="1.6"/>' +
+            '<circle cx="49" cy="89" r="1.4"/></g>'
+    },
+    /* 망고 꼭지와 잎 */
+    leaf: {
+      over: '<path d="M68 32 q4 -9 9 -11 q0 8 -5 13 z" fill="#8a5a30"/>' +
+            '<path d="M66 30 q-16 -12 -28 -4 q10 12 26 8 z" fill="#7ec98f" stroke="#5aa06e" ' +
+            'stroke-width="1.6" stroke-linejoin="round"/>'
+    },
+    steam: {
+      pre: '<g stroke="#cfc4e8" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".7">' +
+           '<path d="M44 34 q-5 -7 0 -13"/><path d="M60 28 q-5 -8 0 -14"/><path d="M76 34 q-5 -7 0 -13"/></g>'
+    },
+    /* 퍼티 신사 — 중절모와 콧수염 */
+    hat: {
+      /* 챙이 넓고 크라운이 낮으면 중절모가 아니라 비행접시가 된다.
+       * 챙 : 크라운 = 1.5 : 1 정도에 크라운을 높게 세워야 중절모로 읽힌다. */
+      over: '<ellipse cx="60" cy="50" rx="23" ry="6.5" fill="#2b2740"/>' +
+            '<path d="M45 50 a15 16 0 0 1 30 0 z" fill="#3a3556"/>' +
+            '<path d="M46 47 q14 6 28 0" stroke="#1f1c30" stroke-width="4.5" fill="none"/>' +
+            '<ellipse cx="53" cy="40" rx="3.6" ry="2.2" fill="#ffffff" opacity=".3" transform="rotate(-22 53 40)"/>',
+      post: '<path d="M52 84 q4 -4 8 -1 q4 -3 8 1 q-4 5 -8 2 q-4 3 -8 -2 z" fill="#2b2740"/>',
+      noMouth: true
+    }
+  };
+
+  /* --------------------------------------------------------- 성장 단계
+   *
+   * 아기 모리 → 5단계를 거쳐 9종류의 말랑이 중 하나가 된다.
+   * 1·2단계는 어느 종류든 똑같은 보라 슬라임이고, 3단계에서 정체가 드러난다.
+   *
+   * 밸런스 기준 — 한 마리를 다 키우는 데 순공 10시간 안팎.
+   * 순공 1분 = 젤리 1개, 밥 한 번에 22 경험치이므로 Lv.5(440 경험치)까지는
+   * 스무 번 남짓 먹이면 된다. 다 키우면 홈으로 보내고 새로 받으므로, 한 판이
    * 너무 길면 도감을 모으는 재미가 사라지고 너무 짧으면 키운 것 같지가 않다. */
-  var GROWN_LEVEL = 6;               // 이 레벨이 되면 다 자란 것으로 본다
+  var GROWN_LEVEL = 5;               // 이 레벨이 되면 다 자란 것으로 본다
+  var REVEAL_LEVEL = 3;              // 이 레벨부터 무슨 말랑이인지 보인다
 
   /** 그 레벨을 끝내는 데 필요한 경험치 */
-  function needFor(lv) { return 40 + (lv - 1) * 25; }
+  function needFor(lv) { return 50 + (lv - 1) * 40; }
 
   function levelOf(xp) {
     var lv = 1, rem = Math.max(0, xp);
@@ -9547,48 +11442,135 @@ body {
 
   function isGrown(d) { return levelOf(d.xp).level >= GROWN_LEVEL; }
 
-  /* 겉모습은 단계마다 달라진다 — scale 은 몸 크기, deco 는 머리 위 장식.
-   * SVG 를 통째로 갈아 끼우는 대신 값만 바꾼다. */
-  var STAGES = [
-    { min: 1, name: '아기 모리', scale: 0.78, deco: 'none',  line: '이제 막 태어난 말랑한 슬라임이에요.' },
-    { min: 2, name: '통통 모리', scale: 0.86, deco: 'leaf',  line: '밥을 잘 먹어서 제법 통통해졌어요.' },
-    { min: 3, name: '반짝 모리', scale: 0.94, deco: 'spark', line: '몸에서 반짝반짝 빛이 나기 시작했어요!' },
-    { min: 4, name: '별빛 모리', scale: 1.02, deco: 'star',  line: '머리 위에 작은 별이 앉았어요.' },
-    { min: 5, name: '왕관 모리', scale: 1.09, deco: 'crown', line: '슬라임 왕국의 왕이 되었어요.' },
-    { min: 6, name: '다 자란 모리', scale: 1.16, deco: 'halo', line: '다 자랐어요! 이제 어떤 모리가 될지 정해집니다.' }
-  ];
+  /* 1·2단계는 아홉 종류가 다 같은 얼굴이라 한 벌만 만들어 돌려 쓴다 */
+  var BABY = {
+    name: '아기 모리', form: 'blob', scale: 0.62, grad: PURPLE,
+    line: '이제 막 태어난 작은 모리예요. 무엇이 될지는 아직 아무도 몰라요.'
+  };
 
   /* ------------------------------------------------------------- 도감
-   * 다 자란 모리를 떠나보내면 이 중 하나가 되어 도감에 남고, 새 알이 온다.
-   * 무엇이 될지는 떠나보내는 순간에 정해진다 — 키우는 동안에는 아무도 모른다.
+   * 9종류의 말랑이. 다 자란 모리를 홈으로 보내면 여기 한 칸이 채워지고
+   * 새 알이 온다. 무엇이 될지는 태어날 때 정해지지만 3단계까지는 숨겨 둔다.
    *
-   * 색은 앱의 보라 축을 벗어나지 않는 선에서 고른다(초록·노랑 계열은 쓰지 않는다).
    * weight 가 뽑기 확률이고, 합이 100 이 되게 맞춰 두었다. */
   var SPECIES = [
-    { id: 'grape',   name: '포도 모리',   weight: 22, rare: '흔함',
-      grad: ['#d3c2ff', '#9b7bff', '#6d4aff'], deco: 'none',
-      line: '가장 흔하지만 가장 든든한 모리예요.' },
-    { id: 'sky',     name: '하늘 모리',   weight: 20, rare: '흔함',
-      grad: ['#c3d6ff', '#8aa6ff', '#4f6ce0'], deco: 'none',
-      line: '맑은 날 하늘을 닮았어요.' },
-    { id: 'sunset',  name: '노을 모리',   weight: 18, rare: '흔함',
-      grad: ['#ffd0e0', '#ff9ab5', '#d4506a'], deco: 'none',
-      line: '해 질 녘 하늘빛을 그대로 머금었어요.' },
-    { id: 'cloud',   name: '구름 모리',   weight: 15, rare: '흔함',
-      grad: ['#f3efff', '#dcd2ff', '#b6a6f0'], deco: 'none',
-      line: '만지면 폭신폭신할 것 같아요.' },
-    { id: 'amethyst', name: '자수정 모리', weight: 10, rare: '귀함',
-      grad: ['#e6d4ff', '#a86fe8', '#5b2ea6'], deco: 'spark',
-      line: '몸이 보석처럼 단단하게 빛나요.' },
-    { id: 'night',   name: '밤하늘 모리', weight: 8, rare: '귀함',
-      grad: ['#4a4a8f', '#2a2560', '#141033'], deco: 'star',
-      line: '몸 안에 작은 별들이 떠 있어요.' },
-    { id: 'ghost',   name: '유령 모리',   weight: 5, rare: '귀함',
-      grad: ['#ffffff', '#e4dcff', '#b9a9ee'], deco: 'none', ghost: true,
-      line: '반쯤 비쳐 보여요. 밤에만 나타난대요.' },
-    { id: 'rainbow', name: '무지개 모리', weight: 2, rare: '아주 귀함',
-      grad: ['#ffd0e0', '#c6a4ff', '#7aa2ff'], deco: 'halo', shine: true,
-      line: '아주 드물게 나타나는 전설의 모리예요.' }
+    {
+      id: 'putty', name: '퍼티 슬라임', weight: 18, rare: '흔함',
+      line: '수은처럼 번들거리는 말랑이. 하루 종일 조물조물해도 안 질려요.',
+      stages: [BABY,
+        { name: '말랑 모리',   form: 'blob', scale: 0.80, grad: PURPLE,
+          line: '밥을 잘 먹어서 제법 통통해졌어요.' },
+        { name: '쫀득 퍼티',   form: 'blob', scale: 0.94, grad: PUTTY, deco: 'gloss',
+          line: '표면이 금속처럼 번들거리기 시작했어요!' },
+        { name: '반짝 퍼티',   form: 'dome', scale: 1.06, grad: PUTTY, deco: ['gloss', 'spark'],
+          line: '빛을 받으면 거울처럼 되비쳐요.' },
+        { name: '퍼티 슬라임', form: 'jar',  scale: 1.16, grad: PUTTY, deco: ['glossJar', 'hat'],
+          line: '자기 통에 중절모까지 갖춘 완전한 신사예요.' }]
+    },
+    {
+      id: 'cheese', name: '치즈 말랑이', weight: 15, rare: '흔함',
+      line: '햇빛을 오래 쬐면 노릇하게 익는대요. 고소한 냄새가 나요.',
+      stages: [BABY,
+        { name: '동글 모리',   form: 'dome', scale: 0.80, grad: PURPLE,
+          line: '동글동글하게 자리를 잡았어요.' },
+        { name: '노릇 말랑이', form: 'dome', scale: 0.94, grad: WARMIX,
+          line: '몸 아래쪽이 노랗게 물들기 시작했어요!' },
+        { name: '치즈 말랑이', form: 'dome', scale: 1.06, grad: CHEESE,
+          line: '완전히 노란 치즈색이 됐어요.' },
+        { name: '치즈 블록',   form: 'cube', scale: 1.16, grad: CHEESE, deco: 'cheeseHole',
+          line: '구멍까지 송송 뚫린 어엿한 치즈 한 덩이!' }]
+    },
+    {
+      id: 'mango', name: '망고 말랑이', weight: 15, rare: '흔함',
+      line: '달콤한 냄새가 폴폴 나는 말랑이. 꼭지에 잎이 하나 달려 있어요.',
+      stages: [BABY,
+        { name: '통통 모리',     form: 'blob',  scale: 0.80, grad: PURPLE,
+          line: '한 손에 쏙 들어올 만큼 자랐어요.' },
+        { name: '노을빛 말랑이', form: 'mango', scale: 0.94, grad: MANGOMIX,
+          line: '몸이 해 질 녘 노을빛으로 물들었어요.' },
+        { name: '망고 말랑이',   form: 'mango', scale: 1.06, grad: MANGO,
+          line: '잘 익은 망고 색이 됐어요.' },
+        { name: '완숙 망고',     form: 'mango', scale: 1.16, grad: MANGO, deco: 'leaf',
+          line: '꼭지에 잎사귀까지 달린, 완전히 익은 망고예요.' }]
+    },
+    {
+      id: 'potato', name: '감자 말랑이', weight: 14, rare: '흔함',
+      line: '흙에서 갓 캐낸 것처럼 포슬포슬한 말랑이예요.',
+      stages: [BABY,
+        { name: '동글 모리',     form: 'dome',   scale: 0.80, grad: PURPLE,
+          line: '몸이 동글동글해졌어요.' },
+        { name: '흙빛 말랑이',   form: 'potato', scale: 0.94, grad: POTATOMIX,
+          line: '아래쪽부터 흙빛으로 물들고 있어요.' },
+        { name: '감자 말랑이',   form: 'potato', scale: 1.06, grad: POTATO,
+          line: '영락없는 감자 모양이 됐어요.' },
+        { name: '알감자',        form: 'potato', scale: 1.16, grad: POTATO, deco: 'speck',
+          line: '점점이 눈까지 박힌, 잘 여문 알감자예요.' }]
+    },
+    {
+      id: 'dumpling', name: '만두 말랑이', weight: 13, rare: '흔함',
+      line: '갓 쪄낸 것처럼 김이 폴폴 나는 말랑이예요.',
+      stages: [BABY,
+        { name: '하얀 모리',     form: 'dome', scale: 0.80, grad: DOUGH,
+          line: '색이 새하얗게 빠졌어요. 어라?' },
+        { name: '만두피 말랑이', form: 'bun',  scale: 0.94, grad: DOUGH,
+          line: '정수리에 만두 주름이 잡혔어요!' },
+        { name: '만두 말랑이',   form: 'bun',  scale: 1.06, grad: DOUGH,
+          line: '통통하게 속이 찬 만두가 됐어요.' },
+        { name: '왕만두',        form: 'bun',  scale: 1.16, grad: DOUGH, deco: 'steam',
+          line: '김이 모락모락 나는 커다란 왕만두!' }]
+    },
+    {
+      id: 'bear', name: '쿠마 말랑이', weight: 10, rare: '귀함',
+      line: '하루 종일 늘어져 있는 게 특기인 말랑이. 꼭 안으면 폭 하고 들어가요.',
+      stages: [BABY,
+        { name: '말랑 모리',       form: 'blob', scale: 0.80, grad: PURPLE,
+          line: '조금 더 자랐어요.' },
+        { name: '귀 돋은 말랑이',  form: 'bear', scale: 0.94, grad: PURPLE,
+          line: '머리 위에 큼직하고 동그란 귀가 쏙 올라왔어요!' },
+        { name: '곰 말랑이',       form: 'bear', scale: 1.06, grad: PURPLE, deco: 'muzzle',
+          line: '넓적한 주둥이와 코가 생겨 곰 얼굴이 됐어요.' },
+        { name: '쿠마 말랑이',     form: 'bear', scale: 1.16, grad: BEAR, deco: 'muzzle',
+          line: '베이지색 쿠마가 됐어요. 오늘도 늘어져 있을 참이에요.' }]
+    },
+    {
+      id: 'butter', name: '버터 말랑이', weight: 8, rare: '귀함',
+      line: '따뜻한 곳에 두면 가장자리부터 천천히 녹아내려요.',
+      stages: [BABY,
+        { name: '매끈 모리',     form: 'dome', scale: 0.80, grad: PURPLE,
+          line: '표면이 매끈하게 자랐어요.' },
+        { name: '노란 말랑이',   form: 'dome', scale: 0.94, grad: BUTTER_L,
+          line: '몸 전체가 부드러운 노란색이 됐어요.' },
+        { name: '버터 말랑이',   form: 'dome', scale: 1.06, grad: BUTTER,
+          line: '진한 버터색으로 반들반들해졌어요.' },
+        { name: '버터 스틱',     form: 'stick', scale: 1.16, grad: BUTTER, deco: 'pat',
+          line: '포장지까지 두른 버터 한 개가 됐어요. 밑이 살짝 녹고 있네요.' }]
+    },
+    {
+      id: 'soap', name: '비누 크런치 말랑이', weight: 5, rare: '귀함',
+      line: '누르면 사각사각 소리가 나는 딸기색 말랑이. 거품이 끝없이 나와요.',
+      stages: [BABY,
+        { name: '미끈 모리',         form: 'blob', scale: 0.80, grad: PURPLE,
+          line: '표면이 미끈미끈해졌어요.' },
+        { name: '거품 맺힌 말랑이',  form: 'blob', scale: 0.94, grad: SOAP, deco: 'bubble',
+          line: '분홍색으로 물들더니 머리 위에 거품이 톡 맺혔어요!' },
+        { name: '거품 말랑이',       form: 'dome', scale: 1.06, grad: SOAP, deco: 'foam',
+          line: '온몸이 폭신한 거품에 덮였어요.' },
+        { name: '비누 크런치',       form: 'cube', scale: 1.16, grad: SOAP, deco: 'foam',
+          line: '네모난 비누가 됐어요. 누르면 사각! 하고 부서져요.' }]
+    },
+    {
+      id: 'wakku', name: '와꾸볼', weight: 2, rare: '아주 귀함',
+      line: '하루가 다르게 색이 바뀌는, 아주 드물게 나타나는 전설의 말랑이예요.',
+      stages: [BABY,
+        { name: '뽀얀 모리',     form: 'dome', scale: 0.80, grad: CREAM,
+          line: '색이 뽀얗게 빠졌어요. 어라?' },
+        { name: '딸기 와꾸볼',   form: 'dome', scale: 0.94, grad: PINK,
+          line: '하룻밤 사이에 분홍색이 됐어요!' },
+        { name: '소다 와꾸볼',   form: 'dome', scale: 1.06, grad: BLUE,
+          line: '이번엔 파랑… 색이 계속 바뀌어요.' },
+        { name: '와꾸볼',        form: 'dome', scale: 1.16, grad: RAINBOW, deco: 'glitter', shine: true,
+          line: '모든 색을 한 몸에 담았어요. 전설의 와꾸볼!' }]
+    }
   ];
 
   function speciesBy(id) {
@@ -9608,16 +11590,20 @@ body {
     return SPECIES[0];
   }
 
-  function stageFor(level) {
-    var s = STAGES[0];
-    STAGES.forEach(function (x) { if (level >= x.min) s = x; });
-    return s;
+  /** 지금 키우는 종류 (저장값이 깨졌으면 첫 종류로 떨어진다) */
+  function curSpecies(d) { return speciesBy(d.sp) || SPECIES[0]; }
+
+  /** 그 종류의 N단계 모습 */
+  function stageOf(sp, level) {
+    return sp.stages[Math.min(Math.max(1, level), sp.stages.length) - 1];
   }
 
-  function nextStage(level) {
-    for (var i = 0; i < STAGES.length; i++) if (STAGES[i].min > level) return STAGES[i];
-    return null;
+  function nextStageOf(sp, level) {
+    return level < sp.stages.length ? sp.stages[level] : null;
   }
+
+  /** 다 자란 모습 — 도감과 홈에 서 있는 그림 */
+  function finalOf(sp) { return sp.stages[sp.stages.length - 1]; }
 
   /* ------------------------------------------------------------ 업그레이드 */
 
@@ -9642,10 +11628,9 @@ body {
       id: 'train', icon: '📖', name: '공부 특훈',
       desc: '순공 시간을 정산할 때 받는 젤리가 늘어납니다.',
       base: 80, mult: 1.9, max: 12,
-      effect: function (n) {
-        var mult = 1 + n * 0.25;
-        return '정산 ×' + mult.toFixed(2) + ' (순공 1시간에 ' + Math.round(60 / MIN_PER_JELLY * mult) + '개)';
-      }
+      /* 도감 보너스는 여기 섞지 않는다 — 이 카드는 이 업그레이드가 주는 몫만 말해야
+       * 다음 레벨과 견줄 수 있다. 둘을 합친 실제 배율은 '정산 배율' 칸에 있다. */
+      effect: function (n) { return '정산 ×' + (1 + n * 0.25).toFixed(2); }
     }
   ];
 
@@ -9673,8 +11658,21 @@ body {
   function offlineCapMin(d) { return (2 + d.ups.dish * 2) * 60; }
   function claimMult(d) { return 1 + d.ups.train * 0.25; }
 
-  /** 젤리 1개를 받는 데 필요한 순공 분 (업그레이드가 붙은 실제 값) */
-  function minPerJelly(d) { return MIN_PER_JELLY / claimMult(d); }
+  /* 홈에 사는 말랑이가 주는 보상.
+   *
+   * 자동 생산을 올려 주는 쪽이 아니라 '정산' 을 올려 주는 쪽으로 붙였다.
+   * 도감을 채울수록 방치가 빨라지면 결국 공부를 안 하는 게 이득이 되는데,
+   * 정산 배율에 붙이면 모을수록 공부한 시간이 더 값나가는 방향으로만 움직인다.
+   * 같은 종류를 여러 마리 보내도 오르지 않는다 — 채워야 하는 건 칸이지 마릿수가 아니다. */
+  var DEX_BONUS_PER_KIND = 0.02;     // 도감 한 칸에 정산 +2% (9종 다 모으면 +18%)
+
+  function dexBonus(d) { return 1 + dexCount(d) * DEX_BONUS_PER_KIND; }
+
+  /** 정산에 실제로 곱해지는 배율 (특훈 × 도감) */
+  function totalMult(d) { return claimMult(d) * dexBonus(d); }
+
+  /** 젤리 1개를 받는 데 필요한 순공 분 (업그레이드와 도감이 붙은 실제 값) */
+  function minPerJelly(d) { return MIN_PER_JELLY / totalMult(d); }
 
   /* ------------------------------------------------------- 배고픔·자동 생산 */
 
@@ -9693,12 +11691,12 @@ body {
    * 갑자기 부자가 되면 공부로 버는 쪽이 의미를 잃는다. */
   /* ------------------------------------------------------ 오래 안 오면 작아진다
    *
-   * 줄어드는 것은 모리의 경험치 하나뿐이다. 젤리·업그레이드·도감은 그대로 두고,
+   * 줄어드는 것은 모리의 경험치 하나뿐이다. 젤리·업그레이드·도감·홈은 그대로 두고,
    * 공부 기록은 어떤 경우에도 건드리지 않는다 — 그건 게임이 손댈 것이 아니다.
    *
    * 사흘까지는 아무 일도 없다. 시험 기간에 며칠 못 들어왔다고 벌을 주면
    * 돌아오기가 더 싫어진다. 그 뒤로 하루에 밥 한 번(22 XP)보다 조금 적게 줄어든다.
-   * 레벨이 내려가면 stageFor 가 앞 단계를 돌려주므로 모리가 실제로 작아진다. */
+   * 레벨이 내려가면 stageOf 가 앞 단계를 돌려주므로 모리가 실제로 작아진다. */
   var DECAY_GRACE_DAYS = 3;
   var DECAY_XP_PER_DAY = 20;
 
@@ -9773,67 +11771,80 @@ body {
     return Math.floor(m / 60) + '시간 ' + (m % 60) + '분';
   }
 
-  /* 그라데이션 id 는 문서 전체에서 유일해야 한다. 도감처럼 한 화면에 여러 마리를
+  /* 그라데이션 id 는 문서 전체에서 유일해야 한다. 도감·홈처럼 한 화면에 여러 마리를
    * 그릴 때 같은 id 를 쓰면 먼저 그려진 색이 나머지를 전부 덮어쓴다. */
   var svgSeq = 0;
 
-  /**
-   * 슬라임 SVG.
-   *   stage    — 크기와 머리 장식 (키우는 중)
-   *   species  — 도감 종류. 주면 몸 색과 장식을 그쪽으로 덮어쓴다.
-   */
-  function slimeSvg(stage, hungry, species) {
-    var s = stage.scale;
-    var uid = 'slB' + (++svgSeq);
-    var grad = (species && species.grad) || ['#c9b6ff', '#9b7bff', '#6d4aff'];
-    var decoKind = species ? (species.deco || 'none') : stage.deco;
-    var label = species ? species.name : stage.name;
-
-    var deco = '';
-    if (decoKind === 'leaf') {
-      deco = '<path d="M60 22 q10 -12 20 -6 q-4 12 -18 12 z" fill="#7ec98f" opacity=".9"/>' +
-        '<path d="M60 22 q-2 6 0 8" stroke="#4f8f5f" stroke-width="2" fill="none"/>';
-    } else if (decoKind === 'spark') {
-      deco = '<g fill="#ffd76a"><path d="M28 26 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z"/>' +
-        '<path d="M92 34 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z"/></g>';
-    } else if (decoKind === 'star') {
-      deco = '<path d="M60 8 l4.6 9.6 10.4 1.5 -7.5 7.4 1.8 10.5 -9.3 -5 -9.3 5 1.8 -10.5 -7.5 -7.4 10.4 -1.5 z" ' +
-        'fill="#ffd76a" stroke="#e0ae2f" stroke-width="1.5" stroke-linejoin="round"/>';
-    } else if (decoKind === 'crown') {
-      deco = '<path d="M42 30 l0 -16 10 8 8 -12 8 12 10 -8 0 16 z" fill="#ffcf5a" stroke="#dfa72c" stroke-width="2" stroke-linejoin="round"/>' +
-        '<circle cx="60" cy="22" r="2.6" fill="#ff7fa6"/>';
-    } else if (decoKind === 'halo') {
-      deco = '<ellipse cx="60" cy="18" rx="26" ry="7" fill="none" stroke="#ffd76a" stroke-width="4" opacity=".95"/>' +
-        '<g fill="#fff" opacity=".85"><circle cx="24" cy="44" r="2"/><circle cx="98" cy="52" r="2.4"/><circle cx="16" cy="70" r="1.6"/></g>';
+  /* 색 정거장을 그라데이션 stop 으로 편다.
+   * 세 개짜리는 가운데를 55% 에 둔다 — 한가운데(50%)에 두면 몸통이 납작해 보인다.
+   * 네 개 이상은 고르게 편다(무지개). */
+  function stops(grad) {
+    if (grad.length === 3) {
+      return '<stop offset="0%" stop-color="' + grad[0] + '"/>' +
+        '<stop offset="55%" stop-color="' + grad[1] + '"/>' +
+        '<stop offset="100%" stop-color="' + grad[2] + '"/>';
     }
+    return grad.map(function (c, i) {
+      return '<stop offset="' + Math.round(i / (grad.length - 1) * 100) + '%" stop-color="' + c + '"/>';
+    }).join('');
+  }
+
+  /**
+   * 말랑이 SVG. look 하나로 몸 모양·색·크기·장식이 전부 정해진다.
+   *   look = SPECIES[].stages[] 의 한 칸 { name, form, scale, grad, deco, shine }
+   */
+  function slimeSvg(look, hungry) {
+    var s = look.scale || 1;
+    var uid = 'slB' + (++svgSeq);
+    var g = 'url(#' + uid + ')';
+    var form = FORMS[look.form] || FORMS.blob;
+    var grad = look.grad || PURPLE;
+
+    // 장식은 여러 개를 겹칠 수 있다. pre 는 몸 뒤, post 는 몸 위, over 는 맨 앞.
+    var keys = !look.deco ? [] : (typeof look.deco === 'string' ? [look.deco] : look.deco);
+    var pre = form.pre || '', post = form.post || '', over = '', noMouth = false;
+    keys.forEach(function (k) {
+      var dc = DECOS[k];
+      if (!dc) return;
+      if (dc.pre) pre += dc.pre;
+      if (dc.post) post += dc.post;
+      if (dc.over) over += dc.over;
+      if (dc.noMouth) noMouth = true;
+    });
+    var paint = function (t) { return t.replace(/\{g\}/g, g); };
+
+    /* 얼굴 한가운데는 몸 한가운데(60)와 다를 수 있다 — 버터 스틱처럼 입체로 그린
+     * 모양은 앞면이 왼쪽으로 밀려 있어서, 60 에 맞추면 눈이 옆면으로 넘어간다. */
+    var fx = form.fx || 60;
+    var er = form.er || [3.4, 4.4];       // 눈 크기 (곰은 동그란 점눈)
+    var cho = form.cho == null ? 0.5 : form.cho;   // 볼터치 진하기 (0 이 올 수 있어 || 를 못 쓴다)
+    var eyeL = fx - form.ex, eyeR = fx + form.ex;
+    var face = hungry
+      ? '<path d="M' + (eyeL - 3) + ' ' + form.ey + ' q3 -5 6 0" stroke="#2b1f5e" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+        '<path d="M' + (eyeR - 3) + ' ' + form.ey + ' q3 -5 6 0" stroke="#2b1f5e" stroke-width="3" fill="none" stroke-linecap="round"/>'
+      : '<ellipse class="sl-eye" cx="' + eyeL + '" cy="' + form.ey + '" rx="' + er[0] + '" ry="' + er[1] + '" fill="#2b1f5e"/>' +
+        '<ellipse class="sl-eye" cx="' + eyeR + '" cy="' + form.ey + '" rx="' + er[0] + '" ry="' + er[1] + '" fill="#2b1f5e"/>';
 
     return '' +
-      '<svg class="sl-svg' + (species && species.shine ? ' is-shine' : '') + '" viewBox="0 0 120 110" role="img" aria-label="' + esc(label) + '">' +
+      '<svg class="sl-svg' + (look.shine ? ' is-shine' : '') + '" viewBox="0 0 120 110" role="img" aria-label="' + esc(look.name) + '">' +
       '<defs>' +
-      '<radialGradient id="' + uid + '" cx="38%" cy="30%" r="78%">' +
-      '<stop offset="0%" stop-color="' + grad[0] + '"/>' +
-      '<stop offset="55%" stop-color="' + grad[1] + '"/>' +
-      '<stop offset="100%" stop-color="' + grad[2] + '"/>' +
+      '<radialGradient id="' + uid + '" cx="38%" cy="30%" r="78%">' + stops(grad) +
       '</radialGradient>' +
       '</defs>' +
       '<ellipse class="sl-shadow" cx="60" cy="100" rx="' + (34 * s).toFixed(1) + '" ry="6"/>' +
-      deco +
       // 크기(단계)는 SVG transform 으로, 말랑거리는 움직임은 CSS transform 으로 나눠 건다.
       // 한 요소에 둘 다 걸면 애니메이션이 크기를 덮어써서 단계가 안 보인다.
       '<g transform="translate(60 96) scale(' + s.toFixed(2) + ') translate(-60 -96)">' +
-      '<g class="sl-body" style="transform-origin:60px 96px"' +
-        (species && species.ghost ? ' opacity=".62"' : '') + '>' +
-      // 몸통 — 아래는 퍼지고 위는 둥근 물방울
-      '<path d="M60 34 c20 0 34 22 34 38 c0 14 -15 22 -34 22 c-19 0 -34 -8 -34 -22 c0 -16 14 -38 34 -38 z" fill="url(#' + uid + ')"/>' +
-      '<ellipse cx="47" cy="52" rx="9" ry="6" fill="#fff" opacity=".38"/>' +
-      (hungry
-        ? '<path d="M50 66 q3 -5 6 0" stroke="#2b1f5e" stroke-width="3" fill="none" stroke-linecap="round"/>' +
-          '<path d="M64 66 q3 -5 6 0" stroke="#2b1f5e" stroke-width="3" fill="none" stroke-linecap="round"/>'
-        : '<ellipse class="sl-eye" cx="52" cy="66" rx="3.4" ry="4.4" fill="#2b1f5e"/>' +
-          '<ellipse class="sl-eye" cx="68" cy="66" rx="3.4" ry="4.4" fill="#2b1f5e"/>') +
-      '<ellipse cx="43" cy="74" rx="5" ry="3" fill="#ff9dbb" opacity=".55"/>' +
-      '<ellipse cx="77" cy="74" rx="5" ry="3" fill="#ff9dbb" opacity=".55"/>' +
-      '<path d="M55 74 q5 5 10 0" stroke="#2b1f5e" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+      '<g class="sl-body" style="transform-origin:60px 96px">' +
+      paint(pre) +
+      '<path d="' + form.d + '" fill="' + g + '"/>' +
+      '<ellipse cx="' + form.sh[0] + '" cy="' + form.sh[1] + '" rx="' + form.sh[2] + '" ry="' + form.sh[3] + '" fill="#fff" opacity=".36"/>' +
+      face +
+      '<ellipse cx="' + (fx - form.chx) + '" cy="' + form.chy + '" rx="5" ry="3" fill="#ff9dbb" opacity="' + cho + '"/>' +
+      '<ellipse cx="' + (fx + form.chx) + '" cy="' + form.chy + '" rx="5" ry="3" fill="#ff9dbb" opacity="' + cho + '"/>' +
+      (noMouth ? '' : '<path d="M' + (fx - 5) + ' ' + form.my + ' q5 5 10 0" stroke="#2b1f5e" stroke-width="2.4" fill="none" stroke-linecap="round"/>') +
+      paint(post) +
+      paint(over) +
       '</g></g></svg>';
   }
 
@@ -9843,11 +11854,14 @@ body {
     save(d);
 
     var lv = levelOf(d.xp);
-    var stage = stageFor(lv.level);
-    var nx = nextStage(lv.level);
-    var mood = moodOf(d);
-    var pend = pendingMin(d);
-    return { d: d, lv: lv, stage: stage, next: nx, mood: mood, pend: pend };
+    var sp = curSpecies(d);
+    return {
+      d: d, lv: lv, sp: sp,
+      look: stageOf(sp, lv.level),
+      next: nextStageOf(sp, lv.level),
+      mood: moodOf(d),
+      pend: pendingMin(d)
+    };
   }
 
   /* ------------------------------------------------------- 응원 말풍선
@@ -9873,23 +11887,25 @@ body {
 
   function cheerFor(d) {
     if (isHungry(d)) return '배고파요… 밥 주세요!';
-    if (isGrown(d)) return '다 자랐어요! 이제 떠날 준비가 됐어요.';
+    if (isGrown(d)) return '다 자랐어요! 이제 홈으로 갈 준비가 됐어요.';
+    if (levelOf(d.xp).level === REVEAL_LEVEL - 1) return '뭔가 될 것 같은 기분이에요… 한 번만 더 먹여 주세요!';
     // 1분 공부하자마자 조르지 않도록 최소 25분은 쌓인 뒤에 말한다
     if (pendingMin(d) >= Math.max(25, minPerJelly(d))) return '공부한 시간이 쌓였어요. 정산해 주세요!';
     var i = Math.floor(Date.now() / CHEER_MS) % CHEERS.length;
     return CHEERS[i];
   }
 
-  /* --------------------------------------------------------- 떠나보내기
-   * 다 자란 모리는 어떤 종류가 될지 정해져 도감에 남고, 자리에는 새 알이 온다.
+  /* --------------------------------------------------------- 홈으로 보내기
+   * 다 자란 모리는 말랑이가 되어 홈에서 살고 도감에 한 칸을 채운다.
    * 자동으로 하지 않고 버튼으로 두는 이유 — 애써 키운 걸 묻지도 않고 치워 버리면
    * 보상이 아니라 상실이 된다. 언제 보낼지는 키운 사람이 정한다. */
-  function graduate() {
+  function sendToHome() {
     var d = load();
     accrue(d);
     if (!isGrown(d)) { save(d); return null; }
 
-    var sp = rollSpecies();
+    var sp = curSpecies(d);
+    var isNew = !d.dex[sp.id];   // 도감에 처음 들어오는 종류인가
     d.dex[sp.id] = (d.dex[sp.id] || 0) + 1;
     d.raised = (d.raised || 0) + 1;
 
@@ -9897,16 +11913,58 @@ body {
     // 그건 모리가 아니라 키우는 사람이 쌓은 것이다.
     d.xp = 0;
     d.fed = 0;
+    d.sp = rollSpecies().id;      // 다음 아이가 될 종류는 지금 새로 뽑는다
     d.fedAt = Date.now();
     d.born = Date.now();
     save(d);
-    return sp;
+    return { sp: sp, fresh: isNew };
   }
 
   function dexCount(d) {
     var got = 0;
     SPECIES.forEach(function (s) { if (d.dex[s.id]) got++; });
     return got;
+  }
+
+  /** 홈에 사는 말랑이들 — 도감에 담긴 마릿수만큼 한 마리씩 늘어놓는다 */
+  function residents(d) {
+    var out = [];
+    SPECIES.forEach(function (sp) {
+      var n = d.dex[sp.id] || 0;
+      for (var i = 0; i < n; i++) out.push(sp);
+    });
+    return out;
+  }
+
+  var ROOM_MAX = 24;   // 이보다 많으면 나머지는 숫자로 접는다 (홈이 화면을 다 먹지 않게)
+
+  function homeHtml(d) {
+    var res = residents(d);
+    var kinds = dexCount(d);
+    var shown = res.slice(0, ROOM_MAX);
+    var rest = res.length - shown.length;
+
+    return '' +
+      '<div class="sl-home">' +
+        '<div class="sl-dex-head"><b>🏠 말랑이 홈</b>' +
+          '<span>' + (res.length ? res.length + '마리가 살고 있어요 · ' : '') +
+            '도감 ' + kinds + ' / ' + SPECIES.length + ' 종' +
+            (kinds ? ' · 정산 +' + Math.round(kinds * DEX_BONUS_PER_KIND * 100) + '%' : '') +
+          '</span></div>' +
+        (res.length
+          ? '<div class="sl-room">' +
+              shown.map(function (sp) {
+                return '<button type="button" class="sh-one" data-sp="' + sp.id + '" ' +
+                  'title="' + esc(sp.name) + '" aria-label="' + esc(sp.name) + '">' +
+                  slimeSvg(finalOf(sp), false) + '</button>';
+              }).join('') +
+              (rest > 0 ? '<span class="sh-more">외 ' + rest + '마리</span>' : '') +
+            '</div>'
+          : '<p class="sl-room-empty">아직 아무도 살지 않아요.<br>' +
+            '모리를 5단계까지 키워 홈으로 보내면 여기서 함께 지내요.</p>') +
+        '<p class="tiny sl-home-cap">도감을 한 칸 채울 때마다 <b>정산이 2% 씩 빨라져요</b>. ' +
+          '같은 종류를 또 보내도 홈 식구는 늘지만 보너스는 오르지 않아요.</p>' +
+      '</div>';
   }
 
   function render() {
@@ -9917,23 +11975,28 @@ body {
     var today = todayKey();
     var patsLeft = d.patDay === today ? Math.max(0, MAX_PAT_PER_DAY - d.patCount) : MAX_PAT_PER_DAY;
     var feedCost = feedCostOf(d);
-
     var grown = isGrown(d);
+    var known = v.lv.level >= REVEAL_LEVEL;   // 3단계부터 무슨 말랑이인지 드러난다
 
     root.innerHTML =
       '<div class="sl-main">' +
         '<div class="sl-stage">' +
           '<p class="sl-bubble" id="slBubble">' + esc(cheerFor(d)) + '</p>' +
           '<button type="button" class="sl-tap' + (patsLeft ? '' : ' is-spent') + '" id="slTap" ' +
-            'aria-label="모리 쓰다듬기">' + slimeSvg(v.stage, hungry) + '</button>' +
-          '<div class="sl-name"><b>' + esc(v.stage.name) + '</b><span>Lv.' + v.lv.level + '</span></div>' +
-          '<p class="sl-line">' + esc(hungry ? v.mood.line : v.stage.line) + '</p>' +
+            'aria-label="모리 쓰다듬기">' + slimeSvg(v.look, hungry) + '</button>' +
+          '<div class="sl-name"><b>' + esc(v.look.name) + '</b><span>Lv.' + v.lv.level + ' / ' + GROWN_LEVEL + '</span></div>' +
+          '<p class="sl-line">' + esc(hungry ? v.mood.line : v.look.line) + '</p>' +
           (grown
-            ? '<button type="button" class="btn primary sl-grad" id="slGrad">🎓 떠나보내고 도감에 남기기</button>' +
-              '<p class="tiny sl-xp-cap">어떤 모리가 될지는 보내는 순간 정해져요. 새 알이 곧바로 옵니다.</p>'
+            ? '<button type="button" class="btn primary sl-grad" id="slSend">🏠 홈으로 보내고 도감에 남기기</button>' +
+              '<p class="tiny sl-xp-cap">홈에서 다른 말랑이들과 함께 지내게 돼요. 새 알이 곧바로 옵니다.</p>'
             : '<div class="sl-xp"><span style="width:' + Math.round(v.lv.inLevel / v.lv.need * 100) + '%"></span></div>' +
               '<p class="tiny sl-xp-cap">경험치 ' + v.lv.inLevel + ' / ' + v.lv.need +
-                (v.next ? ' · Lv.' + v.next.min + ' 에 <b>' + esc(v.next.name) + '</b> 로 자라요' : '') + '</p>') +
+                (v.next
+                  ? ' · Lv.' + (v.lv.level + 1) + ' 에 ' +
+                    (known || v.lv.level + 1 < REVEAL_LEVEL
+                      ? '<b>' + esc(v.next.name) + '</b> 로 자라요'
+                      : '<b>정체가 드러나요</b> 👀')
+                  : '') + '</p>') +
         '</div>' +
 
         '<div class="sl-side">' +
@@ -9941,7 +12004,7 @@ body {
             '<div class="sl-fact"><span>기분</span><b>' + v.mood.emoji + ' ' + esc(v.mood.label) + '</b></div>' +
             '<div class="sl-fact"><span>자동 생산</span><b>' +
               (farmRate(d) > 0 ? (farmRate(d) * (hungry ? 0.5 : 1)).toFixed(1) + ' /분' : '없음') + '</b></div>' +
-            '<div class="sl-fact"><span>정산 배율</span><b>×' + claimMult(d).toFixed(2) + '</b></div>' +
+            '<div class="sl-fact"><span>정산 배율</span><b>×' + totalMult(d).toFixed(2) + '</b></div>' +
             '<div class="sl-fact"><span>밥 먹인 횟수</span><b>' + d.fed + '회</b></div>' +
           '</div>' +
 
@@ -9953,7 +12016,7 @@ body {
           /* 분 단위로 적으면 '공부 특훈' 을 올릴수록 0분에 수렴해 뜻이 사라진다.
            * 시간당 개수로 적으면 어느 속도에서든 그대로 읽힌다. */
           '<p class="tiny sl-claim-cap">타이머로 잰 <b>순공 1시간이 젤리 ' +
-            Math.round(60 / minPerJelly(d)) + '개</b>입니다. ‘공부 특훈’ 을 올리면 더 늘어나요.</p>' +
+            Math.round(60 / minPerJelly(d)) + '개</b>입니다. ‘공부 특훈’ 과 도감을 채우면 더 늘어나요.</p>' +
 
           '<div class="sl-acts">' +
             '<button type="button" class="btn sl-feed" id="slFeed"' + (d.jelly >= feedCost ? '' : ' disabled') + '>' +
@@ -9982,16 +12045,19 @@ body {
         }).join('') +
       '</div>' +
 
+      /* 홈 — 다 키워 보낸 말랑이들이 실제로 모여 있는 자리 */
+      homeHtml(d) +
+
       /* 도감 — 아직 못 만난 종류는 실루엣으로만 보여 준다.
        * 무엇이 남았는지는 알려 주되 어떻게 생겼는지는 만나서 알게 한다. */
       '<div class="sl-dex">' +
-        '<div class="sl-dex-head"><b>📖 모리 도감</b>' +
+        '<div class="sl-dex-head"><b>📖 말랑이 도감</b>' +
           '<span>' + dexCount(d) + ' / ' + SPECIES.length + ' 종 · 지금까지 ' + (d.raised || 0) + '마리</span></div>' +
         '<div class="sl-dex-grid">' +
           SPECIES.map(function (sp) {
             var n = d.dex[sp.id] || 0;
             var fig = n
-              ? slimeSvg({ scale: 0.95, deco: sp.deco, name: sp.name }, false, sp)
+              ? slimeSvg(finalOf(sp), false)
               : '<span class="sd-unknown" aria-hidden="true">?</span>';
             return '<div class="sd-cell' + (n ? ' got' : '') + '"' +
               (n ? ' title="' + esc(sp.line) + '"' : '') + '>' +
@@ -10009,10 +12075,14 @@ body {
     if (claim) claim.addEventListener('click', claim1);
     var feed = document.getElementById('slFeed');
     if (feed) feed.addEventListener('click', feed1);
-    var grad = document.getElementById('slGrad');
-    if (grad) grad.addEventListener('click', sendOff);
+    var send = document.getElementById('slSend');
+    if (send) send.addEventListener('click', sendOff);
     Array.prototype.forEach.call(root.querySelectorAll('.su-buy'), function (b) {
       b.addEventListener('click', function () { buy(b.dataset.up); });
+    });
+    // 홈 식구를 누르면 한마디 한다 — 모아 둔 게 장식이 아니라 살아 있게
+    Array.prototype.forEach.call(root.querySelectorAll('.sh-one'), function (b) {
+      b.addEventListener('click', function () { greet(b); });
     });
 
     paintJelly(d.jelly);
@@ -10058,13 +12128,22 @@ body {
     d.xp += 1;
     save(d);
 
-    var el = root && root.querySelector('.sl-body');
+    var el = root && root.querySelector('.sl-stage .sl-body');
     if (el) { el.classList.remove('is-boing'); void el.offsetWidth; el.classList.add('is-boing'); }
     popText('+' + got);
     paintJelly(d.jelly);
     // 남은 횟수·경험치 막대도 따라가야 하므로 다시 그린다 (튐 방지용으로 살짝 미룬다)
     clearTimeout(pat._t);
     pat._t = setTimeout(render, 420);
+  }
+
+  /** 홈에 사는 말랑이를 눌렀을 때 — 튕기고 한마디 */
+  function greet(btn) {
+    var sp = speciesBy(btn.dataset.sp);
+    if (!sp) return;
+    var el = btn.querySelector('.sl-body');
+    if (el) { el.classList.remove('is-boing'); void el.offsetWidth; el.classList.add('is-boing'); }
+    toast(sp.name + ' — ' + sp.line);
   }
 
   function popText(txt) {
@@ -10109,6 +12188,7 @@ body {
     accrue(d);
     var cost = feedCostOf(d);
     if (d.jelly < cost) { toast('젤리가 모자라요. 공부 시간을 정산해 보세요.', true); save(d); return; }
+    var sp = curSpecies(d);
     var before = levelOf(d.xp).level;
     d.jelly -= cost;
     d.fed++;
@@ -10119,26 +12199,32 @@ body {
     render();
     popText('🍮');
     if (after > before) {
-      var st = stageFor(after), prev = stageFor(before);
-      if (st.name !== prev.name) toast('모리가 ' + st.name + ' 로 자랐어요! 🎉', 'party');
-      else toast('레벨 ' + after + ' 이 됐어요!', 'party');
+      // 정체가 드러나는 3단계는 따로 알려 준다 — 이 게임에서 제일 재미있는 순간이다
+      if (before < REVEAL_LEVEL && after >= REVEAL_LEVEL) {
+        toast('정체가 드러났어요! ' + sp.name + ' 가 되고 있어요 ✨ — ' + sp.rare, 'party');
+      } else if (after >= GROWN_LEVEL) {
+        toast(sp.name + ' 로 다 자랐어요! 홈으로 보내 도감에 남겨 보세요 🎉', 'party');
+      } else {
+        toast('모리가 ' + stageOf(sp, after).name + ' 로 자랐어요! 🎉', 'party');
+      }
     } else {
       toast('모리가 맛있게 먹었어요.');
     }
   }
 
-  /** 다 자란 모리를 떠나보내고 도감에 남긴다 */
+  /** 다 자란 모리를 홈으로 보내고 도감에 남긴다 */
   function sendOff() {
     var d = load();
     if (!isGrown(d)) { toast('아직 다 자라지 않았어요.', true); return; }
-    if (!confirm('다 자란 모리를 떠나보낼까요?\n\n어떤 종류가 될지 지금 정해져 도감에 남고,\n자리에는 새 알이 옵니다. 젤리와 업그레이드는 그대로예요.')) return;
+    var sp = curSpecies(d);
+    if (!confirm('다 자란 ' + sp.name + ' 를 홈으로 보낼까요?\n\n홈에서 다른 말랑이들과 함께 지내고 도감에 남습니다.\n자리에는 새 알이 오고, 젤리와 업그레이드는 그대로예요.')) return;
 
-    var sp = graduate();
-    if (!sp) return;
+    var got = sendToHome();
+    if (!got) return;
     render();
-    popText('🎓');
-    var again = (load().dex[sp.id] || 0) > 1;
-    toast(sp.name + (again ? ' 이(가) 또 나왔어요!' : ' 이(가) 도감에 새로 들어왔어요!') + ' — ' + sp.rare, 'party');
+    popText('🏠');
+    toast(got.sp.name + (got.fresh ? ' 이(가) 도감에 새로 들어왔어요!' : ' 이(가) 홈에 한 마리 더 늘었어요!') +
+      ' — ' + got.sp.rare, 'party');
   }
 
   function buy(id) {
@@ -10182,7 +12268,7 @@ body {
     var d = load();
     var lv = levelOf(d.xp);
     return {
-      jelly: Math.floor(d.jelly), level: lv.level, stage: stageFor(lv.level).name,
+      jelly: Math.floor(d.jelly), level: lv.level, stage: stageOf(curSpecies(d), lv.level).name,
       pending: Math.round(pendingMin(d)), grown: isGrown(d),
       dex: dexCount(d), dexTotal: SPECIES.length, raised: d.raised || 0
     };
@@ -10211,8 +12297,7 @@ body {
    * 레벨이 오르면 프로필 사진도 같이 자란다. */
   function faceSvg() {
     var d = load();
-    var stage = stageFor(levelOf(d.xp).level);
-    return slimeSvg(stage, isHungry(d));
+    return slimeSvg(stageOf(curSpecies(d), levelOf(d.xp).level), isHungry(d));
   }
 
   global.Slime = {
@@ -10560,12 +12645,14 @@ body {
     // 들어올 때마다 최신 값으로 다시 그린다
     if (id === 'secHome') { renderHome(); Slime.open($('slimeRoot')); }
     else Slime.stop();   // 홈을 떠나면 자동 생산 타이머를 멈춘다 (기록은 시각으로 남는다)
-    if (id === 'secLeague') { renderLeague(); leagueSync(false); }
+    if (id === 'secLeague') { renderLeague(); leagueSync(false); pinRefresh(); }
     if (id === 'secToday') renderTodayHome();
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
     if (id === 'secAvatar') openAvatarPage();
     // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
     if (id === 'secSettings') renderSettingsPage();
+    // 시간이 흐르면 "아직 / 지남" 이 바뀐다 — 들어올 때마다 다시 판단한다
+    if (id === 'secInput') renderMealSched();
     // 같은 반 명단은 서버에서 오므로, 들어올 때마다 다시 받아 온다
     if (id === 'secGroup') renderGroup();
     // 타이머에서 막 기록한 짧은 구간도 즉시 보이도록 진입할 때 다시 집계한다
@@ -10738,6 +12825,9 @@ body {
         dinner: $('mealDinner').checked
       },
       hoursSinceMeal: parseFloat($('hoursSinceMeal').value),
+      /* 끼니를 언제 먹기로 했는지는 계획표가 정한다 — 표준 시각을 박아 두면
+       * 아침 8시에 점심을 안 먹었다고 감점되는 일이 생긴다. */
+      mealPlan: MealPlan.engineInput(),
       water: parseInt($('water').value, 10),
       caffeine: parseInt($('caffeine').value, 10),
       exercise: parseInt($('exercise').value, 10),
@@ -12415,6 +14505,255 @@ body {
     });
   }
 
+  /* ================================================ 식사 시간 알리미 ==
+   *
+   * 시각의 출처는 meals.js 한 곳뿐이다. 알림도, 준비도 채점도 같은 값을 본다.
+   * 두 곳에서 따로 시각을 정하면 "알림은 12시에 왔는데 12시 반에 결식 처리" 같은
+   * 앞뒤가 안 맞는 화면이 나온다. */
+
+  var MEAL_BOX = { breakfast: 'mealBreakfast', lunch: 'mealLunch', dinner: 'mealDinner' };
+
+  function mealEaten(id) {
+    var el = $(MEAL_BOX[id]);
+    return !!(el && el.checked);
+  }
+
+  var MEAL_SOURCE_TXT = {
+    plan: '계획표',
+    'plan-other': '계획표(다른 요일)',
+    manual: '직접 지정',
+    unplanned: '계획표에 없음',
+    'default': '표준 시각'
+  };
+
+  /** [입력] 화면에 "무엇을 기준으로 채점하는가" 를 그대로 펼쳐 놓는다 */
+  function renderMealSched() {
+    var box = $('mealSched');
+    if (!box) return;
+
+    var sc = MealPlan.schedule();
+    var now = new Date();
+    var nowH = now.getHours() + now.getMinutes() / 60;
+    var grace = BrainEngine.MEAL_GRACE;
+
+    var chips = sc.meals.map(function (m) {
+      var eaten = mealEaten(m.id);
+      var cls, tail;
+      if (!m.counts) { cls = 'off'; tail = '안 먹는 끼니'; }
+      else if (eaten) { cls = 'done'; tail = '먹음'; }
+      else if (nowH >= m.hour + grace) { cls = 'miss'; tail = '지남'; }
+      else if (m.hour - nowH <= 1) { cls = 'soon'; tail = '곧'; }
+      else { cls = ''; tail = '아직'; }
+
+      return '<span class="ms-chip ' + cls + '">' + m.icon + ' ' + esc(m.label) +
+        ' ' + MealPlan.fmtHour(m.hour) + ' <i>' + tail + '</i></span>';
+    }).join('');
+
+    var why;
+    if (!sc.hasPlan) {
+      why = '계획표가 아직 비어 있어 <b>표준 시각</b>으로 채점합니다. ' +
+        '<b>계획표</b>에 식사 시간을 넣으면 그 시각을 기준으로 바뀌고, 알림도 받을 수 있습니다.';
+    } else if (!sc.planHasMeal) {
+      why = '계획표에 식사 칸이 없어 <b>표준 시각</b>으로 채점합니다. ' +
+        '계획표에 <b>아침식사 · 점심식사 · 저녁식사</b>처럼 적어 두면 그 시각을 씁니다.';
+    } else {
+      why = '<b>계획표</b>에서 읽은 시각입니다. 아직 시간이 안 된 끼니는 <b>점수에 반영하지 않고</b>, ' +
+        '계획표에 없는 끼니는 결식으로 세지 않습니다.';
+    }
+
+    var nx = MealPlan.next();
+    if (nx && !nx.tomorrow) {
+      why += ' 다음 끼니는 <b>' + esc(nx.meal.label) + ' ' + MealPlan.fmtHour(nx.meal.hour) +
+        '</b> (' + fmtDur(Math.round(nx.inHours * 60)) + ' 뒤).';
+    }
+
+    box.innerHTML = '<div class="ms-row">' + chips + '</div><p class="ms-why">' + why + '</p>';
+  }
+
+  /* ------------------------------------------------------------- 배너 */
+
+  var mealBanner = null;   // 지금 배너에 떠 있는 끼니
+
+  function hideMealBanner() {
+    var el = $('mealAlarm');
+    if (!el) return;
+    el.classList.remove('show');
+    setTimeout(function () { if (!mealBanner) el.classList.add('is-hidden'); }, 300);
+    mealBanner = null;
+  }
+
+  function showMealBanner(meal, info) {
+    var el = $('mealAlarm');
+    if (!el) return;
+    mealBanner = meal;
+
+    var lead = info.leadMin ? info.leadMin + '분 뒤 ' : '';
+    $('maBnIcon').textContent = meal.icon;
+    $('maBnTitle').textContent = lead
+      ? lead + meal.label + ' 식사 시간이에요'
+      : meal.label + ' 먹을 시간이에요';
+    $('maBnSub').textContent = MealPlan.fmtHour(meal.hour) + ' · ' +
+      (MEAL_SOURCE_TXT[meal.source] || '계획표') + ' 기준';
+
+    el.classList.remove('is-hidden');
+    /* 리플로우를 강제해야 트랜지션이 실제로 돈다.
+     * requestAnimationFrame 은 화면이 가려져 있으면 아예 불리지 않아,
+     * 배경 탭에서 알림이 뜬 경우 배너가 투명한 채로 남는다. */
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  function fireMealAlarm(meal, info) {
+    /* 토스트는 쓰지 않는다 — 배너와 같은 자리(화면 아래 가운데)에 떠서 서로 가린다.
+     * 배너는 스스로 사라지지 않으므로 [먹었어요] 를 누를 시간도 준다. */
+    showMealBanner(meal, info);
+
+    notify(meal.icon + ' ' + meal.label + ' 식사 시간 (' + MealPlan.fmtHour(meal.hour) + ')',
+      '먹고 나면 [입력] 화면에서 체크해 주세요. 학습 준비도에 함께 반영됩니다.');
+    if (info.sound) { try { Pomodoro.beep('break'); } catch (e) { /* 소리는 없어도 그만 */ } }
+  }
+
+  /** 배너의 [먹었어요] — 체크까지 해 줘야 준비도가 실제로 달라진다 */
+  function markMealEaten(meal) {
+    var box = $(MEAL_BOX[meal.id]);
+    if (box && !box.checked) {
+      box.checked = true;
+      // change 를 직접 쏴서 급식 안내·기준표가 같이 다시 그려지게 한다
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    var sinceEl = $('hoursSinceMeal');
+    if (sinceEl) { sinceEl.value = 0; sinceEl.dispatchEvent(new Event('input')); }
+
+    var saved = Store.loadInput();
+    if (saved && saved.meals) {
+      saved.meals[meal.id] = true;
+      saved.hoursSinceMeal = 0;
+      Store.saveInput(saved);
+    }
+
+    hideMealBanner();
+    toast(meal.label + ' 먹은 것으로 기록했어요. 다시 분석하면 준비도에 반영됩니다.');
+  }
+
+  /* ------------------------------------------------------------- 설정 */
+
+  function renderMealAlarmRows() {
+    var wrap = $('maRows');
+    if (!wrap) return;
+    var s = MealPlan.settings();
+    var sc = MealPlan.schedule();
+
+    wrap.innerHTML = sc.meals.map(function (m) {
+      var manual = s.times[m.id] || '';
+      var sub = MEAL_SOURCE_TXT[m.source] || '';
+      if (!m.alarmable) sub += ' — 시각을 직접 넣으면 알려 드립니다';
+      return '<div class="ma-row' + (m.on && m.alarmable ? '' : ' is-off') + '" data-meal="' + m.id + '">' +
+        '<span class="ma-ic" aria-hidden="true">' + m.icon + '</span>' +
+        '<span class="ma-name"><b>' + esc(m.label) + ' ' + MealPlan.fmtHour(m.hour) + '</b>' +
+        '<span>' + esc(sub) + '</span></span>' +
+        '<input type="time" class="input ma-time" value="' + esc(manual) + '" ' +
+        'aria-label="' + esc(m.label) + ' 시각 직접 지정 (비우면 계획표를 따릅니다)">' +
+        '<label class="toggle"><input type="checkbox" class="ma-en"' + (m.on ? ' checked' : '') +
+        ' aria-label="' + esc(m.label) + ' 알림 사용"><span>알림</span></label>' +
+        '</div>';
+    }).join('');
+
+    $$('.ma-row', wrap).forEach(function (row) {
+      var id = row.dataset.meal;
+      row.querySelector('.ma-time').addEventListener('change', function () {
+        var v = this.value;
+        // 못 읽는 값은 저장하지 않는다 — 비우면 다시 계획표를 따라간다
+        if (v && MealPlan.parseHM(v) === null) { this.value = ''; v = ''; }
+        var patch = { times: {} }; patch.times[id] = v;
+        MealPlan.patch(patch);
+        renderMealAlarmRows(); renderMealAlarmStatus(); renderMealSched();
+      });
+      row.querySelector('.ma-en').addEventListener('change', function () {
+        var patch = { enabled: {} }; patch.enabled[id] = this.checked;
+        MealPlan.patch(patch);
+        renderMealAlarmRows(); renderMealAlarmStatus();
+      });
+    });
+  }
+
+  function renderMealAlarmStatus() {
+    var el = $('maStatus');
+    if (!el) return;
+    var s = MealPlan.settings();
+    var sc = MealPlan.schedule();
+
+    var live = sc.meals.filter(function (m) { return m.alarmable && m.on; });
+    var msgs = [];
+
+    if (!s.on) msgs.push('알리미가 꺼져 있습니다.');
+    else if (!live.length) {
+      msgs.push('알릴 끼니가 없습니다 — 계획표에 식사 시간을 넣거나 위에서 시각을 직접 지정하세요.');
+    } else {
+      var nx = MealPlan.next();
+      msgs.push('다음 알림: ' + live.map(function (m) { return m.label + ' ' + MealPlan.fmtHour(m.hour); }).join(' · ') +
+        (nx ? ' (가장 가까운 끼니 ' + fmtDur(Math.round(nx.inHours * 60)) + ' 뒤)' : ''));
+    }
+
+    var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    if (perm === 'granted') msgs.push('브라우저 알림 허용됨 — 다른 탭을 보고 있어도 뜹니다.');
+    else if (perm === 'denied') msgs.push('브라우저 알림이 차단돼 있습니다. 앱 화면 안에서만 알려 드립니다.');
+    else if (perm === 'default') msgs.push('브라우저 알림을 허용하면 다른 탭에서도 받을 수 있습니다.');
+
+    el.className = 'neis-status show' + (s.on && !live.length ? ' err' : '');
+    el.textContent = msgs.join(' ');
+  }
+
+  function renderMealAlarmSettings() {
+    var s = MealPlan.settings();
+    if (!$('maOn')) return;
+    $('maOn').checked = s.on;
+    $('maLead').value = String(s.leadMin);
+    $('maSound').checked = s.sound;
+    $('maBody').classList.toggle('is-off', !s.on);
+    renderMealAlarmRows();
+    renderMealAlarmStatus();
+  }
+
+  function initMealAlarm() {
+    if (!$('maOn')) return;
+
+    $('maOn').addEventListener('change', function () {
+      MealPlan.patch({ on: this.checked });
+      renderMealAlarmSettings();
+    });
+    $('maLead').addEventListener('change', function () {
+      MealPlan.patch({ leadMin: parseInt(this.value, 10) || 0 });
+      renderMealAlarmStatus();
+    });
+    $('maSound').addEventListener('change', function () {
+      MealPlan.patch({ sound: this.checked });
+    });
+    $('maPerm').addEventListener('click', function () {
+      if (!('Notification' in window)) { toast('이 브라우저는 알림을 지원하지 않습니다.', true); return; }
+      // 권한 요청은 사용자가 직접 누른 시점에만 — 자동 요청은 대부분 거절당한다
+      Notification.requestPermission().then(function () { renderMealAlarmStatus(); });
+    });
+    $('maGoPlan').addEventListener('click', function () { goPage('secVacPlan'); });
+    $('maTest').addEventListener('click', function () {
+      var sc = MealPlan.schedule();
+      var nx = MealPlan.next();
+      var meal = (nx && nx.meal) || sc.meals[0];
+      fireMealAlarm(meal, { leadMin: 0, sound: MealPlan.settings().sound });
+    });
+
+    $('maBnAte').addEventListener('click', function () { if (mealBanner) markMealEaten(mealBanner); });
+    $('maBnLater').addEventListener('click', hideMealBanner);
+    $('maBnClose').addEventListener('click', hideMealBanner);
+
+    MealPlan.start({ isEaten: mealEaten, onFire: fireMealAlarm });
+
+    /* 화면을 오래 가려 두면 브라우저가 타이머를 늦춘다.
+     * 돌아온 순간 한 번 더 확인해서 지난 끼니를 놓치지 않게 한다. */
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) { MealPlan.check(); renderMealSched(); }
+    });
+  }
+
   /* ============================================================== 홈 ==
    * 앱을 열면 처음 보이는 화면. 새로 계산하는 값은 없고, 다른 화면이 이미
    * 갖고 있는 숫자(뇌 컨디션 · 순공 시간 · 등수)를 모아 보여 주기만 한다. */
@@ -13123,6 +15462,7 @@ body {
       subtitle: '여름방학',
       title: nick ? nick + '의 계획표' : '나의 계획표',
       titleAuto: true,   // 사용자가 제목을 직접 고치면 false 가 된다
+      mode: 'term',      // 'term' 학기 중 · 'vacation' 방학
       font: 'sans',
       palette: VP_PALETTES[0].id,
       color: VP_PALETTES[0].head,
@@ -13140,6 +15480,7 @@ body {
       if (!m || !m.rows || !m.days || !m.rows.length || !m.days.length) return vpDefaultModel();
       // 옛 저장본에는 없던 항목들을 채워 준다
       if (typeof m.subtitle !== 'string') m.subtitle = '';
+      if (m.mode !== 'term' && m.mode !== 'vacation') m.mode = 'term';
       if (!m.colors || typeof m.colors !== 'object') m.colors = {};
       if (!VP_PALETTES.some(function (p) { return p.id === m.palette; })) m.palette = VP_PALETTES[0].id;
       // 목록에서 사라진 글씨체를 저장해 뒀다면 기본값으로 되돌린다
@@ -13252,6 +15593,10 @@ body {
     return rects;
   }
 
+  /* 칸을 한 글자 칠 때마다 불린다 — 여기서 다른 화면까지 다시 그리지 않는다.
+   * 식사 시각을 쓰는 쪽은 모두 저장소를 그때그때 다시 읽으므로 자동으로 따라온다.
+   *   알리미      — 30초마다 MealPlan.check() 가 새로 읽는다
+   *   입력·설정   — goPage 가 들어갈 때 다시 그린다 */
   function vpSave() {
     try { localStorage.setItem(VP_KEY, JSON.stringify(state.vacplan)); } catch (e) { /* 무시 */ }
   }
@@ -13742,9 +16087,127 @@ body {
       '시간 공부마다 1시간 휴식</b>으로 배치합니다. ' + p.why + '.';
   }
 
-  /** 기상·취침·식사·학원 시간을 입력받아 시간표 칸을 자동으로 채운다.
+  /* ------------------------------------------------- 학기 중 / 방학 모드
+   *
+   * 두 모드는 하루의 뼈대가 다르다. 학기 중에는 낮이 통째로 학교에 묶여 있어
+   * 실제로 배분할 수 있는 시간은 등교 전·하교 후·주말뿐이다. 이걸 구분하지 않으면
+   * 학기 중에 쓰는 사람에게 "평일 오전 10시에 수학 2시간" 같은 계획표가 나온다. */
+
+  function vpAiMode() {
+    var el = $('vpAiMode');
+    return el && el.value === 'vacation' ? 'vacation' : 'term';
+  }
+
+  /** 등교 요일 체크박스. 요일 이름은 계획표 열에서 그대로 가져온다. */
+  function renderVpAiSchoolDays(picked) {
+    var wrap = $('vpAiSchoolDays');
+    if (!wrap || !state.vacplan) return;
+    var days = state.vacplan.days;
+    var on = picked || [0, 1, 2, 3, 4];
+    wrap.innerHTML = days.map(function (d, i) {
+      return '<label class="va-day"><input type="checkbox"' + (on.indexOf(i) >= 0 ? ' checked' : '') +
+        ' aria-label="' + esc(d) + ' 등교"><span>' + esc(vpDayShort(i)) + '</span></label>';
+    }).join('');
+  }
+
+  function vpAiSchoolCols() {
+    var cols = [];
+    $$('#vpAiSchoolDays input').forEach(function (cb, i) { if (cb.checked) cols.push(i); });
+    return cols;
+  }
+
+  /* 모드를 바꾸면 그 모드의 표준 시각으로 맞춰 준다.
+   * 단, 사용자가 직접 고친 값은 건드리지 않는다 — 다른 모드의 기본값 그대로일 때만 옮긴다. */
+  function vpAiSyncModeDefaults(mode) {
+    function swap(el, from, to) { if (el && el.value === from) el.value = to; }
+    if (mode === 'term') {
+      swap($('vpAiWake'), '07:00', '06:30');
+      swap($('vpAiBreakfastTime'), '08:00', '07:00');
+    } else {
+      swap($('vpAiWake'), '06:30', '07:00');
+      swap($('vpAiBreakfastTime'), '07:00', '08:00');
+    }
+  }
+
+  function renderVpAiMode() {
+    var mode = vpAiMode();
+    var box = $('vpAiSchoolBox');
+    if (box) box.classList.toggle('is-hidden', mode !== 'term');
+
+    var hint = $('vpAiModeHint');
+    if (hint) {
+      hint.innerHTML = mode === 'term'
+        ? '학교에 있는 시간을 먼저 막아 두고, <b>등교 전·하교 후·등교하지 않는 요일</b>에만 과목을 배분합니다.'
+        : '하루 전체가 내 시간입니다. 고정 일정을 뺀 <b>모든 칸</b>에 과목을 배분합니다.';
+    }
+    renderVpAiTtStatus();
+  }
+
+  function renderVpAiTtStatus() {
+    var el = $('vpAiTtStatus');
+    if (!el) return;
+    var p = Store.profile();
+
+    if (!$('vpAiUseTimetable').checked) {
+      el.innerHTML = '학교 시간은 <b>‘학교’</b> 한 덩어리로만 막아 둡니다.';
+      return;
+    }
+    if (!p || !Neis.hasTimetable(p.level)) {
+      el.innerHTML = '이 학교급은 나이스에 시간표가 없어 <b>‘학교’</b>로만 막아 둡니다.';
+      return;
+    }
+    if (!p.neis || !p.neis.schoolCode) {
+      el.innerHTML = '프로필에서 <b>학교를 고르면</b> 실제 과목명으로 채울 수 있습니다. 지금은 ‘학교’로만 막습니다.';
+      return;
+    }
+    var klass = ($('vpAiTtClass').value || '').trim() || (p.klass || '');
+    if (!klass) {
+      el.innerHTML = '<b>반</b>을 입력하면 이번 주 시간표를 불러와 과목명으로 채웁니다.';
+      return;
+    }
+    el.innerHTML = '이번 주 시간표를 불러와 <b>1교시부터 순서대로</b> 채웁니다. 방학·휴업으로 시간표가 없으면 ‘학교’로 막습니다.';
+  }
+
+  function fillVpAiGradeOptions(keepValue) {
+    var sel = $('vpAiTtGrade');
+    if (!sel) return;
+    var p = Store.profile();
+    var list = Group.GRADES[p ? p.level : '고등학교'] || Group.GRADES['고등학교'];
+    sel.innerHTML = list.map(function (g) {
+      return '<option value="' + esc(g) + '">' + esc(g === '해당 없음' ? g : g + '학년') + '</option>';
+    }).join('');
+    if (keepValue && list.indexOf(keepValue) >= 0) sel.value = keepValue;
+  }
+
+  /** 이번 주 시간표를 요일 열(0=월) → 교시 목록으로 바꿔 준다. 못 받으면 null. */
+  function vpAiFetchTimetable() {
+    var p = Store.profile();
+    if (!$('vpAiUseTimetable').checked) return Promise.resolve(null);
+    if (!p || !Neis.hasTimetable(p.level) || !p.neis || !p.neis.schoolCode) return Promise.resolve(null);
+
+    var grade = $('vpAiTtGrade').value || p.grade;
+    var klass = ($('vpAiTtClass').value || '').trim() || p.klass;
+    if (!grade || !klass) return Promise.resolve(null);
+
+    return Neis.weekTimetable(p.neis, grade, klass).then(function (byDate) {
+      var out = {}, any = false;
+      Object.keys(byDate).sort().forEach(function (d) {
+        var dt = new Date(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8));
+        var col = (dt.getDay() + 6) % 7;          // 월=0
+        if (out[col]) return;                      // 같은 요일이 겹치면 먼저 온 날을 쓴다
+        var list = byDate[d].filter(function (t) { return t.subject; });
+        if (!list.length) return;
+        out[col] = list;
+        any = true;
+      });
+      return any ? out : null;
+    })['catch'](function () { return null; });
+  }
+
+  /** 기상·취침·식사·학교·학원 시간을 입력받아 시간표 칸을 자동으로 채운다.
    *  나머지 빈 칸은 입력한 과목을 돌아가며 채우고, 켜져 있으면 2시간마다 휴식을 끼워 넣는다. */
   function vpAiGenerate() {
+    var mode = vpAiMode();
     var wake = vpAiParseTime($('vpAiWake').value, 7);
     var sleepRaw = vpAiParseTime($('vpAiSleep').value, 23);
     var sleep = sleepRaw <= wake ? sleepRaw + 24 : sleepRaw;
@@ -13774,6 +16237,21 @@ body {
       return { name: name, startHour: Math.floor(sh), endHour: Math.ceil(eh), cols: cols };
     }).filter(Boolean);
 
+    // 학교 (학기 중에만)
+    var schoolCols = [], schoolStartH = 0, schoolEndH = 0;
+    if (mode === 'term') {
+      schoolCols = vpAiSchoolCols();
+      if (!schoolCols.length) { toast('등교하는 요일을 하나 이상 골라 주세요.', true); return; }
+
+      var ss = vpAiParseTime($('vpAiSchoolStart').value, 8);
+      var se = vpAiParseTime($('vpAiSchoolEnd').value, 16);
+      schoolStartH = Math.floor(ss);
+      schoolEndH = Math.ceil(se);
+      if (schoolEndH <= schoolStartH) { toast('등교 시각과 하교 시각을 확인해 주세요.', true); return; }
+      if (schoolStartH < startH) { toast('등교 시각이 기상 시각보다 빠릅니다. 확인해 주세요.', true); return; }
+      if (schoolEndH > bedH) { toast('하교 시각이 취침 시각보다 늦습니다. 확인해 주세요.', true); return; }
+    }
+
     var subjects = vpAiReadSubjects();
     var autoRest = $('vpAiAutoRest').checked;
     var restPlan = vpAiRestPlan();
@@ -13787,6 +16265,16 @@ body {
     if (vpHasContent(state.vacplan) &&
         !confirm('지금 시간표 내용을 지우고 자동으로 새로 세울까요? 되돌릴 수 없습니다.')) return;
 
+    /* 시간표는 네트워크에서 받아 오므로 여기서 한 번 갈라진다.
+     * 표를 실제로 세우는 일은 전부 build 안에서 한다 — 받아 오든 못 받아 오든 같은 경로. */
+    if (mode === 'term' && $('vpAiUseTimetable').checked) {
+      toast('학교 시간표를 불러오는 중…');
+      vpAiFetchTimetable().then(build);
+    } else {
+      build(null);
+    }
+
+    function build(tt) {
     var days = state.vacplan.days;
     var hours = [];
     for (var h = startH; h <= bedH; h++) hours.push(h);
@@ -13795,6 +16283,10 @@ body {
     function setCell(hourAbs, col, text) {
       var idx = hourAbs - startH;
       if (idx >= 0 && idx < grid.length) grid[idx][col] = text;
+    }
+    function cellAt(hourAbs, col) {
+      var idx = hourAbs - startH;
+      return (idx >= 0 && idx < grid.length) ? grid[idx][col] : null;
     }
 
     // 기상 / 취침
@@ -13811,7 +16303,34 @@ body {
       for (var c2 = 0; c2 < days.length; c2++) setCell(hourAbs, c2, merged);
     });
 
-    // 학원 · 과외 (식사보다 우선해서 그 위에 덮어쓴다)
+    /* 학교 (학기 중에만). 식사 뒤에 깔고, 학원이 그 위를 덮는다.
+     *
+     * 시간표를 받아 왔으면 1교시부터 등교 시각 칸에 차례로 얹는다.
+     * 계획표는 한 시간 단위라 교시 시각을 그대로 옮길 수 없으므로 "순서" 를 옮긴다 —
+     * 급식 시간처럼 이미 채워진 칸은 교시를 쓰지 않고 건너뛰기만 해서,
+     * 점심 때문에 한 교시가 통째로 사라지는 일이 없게 한다. */
+    var schoolFilled = 0, ttUsed = 0;
+    if (mode === 'term') {
+      schoolCols.forEach(function (col) {
+        var periods = tt && tt[col] ? tt[col] : null;
+        var h = schoolStartH;
+
+        if (periods) {
+          var pi = 0;
+          while (pi < periods.length && h <= bedH) {
+            if (cellAt(h, col)) { h++; continue; }   // 식사·기상 칸은 건드리지 않는다
+            setCell(h, col, periods[pi].subject);
+            pi++; h++; ttUsed++;
+          }
+        }
+        // 시간표가 없거나 하교 시각보다 일찍 끝나면 남은 학교 시간을 한 덩어리로 막는다
+        for (; h < schoolEndH; h++) {
+          if (!cellAt(h, col)) { setCell(h, col, '학교'); schoolFilled++; }
+        }
+      });
+    }
+
+    // 학원 · 과외 (식사·학교보다 우선해서 그 위에 덮어쓴다)
     academies.forEach(function (ac) {
       var s2 = ac.startHour < startH ? ac.startHour + 24 : ac.startHour;
       var e2 = ac.endHour <= s2 ? ac.endHour + 24 : ac.endHour;
@@ -13902,10 +16421,22 @@ body {
     state.vacplan.rows = hours.map(function (h2, i) {
       return { time: pad(h2 % 24) + ':00', cells: grid[i] };
     });
+    state.vacplan.mode = mode;
     state.vacplan.colors = {};   // 과목 구성이 바뀌었을 수 있으니 색은 새로 배정한다
     vpSave();
     renderVacPlanPage();
 
+    /* 학교 시간표는 "넣었는데 안 들어왔다" 가 가장 헷갈리는 실패다.
+     * 켰는데 못 받아 온 경우를 반드시 말해 준다. */
+    if (mode === 'term' && $('vpAiUseTimetable').checked && !ttUsed) {
+      toast('학교 시간표를 불러오지 못해 ‘학교’로만 막았습니다. 학교·학년·반과 인터넷 연결을 확인해 주세요.', true);
+      return;
+    }
+    if (ttUsed) {
+      toast('학교 시간표 ' + ttUsed + '교시를 넣고' + (schoolFilled ? ' 나머지 학교 시간도 막은 뒤' : '') +
+        ' 남는 시간에 과목을 배분했습니다.');
+      return;
+    }
     if (alloc.scaled) {
       toast('목표 ' + alloc.want + '시간이 남는 ' + alloc.capacity + '시간을 넘어 비율대로 줄였습니다.', true);
     } else if (alloc.want && alloc.want < alloc.capacity) {
@@ -13913,6 +16444,7 @@ body {
         '시간은 자유 시간' + (restCount ? ', ' + restCount + '시간은 휴식' : '') + '으로 두었습니다.');
     } else {
       toast('큰 틀을 세웠습니다. 이제 칸을 눌러 자유롭게 다듬으세요.');
+    }
     }
   }
 
@@ -13971,6 +16503,33 @@ body {
     });
     renderVpAiIntensity();
 
+    /* 학기 중 / 방학.
+     * 저장해 둔 모드로 복원한다 — 학기 중에 쓰던 사람이 앱을 다시 열 때마다
+     * 방학 기준 화면을 마주하면 매번 같은 걸 다시 고르게 된다. */
+    $('vpAiMode').value = state.vacplan.mode === 'vacation' ? 'vacation' : 'term';
+    paintSegs();
+    renderVpAiSchoolDays();
+    // initSegs 의 핸들러가 먼저 등록돼 있어 값이 바뀐 뒤에 이 핸들러가 돈다
+    $$('.vpai-mode').forEach(function (seg) {
+      seg.addEventListener('click', function (e) {
+        if (!e.target.closest('button')) return;
+        var mode = vpAiMode();
+        state.vacplan.mode = mode;
+        vpSave();
+        vpAiSyncModeDefaults(mode);
+        renderVpAiMode();
+        renderVpAiIntensity();
+      });
+    });
+
+    var p0 = Store.profile();
+    fillVpAiGradeOptions(p0 ? p0.grade : null);
+    if (p0 && p0.klass) $('vpAiTtClass').value = p0.klass;
+    $('vpAiUseTimetable').addEventListener('change', renderVpAiTtStatus);
+    $('vpAiTtClass').addEventListener('input', renderVpAiTtStatus);
+    $('vpAiTtGrade').addEventListener('change', renderVpAiTtStatus);
+    renderVpAiMode();
+
     [
       ['vpAiToggle', 'vpAiBody'],
       ['vpPaletteToggle', 'vpPalettes'],
@@ -13992,6 +16551,7 @@ body {
       state.vacplan = vpDefaultModel();
       vpSave();
       renderVacPlanPage();
+      renderVpAiSchoolDays();   // 요일 이름이 기본값으로 돌아갔으니 등교 요일 칩도 다시 만든다
       toast('빈 표로 되돌렸습니다. 자동 계획표 세우기로 다시 시작해 보세요.');
     });
 
@@ -14082,6 +16642,8 @@ body {
   function renderSettingsPage() {
     var p = Store.profile();
     if (!p) return;
+
+    renderMealAlarmSettings();
 
     var neisTag = p.neis && p.neis.schoolCode
       ? ' · <span style="color:var(--good);font-weight:600">나이스 연결됨</span>'
@@ -15197,6 +17759,9 @@ body {
           League.setCloudRows([], '');
           renderCloudSettings();
           renderLeague();
+          // 포스트잇도 이 동의 위에 서 있다. 벽을 걷고 조회도 멈춘다.
+          renderPins();
+          pinTimers();
           toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
         };
 
@@ -15208,6 +17773,481 @@ body {
         }
       }
     });
+  }
+
+  /* ══════════════════════════════════════════════ 우리 반 포스트잇
+   *
+   * 쪽지는 리그 화면에서 쓰지만 붙는 곳은 화면 전체(#pinLayer)다.
+   * 다른 화면에 있어도 계속 보이는 것이 이 기능의 요점이라 그렇게 두었다.
+   * 대신 [벽 숨기기]로 언제든 걷을 수 있게 했다 — 타이머를 가리면
+   * 공부하러 온 사람에게는 방해가 되기 때문이다.
+   *
+   * 규칙은 notes.js 머리말에 있다. 여기서는 그리는 일과 붙이는 동작만 맡는다. */
+
+  var PIN_TICK_MS = 15000;    // 남은 시간 다시 쓰기
+  var PIN_POLL_MS = 45000;    // 서버에서 새 쪽지 받아 오기
+
+  var pinState = {
+    color: -1,      // -1 = 아무 색이나
+    life: 15,
+    placing: null,  // 붙일 자리를 고르는 중인 초안
+    tick: null, poll: null,
+    drag: null
+  };
+
+  /** 쪽지를 쓸 수 있는 상태인가 — 리그·학급 대항전이 켜져 있고 학년·반이 있어야 한다 */
+  function pinCls() { return Cloud.classEnabled() ? League.myClassId() : null; }
+  function pinReady() { return !!pinCls(); }
+
+  /* ------------------------------------------------------------ 벽 그리기 */
+
+  /** 쪽지가 화면 밖으로 잘려 나가지 않게 자리를 당긴다 */
+  function pinClamp(x, y) {
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var mx = ((w < 560 ? 142 : 168) / 2 + 10) / w * 100;
+    var my = (110 / 2 + 10) / h * 100;
+    return {
+      x: Math.round(Math.min(100 - mx, Math.max(mx, x))),
+      y: Math.round(Math.min(100 - my, Math.max(my, y)))
+    };
+  }
+
+  function pinHtml(n) {
+    return '<div class="pin-body">' + esc(n.body) + '</div>' +
+      '<div class="pin-foot">' +
+        '<span class="pin-who">' + esc(n.nick || '익명') + (n.me ? ' (나)' : '') + '</span>' +
+        '<span class="pin-left"></span>' +
+      '</div>' +
+      (n.me ? '<button type="button" class="pin-btn pin-del" title="모두의 화면에서 떼기" aria-label="내 쪽지 떼기">🗑</button>' : '') +
+      '<button type="button" class="pin-btn pin-x" title="내 화면에서만 치우기" aria-label="이 쪽지 내 화면에서 치우기">✕</button>';
+  }
+
+  function pinNode(n) {
+    var el = document.createElement('div');
+    el.className = 'pin c' + (((n.color % 8) + 8) % 8) + (n.me ? ' is-mine' : '');
+    el.dataset.pin = n.id;
+    el.style.setProperty('--pin-tilt', (n.tilt || 0) + 'deg');
+    el.innerHTML = pinHtml(n);
+    return el;
+  }
+
+  /* 저장된 자리는 붙인 사람의 화면 기준이다. 화면이 더 좁은 기기에서 열면
+   * 가장자리 쪽지가 잘리므로, 그릴 때마다 이쪽 화면에 맞게 당겨 준다. */
+  function pinPlaceAt(el, n) {
+    var spot = pinClamp(n.x, n.y);
+    el.style.left = spot.x + '%';
+    el.style.top = spot.y + '%';
+  }
+
+  function pinLeftText(el, n) {
+    var lbl = el.querySelector('.pin-left');
+    if (lbl) lbl.textContent = Notes.remainText(n);
+    el.classList.toggle('is-going', Notes.remain(n) < 60000);
+  }
+
+  /**
+   * 이미 붙어 있는 쪽지는 다시 만들지 않는다.
+   * 매번 새로 그리면 붙는 동작이 다시 재생되고, 끌고 있던 쪽지가 손에서 빠진다.
+   */
+  function renderPinWall() {
+    var layer = $('pinLayer');
+    if (!layer) return;
+
+    var on = Notes.wallOn() && pinReady();
+    layer.classList.toggle('is-off', !on);
+    if (!on) { layer.innerHTML = ''; return; }
+
+    var seen = {};
+    Notes.list().forEach(function (n) {
+      seen[n.id] = true;
+      var el = layer.querySelector('[data-pin="' + n.id + '"]');
+      if (!el) { el = pinNode(n); layer.appendChild(el); }
+      if (!el.classList.contains('is-dragging')) pinPlaceAt(el, n);
+      pinLeftText(el, n);
+    });
+
+    $$('.pin', layer).forEach(function (el) {
+      if (!seen[el.dataset.pin]) el.remove();
+    });
+  }
+
+  /* ------------------------------------------------------- 리그 화면의 작성 칸 */
+
+  function pinWarn(msg) {
+    var el = $('pinWarn');
+    if (!el) return;
+    el.hidden = !msg;
+    el.textContent = msg || '';
+  }
+
+  /* 색·시간 단추는 15초마다 도는 갱신에도 걸린다. 고른 것이 그대로면
+   * 다시 그리지 않는다 — 매번 새로 만들면 키보드로 고르던 사람의 초점이
+   * 15초마다 날아간다. */
+  function pinPickerSame(wrap, sel, value) {
+    if (!wrap.children.length) return false;
+    var on = wrap.querySelector(sel);
+    return !!on && on.dataset[value.key] === String(value.now);
+  }
+
+  function renderPinColors() {
+    var wrap = $('pinColors');
+    if (!wrap) return;
+    if (pinPickerSame(wrap, '.pin-sw.on', { key: 'color', now: pinState.color })) return;
+
+    var html = '<button type="button" class="pin-sw rand' + (pinState.color < 0 ? ' on' : '') +
+      '" data-color="-1" role="radio" aria-checked="' + (pinState.color < 0) +
+      '" title="아무 색이나" aria-label="색 아무거나">🎲</button>';
+    html += Notes.COLORS.map(function (c) {
+      var on = pinState.color === c.id;
+      return '<button type="button" class="pin-sw c' + c.id + (on ? ' on' : '') +
+        '" data-color="' + c.id + '" role="radio" aria-checked="' + on +
+        '" title="' + esc(c.name) + '" aria-label="' + esc(c.name) + '"></button>';
+    }).join('');
+    wrap.innerHTML = html;
+  }
+
+  function renderPinLifes() {
+    var wrap = $('pinLifes');
+    if (!wrap) return;
+    if (pinPickerSame(wrap, '.pin-life.on', { key: 'life', now: pinState.life })) return;
+
+    wrap.innerHTML = Notes.LIFE.map(function (m) {
+      var on = pinState.life === m;
+      return '<button type="button" class="pin-life' + (on ? ' on' : '') +
+        '" data-life="' + m + '" role="radio" aria-checked="' + on + '">' + m + '분</button>';
+    }).join('');
+  }
+
+  /** 리그·학급 대항전이 꺼져 있으면 왜 못 쓰는지와 어디서 켜는지를 적는다 */
+  function renderPinLocked() {
+    var box = $('pinLocked');
+    if (!box) return;
+
+    var msg = '';
+    if (!Cloud.configured()) {
+      msg = '이 앱에 서버가 설정돼 있지 않아 포스트잇을 쓸 수 없습니다.';
+    } else if (!Cloud.enabled()) {
+      msg = '포스트잇은 <b>같은 반 친구들과 함께 보는 기능</b>이라 서버를 씁니다. ' +
+        '<b>설정 → 학교 리그 참가</b>를 먼저 켜 주세요.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    } else if (!Cloud.classEnabled()) {
+      msg = '누가 붙였는지 알려면 <b>학년·반과 닉네임</b>이 필요합니다. ' +
+        '<b>설정 → 학급 대항전</b>을 켜면 포스트잇도 함께 열립니다.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    } else if (!League.myClassId()) {
+      msg = '프로필에 <b>학년·반</b>이 없어 어느 반 벽에 붙일지 알 수 없습니다. ' +
+        '<b>설정 → 내 프로필</b>에서 학년과 반을 채워 주세요.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    }
+
+    box.classList.toggle('is-hidden', !msg);
+    if (box.dataset.msg === msg) return;    // 색·시간 단추와 같은 이유로, 그대로면 다시 그리지 않는다
+    box.dataset.msg = msg;
+    box.innerHTML = msg;
+    // 새로 그린 [설정으로 가기] 에도 이동 기능을 달아 준다 (init 때 걸어 둔 것은 이 버튼을 모른다)
+    $$('[data-goto]', box).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.goto); });
+    });
+  }
+
+  function renderPinCard() {
+    if (!$('pinCard')) return;
+
+    var ready = pinReady();
+    renderPinLocked();
+    $('pinCompose').classList.toggle('is-hidden', !ready);
+    $('pinRefresh').disabled = !ready;
+
+    var wallOn = Notes.wallOn();
+    $('pinWallToggle').textContent = wallOn ? '벽 숨기기' : '벽 보기';
+    $('pinWallToggle').setAttribute('aria-pressed', wallOn ? 'true' : 'false');
+
+    renderPinColors();
+    renderPinLifes();
+
+    var left = Notes.MAX_LEN - ($('pinText').value || '').length;
+    $('pinLeft').textContent = left;
+    $('pinLeft').parentNode.classList.toggle('is-full', left <= 0);
+
+    var n = Notes.list().length, hid = Notes.hiddenCount(), mine = Notes.mine().length;
+    var txt;
+    if (!ready) txt = '아직 열리지 않았습니다.';
+    else if (!n && !hid) txt = '지금 붙어 있는 쪽지가 없어요. 첫 쪽지를 붙여 보세요.';
+    else txt = '지금 ' + n + '장 붙어 있어요' + (mine ? ' (내 쪽지 ' + mine + '장)' : '') +
+      (hid ? ' · 내가 치운 ' + hid + '장' : '');
+    $('pinCount').textContent = txt;
+    $('pinRestore').classList.toggle('is-hidden', !hid);
+  }
+
+  function renderPins() { renderPinWall(); renderPinCard(); }
+
+  /* ---------------------------------------------------------- 서버와 맞추기 */
+
+  function pinRefresh() {
+    var cls = pinCls();
+    if (!cls) { renderPins(); return Promise.resolve([]); }
+    return Notes.refresh(cls).then(function () { renderPins(); });
+  }
+
+  /* 남은 시간은 자주 다시 써야 하고, 서버 조회는 그보다 훨씬 뜸해도 된다.
+   * 화면이 안 보일 때는 둘 다 멈춘다 — 가방 속 휴대폰이 계속 서버를 부르지 않게. */
+  function pinTimers() {
+    var want = pinReady() && Notes.wallOn() && !document.hidden;
+
+    if (want && !pinState.tick) {
+      pinState.tick = setInterval(function () {
+        // 만료된 쪽지가 스스로 사라지도록 벽을 다시 훑는다
+        renderPins();
+      }, PIN_TICK_MS);
+    } else if (!want && pinState.tick) {
+      clearInterval(pinState.tick); pinState.tick = null;
+    }
+
+    if (want && !pinState.poll) {
+      pinState.poll = setInterval(pinRefresh, PIN_POLL_MS);
+    } else if (!want && pinState.poll) {
+      clearInterval(pinState.poll); pinState.poll = null;
+    }
+  }
+
+  /* --------------------------------------------------------- 붙일 자리 고르기 */
+
+  function pinGhostShow(draft) {
+    var g = $('pinGhost');
+    if (!g) return;
+    g.className = 'pin pin-ghost c' + (((draft.color % 8) + 8) % 8);
+    g.style.setProperty('--pin-tilt', draft.tilt + 'deg');
+    g.innerHTML = '<div class="pin-body">' + esc(draft.body) + '</div>' +
+      '<div class="pin-foot"><span class="pin-who">' + esc(draft.nick || '익명') + '</span>' +
+      '<span class="pin-left">' + draft.minutes + '분 뒤 사라짐</span></div>';
+    // 처음에는 화면 가운데 — 손가락으로 쓰는 기기에서는 포인터가 없다
+    var spot = pinClamp(50, 45);
+    g.style.left = spot.x + '%';
+    g.style.top = spot.y + '%';
+  }
+
+  function pinPlacingStart() {
+    var cls = pinCls();
+    if (!cls) { renderPinCard(); return; }
+
+    var body = ($('pinText').value || '').trim();
+    if (!body) { pinWarn('내용을 먼저 적어 주세요.'); $('pinText').focus(); return; }
+
+    /* 걸러지는 말은 자리를 고르기 전에 막는다. 다 붙이고 나서 거절당하면
+     * 무엇 때문인지 알기 어렵고, 서버까지 갔다 오는 것도 낭비다.
+     * 어떤 말이 걸렸는지는 되풀이해 보여 주지 않는다 — 화면에 그 말을 다시 띄우는 셈이다. */
+    var v = Filter.check(body);
+    if (!v.ok) {
+      pinWarn('욕설이나 남을 비하하는 말이 들어 있어 붙일 수 없어요. 다르게 적어 볼까요?');
+      return;
+    }
+    pinWarn('');
+
+    if (Notes.mine().length >= 5) {
+      pinWarn('한 번에 붙일 수 있는 쪽지는 5장까지예요. 하나를 떼고 다시 붙여 주세요.');
+      return;
+    }
+
+    var p = Store.profile() || {};
+    pinState.placing = {
+      body: body,
+      nick: String(p.nick || '').trim(),
+      color: pinState.color < 0 ? Notes.pickColor() : pinState.color,
+      minutes: pinState.life,
+      tilt: Notes.pickTilt()
+    };
+
+    pinGhostShow(pinState.placing);
+    $('pinPlace').classList.remove('is-hidden');
+    $('pinPlaceMsg').textContent = '붙일 자리를 눌러 주세요 · ' + pinState.placing.minutes + '분 뒤 사라져요';
+    // 벽이 꺼져 있으면 방금 붙인 쪽지가 안 보인다. 자리를 고르는 순간 다시 켠다.
+    if (!Notes.wallOn()) { Notes.setWallOn(true); renderPins(); pinTimers(); }
+  }
+
+  function pinPlacingEnd() {
+    pinState.placing = null;
+    $('pinPlace').classList.add('is-hidden');
+  }
+
+  function pinDrop(clientX, clientY) {
+    var draft = pinState.placing;
+    var cls = pinCls();
+    if (!draft || !cls) { pinPlacingEnd(); return; }
+
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var spot = pinClamp(clientX / w * 100, clientY / h * 100);
+    draft.x = spot.x; draft.y = spot.y;
+
+    pinPlacingEnd();
+    Notes.post(cls, draft).then(function () {
+      $('pinText').value = '';
+      renderPins();
+      pinTimers();
+      toast('포스트잇을 붙였어요. ' + draft.minutes + '분 뒤에 사라집니다.');
+    }, function (e) {
+      renderPins();
+      toast(e && e.message ? e.message : '붙이지 못했습니다.', true);
+    });
+  }
+
+  /* --------------------------------------------------------- 내 쪽지 끌어 옮기기 */
+
+  function pinDragStart(el, e) {
+    var r = el.getBoundingClientRect();
+    pinState.drag = {
+      el: el, id: el.dataset.pin,
+      dx: e.clientX - (r.left + r.width / 2),
+      dy: e.clientY - (r.top + r.height / 2),
+      moved: false
+    };
+    el.classList.add('is-dragging');
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+  }
+
+  function pinDragMove(e) {
+    var d = pinState.drag;
+    if (!d) return;
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var spot = pinClamp((e.clientX - d.dx) / w * 100, (e.clientY - d.dy) / h * 100);
+    d.x = spot.x; d.y = spot.y; d.moved = true;
+    d.el.style.left = spot.x + '%';
+    d.el.style.top = spot.y + '%';
+  }
+
+  function pinDragEnd() {
+    var d = pinState.drag;
+    if (!d) return;
+    pinState.drag = null;
+    d.el.classList.remove('is-dragging');
+    if (!d.moved) return;
+    Notes.move(d.id, d.x, d.y);   // 화면은 이미 옮겨져 있다. 실패해도 다음 새로고침에 제자리로 돌아온다.
+  }
+
+  /* --------------------------------------------------------------- 연결 */
+
+  function initPins() {
+    if (!$('pinLayer')) return;
+
+    var d = Notes.draft();
+    pinState.color = d.color;
+    pinState.life = d.life;
+
+    /* ── 벽 위의 단추: ✕ 는 내 화면에서만, 🗑 은 모두의 화면에서 */
+    $('pinLayer').addEventListener('click', function (e) {
+      var el = e.target.closest ? e.target.closest('.pin') : null;
+      if (!el) return;
+      var id = el.dataset.pin;
+
+      if (e.target.closest('.pin-x')) {
+        var note = null;
+        Notes.list().forEach(function (n) { if (n.id === id) note = n; });
+        Notes.dismiss(id, note ? note.expiresAt : 0);
+        el.remove();
+        renderPinCard();
+        toast('내 화면에서만 치웠어요. 다른 사람 화면에는 그대로 있어요.');
+        return;
+      }
+      if (e.target.closest('.pin-del')) {
+        Notes.remove(id);
+        el.remove();
+        renderPinCard();
+        toast('쪽지를 뗐습니다.');
+      }
+    });
+
+    /* ── 내 쪽지 끌어 옮기기 */
+    $('pinLayer').addEventListener('pointerdown', function (e) {
+      if (!e.target.closest) return;
+      if (e.target.closest('.pin-btn')) return;          // 단추는 끌기가 아니다
+      var el = e.target.closest('.pin.is-mine');
+      if (!el || pinState.placing) return;
+      e.preventDefault();
+      pinDragStart(el, e);
+    });
+    $('pinLayer').addEventListener('pointermove', pinDragMove);
+    $('pinLayer').addEventListener('pointerup', pinDragEnd);
+    $('pinLayer').addEventListener('pointercancel', pinDragEnd);
+
+    /* ── 붙일 자리 고르기 */
+    var place = $('pinPlace');
+    place.addEventListener('pointermove', function (e) {
+      if (!pinState.placing) return;
+      var g = $('pinGhost');
+      var w = window.innerWidth || 360, h = window.innerHeight || 640;
+      var spot = pinClamp(e.clientX / w * 100, e.clientY / h * 100);
+      g.style.left = spot.x + '%';
+      g.style.top = spot.y + '%';
+    });
+    place.addEventListener('click', function (e) {
+      if (!pinState.placing) return;
+      if (e.target.closest && e.target.closest('.pin-place-bar')) return;   // [취소] 는 붙이는 자리가 아니다
+      pinDrop(e.clientX, e.clientY);
+    });
+    $('pinPlaceCancel').addEventListener('click', function (e) {
+      e.stopPropagation();
+      pinPlacingEnd();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && pinState.placing) pinPlacingEnd();
+    });
+
+    /* ── 작성 칸 */
+    if ($('pinCard')) {
+      $('pinText').addEventListener('input', function () {
+        pinWarn('');
+        var left = Notes.MAX_LEN - this.value.length;
+        $('pinLeft').textContent = left;
+        $('pinLeft').parentNode.classList.toggle('is-full', left <= 0);
+      });
+
+      $('pinColors').addEventListener('click', function (e) {
+        var b = e.target.closest('.pin-sw');
+        if (!b) return;
+        pinState.color = parseInt(b.dataset.color, 10);
+        Notes.setDraft(pinState.color, pinState.life);
+        renderPinColors();
+      });
+
+      $('pinLifes').addEventListener('click', function (e) {
+        var b = e.target.closest('.pin-life');
+        if (!b) return;
+        pinState.life = parseInt(b.dataset.life, 10);
+        Notes.setDraft(pinState.color, pinState.life);
+        renderPinLifes();
+      });
+
+      $('pinPost').addEventListener('click', pinPlacingStart);
+
+      $('pinWallToggle').addEventListener('click', function () {
+        Notes.setWallOn(!Notes.wallOn());
+        renderPins();
+        pinTimers();
+        toast(Notes.wallOn() ? '포스트잇 벽을 다시 띄웁니다.' : '포스트잇 벽을 숨겼습니다. 쪽지는 그대로 있어요.');
+      });
+
+      $('pinRestore').addEventListener('click', function () {
+        Notes.restoreAll();
+        renderPins();
+        toast('치워 둔 쪽지를 다시 불러왔어요.');
+      });
+
+      $('pinRefresh').addEventListener('click', function () {
+        pinRefresh().then(function () { toast('포스트잇을 새로 받아왔어요.'); });
+      });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      pinTimers();
+      if (!document.hidden) pinRefresh();
+    });
+    window.addEventListener('resize', function () {
+      // 화면 크기가 바뀌면 가장자리 쪽지가 잘릴 수 있어 자리를 다시 당긴다
+      renderPinWall();
+    });
+
+    renderPins();
+    pinTimers();
+    pinRefresh();
   }
 
   function initCloud() {
@@ -15235,13 +18275,16 @@ body {
         }
         Cloud.setClassEnabled(true);
         renderCloudSettings();
-        toast('학급 대항전에 참가합니다.');
+        toast('학급 대항전에 참가합니다. 우리 반 포스트잇도 함께 열렸어요.');
         leagueSync(true);
+        pinRefresh(); pinTimers();
       } else {
         Cloud.setClassEnabled(false);
         renderCloudSettings();
         // 끄는 것으로 끝내지 않는다. 빈 값을 올려 서버에 남은 학년·반을 지운다.
         leagueSync(true);
+        // 포스트잇도 같은 동의 위에 서 있다. 벽을 걷고 타이머도 멈춘다.
+        renderPins(); pinTimers();
         toast('학급 대항전을 껐습니다. 서버에 저장된 학년·반도 지웁니다.');
       }
     });
@@ -15975,10 +19018,12 @@ body {
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
     Store.requestPersist().then(function () { renderStorageStatus(); });
 
-    // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
+    // 끼니를 체크하면 급식 안내 문구와 채점 기준표를 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
-      $(id).addEventListener('change', function () { renderMeals(); });
+      $(id).addEventListener('change', function () { renderMeals(); renderMealSched(); });
     });
+    initMealAlarm();
+    renderMealSched();
 
     $('detailToggle').addEventListener('click', function () { toggleDetail(); });
     $('resultMore').addEventListener('click', toggleResultDetail);
@@ -16086,11 +19131,15 @@ body {
       Store.clearAll();
       Kids.reset();
       League.reset();
+      // 내가 붙인 쪽지는 서버에서 스스로 사라진다. 여기서는 이 기기의
+      // 흔적(치운 목록·벽 설정)만 지운다.
+      Notes.reset();
       // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
       // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
       Slime.reset();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
       renderLeague();
+      renderPins();
       toast('모든 기록을 삭제했습니다.');
     });
 
@@ -16131,6 +19180,7 @@ body {
     renderReport();
     renderKids();
     if (Store.profile()) { leagueSettle(); renderLeague(); leagueSync(false); }
+    initPins();
     weeklyNotice();
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);

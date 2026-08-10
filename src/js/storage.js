@@ -243,7 +243,9 @@
     // 직접 만든 계획표와 몇 주에 걸쳐 올린 리그 티어도 복원할 수 없는 기록이다
     'neurostudy.vacplan.v1', 'neurostudy.league.v1', K.personalization,
     // 목표 대학·한 줄 다짐·직접 등록한 D-day — 손으로 적은 값이라 되살릴 방법이 없다
-    'mindora.goal.v1', 'neurostudy.slime.v1'
+    'mindora.goal.v1', 'neurostudy.slime.v1',
+    // 식사 시간 알리미 — 직접 지정한 시각은 계획표에서 되살릴 수 없다
+    'mindora.mealalarm.v1'
   ];
 
   /* 마지막으로 백업을 내려받은 시각. 백업 자체에는 넣지 않는다 —

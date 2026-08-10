@@ -17,7 +17,7 @@
 'use strict';
 
 /* 정책을 바꿀 때마다 올린다. activate 에서 옛 버전 캐시를 통째로 지운다. */
-var VERSION = 'neurostudy-v5';
+var VERSION = 'neurostudy-v6';
 var SHELL = ['./', './index.html', './manifest.webmanifest',
              './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png',
              './icon.svg', './icon-maskable.svg',

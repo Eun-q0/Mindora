@@ -331,12 +331,14 @@
     // 들어올 때마다 최신 값으로 다시 그린다
     if (id === 'secHome') { renderHome(); Slime.open($('slimeRoot')); }
     else Slime.stop();   // 홈을 떠나면 자동 생산 타이머를 멈춘다 (기록은 시각으로 남는다)
-    if (id === 'secLeague') { renderLeague(); leagueSync(false); }
+    if (id === 'secLeague') { renderLeague(); leagueSync(false); pinRefresh(); }
     if (id === 'secToday') renderTodayHome();
     if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
     if (id === 'secAvatar') openAvatarPage();
     // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
     if (id === 'secSettings') renderSettingsPage();
+    // 시간이 흐르면 "아직 / 지남" 이 바뀐다 — 들어올 때마다 다시 판단한다
+    if (id === 'secInput') renderMealSched();
     // 같은 반 명단은 서버에서 오므로, 들어올 때마다 다시 받아 온다
     if (id === 'secGroup') renderGroup();
     // 타이머에서 막 기록한 짧은 구간도 즉시 보이도록 진입할 때 다시 집계한다
@@ -509,6 +511,9 @@
         dinner: $('mealDinner').checked
       },
       hoursSinceMeal: parseFloat($('hoursSinceMeal').value),
+      /* 끼니를 언제 먹기로 했는지는 계획표가 정한다 — 표준 시각을 박아 두면
+       * 아침 8시에 점심을 안 먹었다고 감점되는 일이 생긴다. */
+      mealPlan: MealPlan.engineInput(),
       water: parseInt($('water').value, 10),
       caffeine: parseInt($('caffeine').value, 10),
       exercise: parseInt($('exercise').value, 10),
@@ -2186,6 +2191,255 @@
     });
   }
 
+  /* ================================================ 식사 시간 알리미 ==
+   *
+   * 시각의 출처는 meals.js 한 곳뿐이다. 알림도, 준비도 채점도 같은 값을 본다.
+   * 두 곳에서 따로 시각을 정하면 "알림은 12시에 왔는데 12시 반에 결식 처리" 같은
+   * 앞뒤가 안 맞는 화면이 나온다. */
+
+  var MEAL_BOX = { breakfast: 'mealBreakfast', lunch: 'mealLunch', dinner: 'mealDinner' };
+
+  function mealEaten(id) {
+    var el = $(MEAL_BOX[id]);
+    return !!(el && el.checked);
+  }
+
+  var MEAL_SOURCE_TXT = {
+    plan: '계획표',
+    'plan-other': '계획표(다른 요일)',
+    manual: '직접 지정',
+    unplanned: '계획표에 없음',
+    'default': '표준 시각'
+  };
+
+  /** [입력] 화면에 "무엇을 기준으로 채점하는가" 를 그대로 펼쳐 놓는다 */
+  function renderMealSched() {
+    var box = $('mealSched');
+    if (!box) return;
+
+    var sc = MealPlan.schedule();
+    var now = new Date();
+    var nowH = now.getHours() + now.getMinutes() / 60;
+    var grace = BrainEngine.MEAL_GRACE;
+
+    var chips = sc.meals.map(function (m) {
+      var eaten = mealEaten(m.id);
+      var cls, tail;
+      if (!m.counts) { cls = 'off'; tail = '안 먹는 끼니'; }
+      else if (eaten) { cls = 'done'; tail = '먹음'; }
+      else if (nowH >= m.hour + grace) { cls = 'miss'; tail = '지남'; }
+      else if (m.hour - nowH <= 1) { cls = 'soon'; tail = '곧'; }
+      else { cls = ''; tail = '아직'; }
+
+      return '<span class="ms-chip ' + cls + '">' + m.icon + ' ' + esc(m.label) +
+        ' ' + MealPlan.fmtHour(m.hour) + ' <i>' + tail + '</i></span>';
+    }).join('');
+
+    var why;
+    if (!sc.hasPlan) {
+      why = '계획표가 아직 비어 있어 <b>표준 시각</b>으로 채점합니다. ' +
+        '<b>계획표</b>에 식사 시간을 넣으면 그 시각을 기준으로 바뀌고, 알림도 받을 수 있습니다.';
+    } else if (!sc.planHasMeal) {
+      why = '계획표에 식사 칸이 없어 <b>표준 시각</b>으로 채점합니다. ' +
+        '계획표에 <b>아침식사 · 점심식사 · 저녁식사</b>처럼 적어 두면 그 시각을 씁니다.';
+    } else {
+      why = '<b>계획표</b>에서 읽은 시각입니다. 아직 시간이 안 된 끼니는 <b>점수에 반영하지 않고</b>, ' +
+        '계획표에 없는 끼니는 결식으로 세지 않습니다.';
+    }
+
+    var nx = MealPlan.next();
+    if (nx && !nx.tomorrow) {
+      why += ' 다음 끼니는 <b>' + esc(nx.meal.label) + ' ' + MealPlan.fmtHour(nx.meal.hour) +
+        '</b> (' + fmtDur(Math.round(nx.inHours * 60)) + ' 뒤).';
+    }
+
+    box.innerHTML = '<div class="ms-row">' + chips + '</div><p class="ms-why">' + why + '</p>';
+  }
+
+  /* ------------------------------------------------------------- 배너 */
+
+  var mealBanner = null;   // 지금 배너에 떠 있는 끼니
+
+  function hideMealBanner() {
+    var el = $('mealAlarm');
+    if (!el) return;
+    el.classList.remove('show');
+    setTimeout(function () { if (!mealBanner) el.classList.add('is-hidden'); }, 300);
+    mealBanner = null;
+  }
+
+  function showMealBanner(meal, info) {
+    var el = $('mealAlarm');
+    if (!el) return;
+    mealBanner = meal;
+
+    var lead = info.leadMin ? info.leadMin + '분 뒤 ' : '';
+    $('maBnIcon').textContent = meal.icon;
+    $('maBnTitle').textContent = lead
+      ? lead + meal.label + ' 식사 시간이에요'
+      : meal.label + ' 먹을 시간이에요';
+    $('maBnSub').textContent = MealPlan.fmtHour(meal.hour) + ' · ' +
+      (MEAL_SOURCE_TXT[meal.source] || '계획표') + ' 기준';
+
+    el.classList.remove('is-hidden');
+    /* 리플로우를 강제해야 트랜지션이 실제로 돈다.
+     * requestAnimationFrame 은 화면이 가려져 있으면 아예 불리지 않아,
+     * 배경 탭에서 알림이 뜬 경우 배너가 투명한 채로 남는다. */
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  function fireMealAlarm(meal, info) {
+    /* 토스트는 쓰지 않는다 — 배너와 같은 자리(화면 아래 가운데)에 떠서 서로 가린다.
+     * 배너는 스스로 사라지지 않으므로 [먹었어요] 를 누를 시간도 준다. */
+    showMealBanner(meal, info);
+
+    notify(meal.icon + ' ' + meal.label + ' 식사 시간 (' + MealPlan.fmtHour(meal.hour) + ')',
+      '먹고 나면 [입력] 화면에서 체크해 주세요. 학습 준비도에 함께 반영됩니다.');
+    if (info.sound) { try { Pomodoro.beep('break'); } catch (e) { /* 소리는 없어도 그만 */ } }
+  }
+
+  /** 배너의 [먹었어요] — 체크까지 해 줘야 준비도가 실제로 달라진다 */
+  function markMealEaten(meal) {
+    var box = $(MEAL_BOX[meal.id]);
+    if (box && !box.checked) {
+      box.checked = true;
+      // change 를 직접 쏴서 급식 안내·기준표가 같이 다시 그려지게 한다
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    var sinceEl = $('hoursSinceMeal');
+    if (sinceEl) { sinceEl.value = 0; sinceEl.dispatchEvent(new Event('input')); }
+
+    var saved = Store.loadInput();
+    if (saved && saved.meals) {
+      saved.meals[meal.id] = true;
+      saved.hoursSinceMeal = 0;
+      Store.saveInput(saved);
+    }
+
+    hideMealBanner();
+    toast(meal.label + ' 먹은 것으로 기록했어요. 다시 분석하면 준비도에 반영됩니다.');
+  }
+
+  /* ------------------------------------------------------------- 설정 */
+
+  function renderMealAlarmRows() {
+    var wrap = $('maRows');
+    if (!wrap) return;
+    var s = MealPlan.settings();
+    var sc = MealPlan.schedule();
+
+    wrap.innerHTML = sc.meals.map(function (m) {
+      var manual = s.times[m.id] || '';
+      var sub = MEAL_SOURCE_TXT[m.source] || '';
+      if (!m.alarmable) sub += ' — 시각을 직접 넣으면 알려 드립니다';
+      return '<div class="ma-row' + (m.on && m.alarmable ? '' : ' is-off') + '" data-meal="' + m.id + '">' +
+        '<span class="ma-ic" aria-hidden="true">' + m.icon + '</span>' +
+        '<span class="ma-name"><b>' + esc(m.label) + ' ' + MealPlan.fmtHour(m.hour) + '</b>' +
+        '<span>' + esc(sub) + '</span></span>' +
+        '<input type="time" class="input ma-time" value="' + esc(manual) + '" ' +
+        'aria-label="' + esc(m.label) + ' 시각 직접 지정 (비우면 계획표를 따릅니다)">' +
+        '<label class="toggle"><input type="checkbox" class="ma-en"' + (m.on ? ' checked' : '') +
+        ' aria-label="' + esc(m.label) + ' 알림 사용"><span>알림</span></label>' +
+        '</div>';
+    }).join('');
+
+    $$('.ma-row', wrap).forEach(function (row) {
+      var id = row.dataset.meal;
+      row.querySelector('.ma-time').addEventListener('change', function () {
+        var v = this.value;
+        // 못 읽는 값은 저장하지 않는다 — 비우면 다시 계획표를 따라간다
+        if (v && MealPlan.parseHM(v) === null) { this.value = ''; v = ''; }
+        var patch = { times: {} }; patch.times[id] = v;
+        MealPlan.patch(patch);
+        renderMealAlarmRows(); renderMealAlarmStatus(); renderMealSched();
+      });
+      row.querySelector('.ma-en').addEventListener('change', function () {
+        var patch = { enabled: {} }; patch.enabled[id] = this.checked;
+        MealPlan.patch(patch);
+        renderMealAlarmRows(); renderMealAlarmStatus();
+      });
+    });
+  }
+
+  function renderMealAlarmStatus() {
+    var el = $('maStatus');
+    if (!el) return;
+    var s = MealPlan.settings();
+    var sc = MealPlan.schedule();
+
+    var live = sc.meals.filter(function (m) { return m.alarmable && m.on; });
+    var msgs = [];
+
+    if (!s.on) msgs.push('알리미가 꺼져 있습니다.');
+    else if (!live.length) {
+      msgs.push('알릴 끼니가 없습니다 — 계획표에 식사 시간을 넣거나 위에서 시각을 직접 지정하세요.');
+    } else {
+      var nx = MealPlan.next();
+      msgs.push('다음 알림: ' + live.map(function (m) { return m.label + ' ' + MealPlan.fmtHour(m.hour); }).join(' · ') +
+        (nx ? ' (가장 가까운 끼니 ' + fmtDur(Math.round(nx.inHours * 60)) + ' 뒤)' : ''));
+    }
+
+    var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    if (perm === 'granted') msgs.push('브라우저 알림 허용됨 — 다른 탭을 보고 있어도 뜹니다.');
+    else if (perm === 'denied') msgs.push('브라우저 알림이 차단돼 있습니다. 앱 화면 안에서만 알려 드립니다.');
+    else if (perm === 'default') msgs.push('브라우저 알림을 허용하면 다른 탭에서도 받을 수 있습니다.');
+
+    el.className = 'neis-status show' + (s.on && !live.length ? ' err' : '');
+    el.textContent = msgs.join(' ');
+  }
+
+  function renderMealAlarmSettings() {
+    var s = MealPlan.settings();
+    if (!$('maOn')) return;
+    $('maOn').checked = s.on;
+    $('maLead').value = String(s.leadMin);
+    $('maSound').checked = s.sound;
+    $('maBody').classList.toggle('is-off', !s.on);
+    renderMealAlarmRows();
+    renderMealAlarmStatus();
+  }
+
+  function initMealAlarm() {
+    if (!$('maOn')) return;
+
+    $('maOn').addEventListener('change', function () {
+      MealPlan.patch({ on: this.checked });
+      renderMealAlarmSettings();
+    });
+    $('maLead').addEventListener('change', function () {
+      MealPlan.patch({ leadMin: parseInt(this.value, 10) || 0 });
+      renderMealAlarmStatus();
+    });
+    $('maSound').addEventListener('change', function () {
+      MealPlan.patch({ sound: this.checked });
+    });
+    $('maPerm').addEventListener('click', function () {
+      if (!('Notification' in window)) { toast('이 브라우저는 알림을 지원하지 않습니다.', true); return; }
+      // 권한 요청은 사용자가 직접 누른 시점에만 — 자동 요청은 대부분 거절당한다
+      Notification.requestPermission().then(function () { renderMealAlarmStatus(); });
+    });
+    $('maGoPlan').addEventListener('click', function () { goPage('secVacPlan'); });
+    $('maTest').addEventListener('click', function () {
+      var sc = MealPlan.schedule();
+      var nx = MealPlan.next();
+      var meal = (nx && nx.meal) || sc.meals[0];
+      fireMealAlarm(meal, { leadMin: 0, sound: MealPlan.settings().sound });
+    });
+
+    $('maBnAte').addEventListener('click', function () { if (mealBanner) markMealEaten(mealBanner); });
+    $('maBnLater').addEventListener('click', hideMealBanner);
+    $('maBnClose').addEventListener('click', hideMealBanner);
+
+    MealPlan.start({ isEaten: mealEaten, onFire: fireMealAlarm });
+
+    /* 화면을 오래 가려 두면 브라우저가 타이머를 늦춘다.
+     * 돌아온 순간 한 번 더 확인해서 지난 끼니를 놓치지 않게 한다. */
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) { MealPlan.check(); renderMealSched(); }
+    });
+  }
+
   /* ============================================================== 홈 ==
    * 앱을 열면 처음 보이는 화면. 새로 계산하는 값은 없고, 다른 화면이 이미
    * 갖고 있는 숫자(뇌 컨디션 · 순공 시간 · 등수)를 모아 보여 주기만 한다. */
@@ -2894,6 +3148,7 @@
       subtitle: '여름방학',
       title: nick ? nick + '의 계획표' : '나의 계획표',
       titleAuto: true,   // 사용자가 제목을 직접 고치면 false 가 된다
+      mode: 'term',      // 'term' 학기 중 · 'vacation' 방학
       font: 'sans',
       palette: VP_PALETTES[0].id,
       color: VP_PALETTES[0].head,
@@ -2911,6 +3166,7 @@
       if (!m || !m.rows || !m.days || !m.rows.length || !m.days.length) return vpDefaultModel();
       // 옛 저장본에는 없던 항목들을 채워 준다
       if (typeof m.subtitle !== 'string') m.subtitle = '';
+      if (m.mode !== 'term' && m.mode !== 'vacation') m.mode = 'term';
       if (!m.colors || typeof m.colors !== 'object') m.colors = {};
       if (!VP_PALETTES.some(function (p) { return p.id === m.palette; })) m.palette = VP_PALETTES[0].id;
       // 목록에서 사라진 글씨체를 저장해 뒀다면 기본값으로 되돌린다
@@ -3023,6 +3279,10 @@
     return rects;
   }
 
+  /* 칸을 한 글자 칠 때마다 불린다 — 여기서 다른 화면까지 다시 그리지 않는다.
+   * 식사 시각을 쓰는 쪽은 모두 저장소를 그때그때 다시 읽으므로 자동으로 따라온다.
+   *   알리미      — 30초마다 MealPlan.check() 가 새로 읽는다
+   *   입력·설정   — goPage 가 들어갈 때 다시 그린다 */
   function vpSave() {
     try { localStorage.setItem(VP_KEY, JSON.stringify(state.vacplan)); } catch (e) { /* 무시 */ }
   }
@@ -3513,9 +3773,127 @@
       '시간 공부마다 1시간 휴식</b>으로 배치합니다. ' + p.why + '.';
   }
 
-  /** 기상·취침·식사·학원 시간을 입력받아 시간표 칸을 자동으로 채운다.
+  /* ------------------------------------------------- 학기 중 / 방학 모드
+   *
+   * 두 모드는 하루의 뼈대가 다르다. 학기 중에는 낮이 통째로 학교에 묶여 있어
+   * 실제로 배분할 수 있는 시간은 등교 전·하교 후·주말뿐이다. 이걸 구분하지 않으면
+   * 학기 중에 쓰는 사람에게 "평일 오전 10시에 수학 2시간" 같은 계획표가 나온다. */
+
+  function vpAiMode() {
+    var el = $('vpAiMode');
+    return el && el.value === 'vacation' ? 'vacation' : 'term';
+  }
+
+  /** 등교 요일 체크박스. 요일 이름은 계획표 열에서 그대로 가져온다. */
+  function renderVpAiSchoolDays(picked) {
+    var wrap = $('vpAiSchoolDays');
+    if (!wrap || !state.vacplan) return;
+    var days = state.vacplan.days;
+    var on = picked || [0, 1, 2, 3, 4];
+    wrap.innerHTML = days.map(function (d, i) {
+      return '<label class="va-day"><input type="checkbox"' + (on.indexOf(i) >= 0 ? ' checked' : '') +
+        ' aria-label="' + esc(d) + ' 등교"><span>' + esc(vpDayShort(i)) + '</span></label>';
+    }).join('');
+  }
+
+  function vpAiSchoolCols() {
+    var cols = [];
+    $$('#vpAiSchoolDays input').forEach(function (cb, i) { if (cb.checked) cols.push(i); });
+    return cols;
+  }
+
+  /* 모드를 바꾸면 그 모드의 표준 시각으로 맞춰 준다.
+   * 단, 사용자가 직접 고친 값은 건드리지 않는다 — 다른 모드의 기본값 그대로일 때만 옮긴다. */
+  function vpAiSyncModeDefaults(mode) {
+    function swap(el, from, to) { if (el && el.value === from) el.value = to; }
+    if (mode === 'term') {
+      swap($('vpAiWake'), '07:00', '06:30');
+      swap($('vpAiBreakfastTime'), '08:00', '07:00');
+    } else {
+      swap($('vpAiWake'), '06:30', '07:00');
+      swap($('vpAiBreakfastTime'), '07:00', '08:00');
+    }
+  }
+
+  function renderVpAiMode() {
+    var mode = vpAiMode();
+    var box = $('vpAiSchoolBox');
+    if (box) box.classList.toggle('is-hidden', mode !== 'term');
+
+    var hint = $('vpAiModeHint');
+    if (hint) {
+      hint.innerHTML = mode === 'term'
+        ? '학교에 있는 시간을 먼저 막아 두고, <b>등교 전·하교 후·등교하지 않는 요일</b>에만 과목을 배분합니다.'
+        : '하루 전체가 내 시간입니다. 고정 일정을 뺀 <b>모든 칸</b>에 과목을 배분합니다.';
+    }
+    renderVpAiTtStatus();
+  }
+
+  function renderVpAiTtStatus() {
+    var el = $('vpAiTtStatus');
+    if (!el) return;
+    var p = Store.profile();
+
+    if (!$('vpAiUseTimetable').checked) {
+      el.innerHTML = '학교 시간은 <b>‘학교’</b> 한 덩어리로만 막아 둡니다.';
+      return;
+    }
+    if (!p || !Neis.hasTimetable(p.level)) {
+      el.innerHTML = '이 학교급은 나이스에 시간표가 없어 <b>‘학교’</b>로만 막아 둡니다.';
+      return;
+    }
+    if (!p.neis || !p.neis.schoolCode) {
+      el.innerHTML = '프로필에서 <b>학교를 고르면</b> 실제 과목명으로 채울 수 있습니다. 지금은 ‘학교’로만 막습니다.';
+      return;
+    }
+    var klass = ($('vpAiTtClass').value || '').trim() || (p.klass || '');
+    if (!klass) {
+      el.innerHTML = '<b>반</b>을 입력하면 이번 주 시간표를 불러와 과목명으로 채웁니다.';
+      return;
+    }
+    el.innerHTML = '이번 주 시간표를 불러와 <b>1교시부터 순서대로</b> 채웁니다. 방학·휴업으로 시간표가 없으면 ‘학교’로 막습니다.';
+  }
+
+  function fillVpAiGradeOptions(keepValue) {
+    var sel = $('vpAiTtGrade');
+    if (!sel) return;
+    var p = Store.profile();
+    var list = Group.GRADES[p ? p.level : '고등학교'] || Group.GRADES['고등학교'];
+    sel.innerHTML = list.map(function (g) {
+      return '<option value="' + esc(g) + '">' + esc(g === '해당 없음' ? g : g + '학년') + '</option>';
+    }).join('');
+    if (keepValue && list.indexOf(keepValue) >= 0) sel.value = keepValue;
+  }
+
+  /** 이번 주 시간표를 요일 열(0=월) → 교시 목록으로 바꿔 준다. 못 받으면 null. */
+  function vpAiFetchTimetable() {
+    var p = Store.profile();
+    if (!$('vpAiUseTimetable').checked) return Promise.resolve(null);
+    if (!p || !Neis.hasTimetable(p.level) || !p.neis || !p.neis.schoolCode) return Promise.resolve(null);
+
+    var grade = $('vpAiTtGrade').value || p.grade;
+    var klass = ($('vpAiTtClass').value || '').trim() || p.klass;
+    if (!grade || !klass) return Promise.resolve(null);
+
+    return Neis.weekTimetable(p.neis, grade, klass).then(function (byDate) {
+      var out = {}, any = false;
+      Object.keys(byDate).sort().forEach(function (d) {
+        var dt = new Date(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8));
+        var col = (dt.getDay() + 6) % 7;          // 월=0
+        if (out[col]) return;                      // 같은 요일이 겹치면 먼저 온 날을 쓴다
+        var list = byDate[d].filter(function (t) { return t.subject; });
+        if (!list.length) return;
+        out[col] = list;
+        any = true;
+      });
+      return any ? out : null;
+    })['catch'](function () { return null; });
+  }
+
+  /** 기상·취침·식사·학교·학원 시간을 입력받아 시간표 칸을 자동으로 채운다.
    *  나머지 빈 칸은 입력한 과목을 돌아가며 채우고, 켜져 있으면 2시간마다 휴식을 끼워 넣는다. */
   function vpAiGenerate() {
+    var mode = vpAiMode();
     var wake = vpAiParseTime($('vpAiWake').value, 7);
     var sleepRaw = vpAiParseTime($('vpAiSleep').value, 23);
     var sleep = sleepRaw <= wake ? sleepRaw + 24 : sleepRaw;
@@ -3545,6 +3923,21 @@
       return { name: name, startHour: Math.floor(sh), endHour: Math.ceil(eh), cols: cols };
     }).filter(Boolean);
 
+    // 학교 (학기 중에만)
+    var schoolCols = [], schoolStartH = 0, schoolEndH = 0;
+    if (mode === 'term') {
+      schoolCols = vpAiSchoolCols();
+      if (!schoolCols.length) { toast('등교하는 요일을 하나 이상 골라 주세요.', true); return; }
+
+      var ss = vpAiParseTime($('vpAiSchoolStart').value, 8);
+      var se = vpAiParseTime($('vpAiSchoolEnd').value, 16);
+      schoolStartH = Math.floor(ss);
+      schoolEndH = Math.ceil(se);
+      if (schoolEndH <= schoolStartH) { toast('등교 시각과 하교 시각을 확인해 주세요.', true); return; }
+      if (schoolStartH < startH) { toast('등교 시각이 기상 시각보다 빠릅니다. 확인해 주세요.', true); return; }
+      if (schoolEndH > bedH) { toast('하교 시각이 취침 시각보다 늦습니다. 확인해 주세요.', true); return; }
+    }
+
     var subjects = vpAiReadSubjects();
     var autoRest = $('vpAiAutoRest').checked;
     var restPlan = vpAiRestPlan();
@@ -3558,6 +3951,16 @@
     if (vpHasContent(state.vacplan) &&
         !confirm('지금 시간표 내용을 지우고 자동으로 새로 세울까요? 되돌릴 수 없습니다.')) return;
 
+    /* 시간표는 네트워크에서 받아 오므로 여기서 한 번 갈라진다.
+     * 표를 실제로 세우는 일은 전부 build 안에서 한다 — 받아 오든 못 받아 오든 같은 경로. */
+    if (mode === 'term' && $('vpAiUseTimetable').checked) {
+      toast('학교 시간표를 불러오는 중…');
+      vpAiFetchTimetable().then(build);
+    } else {
+      build(null);
+    }
+
+    function build(tt) {
     var days = state.vacplan.days;
     var hours = [];
     for (var h = startH; h <= bedH; h++) hours.push(h);
@@ -3566,6 +3969,10 @@
     function setCell(hourAbs, col, text) {
       var idx = hourAbs - startH;
       if (idx >= 0 && idx < grid.length) grid[idx][col] = text;
+    }
+    function cellAt(hourAbs, col) {
+      var idx = hourAbs - startH;
+      return (idx >= 0 && idx < grid.length) ? grid[idx][col] : null;
     }
 
     // 기상 / 취침
@@ -3582,7 +3989,34 @@
       for (var c2 = 0; c2 < days.length; c2++) setCell(hourAbs, c2, merged);
     });
 
-    // 학원 · 과외 (식사보다 우선해서 그 위에 덮어쓴다)
+    /* 학교 (학기 중에만). 식사 뒤에 깔고, 학원이 그 위를 덮는다.
+     *
+     * 시간표를 받아 왔으면 1교시부터 등교 시각 칸에 차례로 얹는다.
+     * 계획표는 한 시간 단위라 교시 시각을 그대로 옮길 수 없으므로 "순서" 를 옮긴다 —
+     * 급식 시간처럼 이미 채워진 칸은 교시를 쓰지 않고 건너뛰기만 해서,
+     * 점심 때문에 한 교시가 통째로 사라지는 일이 없게 한다. */
+    var schoolFilled = 0, ttUsed = 0;
+    if (mode === 'term') {
+      schoolCols.forEach(function (col) {
+        var periods = tt && tt[col] ? tt[col] : null;
+        var h = schoolStartH;
+
+        if (periods) {
+          var pi = 0;
+          while (pi < periods.length && h <= bedH) {
+            if (cellAt(h, col)) { h++; continue; }   // 식사·기상 칸은 건드리지 않는다
+            setCell(h, col, periods[pi].subject);
+            pi++; h++; ttUsed++;
+          }
+        }
+        // 시간표가 없거나 하교 시각보다 일찍 끝나면 남은 학교 시간을 한 덩어리로 막는다
+        for (; h < schoolEndH; h++) {
+          if (!cellAt(h, col)) { setCell(h, col, '학교'); schoolFilled++; }
+        }
+      });
+    }
+
+    // 학원 · 과외 (식사·학교보다 우선해서 그 위에 덮어쓴다)
     academies.forEach(function (ac) {
       var s2 = ac.startHour < startH ? ac.startHour + 24 : ac.startHour;
       var e2 = ac.endHour <= s2 ? ac.endHour + 24 : ac.endHour;
@@ -3673,10 +4107,22 @@
     state.vacplan.rows = hours.map(function (h2, i) {
       return { time: pad(h2 % 24) + ':00', cells: grid[i] };
     });
+    state.vacplan.mode = mode;
     state.vacplan.colors = {};   // 과목 구성이 바뀌었을 수 있으니 색은 새로 배정한다
     vpSave();
     renderVacPlanPage();
 
+    /* 학교 시간표는 "넣었는데 안 들어왔다" 가 가장 헷갈리는 실패다.
+     * 켰는데 못 받아 온 경우를 반드시 말해 준다. */
+    if (mode === 'term' && $('vpAiUseTimetable').checked && !ttUsed) {
+      toast('학교 시간표를 불러오지 못해 ‘학교’로만 막았습니다. 학교·학년·반과 인터넷 연결을 확인해 주세요.', true);
+      return;
+    }
+    if (ttUsed) {
+      toast('학교 시간표 ' + ttUsed + '교시를 넣고' + (schoolFilled ? ' 나머지 학교 시간도 막은 뒤' : '') +
+        ' 남는 시간에 과목을 배분했습니다.');
+      return;
+    }
     if (alloc.scaled) {
       toast('목표 ' + alloc.want + '시간이 남는 ' + alloc.capacity + '시간을 넘어 비율대로 줄였습니다.', true);
     } else if (alloc.want && alloc.want < alloc.capacity) {
@@ -3684,6 +4130,7 @@
         '시간은 자유 시간' + (restCount ? ', ' + restCount + '시간은 휴식' : '') + '으로 두었습니다.');
     } else {
       toast('큰 틀을 세웠습니다. 이제 칸을 눌러 자유롭게 다듬으세요.');
+    }
     }
   }
 
@@ -3742,6 +4189,33 @@
     });
     renderVpAiIntensity();
 
+    /* 학기 중 / 방학.
+     * 저장해 둔 모드로 복원한다 — 학기 중에 쓰던 사람이 앱을 다시 열 때마다
+     * 방학 기준 화면을 마주하면 매번 같은 걸 다시 고르게 된다. */
+    $('vpAiMode').value = state.vacplan.mode === 'vacation' ? 'vacation' : 'term';
+    paintSegs();
+    renderVpAiSchoolDays();
+    // initSegs 의 핸들러가 먼저 등록돼 있어 값이 바뀐 뒤에 이 핸들러가 돈다
+    $$('.vpai-mode').forEach(function (seg) {
+      seg.addEventListener('click', function (e) {
+        if (!e.target.closest('button')) return;
+        var mode = vpAiMode();
+        state.vacplan.mode = mode;
+        vpSave();
+        vpAiSyncModeDefaults(mode);
+        renderVpAiMode();
+        renderVpAiIntensity();
+      });
+    });
+
+    var p0 = Store.profile();
+    fillVpAiGradeOptions(p0 ? p0.grade : null);
+    if (p0 && p0.klass) $('vpAiTtClass').value = p0.klass;
+    $('vpAiUseTimetable').addEventListener('change', renderVpAiTtStatus);
+    $('vpAiTtClass').addEventListener('input', renderVpAiTtStatus);
+    $('vpAiTtGrade').addEventListener('change', renderVpAiTtStatus);
+    renderVpAiMode();
+
     [
       ['vpAiToggle', 'vpAiBody'],
       ['vpPaletteToggle', 'vpPalettes'],
@@ -3763,6 +4237,7 @@
       state.vacplan = vpDefaultModel();
       vpSave();
       renderVacPlanPage();
+      renderVpAiSchoolDays();   // 요일 이름이 기본값으로 돌아갔으니 등교 요일 칩도 다시 만든다
       toast('빈 표로 되돌렸습니다. 자동 계획표 세우기로 다시 시작해 보세요.');
     });
 
@@ -3853,6 +4328,8 @@
   function renderSettingsPage() {
     var p = Store.profile();
     if (!p) return;
+
+    renderMealAlarmSettings();
 
     var neisTag = p.neis && p.neis.schoolCode
       ? ' · <span style="color:var(--good);font-weight:600">나이스 연결됨</span>'
@@ -4968,6 +5445,9 @@
           League.setCloudRows([], '');
           renderCloudSettings();
           renderLeague();
+          // 포스트잇도 이 동의 위에 서 있다. 벽을 걷고 조회도 멈춘다.
+          renderPins();
+          pinTimers();
           toast('전송을 껐습니다. 기기 번호도 버려 서버 기록과의 연결을 끊었습니다.');
         };
 
@@ -4979,6 +5459,481 @@
         }
       }
     });
+  }
+
+  /* ══════════════════════════════════════════════ 우리 반 포스트잇
+   *
+   * 쪽지는 리그 화면에서 쓰지만 붙는 곳은 화면 전체(#pinLayer)다.
+   * 다른 화면에 있어도 계속 보이는 것이 이 기능의 요점이라 그렇게 두었다.
+   * 대신 [벽 숨기기]로 언제든 걷을 수 있게 했다 — 타이머를 가리면
+   * 공부하러 온 사람에게는 방해가 되기 때문이다.
+   *
+   * 규칙은 notes.js 머리말에 있다. 여기서는 그리는 일과 붙이는 동작만 맡는다. */
+
+  var PIN_TICK_MS = 15000;    // 남은 시간 다시 쓰기
+  var PIN_POLL_MS = 45000;    // 서버에서 새 쪽지 받아 오기
+
+  var pinState = {
+    color: -1,      // -1 = 아무 색이나
+    life: 15,
+    placing: null,  // 붙일 자리를 고르는 중인 초안
+    tick: null, poll: null,
+    drag: null
+  };
+
+  /** 쪽지를 쓸 수 있는 상태인가 — 리그·학급 대항전이 켜져 있고 학년·반이 있어야 한다 */
+  function pinCls() { return Cloud.classEnabled() ? League.myClassId() : null; }
+  function pinReady() { return !!pinCls(); }
+
+  /* ------------------------------------------------------------ 벽 그리기 */
+
+  /** 쪽지가 화면 밖으로 잘려 나가지 않게 자리를 당긴다 */
+  function pinClamp(x, y) {
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var mx = ((w < 560 ? 142 : 168) / 2 + 10) / w * 100;
+    var my = (110 / 2 + 10) / h * 100;
+    return {
+      x: Math.round(Math.min(100 - mx, Math.max(mx, x))),
+      y: Math.round(Math.min(100 - my, Math.max(my, y)))
+    };
+  }
+
+  function pinHtml(n) {
+    return '<div class="pin-body">' + esc(n.body) + '</div>' +
+      '<div class="pin-foot">' +
+        '<span class="pin-who">' + esc(n.nick || '익명') + (n.me ? ' (나)' : '') + '</span>' +
+        '<span class="pin-left"></span>' +
+      '</div>' +
+      (n.me ? '<button type="button" class="pin-btn pin-del" title="모두의 화면에서 떼기" aria-label="내 쪽지 떼기">🗑</button>' : '') +
+      '<button type="button" class="pin-btn pin-x" title="내 화면에서만 치우기" aria-label="이 쪽지 내 화면에서 치우기">✕</button>';
+  }
+
+  function pinNode(n) {
+    var el = document.createElement('div');
+    el.className = 'pin c' + (((n.color % 8) + 8) % 8) + (n.me ? ' is-mine' : '');
+    el.dataset.pin = n.id;
+    el.style.setProperty('--pin-tilt', (n.tilt || 0) + 'deg');
+    el.innerHTML = pinHtml(n);
+    return el;
+  }
+
+  /* 저장된 자리는 붙인 사람의 화면 기준이다. 화면이 더 좁은 기기에서 열면
+   * 가장자리 쪽지가 잘리므로, 그릴 때마다 이쪽 화면에 맞게 당겨 준다. */
+  function pinPlaceAt(el, n) {
+    var spot = pinClamp(n.x, n.y);
+    el.style.left = spot.x + '%';
+    el.style.top = spot.y + '%';
+  }
+
+  function pinLeftText(el, n) {
+    var lbl = el.querySelector('.pin-left');
+    if (lbl) lbl.textContent = Notes.remainText(n);
+    el.classList.toggle('is-going', Notes.remain(n) < 60000);
+  }
+
+  /**
+   * 이미 붙어 있는 쪽지는 다시 만들지 않는다.
+   * 매번 새로 그리면 붙는 동작이 다시 재생되고, 끌고 있던 쪽지가 손에서 빠진다.
+   */
+  function renderPinWall() {
+    var layer = $('pinLayer');
+    if (!layer) return;
+
+    var on = Notes.wallOn() && pinReady();
+    layer.classList.toggle('is-off', !on);
+    if (!on) { layer.innerHTML = ''; return; }
+
+    var seen = {};
+    Notes.list().forEach(function (n) {
+      seen[n.id] = true;
+      var el = layer.querySelector('[data-pin="' + n.id + '"]');
+      if (!el) { el = pinNode(n); layer.appendChild(el); }
+      if (!el.classList.contains('is-dragging')) pinPlaceAt(el, n);
+      pinLeftText(el, n);
+    });
+
+    $$('.pin', layer).forEach(function (el) {
+      if (!seen[el.dataset.pin]) el.remove();
+    });
+  }
+
+  /* ------------------------------------------------------- 리그 화면의 작성 칸 */
+
+  function pinWarn(msg) {
+    var el = $('pinWarn');
+    if (!el) return;
+    el.hidden = !msg;
+    el.textContent = msg || '';
+  }
+
+  /* 색·시간 단추는 15초마다 도는 갱신에도 걸린다. 고른 것이 그대로면
+   * 다시 그리지 않는다 — 매번 새로 만들면 키보드로 고르던 사람의 초점이
+   * 15초마다 날아간다. */
+  function pinPickerSame(wrap, sel, value) {
+    if (!wrap.children.length) return false;
+    var on = wrap.querySelector(sel);
+    return !!on && on.dataset[value.key] === String(value.now);
+  }
+
+  function renderPinColors() {
+    var wrap = $('pinColors');
+    if (!wrap) return;
+    if (pinPickerSame(wrap, '.pin-sw.on', { key: 'color', now: pinState.color })) return;
+
+    var html = '<button type="button" class="pin-sw rand' + (pinState.color < 0 ? ' on' : '') +
+      '" data-color="-1" role="radio" aria-checked="' + (pinState.color < 0) +
+      '" title="아무 색이나" aria-label="색 아무거나">🎲</button>';
+    html += Notes.COLORS.map(function (c) {
+      var on = pinState.color === c.id;
+      return '<button type="button" class="pin-sw c' + c.id + (on ? ' on' : '') +
+        '" data-color="' + c.id + '" role="radio" aria-checked="' + on +
+        '" title="' + esc(c.name) + '" aria-label="' + esc(c.name) + '"></button>';
+    }).join('');
+    wrap.innerHTML = html;
+  }
+
+  function renderPinLifes() {
+    var wrap = $('pinLifes');
+    if (!wrap) return;
+    if (pinPickerSame(wrap, '.pin-life.on', { key: 'life', now: pinState.life })) return;
+
+    wrap.innerHTML = Notes.LIFE.map(function (m) {
+      var on = pinState.life === m;
+      return '<button type="button" class="pin-life' + (on ? ' on' : '') +
+        '" data-life="' + m + '" role="radio" aria-checked="' + on + '">' + m + '분</button>';
+    }).join('');
+  }
+
+  /** 리그·학급 대항전이 꺼져 있으면 왜 못 쓰는지와 어디서 켜는지를 적는다 */
+  function renderPinLocked() {
+    var box = $('pinLocked');
+    if (!box) return;
+
+    var msg = '';
+    if (!Cloud.configured()) {
+      msg = '이 앱에 서버가 설정돼 있지 않아 포스트잇을 쓸 수 없습니다.';
+    } else if (!Cloud.enabled()) {
+      msg = '포스트잇은 <b>같은 반 친구들과 함께 보는 기능</b>이라 서버를 씁니다. ' +
+        '<b>설정 → 학교 리그 참가</b>를 먼저 켜 주세요.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    } else if (!Cloud.classEnabled()) {
+      msg = '누가 붙였는지 알려면 <b>학년·반과 닉네임</b>이 필요합니다. ' +
+        '<b>설정 → 학급 대항전</b>을 켜면 포스트잇도 함께 열립니다.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    } else if (!League.myClassId()) {
+      msg = '프로필에 <b>학년·반</b>이 없어 어느 반 벽에 붙일지 알 수 없습니다. ' +
+        '<b>설정 → 내 프로필</b>에서 학년과 반을 채워 주세요.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    }
+
+    box.classList.toggle('is-hidden', !msg);
+    if (box.dataset.msg === msg) return;    // 색·시간 단추와 같은 이유로, 그대로면 다시 그리지 않는다
+    box.dataset.msg = msg;
+    box.innerHTML = msg;
+    // 새로 그린 [설정으로 가기] 에도 이동 기능을 달아 준다 (init 때 걸어 둔 것은 이 버튼을 모른다)
+    $$('[data-goto]', box).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.goto); });
+    });
+  }
+
+  function renderPinCard() {
+    if (!$('pinCard')) return;
+
+    var ready = pinReady();
+    renderPinLocked();
+    $('pinCompose').classList.toggle('is-hidden', !ready);
+    $('pinRefresh').disabled = !ready;
+
+    var wallOn = Notes.wallOn();
+    $('pinWallToggle').textContent = wallOn ? '벽 숨기기' : '벽 보기';
+    $('pinWallToggle').setAttribute('aria-pressed', wallOn ? 'true' : 'false');
+
+    renderPinColors();
+    renderPinLifes();
+
+    var left = Notes.MAX_LEN - ($('pinText').value || '').length;
+    $('pinLeft').textContent = left;
+    $('pinLeft').parentNode.classList.toggle('is-full', left <= 0);
+
+    var n = Notes.list().length, hid = Notes.hiddenCount(), mine = Notes.mine().length;
+    var txt;
+    if (!ready) txt = '아직 열리지 않았습니다.';
+    else if (!n && !hid) txt = '지금 붙어 있는 쪽지가 없어요. 첫 쪽지를 붙여 보세요.';
+    else txt = '지금 ' + n + '장 붙어 있어요' + (mine ? ' (내 쪽지 ' + mine + '장)' : '') +
+      (hid ? ' · 내가 치운 ' + hid + '장' : '');
+    $('pinCount').textContent = txt;
+    $('pinRestore').classList.toggle('is-hidden', !hid);
+  }
+
+  function renderPins() { renderPinWall(); renderPinCard(); }
+
+  /* ---------------------------------------------------------- 서버와 맞추기 */
+
+  function pinRefresh() {
+    var cls = pinCls();
+    if (!cls) { renderPins(); return Promise.resolve([]); }
+    return Notes.refresh(cls).then(function () { renderPins(); });
+  }
+
+  /* 남은 시간은 자주 다시 써야 하고, 서버 조회는 그보다 훨씬 뜸해도 된다.
+   * 화면이 안 보일 때는 둘 다 멈춘다 — 가방 속 휴대폰이 계속 서버를 부르지 않게. */
+  function pinTimers() {
+    var want = pinReady() && Notes.wallOn() && !document.hidden;
+
+    if (want && !pinState.tick) {
+      pinState.tick = setInterval(function () {
+        // 만료된 쪽지가 스스로 사라지도록 벽을 다시 훑는다
+        renderPins();
+      }, PIN_TICK_MS);
+    } else if (!want && pinState.tick) {
+      clearInterval(pinState.tick); pinState.tick = null;
+    }
+
+    if (want && !pinState.poll) {
+      pinState.poll = setInterval(pinRefresh, PIN_POLL_MS);
+    } else if (!want && pinState.poll) {
+      clearInterval(pinState.poll); pinState.poll = null;
+    }
+  }
+
+  /* --------------------------------------------------------- 붙일 자리 고르기 */
+
+  function pinGhostShow(draft) {
+    var g = $('pinGhost');
+    if (!g) return;
+    g.className = 'pin pin-ghost c' + (((draft.color % 8) + 8) % 8);
+    g.style.setProperty('--pin-tilt', draft.tilt + 'deg');
+    g.innerHTML = '<div class="pin-body">' + esc(draft.body) + '</div>' +
+      '<div class="pin-foot"><span class="pin-who">' + esc(draft.nick || '익명') + '</span>' +
+      '<span class="pin-left">' + draft.minutes + '분 뒤 사라짐</span></div>';
+    // 처음에는 화면 가운데 — 손가락으로 쓰는 기기에서는 포인터가 없다
+    var spot = pinClamp(50, 45);
+    g.style.left = spot.x + '%';
+    g.style.top = spot.y + '%';
+  }
+
+  function pinPlacingStart() {
+    var cls = pinCls();
+    if (!cls) { renderPinCard(); return; }
+
+    var body = ($('pinText').value || '').trim();
+    if (!body) { pinWarn('내용을 먼저 적어 주세요.'); $('pinText').focus(); return; }
+
+    /* 걸러지는 말은 자리를 고르기 전에 막는다. 다 붙이고 나서 거절당하면
+     * 무엇 때문인지 알기 어렵고, 서버까지 갔다 오는 것도 낭비다.
+     * 어떤 말이 걸렸는지는 되풀이해 보여 주지 않는다 — 화면에 그 말을 다시 띄우는 셈이다. */
+    var v = Filter.check(body);
+    if (!v.ok) {
+      pinWarn('욕설이나 남을 비하하는 말이 들어 있어 붙일 수 없어요. 다르게 적어 볼까요?');
+      return;
+    }
+    pinWarn('');
+
+    if (Notes.mine().length >= 5) {
+      pinWarn('한 번에 붙일 수 있는 쪽지는 5장까지예요. 하나를 떼고 다시 붙여 주세요.');
+      return;
+    }
+
+    var p = Store.profile() || {};
+    pinState.placing = {
+      body: body,
+      nick: String(p.nick || '').trim(),
+      color: pinState.color < 0 ? Notes.pickColor() : pinState.color,
+      minutes: pinState.life,
+      tilt: Notes.pickTilt()
+    };
+
+    pinGhostShow(pinState.placing);
+    $('pinPlace').classList.remove('is-hidden');
+    $('pinPlaceMsg').textContent = '붙일 자리를 눌러 주세요 · ' + pinState.placing.minutes + '분 뒤 사라져요';
+    // 벽이 꺼져 있으면 방금 붙인 쪽지가 안 보인다. 자리를 고르는 순간 다시 켠다.
+    if (!Notes.wallOn()) { Notes.setWallOn(true); renderPins(); pinTimers(); }
+  }
+
+  function pinPlacingEnd() {
+    pinState.placing = null;
+    $('pinPlace').classList.add('is-hidden');
+  }
+
+  function pinDrop(clientX, clientY) {
+    var draft = pinState.placing;
+    var cls = pinCls();
+    if (!draft || !cls) { pinPlacingEnd(); return; }
+
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var spot = pinClamp(clientX / w * 100, clientY / h * 100);
+    draft.x = spot.x; draft.y = spot.y;
+
+    pinPlacingEnd();
+    Notes.post(cls, draft).then(function () {
+      $('pinText').value = '';
+      renderPins();
+      pinTimers();
+      toast('포스트잇을 붙였어요. ' + draft.minutes + '분 뒤에 사라집니다.');
+    }, function (e) {
+      renderPins();
+      toast(e && e.message ? e.message : '붙이지 못했습니다.', true);
+    });
+  }
+
+  /* --------------------------------------------------------- 내 쪽지 끌어 옮기기 */
+
+  function pinDragStart(el, e) {
+    var r = el.getBoundingClientRect();
+    pinState.drag = {
+      el: el, id: el.dataset.pin,
+      dx: e.clientX - (r.left + r.width / 2),
+      dy: e.clientY - (r.top + r.height / 2),
+      moved: false
+    };
+    el.classList.add('is-dragging');
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+  }
+
+  function pinDragMove(e) {
+    var d = pinState.drag;
+    if (!d) return;
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var spot = pinClamp((e.clientX - d.dx) / w * 100, (e.clientY - d.dy) / h * 100);
+    d.x = spot.x; d.y = spot.y; d.moved = true;
+    d.el.style.left = spot.x + '%';
+    d.el.style.top = spot.y + '%';
+  }
+
+  function pinDragEnd() {
+    var d = pinState.drag;
+    if (!d) return;
+    pinState.drag = null;
+    d.el.classList.remove('is-dragging');
+    if (!d.moved) return;
+    Notes.move(d.id, d.x, d.y);   // 화면은 이미 옮겨져 있다. 실패해도 다음 새로고침에 제자리로 돌아온다.
+  }
+
+  /* --------------------------------------------------------------- 연결 */
+
+  function initPins() {
+    if (!$('pinLayer')) return;
+
+    var d = Notes.draft();
+    pinState.color = d.color;
+    pinState.life = d.life;
+
+    /* ── 벽 위의 단추: ✕ 는 내 화면에서만, 🗑 은 모두의 화면에서 */
+    $('pinLayer').addEventListener('click', function (e) {
+      var el = e.target.closest ? e.target.closest('.pin') : null;
+      if (!el) return;
+      var id = el.dataset.pin;
+
+      if (e.target.closest('.pin-x')) {
+        var note = null;
+        Notes.list().forEach(function (n) { if (n.id === id) note = n; });
+        Notes.dismiss(id, note ? note.expiresAt : 0);
+        el.remove();
+        renderPinCard();
+        toast('내 화면에서만 치웠어요. 다른 사람 화면에는 그대로 있어요.');
+        return;
+      }
+      if (e.target.closest('.pin-del')) {
+        Notes.remove(id);
+        el.remove();
+        renderPinCard();
+        toast('쪽지를 뗐습니다.');
+      }
+    });
+
+    /* ── 내 쪽지 끌어 옮기기 */
+    $('pinLayer').addEventListener('pointerdown', function (e) {
+      if (!e.target.closest) return;
+      if (e.target.closest('.pin-btn')) return;          // 단추는 끌기가 아니다
+      var el = e.target.closest('.pin.is-mine');
+      if (!el || pinState.placing) return;
+      e.preventDefault();
+      pinDragStart(el, e);
+    });
+    $('pinLayer').addEventListener('pointermove', pinDragMove);
+    $('pinLayer').addEventListener('pointerup', pinDragEnd);
+    $('pinLayer').addEventListener('pointercancel', pinDragEnd);
+
+    /* ── 붙일 자리 고르기 */
+    var place = $('pinPlace');
+    place.addEventListener('pointermove', function (e) {
+      if (!pinState.placing) return;
+      var g = $('pinGhost');
+      var w = window.innerWidth || 360, h = window.innerHeight || 640;
+      var spot = pinClamp(e.clientX / w * 100, e.clientY / h * 100);
+      g.style.left = spot.x + '%';
+      g.style.top = spot.y + '%';
+    });
+    place.addEventListener('click', function (e) {
+      if (!pinState.placing) return;
+      if (e.target.closest && e.target.closest('.pin-place-bar')) return;   // [취소] 는 붙이는 자리가 아니다
+      pinDrop(e.clientX, e.clientY);
+    });
+    $('pinPlaceCancel').addEventListener('click', function (e) {
+      e.stopPropagation();
+      pinPlacingEnd();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && pinState.placing) pinPlacingEnd();
+    });
+
+    /* ── 작성 칸 */
+    if ($('pinCard')) {
+      $('pinText').addEventListener('input', function () {
+        pinWarn('');
+        var left = Notes.MAX_LEN - this.value.length;
+        $('pinLeft').textContent = left;
+        $('pinLeft').parentNode.classList.toggle('is-full', left <= 0);
+      });
+
+      $('pinColors').addEventListener('click', function (e) {
+        var b = e.target.closest('.pin-sw');
+        if (!b) return;
+        pinState.color = parseInt(b.dataset.color, 10);
+        Notes.setDraft(pinState.color, pinState.life);
+        renderPinColors();
+      });
+
+      $('pinLifes').addEventListener('click', function (e) {
+        var b = e.target.closest('.pin-life');
+        if (!b) return;
+        pinState.life = parseInt(b.dataset.life, 10);
+        Notes.setDraft(pinState.color, pinState.life);
+        renderPinLifes();
+      });
+
+      $('pinPost').addEventListener('click', pinPlacingStart);
+
+      $('pinWallToggle').addEventListener('click', function () {
+        Notes.setWallOn(!Notes.wallOn());
+        renderPins();
+        pinTimers();
+        toast(Notes.wallOn() ? '포스트잇 벽을 다시 띄웁니다.' : '포스트잇 벽을 숨겼습니다. 쪽지는 그대로 있어요.');
+      });
+
+      $('pinRestore').addEventListener('click', function () {
+        Notes.restoreAll();
+        renderPins();
+        toast('치워 둔 쪽지를 다시 불러왔어요.');
+      });
+
+      $('pinRefresh').addEventListener('click', function () {
+        pinRefresh().then(function () { toast('포스트잇을 새로 받아왔어요.'); });
+      });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      pinTimers();
+      if (!document.hidden) pinRefresh();
+    });
+    window.addEventListener('resize', function () {
+      // 화면 크기가 바뀌면 가장자리 쪽지가 잘릴 수 있어 자리를 다시 당긴다
+      renderPinWall();
+    });
+
+    renderPins();
+    pinTimers();
+    pinRefresh();
   }
 
   function initCloud() {
@@ -5006,13 +5961,16 @@
         }
         Cloud.setClassEnabled(true);
         renderCloudSettings();
-        toast('학급 대항전에 참가합니다.');
+        toast('학급 대항전에 참가합니다. 우리 반 포스트잇도 함께 열렸어요.');
         leagueSync(true);
+        pinRefresh(); pinTimers();
       } else {
         Cloud.setClassEnabled(false);
         renderCloudSettings();
         // 끄는 것으로 끝내지 않는다. 빈 값을 올려 서버에 남은 학년·반을 지운다.
         leagueSync(true);
+        // 포스트잇도 같은 동의 위에 서 있다. 벽을 걷고 타이머도 멈춘다.
+        renderPins(); pinTimers();
         toast('학급 대항전을 껐습니다. 서버에 저장된 학년·반도 지웁니다.');
       }
     });
@@ -5746,10 +6704,12 @@
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
     Store.requestPersist().then(function () { renderStorageStatus(); });
 
-    // 끼니를 체크하면 급식 안내 문구도 다시 계산한다
+    // 끼니를 체크하면 급식 안내 문구와 채점 기준표를 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
-      $(id).addEventListener('change', function () { renderMeals(); });
+      $(id).addEventListener('change', function () { renderMeals(); renderMealSched(); });
     });
+    initMealAlarm();
+    renderMealSched();
 
     $('detailToggle').addEventListener('click', function () { toggleDetail(); });
     $('resultMore').addEventListener('click', toggleResultDetail);
@@ -5857,11 +6817,15 @@
       Store.clearAll();
       Kids.reset();
       League.reset();
+      // 내가 붙인 쪽지는 서버에서 스스로 사라진다. 여기서는 이 기기의
+      // 흔적(치운 목록·벽 설정)만 지운다.
+      Notes.reset();
       // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
       // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
       Slime.reset();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
       renderLeague();
+      renderPins();
       toast('모든 기록을 삭제했습니다.');
     });
 
@@ -5902,6 +6866,7 @@
     renderReport();
     renderKids();
     if (Store.profile()) { leagueSettle(); renderLeague(); leagueSync(false); }
+    initPins();
     weeklyNotice();
 
     if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);
