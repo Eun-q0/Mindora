@@ -650,6 +650,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .s-cap { display: none; }
 .subject-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .subject-row { animation: pop 0.22s ease; }
+
+/* 과목 줄에는 ↑↓✕ 세 개가 들어가므로 마지막 칸을 그만큼 넓힌다.
+ * 계획표의 학원 줄은 ✕ 하나뿐이라 34px 그대로 둔다. */
+.subject-head:not(.vpai-subject-head), #subjectList .subject-row {
+  grid-template-columns: minmax(0,1.5fr) minmax(0,1.2fr) minmax(124px,1.15fr) minmax(0,1fr) minmax(0,1.15fr) 104px;
+}
+.s-ctl { display: flex; gap: 4px; }
+/* 기본 icon-btn 의 빨간 hover 는 삭제를 뜻한다. 순서 이동은 그 뜻이 아니다. */
+.s-up:hover:not(:disabled), .s-down:hover:not(:disabled) {
+  background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink);
+}
+.icon-btn:disabled { opacity: 0.32; cursor: default; }
+.icon-btn:disabled:hover { background: var(--surface); border-color: var(--line-2); color: var(--dim); }
 @keyframes pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 
 .vpai-academy-row { grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) 34px; }
@@ -1536,12 +1549,17 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .subject-head { display: none; }
   .subject-row { grid-template-columns: 1fr 1fr; gap: 10px 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
   .subject-row .s-cell-name { grid-column: 1 / -1; padding-right: 34px; }
+  /* 과목 줄은 ↑↓✕ 세 개가 오른쪽 위에 모여 앉으므로 이름 칸을 그만큼 더 비운다 */
+  #subjectList .subject-row .s-cell-name { padding-right: 92px; }
   /* 두 칸으로 접히면 한 칸이 130px 남짓이라 날짜 위젯이 기본 크기로는 안 들어간다.
    * min-width 를 풀어 둔 것만으로는 안쪽이 잘리므로, 좁은 화면에서만 여백과
    * 글자를 조금 줄여 달력 아이콘까지 통째로 칸 안에 들어오게 한다. */
   .subject-row input[type="date"].input { padding-left: 8px; padding-right: 8px; font-size: 13px; }
   .s-cap { display: block; font-size: 11px; color: var(--dim); font-weight: 600; padding-left: 2px; }
-  .subject-row .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
+  /* 학원 줄은 ✕ 가 직계 자식이고, 과목 줄은 .s-ctl 안에 들어 있다 */
+  .subject-row > .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
+  .subject-row > .s-ctl { position: absolute; top: 8px; right: 8px; gap: 3px; }
+  .s-ctl .icon-btn { width: 26px; height: 26px; }
   .two-col { grid-template-columns: 1fr; }
   .ct { grid-template-columns: 100px 1fr 54px; gap: 7px; }
   .ct-label { font-size: 11px; }

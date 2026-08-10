@@ -450,9 +450,41 @@
     row.querySelector('.s-del').addEventListener('click', function () {
       if ($$('.subject-row', $('subjectList')).length <= 1) { toast('과목은 최소 1개가 필요합니다.', true); return; }
       row.remove();
+      syncSubjectMoves();
     });
+    row.querySelector('.s-up').addEventListener('click', function () { moveSubjectRow(row, -1, this); });
+    row.querySelector('.s-down').addEventListener('click', function () { moveSubjectRow(row, 1, this); });
+
     $('subjectList').appendChild(row);
+    syncSubjectMoves();
     return row;
+  }
+
+  /* 과목 순서 바꾸기.
+   *
+   *  끌어다 놓기는 좁은 화면에서 스크롤과 싸우고 키보드로는 아예 못 쓴다.
+   *  ↑↓ 버튼은 마우스·터치·키보드가 전부 같은 방법으로 쓸 수 있다.
+   *  누른 버튼에 초점을 되돌려 주므로 연달아 눌러 여러 칸을 옮길 수 있다. */
+  function moveSubjectRow(row, dir, btn) {
+    var sibling = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;                       // 끝에서는 버튼이 이미 꺼져 있다
+    if (dir < 0) $('subjectList').insertBefore(row, sibling);
+    else $('subjectList').insertBefore(sibling, row);
+    syncSubjectMoves();
+    /* 노드를 옮기면 초점이 풀리는 브라우저가 있어 직접 되돌린다.
+     * 끝에 닿아 그 버튼이 꺼졌으면 반대쪽 화살표 대신 과목명 칸으로 보낸다 —
+     * 반대쪽으로 초점을 옮기면 키보드로 한 번 더 누르는 순간 도로 내려간다. */
+    if (btn && !btn.disabled) btn.focus();
+    else row.querySelector('.s-name').focus();
+  }
+
+  /** 맨 위·맨 아래에서는 갈 곳이 없으므로 그쪽 버튼을 끈다 */
+  function syncSubjectMoves() {
+    var rows = $$('.subject-row', $('subjectList'));
+    rows.forEach(function (r, i) {
+      r.querySelector('.s-up').disabled = (i === 0);
+      r.querySelector('.s-down').disabled = (i === rows.length - 1);
+    });
   }
 
   function readSubjects() {

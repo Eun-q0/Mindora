@@ -538,7 +538,9 @@
           <span>과목명</span><span>유형</span><span>시험일 <em>D-day 반영</em></span><span>중요도</span><span>준비도</span><span></span>
         </div>
         <div id="subjectList" class="subject-list"></div>
-        <p class="tiny">유형에 따라 어떤 과제 적합도 참고값을 우선 반영할지 결정됩니다.
+        <p class="tiny">↑↓ 버튼으로 <b>과목 순서를 바꿀 수 있습니다</b> — 자주 보는 과목을 위로 올려 두세요.
+          (순서는 목록을 보기 좋게 하는 것이고, 실제 학습 배치 순서는 시험일·중요도·준비도로 정해집니다.)
+          유형에 따라 어떤 과제 적합도 참고값을 우선 반영할지 결정됩니다.
           <b>📅 시험일을 넣으면 날짜가 가까운 과목에 시간이 더 배분됩니다</b> — 우선순위에서 가장 비중이 큰 항목입니다.
           비워 두어도 되고, 그때는 긴급도가 기본값으로 계산됩니다.</p>
       </div>
@@ -1692,7 +1694,11 @@
         <option value="5">5 · 충분함</option>
       </select>
     </label>
-    <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
+    <div class="s-ctl">
+      <button type="button" class="icon-btn s-up" title="위로" aria-label="이 과목을 위로 옮기기">↑</button>
+      <button type="button" class="icon-btn s-down" title="아래로" aria-label="이 과목을 아래로 옮기기">↓</button>
+      <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
+    </div>
   </div>
 </template>
 
