@@ -1734,9 +1734,6 @@
         if ($('soundOn').checked) Pomodoro.beep(block ? block.kind : 'study');
         if (block && block.kind === 'study') {
           Kids.addBlock();
-          /* 완주 포인트. 건너뛴 블록은 여기까지 오지 않는다 —
-           * skip() 은 onComplete 를 부르지 않고 바로 다음 블록으로 넘어간다. */
-          Level.award(block.minutes);
           state.resumeAfterFeedback = state.timer.running;
           state.timer.pause();
           showStudyFeedback(block);
@@ -1753,7 +1750,7 @@
         renderLiveTotal();
         renderGroup();
         renderLeague();
-        if (block && block.kind === 'study') setTimeout(function () { awardLevel(); awardKids(); }, 1200);
+        if (block && block.kind === 'study') setTimeout(awardKids, 1200);
       },
       onFinishAll: function () {
         commitSpan(true);
@@ -5130,17 +5127,6 @@
   }
 
   /** 미션·배지·레벨업을 판정하고 축하 메시지를 띄운다 */
-  /* 완주 레벨업 축하. 초·중 성장 모드와 달리 학교급을 가리지 않는다.
-   * 레벨이 여러 칸 올랐어도 축하는 한 줄로 모은다 — 토스트가 줄줄이 뜨면
-   * 정작 마지막에 뜬 것만 보이고 나머지는 스쳐 지나간다. */
-  function awardLevel() {
-    var n = Level.takeLevelUp();
-    if (!n) return;
-    var s = Level.summary();
-    toast('🎉 레벨 업! Lv.' + s.level + ' — 블록 ' + s.blocks + '개 완주', 'party');
-    renderGroup();
-  }
-
   function awardKids() {
     if (!kidsOn()) return;
     var res = Kids.evaluate();
@@ -5232,15 +5218,6 @@
         '<div class="gh-stat"><div class="k">내 순위</div><div class="v">' + (myRank ? myRank + '<small>위</small>' : '—') + '</div></div>' +
         '<div class="gh-stat"><div class="k">' + (isWeek ? '내 주간 순공' : '내 오늘 순공') + '</div><div class="v">' + durHtml(r.me ? r.me.value : 0) + '</div></div>' +
         '<div class="gh-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '<small>일</small></div></div>' +
-        /* 완주 레벨. 순공 시간과 다른 것을 세므로 나란히 둔다 —
-         * 오래 앉아 있는 것과 시작한 것을 끝내는 것은 같지 않다. */
-        (function () {
-          var lv = Level.summary();
-          return '<div class="gh-stat" title="집중 블록을 건너뛰지 않고 완주하면 오릅니다 (' +
-            lv.into + '/' + lv.need + ')">' +
-            '<div class="k">학습 레벨</div><div class="v">Lv.' + lv.level +
-            '<small>' + lv.blocks + '블록</small></div></div>';
-        })() +
       '</div>';
 
     $('rankList').innerHTML = r.list.length ? r.list.map(function (m) {
@@ -7411,7 +7388,6 @@
       // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
       // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
       Slime.reset();
-      Level.reset();
       // 기록을 지웠는데 오늘 플랜과 타이머 자리만 남아 다음 실행에 되살아나면 안 된다
       clearSession();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
