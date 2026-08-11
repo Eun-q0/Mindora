@@ -77,7 +77,52 @@ $$;
 revoke all on function public.admin_delete_device(uuid, date) from public, anon;
 grant execute on function public.admin_delete_device(uuid, date) to authenticated;
 
--- ───────────────────────── 4. 같은 반이면 자동으로 랭킹에 들어가게
+-- ───────────────────────── 4. 사용자가 동의를 철회하면 직접 삭제
+-- 로그인 없는 서비스이므로 앱이 만든 무작위 UUID를 삭제 권한표처럼 쓴다.
+-- 원본 테이블은 RLS로 직접 읽거나 수정할 수 없다.
+create or replace function public.delete_own_league_reports(
+  p_device uuid
+) returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_total integer := 0;
+  v_n     integer;
+begin
+  if p_device is null then return 0; end if;
+  delete from public.league_report where device_id = p_device;
+  get diagnostics v_total = row_count;
+  delete from public.device_seen where device_id = p_device;
+  get diagnostics v_n = row_count;
+  return v_total + v_n;
+end;
+$$;
+
+create or replace function public.delete_own_student_reports(
+  p_device uuid
+) returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_total integer := 0;
+begin
+  if p_device is null then return 0; end if;
+  delete from public.student_report where device_id = p_device;
+  get diagnostics v_total = row_count;
+  return v_total;
+end;
+$$;
+
+revoke all on function public.delete_own_league_reports(uuid) from public;
+revoke all on function public.delete_own_student_reports(uuid) from public;
+grant execute on function public.delete_own_league_reports(uuid) to anon, authenticated;
+grant execute on function public.delete_own_student_reports(uuid) to anon, authenticated;
+
+-- ───────────────────────── 5. 같은 반이면 자동으로 랭킹에 들어가게
 -- 공유 코드를 주고받는 방식은 번거로워서 아무도 안 쓴다. 같은 학교·학년·반이면
 -- 그냥 같은 판에 놓되, 서로에게는 익명으로만 보이게 한다.
 --

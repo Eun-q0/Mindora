@@ -415,7 +415,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <span class="chip">🧠 뇌 능력 5종</span><span class="chip">📅 과목별 시간 배분</span>
       <span class="chip">⏳ 컨디션 맞춤 뽀모도로</span><span class="chip">🎧 실시간 합성 집중 사운드</span>
       <span class="chip">🏆 우리 반 순공 리그</span><span class="chip">📊 주간 리포트</span>
-      <span class="chip">🍱 오늘의 급식</span><span class="chip">⭐ 초·중 성장 모드</span>
+      <span class="chip">🍱 오늘의 급식</span><span class="chip">⭐ 학부모 성장 모드</span>
       <span class="chip">🔒 기록은 내 기기에만</span><span class="chip">💸 0원</span>
     </div>
   </div>
@@ -557,7 +557,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <div class="stats" data-stagger>
         <div><b data-count="5" data-suffix="가지">0가지</b><span>매일 계산되는 학습 능력</span></div>
         <div><b data-count="10" data-suffix="종">0종</b><span>실시간 합성 집중 사운드</span></div>
-        <div><b data-count="16" data-suffix="종">0종</b><span>초·중학생 성장 배지</span></div>
+        <div><b data-count="16" data-suffix="종">0종</b><span>학부모·중학생 성장 배지</span></div>
         <div><b data-count="0" data-suffix="원">0원</b><span>가입도 결제도 없음</span></div>
       </div>
     </div>
@@ -621,17 +621,18 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   </section>
 
   <!-- ══ 프라이버시 ══════════════════════ -->
-  <section>
+  <section id="privacy">
     <div class="wrap">
       <div class="privacy up">
         <div class="lock">🔒</div>
         <div>
-          <h3>내 공부 기록은 내 브라우저 밖으로 나가지 않습니다</h3>
-          <p>서버에 계정을 만들지 않기 때문에, 애초에 보낼 곳이 없습니다.</p>
+          <h3>공부 기록은 기본적으로 내 브라우저에 저장됩니다</h3>
+          <p>리그·관리자 공개는 직접 동의해 켠 경우에만 필요한 항목을 서버로 보냅니다.</p>
           <ul>
             <li>학습 기록·프로필·그룹 데이터는 브라우저 저장소에만 저장됩니다</li>
             <li>등록한 음악 파일도 기기 안에만 남습니다 (전송 없음)</li>
-            <li>인터넷은 학교 검색과 급식 조회에만 씁니다 — 없어도 나머지는 그대로</li>
+            <li>학부모 모드의 초등 자녀 정보는 온라인 순위 기능으로 전송되지 않습니다</li>
+            <li>학생 리그 공유는 설정에서 언제든 끄고 서버 기록 삭제를 요청할 수 있습니다</li>
             <li>백업 파일로 내려받아 다른 기기로 옮길 수 있습니다</li>
           </ul>
         </div>
@@ -646,8 +647,8 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <div class="faq" data-stagger>
         <details open><summary>정말 무료인가요?</summary><div class="ans"><div><p>네. 결제도 구독도 없고 회원가입도 받지 않습니다. 링크를 열면 바로 씁니다.</p></div></div></details>
         <details><summary>앱을 설치해야 하나요?</summary><div class="ans"><div><p>아니요, 브라우저에서 그대로 돌아갑니다. 홈 화면에 추가하면 앱처럼 전체 화면으로 열리고, 인터넷이 끊겨도 대부분의 기능이 동작합니다.</p></div></div></details>
-        <details><summary>친구들과 등수는 어떻게 겨루나요?</summary><div class="ans"><div><p>학교·학년·반을 입력하면 그 조합으로 그룹이 만들어집니다. 서버 없이 동작하는 앱이라, 공유 코드를 카톡 등으로 주고받아 서로의 기록을 등록하는 방식입니다.</p></div></div></details>
-        <details><summary>초등학생·중학생도 쓸 수 있나요?</summary><div class="ans"><div><p>학교급을 초등학교나 중학교로 고르면 성장 모드가 켜집니다. 순공 1분이 1 경험치가 되고, 레벨이 오르면 캐릭터가 자라며, 배지 16종과 주간 도장판이 생깁니다. 설명 문구도 쉬운 말로 바뀝니다.</p></div></div></details>
+        <details><summary>친구들과 등수는 어떻게 겨루나요?</summary><div class="ans"><div><p>만 14세 이상 학생이 학교 리그 참가를 직접 켜면 학교명·주차·순공 시간·무작위 기기 번호가 서버로 전송됩니다. 학급 대항전은 학년·반·닉네임 공유에 별도로 동의해야 켜집니다.</p></div></div></details>
+        <details><summary>초등 기능은 어떻게 쓰나요?</summary><div class="ans"><div><p>보호자가 이용 유형에서 <b>학부모 (초등 자녀)</b>를 선택하면 성장 모드가 켜집니다. 자녀의 순공 시간이 경험치가 되고 배지와 주간 도장판을 이용할 수 있습니다. 자녀 정보는 브라우저에만 저장되며 온라인 순위 기능은 제공하지 않습니다.</p></div></div></details>
         <details><summary>기기를 바꾸면 기록이 사라지나요?</summary><div class="ans"><div><p>기록은 그 브라우저 안에 저장되므로, 옮길 때는 설정에서 백업 파일을 내려받아 새 기기에서 불러오면 됩니다.</p></div></div></details>
         <details><summary>점수가 낮게 나오면 어떻게 되나요?</summary><div class="ans"><div><p>더 몰아붙이는 대신 집중 시간을 줄입니다. 38점 아래면 15분 집중 / 10분 휴식의 회복 우선 모드로 바뀌고, 난도 높은 과제 대신 오답노트처럼 부담이 적은 학습법을 제안합니다.</p></div></div></details>
       </div>
@@ -674,7 +675,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="url(#mk)"/><text x="256" y="358" font-size="272" text-anchor="middle">🧠</text></svg>Mindora
     </a>
     <span>뇌 컨디션 기반 학습 코치</span>
-    <nav><a href="/app/">앱 열기</a><a href="#features">기능</a><a href="#faq">FAQ</a></nav>
+    <nav><a href="/app/">앱 열기</a><a href="#features">기능</a><a href="#privacy">개인정보</a><a href="#faq">FAQ</a></nav>
   </div>
   <div class="wrap" style="margin-top:18px;color:var(--dim);font-size:12.5px">
     화면 속 점수·계획은 설명을 위한 예시입니다. © 2026 Mindora

@@ -7,10 +7,6 @@
 
 <meta name="naver-site-verification" content="fa3d8aeb91cd3600bfaf8c486a86f00aba5d0cd7" />
 
-<!-- Google AdSense -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1345035649123599"
-     crossorigin="anonymous"></script>
-
 <!-- 방학 계획표 글씨체 (구글 폰트, 무료·상업적 사용 가능) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -82,12 +78,12 @@
     </button>
     <nav class="steps" id="stepNav" aria-label="학습 단계"></nav>
     <div class="more-wrap">
-      <button type="button" class="more-btn is-hidden" id="moreBtn" aria-expanded="false" aria-haspopup="true" aria-controls="moreMenu">
+      <button type="button" class="more-btn is-hidden" id="moreBtn" aria-label="더보기" aria-expanded="false" aria-haspopup="true" aria-controls="moreMenu">
         <span class="mb-dots" aria-hidden="true">☰</span><span class="mb-txt">더보기</span>
       </button>
       <div class="more-menu is-hidden" id="moreMenu" role="menu" aria-label="기능 바로가기"></div>
     </div>
-    <button type="button" class="profile-chip is-hidden" id="profileChip">
+    <button type="button" class="profile-chip is-hidden" id="profileChip" aria-label="프로필 열기">
       <span class="pc-av" id="pcAvatar">?</span>
       <span class="pc-txt"><b id="pcName">—</b><span id="pcGroup">—</span></span>
     </button>
@@ -237,7 +233,7 @@
   <section id="secProfile" class="section">
     <div class="sec-head">
       <h2><span class="sec-num">00</span> 시작하기</h2>
-      <p>학교와 학년을 입력하면 같은 학교·학년 친구들과 <b>스터디 그룹</b>이 만들어집니다. 공부한 시간을 서로 측정해 등수로 볼 수 있어요.</p>
+      <p>학생은 만 14세 이상부터 이용할 수 있습니다. 초등 기능은 <b>학부모 모드</b>에서 보호자가 자녀의 학습을 관리하는 방식으로 제공합니다.</p>
     </div>
 
     <div class="onboard">
@@ -256,14 +252,14 @@
         <div class="card-head"><span class="ci">🎓</span><h3>내 프로필</h3></div>
         <div class="card-body">
           <div class="field">
-            <label for="pfNick">닉네임 <em>같은 반 친구들 순위표에 그대로 보입니다</em></label>
+            <label for="pfNick"><span id="pfNickLabel">닉네임</span> <em id="pfNickHint">같은 반 친구들 순위표에 그대로 보입니다</em></label>
             <input type="text" id="pfNick" class="input" maxlength="12" placeholder="예) 밤샘요정">
             <p class="tiny" style="margin:6px 0 0">💡 <b>실명은 권하지 않습니다.</b>
               학급 대항전을 켜면 이 이름이 같은 반 친구들에게 그대로 보입니다.
               별명이나 별칭을 쓰세요 — 나중에 <b>설정</b>에서 언제든 바꿀 수 있습니다.</p>
           </div>
           <div class="field">
-            <label for="pfSchool">학교명 <em>앞 글자만 쳐도 아래에서 고를 수 있어요</em></label>
+            <label for="pfSchool"><span id="pfSchoolLabel">학교명</span> <em>앞 글자만 쳐도 아래에서 고를 수 있어요</em></label>
             <div class="ac-wrap">
               <input type="text" id="pfSchool" class="input" maxlength="24" placeholder="예) 한빛" autocomplete="off">
               <div class="ac-list is-hidden" id="schoolAc"></div>
@@ -272,23 +268,23 @@
           </div>
           <div class="two-col">
             <div class="field">
-              <label for="pfLevel">학교급</label>
+              <label for="pfLevel">이용 유형</label>
               <select id="pfLevel" class="input">
-                <option value="초등학교">초등학교</option>
-                <option value="중학교">중학교</option>
+                <option value="학부모">학부모 (초등 자녀)</option>
+                <option value="중학교">중학교 (만 14세 이상)</option>
                 <option value="고등학교" selected>고등학교</option>
                 <option value="대학교">대학교</option>
                 <option value="기타">기타 (재수·검정고시 등)</option>
               </select>
             </div>
             <div class="field">
-              <label for="pfGrade">학년</label>
+              <label for="pfGrade"><span id="pfGradeLabel">학년</span></label>
               <select id="pfGrade" class="input"></select>
             </div>
           </div>
           <div class="two-col">
             <div class="field">
-              <label for="pfClass">반 <em>선택</em></label>
+              <label for="pfClass"><span id="pfClassLabel">반</span> <em>선택</em></label>
               <input type="text" id="pfClass" class="input" maxlength="8" placeholder="예) 3">
             </div>
             <div class="field">
@@ -299,13 +295,17 @@
               </div>
             </div>
           </div>
-          <p class="tiny">같은 <b>학교 + 학교급 + 학년(+반)</b> 이 하나의 그룹이 됩니다. 반을 비워 두면 학년 전체 그룹이 됩니다.</p>
+          <p class="tiny" id="pfModeNote">학생 프로필은 같은 <b>학교 + 학교급 + 학년(+반)</b>이 하나의 그룹이 됩니다.</p>
 
+          <label class="toggle eligibility-toggle"><input type="checkbox" id="pfEligibility"><span id="pfEligibilityText"><b>학생 이용자는 만 14세 이상입니다.</b> 서비스 이용 조건을 확인했습니다.</span></label>
+
+          <div id="pfLeagueWrap">
           <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
           <p class="tiny" id="pfLeagueNote">학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
             학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며,
             같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b>
-            <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b> 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
+            나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
+          </div>
 
           <div class="actions">
             <button type="button" class="btn primary lg" id="saveProfile">저장하고 시작하기</button>
@@ -853,7 +853,7 @@
     </div>
   </section>
 
-  <!-- ══════════════════════ ★ 내 성장 (초·중 전용) ══════════════════════ -->
+  <!-- ══════════════════════ ★ 내 성장 (학부모·중학생) ══════════════════════ -->
   <section id="secKids" class="section is-hidden">
     <div class="sec-head">
       <h2><span class="sec-num">★</span> 내 뇌 키우기</h2>
@@ -1149,7 +1149,14 @@
       </div>
     </div>
 
-    <div class="card wide">
+    <div class="card wide is-hidden" id="parentPrivacyNote">
+      <div class="card-head"><span class="ci">👨‍👩‍👧</span><h3>학부모 모드</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0">초등 자녀의 프로필과 학습 기록은 <b>이 브라우저에만 저장</b>됩니다. 학교 리그·학급 대항전·관리자 공개 기능은 사용할 수 없습니다.</p>
+      </div>
+    </div>
+
+    <div class="card wide" id="leagueSettingsCard">
       <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 참가</h3></div>
       <div class="card-body">
         <p class="tiny" style="margin:0 0 14px">이 앱은 원래 모든 기록을 <b>이 브라우저에만</b> 보관합니다.
@@ -1180,7 +1187,7 @@
 
         <label class="toggle" style="margin-top:18px"><input type="checkbox" id="cloudOn"><span><b>학교 리그에 참가합니다</b> — 위 다섯 가지 전송에 동의합니다</span></label>
 
-        <p class="tiny" id="cloudMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 보호자와 함께 결정하세요.</b>
+        <p class="tiny" id="cloudMinorNote">학생 이용자는 만 14세 이상이어야 합니다.
           학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부가 외부 서버에 저장됩니다.</p>
 
         <!-- 학교 리그와 별개 동의. 기존 참가자는 "학년·반은 전송하지 않는다" 는
@@ -1212,7 +1219,7 @@
       </div>
     </div>
 
-    <div class="card wide">
+    <div class="card wide" id="studentShareCard">
       <div class="card-head"><span class="ci">🙋</span><h3>관리자에게 내 기록 보이기</h3></div>
       <div class="card-body">
         <p class="tiny" style="margin:0 0 14px"><b>학교 리그와는 별개의 기능입니다.</b> 기본 학교 리그 관리자 목록은 닉네임을 읽지 않지만,
@@ -1239,8 +1246,8 @@
 
         <label class="toggle" style="margin-top:18px"><input type="checkbox" id="studentShareOn"><span><b>관리자에게 내 닉네임과 학습 시간을 보여줍니다</b></span></label>
 
-        <p class="tiny" id="studentShareMinorNote">👨‍👩‍👧 <b>만 14세 미만이라면 반드시 보호자와 함께 결정하세요.</b>
-          이건 <b>이름으로 나를 특정할 수 있는</b> 정보가 외부 서버에 저장되는 기능입니다.
+        <p class="tiny" id="studentShareMinorNote">학생 이용자는 만 14세 이상이어야 합니다.
+          이 기능은 <b>이름으로 나를 특정할 수 있는</b> 정보가 외부 서버에 저장됩니다.
           부담스러우면 리그(학교 합계)만 켜고 이건 꺼 두어도 됩니다.</p>
 
         <div id="studentShareStatus" class="neis-status" style="margin-top:10px"></div>
@@ -1272,7 +1279,7 @@
     <div class="card wide">
       <div class="card-head"><span class="ci">🗄️</span><h3>데이터 관리</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px">모든 데이터는 이 브라우저에만 저장됩니다.
+        <p class="tiny" style="margin:0 0 14px">학습 기록과 프로필은 기본적으로 이 브라우저에 저장됩니다. 직접 켠 리그·관리자 공개 항목은 위 안내 범위만 서버에 저장됩니다.
           <b>브라우저 데이터를 지우거나 기기를 바꾸면 그대로 사라집니다.</b> 가끔 백업 파일로 내려받아 두세요.</p>
         <div id="dataSummary" class="data-sum"></div>
         <div id="storageStatus" class="store-status"></div>
@@ -1287,9 +1294,9 @@
         <details class="privacy-details">
           <summary>동의 철회·보관 기간·삭제 방법 보기</summary>
           <p class="tiny">학교 리그·학급 대항전·관리자 공개는 위의 각 스위치에서 서로 별도로 철회할 수 있습니다.
-            끄면 새 전송이 중단되고, 학급 정보와 관리자 공개 정보는 다음 동기화에서 삭제됩니다.
-            현재 시범 버전은 서버 집계의 자동 삭제를 보장하지 않습니다. 정식 운영 전 보관 기간·삭제 절차·문의 연락처를 확정하고 실제 서버 정책과 일치시켜야 합니다.
-            이 기기의 로컬 기록은 <b>모든 기록 삭제</b>로 즉시 지울 수 있습니다. 만 14세 미만 사용자는 서버 전송 기능을 보호자와 함께 결정하세요.</p>
+            끄면 새 전송이 중단되고 서버의 해당 기기 기록 삭제를 즉시 요청합니다. 연결이 끊긴 경우 다음 앱 실행에서 자동으로 다시 시도합니다.
+            이 기기의 로컬 기록은 <b>모든 기록 삭제</b>로 즉시 지울 수 있습니다. 학부모 모드의 초등 자녀 기록은 서버 전송 기능을 사용할 수 없습니다.
+            학교 검색·급식은 나이스(NEIS), 계획표 글꼴은 Google Fonts에 직접 요청됩니다.</p>
         </details>
       </div>
     </div>
@@ -1477,6 +1484,7 @@
     <b>학급 대항전</b>을 따로 켜면 학년·반·닉네임이 추가로 전송되며, <b>관리자 공개</b>를 켜면 닉네임·학교명·주차·순공 시간·기기 번호가 서버에 저장되어 등록된 관리자에게 보입니다.
     과목·시험·수면·스트레스·학습 준비도 참고값은 어느 기능에서도 전송되지 않습니다.</p>
   <p class="tiny">학습 준비도 참고값은 자기보고한 수면·피로·스트레스·생활 정보와 시험 일정을 규칙 모델에 넣어 추정합니다. 능력·지능을 측정하지 않으며, 의학적 진단이나 치료 목적으로 사용할 수 없습니다.</p>
+  <p class="tiny"><a href="/#privacy">개인정보 안내</a></p>
 </footer>
 
 <template id="subjectRowTpl">

@@ -5,7 +5,7 @@
  *   1) 홈 화면에 설치할 수 있게 한다 (PWA 최소 요건)
  *   2) 지하철·학교처럼 신호가 나쁜 곳에서도 앱이 열리게 한다
  *
- * 앱은 단일 index.html 이라 캐시할 것도 사실상 그것 하나다.
+ * HTML과 CSS·JS를 분리해 배포하며 앱 셸을 함께 캐시한다.
  *
  * ⚠ 문서(HTML)는 반드시 네트워크 우선이어야 한다.
  *   캐시 우선으로 두면 배포해도 사용자가 옛날 버전에 갇힌다.
@@ -17,8 +17,13 @@
 'use strict';
 
 /* 정책을 바꿀 때마다 올린다. activate 에서 옛 버전 캐시를 통째로 지운다. */
-var VERSION = 'neurostudy-v5';
+var VERSION = 'neurostudy-v7';
 var SHELL = ['./', './index.html', './manifest.webmanifest',
+             './css/styles.css',
+             './js/engine.js', './js/planner.js', './js/storage.js', './js/studylog.js',
+             './js/avatar.js', './js/group.js', './js/cloud.js', './js/league.js',
+             './js/neis.js', './js/kids.js', './js/sound.js', './js/report.js',
+             './js/pomodoro.js', './js/slime.js', './js/app.js',
              './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png',
              './icon.svg', './icon-maskable.svg',
              // 프로필 캐릭터 그림 — 이것만 없으면 랭킹·설정 화면이 텅 비어 보인다
@@ -78,8 +83,7 @@ self.addEventListener('fetch', function (e) {
   }
 
   /* 코드(js·css)는 캐시 우선으로 두면 안 된다.
-   * 배포본은 index.html 에 전부 인라인돼 있어 문서만 갱신하면 되지만,
-   * 개발 서버(src/)는 파일이 분리돼 있어 한 번 캐시되면 코드를 고쳐도
+   * 앱 코드는 파일이 분리돼 있어 캐시 우선으로 두면 배포 후에도
    * 옛 버전이 계속 돌아간다 — 실제로 이 함정에 빠져 한참 헤맸다.
    * 그래서 코드는 "네트워크 먼저, 실패하면 캐시" 로 뒤집는다.
    * 아이콘·매니페스트 같은 정적 자원만 캐시 우선을 유지한다. */

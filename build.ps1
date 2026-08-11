@@ -1,12 +1,12 @@
 # =============================================================================
-# build.ps1 — src/ 의 분리된 소스를 하나의 자체 완결 app/index.html 로 묶습니다.
+# build.ps1 — src/ 의 앱 소스와 정적 자산을 app/ 배포 폴더로 복사합니다.
 #
 #   PowerShell 에서:  .\build.ps1
 #
 # 배포되는 모양은 이렇습니다.
 #
 #   /            랜딩 페이지  ← landing/index.html 을 그대로 복사
-#   /app/        앱 본체      ← src/ 를 하나로 묶은 결과 + PWA 자원
+#   /app/        앱 본체      ← HTML·CSS·JS 분리 배포 + PWA 자원
 #   /robots.txt  /sitemap.xml  /ads.txt   크롤러가 도메인 루트에서 찾는 파일
 #
 # 처음 오는 사람이 소개를 먼저 보고 들어오도록 루트를 랜딩에 내주었습니다.
@@ -20,31 +20,26 @@ $enc = [System.Text.UTF8Encoding]::new($false)
 function ReadUtf8($p) { return [System.IO.File]::ReadAllText($p, $enc) }
 
 $html = ReadUtf8 (Join-Path $src 'index.html')
-$css = ReadUtf8 (Join-Path $src 'css\styles.css')
-
 # 로드 순서 = 의존 순서. src/index.html 의 script 태그와 반드시 일치해야 한다.
 $jsFiles = @('engine.js', 'planner.js', 'storage.js', 'studylog.js', 'avatar.js', 'group.js', 'cloud.js', 'league.js', 'neis.js', 'kids.js', 'sound.js', 'report.js', 'pomodoro.js', 'slime.js', 'app.js')
-$js = ($jsFiles | ForEach-Object {
-        "/* ===== src/js/$_ ===== */`r`n" + (ReadUtf8 (Join-Path $src "js\$_"))
-    }) -join "`r`n`r`n"
-
-if ($js -match '</script') { throw 'JS 안에 </script> 문자열이 있어 인라인할 수 없습니다.' }
-
-$linkTag = '<link rel="stylesheet" href="css/styles.css">'
-if (-not $html.Contains($linkTag)) { throw 'src/index.html 에서 스타일시트 link 태그를 찾지 못했습니다.' }
-$html = $html.Replace($linkTag, "<style>`r`n$css`r`n</style>")
 
 # 태그 블록은 파일 목록에서 직접 만들어 두 곳이 어긋나지 않게 한다.
 $scriptTags = (($jsFiles | ForEach-Object { '<script src="js/' + $_ + '"></script>' }) -join "`r`n") + "`r`n"
 
 $html = $html -replace "`r?`n", "`r`n"
 if (-not $html.Contains($scriptTags)) { throw 'src/index.html 의 script 태그 블록이 build.ps1 의 $jsFiles 목록과 일치하지 않습니다.' }
-$html = $html.Replace($scriptTags, "<script>`r`n$js`r`n</script>")
 
 $appDir = Join-Path $root 'app'
 if (-not (Test-Path $appDir)) { New-Item -ItemType Directory -Path $appDir | Out-Null }
 $outPath = Join-Path $appDir 'index.html'
 [System.IO.File]::WriteAllText($outPath, $html, $enc)
+
+# 코드 자산을 분리해 두면 HTML이 작아지고 브라우저가 변경되지 않은 파일을 재사용할 수 있다.
+foreach ($dir in @('css', 'js')) {
+    $target = Join-Path $appDir $dir
+    if (-not (Test-Path $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
+    Copy-Item (Join-Path $src "$dir\*") $target -Recurse -Force
+}
 
 # PWA 자원은 인라인할 수 없으므로(브라우저가 별도 URL로 받아 가야 한다) 그대로 복사한다.
 # src/ 를 원본으로 두는 이유: 개발 서버(src/)와 배포본(app/)이 같은 파일을 보게 해야
@@ -86,5 +81,5 @@ $rootIndex = Join-Path $root 'index.html'
 $kbApp = [math]::Round((Get-Item $outPath).Length / 1KB, 1)
 $kbRoot = [math]::Round((Get-Item $rootIndex).Length / 1KB, 1)
 # 콘솔 코드페이지에 따라 한글이 깨질 수 있어 빌드 로그는 ASCII 로 출력합니다.
-Write-Output "OK - app/index.html rebuilt ($kbApp KB) + $($appAssets.Count) PWA assets"
+Write-Output "OK - app/index.html rebuilt ($kbApp KB) + separate CSS/JS + $($appAssets.Count) PWA assets"
 Write-Output "OK - index.html = landing ($kbRoot KB) + $($rootAssets.Count) crawler files at root"
