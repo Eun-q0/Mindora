@@ -1,10 +1,11 @@
 # =============================================================================
-# build.ps1 — src/ 의 분리된 소스를 하나의 자체 완결 index.html 로 묶습니다.
+# build.ps1 — src/ 의 분리된 앱 소스와 정적 자산을 루트 배포 폴더로 복사합니다.
 #
 #   PowerShell 에서:  .\build.ps1
 #
-# src/ 를 수정한 뒤 이 스크립트를 실행하면 루트의 index.html 이 다시 생성됩니다.
-# (index.html 은 생성물이므로 직접 고치지 말고 src/ 를 고치세요)
+# src/ 를 수정한 뒤 실행하면 루트의 index.html, css/, js/와 PWA 자원이 갱신됩니다.
+# 배포본도 HTML·CSS·JS를 분리해 브라우저 캐시를 재사용하면서 기존 루트 앱 주소를
+# 그대로 유지합니다. 생성물은 직접 고치지 말고 src/ 를 고치세요.
 # =============================================================================
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -14,37 +15,25 @@ $enc = [System.Text.UTF8Encoding]::new($false)
 function ReadUtf8($p) { return [System.IO.File]::ReadAllText($p, $enc) }
 
 $html = ReadUtf8 (Join-Path $src 'index.html')
-$css = ReadUtf8 (Join-Path $src 'css\styles.css')
 
 # 로드 순서 = 의존 순서. src/index.html 의 script 태그와 반드시 일치해야 한다.
 $jsFiles = @('engine.js', 'planner.js', 'storage.js', 'meals.js', 'studylog.js', 'avatar.js', 'group.js', 'cloud.js', 'backup.js', 'league.js', 'filter.js', 'notes.js', 'neis.js', 'kids.js', 'sound.js', 'report.js', 'pomodoro.js', 'slime.js', 'app.js')
-$js = ($jsFiles | ForEach-Object {
-        "/* ===== src/js/$_ ===== */`r`n" + (ReadUtf8 (Join-Path $src "js\$_"))
-    }) -join "`r`n`r`n"
-
-if ($js -match '</script') { throw 'JS 안에 </script> 문자열이 있어 인라인할 수 없습니다.' }
-
-$linkTag = '<link rel="stylesheet" href="css/styles.css">'
-if (-not $html.Contains($linkTag)) { throw 'src/index.html 에서 스타일시트 link 태그를 찾지 못했습니다.' }
-$html = $html.Replace($linkTag, "<style>`r`n$css`r`n</style>")
-
-# 태그 블록은 파일 목록에서 직접 만들어 두 곳이 어긋나지 않게 한다.
 $scriptTags = (($jsFiles | ForEach-Object { '<script src="js/' + $_ + '"></script>' }) -join "`r`n") + "`r`n"
 
 $html = $html -replace "`r?`n", "`r`n"
 if (-not $html.Contains($scriptTags)) { throw 'src/index.html 의 script 태그 블록이 build.ps1 의 $jsFiles 목록과 일치하지 않습니다.' }
-$html = $html.Replace($scriptTags, "<script>`r`n$js`r`n</script>")
 
 $outPath = Join-Path $root 'index.html'
 [System.IO.File]::WriteAllText($outPath, $html, $enc)
 
-# PWA 자원은 인라인할 수 없으므로(브라우저가 별도 URL로 받아 가야 한다) 그대로 복사한다.
-# src/ 를 원본으로 두는 이유: 개발 서버(src/)와 배포본(루트)이 같은 파일을 보게 해야
-# "로컬에선 되는데 배포하면 안 되는" 상황을 막을 수 있다.
-# ads.txt 도 같은 이유로 여기 둔다 — 애드센스 크롤러가 도메인 루트에서 직접 받아 간다.
-# og-cover.png 는 카톡·디스코드 링크 미리보기 카드입니다. 앱과 랜딩과 개인정보처리방침이
-# 모두 도메인 루트의 /og-cover.png 를 가리키므로 여기서 함께 복사합니다.
-# (다시 만들려면: powershell -ExecutionPolicy Bypass -File tools/make-og.ps1)
+# 코드 자산을 분리해 두면 HTML이 작아지고 변경되지 않은 파일을 재사용할 수 있다.
+foreach ($dir in @('css', 'js')) {
+    $target = Join-Path $root $dir
+    if (-not (Test-Path $target)) { New-Item -ItemType Directory -Path $target | Out-Null }
+    Copy-Item (Join-Path $src "$dir\*") $target -Recurse -Force
+}
+
+# PWA·검색·공유 미리보기 자원은 브라우저와 크롤러가 별도 URL로 요청한다.
 $assets = @('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-maskable.svg',
             'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png',
             'avatar-sheet.png', 'og-cover.png',
@@ -56,5 +45,4 @@ foreach ($a in $assets) {
 }
 
 $kb = [math]::Round((Get-Item $outPath).Length / 1KB, 1)
-# 콘솔 코드페이지에 따라 한글이 깨질 수 있어 빌드 로그는 ASCII 로 출력합니다.
-Write-Output "OK - index.html rebuilt ($kb KB) + $($assets.Count) PWA assets copied."
+Write-Output "OK - root app rebuilt ($kb KB) + separate CSS/JS + $($assets.Count) assets copied."
