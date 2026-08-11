@@ -1088,7 +1088,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .group-hero { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 20px; align-items: center; padding: 22px 26px; border-radius: var(--r); border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--gh-grad); margin-bottom: 16px; }
 .gh-name { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 4px; }
 .gh-sub { font-size: 13px; color: var(--muted); margin: 0; }
-.gh-stats { display: flex; gap: 26px; }
+.gh-stats { display: flex; gap: 26px; flex-wrap: wrap; row-gap: 14px; }
 .gh-stat { text-align: center; }
 .gh-stat .k { font-size: 11px; color: var(--dim); }
 .gh-stat .v { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.25; }
