@@ -198,6 +198,42 @@
     return m;
   };
 
+  /* ------------------------------------------------------ 과목 순서 바꾸기
+   *
+   * 계획이 정한 순서가 늘 맞지는 않는다. "지금은 수학 말고 영어부터" 는
+   * 사용자만 아는 사정이라, 진행 순서에서 직접 올리고 내릴 수 있어야 한다.
+   *
+   * 바로 옆 칸과 바꾸지 않고 다음 **집중** 블록과 바꾸는 이유:
+   * 큐는 집중과 휴식이 번갈아 놓여 있어서, 옆 칸과 바꾸면 집중 블록이
+   * 휴식 자리로 들어가 리듬이 깨진다. 휴식은 제자리에 두고 과목만 옮긴다. */
+
+  /** dir 쪽으로 가장 가까운 집중 블록의 위치. 없으면 -1 */
+  Pomodoro.prototype.studyNeighbor = function (index, dir) {
+    var q = this.queue, step = dir < 0 ? -1 : 1;
+    if (!q[index] || q[index].kind !== 'study') return -1;
+    for (var k = index + step; k >= 0 && k < q.length; k += step) {
+      if (q[k].kind === 'study') return k;
+    }
+    return -1;
+  };
+
+  /** 옮길 수 있는가. 길이를 고칠 때와 같은 기준이다 —
+   *  이미 지났거나 시작한 블록은 자리를 바꾸면 기록과 어긋난다. */
+  Pomodoro.prototype.canMoveStudy = function (index, dir) {
+    var j = this.studyNeighbor(index, dir);
+    return j >= 0 && this.canEdit(index) && this.canEdit(j);
+  };
+
+  Pomodoro.prototype.moveStudy = function (index, dir) {
+    if (!this.canMoveStudy(index, dir)) return -1;
+    var j = this.studyNeighbor(index, dir);
+    var q = this.queue, t = q[index];
+    q[index] = q[j];
+    q[j] = t;
+    this.emit();
+    return j;   // 옮겨 간 자리 (호출한 쪽이 초점을 따라 보낼 수 있게)
+  };
+
   Pomodoro.prototype.limitFor = function (index) {
     var b = this.queue[index];
     return b ? limitOf(b.kind) : LIMITS.other;

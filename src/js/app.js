@@ -1888,8 +1888,20 @@
           '</span>'
         : '<span class="qt">' + b.minutes + '분</span>';
 
+      /* 순서 바꾸기는 집중 블록에만 붙인다. 휴식은 제자리에 두고 과목만 옮긴다. */
+      var moves = (editable && b.kind === 'study')
+        ? '<span class="qm">' +
+            '<button type="button" class="qm-b" data-mi="' + i + '" data-md="-1"' +
+              (state.timer.canMoveStudy(i, -1) ? '' : ' disabled') +
+              ' aria-label="' + esc(b.label) + ' 앞으로 옮기기">↑</button>' +
+            '<button type="button" class="qm-b" data-mi="' + i + '" data-md="1"' +
+              (state.timer.canMoveStudy(i, 1) ? '' : ' disabled') +
+              ' aria-label="' + esc(b.label) + ' 뒤로 옮기기">↓</button>' +
+          '</span>'
+        : '';
+
       return '<li class="' + cls + (editable ? ' editable' : '') + '">' +
-        '<span class="q-name">' + icon + ' ' + esc(b.label) + '</span>' + tail + '</li>';
+        '<span class="q-name">' + icon + ' ' + esc(b.label) + '</span>' + moves + tail + '</li>';
     }).join('');
 
     if (state.queueEdit) {
@@ -1903,6 +1915,26 @@
           // setMinutes 안에서 emit() 이 돌아 목록은 이미 다시 그려졌다.
           // 여기서는 바뀐 길이에 맞춰 목표 시간만 갱신한다.
           renderQueueTotals();
+          saveSession();
+        });
+      });
+
+      $$('#queueList .qm-b').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var i = +btn.dataset.mi, d = +btn.dataset.md;
+          var to = state.timer.moveStudy(i, d);
+          if (to < 0) { toast('이미 지났거나 진행 중인 블록은 옮길 수 없어요.', true); return; }
+          saveSession();
+
+          /* emit() 이 목록을 통째로 다시 그려 방금 누른 버튼은 사라졌다.
+           * 옮겨 간 자리의 같은 방향 버튼으로 초점을 보내 연달아 누를 수 있게 한다.
+           * 끝에 닿아 그 버튼이 꺼졌으면 반대쪽이 아니라 과목 이름 쪽으로 보낸다 —
+           * 반대쪽으로 옮기면 키보드로 한 번 더 누르는 순간 도로 제자리가 된다. */
+          var same = document.querySelector('#queueList .qm-b[data-mi="' + to + '"][data-md="' + d + '"]');
+          if (same && !same.disabled) { same.focus(); return; }
+          var li = document.querySelectorAll('#queueList li')[to];
+          var name = li && li.querySelector('.q-name');
+          if (name) { name.setAttribute('tabindex', '-1'); name.focus(); }
         });
       });
     }
@@ -1933,7 +1965,7 @@
 
   function toggleQueueEdit() {
     state.queueEdit = !state.queueEdit;
-    $('queueEditBtn').textContent = state.queueEdit ? '완료' : '시간 조절';
+    $('queueEditBtn').textContent = state.queueEdit ? '완료' : '순서 · 시간';
     $('queueEditBtn').classList.toggle('on', state.queueEdit);
     $('queueEditHint').classList.toggle('is-hidden', !state.queueEdit);
     // renderTimer 는 타이머 상태 스냅숏을 인자로 받는다.

@@ -1142,7 +1142,25 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 
 .queue li .q-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .queue li.editable { background: var(--surface-3); }
+/* 순서 바꾸기 ↑↓ — 시간 조절(−＋) 왼쪽에 붙는다.
+   margin-left:auto 를 여기로 옮겨야 두 묶음이 오른쪽에 나란히 선다. */
+.queue li .qm { margin-left: auto; display: flex; align-items: center; gap: 2px; flex: none; margin-right: 6px; }
+.qm-b {
+  width: 24px; height: 24px; padding: 0; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface-2); color: var(--muted);
+  font-size: 12px; line-height: 1; cursor: pointer;
+  transition: background .15s, border-color .15s, transform .08s;
+}
+.qm-b:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+.qm-b:active:not(:disabled) { transform: scale(.92); }
+.qm-b:disabled { opacity: .3; cursor: default; }
+.queue li .q-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px; }
+
 .queue li .qe { margin-left: auto; display: flex; align-items: center; gap: 3px; flex: none; }
+/* ↑↓ 가 있으면 그쪽이 이미 왼쪽 여백을 먹었다 */
+.queue li .qm + .qe { margin-left: 0; }
 .qe-b {
   width: 25px; height: 25px; flex: none; display: grid; place-items: center;
   border: 1px solid var(--line-2); background: var(--surface); border-radius: 7px;
@@ -3384,9 +3402,9 @@ body {
         </div>
         <div class="progress-dots" id="progressDots"></div>
         <div class="up-next">
-          <h4>진행 순서 <button type="button" class="qe-toggle" id="queueEditBtn">시간 조절</button></h4>
-          <p class="tiny qe-hint is-hidden" id="queueEditHint">아직 시작하지 않은 블록의 시간을 바꿀 수 있어요.
-            집중은 5~120분, 휴식은 1~60분까지입니다.</p>
+          <h4>진행 순서 <button type="button" class="qe-toggle" id="queueEditBtn">순서 · 시간</button></h4>
+          <p class="tiny qe-hint is-hidden" id="queueEditHint">아직 시작하지 않은 블록을 <b>↑↓ 로 옮기고</b> −＋ 로 시간을 바꿀 수 있어요.
+            과목은 다음 집중 블록과 자리를 바꾸고 휴식은 제자리에 남습니다. 집중은 5~120분, 휴식은 0~60분까지입니다.</p>
           <ol id="queueList" class="queue"></ol>
         </div>
       </div>
@@ -11754,6 +11772,42 @@ body {
     return m;
   };
 
+  /* ------------------------------------------------------ 과목 순서 바꾸기
+   *
+   * 계획이 정한 순서가 늘 맞지는 않는다. "지금은 수학 말고 영어부터" 는
+   * 사용자만 아는 사정이라, 진행 순서에서 직접 올리고 내릴 수 있어야 한다.
+   *
+   * 바로 옆 칸과 바꾸지 않고 다음 **집중** 블록과 바꾸는 이유:
+   * 큐는 집중과 휴식이 번갈아 놓여 있어서, 옆 칸과 바꾸면 집중 블록이
+   * 휴식 자리로 들어가 리듬이 깨진다. 휴식은 제자리에 두고 과목만 옮긴다. */
+
+  /** dir 쪽으로 가장 가까운 집중 블록의 위치. 없으면 -1 */
+  Pomodoro.prototype.studyNeighbor = function (index, dir) {
+    var q = this.queue, step = dir < 0 ? -1 : 1;
+    if (!q[index] || q[index].kind !== 'study') return -1;
+    for (var k = index + step; k >= 0 && k < q.length; k += step) {
+      if (q[k].kind === 'study') return k;
+    }
+    return -1;
+  };
+
+  /** 옮길 수 있는가. 길이를 고칠 때와 같은 기준이다 —
+   *  이미 지났거나 시작한 블록은 자리를 바꾸면 기록과 어긋난다. */
+  Pomodoro.prototype.canMoveStudy = function (index, dir) {
+    var j = this.studyNeighbor(index, dir);
+    return j >= 0 && this.canEdit(index) && this.canEdit(j);
+  };
+
+  Pomodoro.prototype.moveStudy = function (index, dir) {
+    if (!this.canMoveStudy(index, dir)) return -1;
+    var j = this.studyNeighbor(index, dir);
+    var q = this.queue, t = q[index];
+    q[index] = q[j];
+    q[j] = t;
+    this.emit();
+    return j;   // 옮겨 간 자리 (호출한 쪽이 초점을 따라 보낼 수 있게)
+  };
+
   Pomodoro.prototype.limitFor = function (index) {
     var b = this.queue[index];
     return b ? limitOf(b.kind) : LIMITS.other;
@@ -14960,8 +15014,20 @@ body {
           '</span>'
         : '<span class="qt">' + b.minutes + '분</span>';
 
+      /* 순서 바꾸기는 집중 블록에만 붙인다. 휴식은 제자리에 두고 과목만 옮긴다. */
+      var moves = (editable && b.kind === 'study')
+        ? '<span class="qm">' +
+            '<button type="button" class="qm-b" data-mi="' + i + '" data-md="-1"' +
+              (state.timer.canMoveStudy(i, -1) ? '' : ' disabled') +
+              ' aria-label="' + esc(b.label) + ' 앞으로 옮기기">↑</button>' +
+            '<button type="button" class="qm-b" data-mi="' + i + '" data-md="1"' +
+              (state.timer.canMoveStudy(i, 1) ? '' : ' disabled') +
+              ' aria-label="' + esc(b.label) + ' 뒤로 옮기기">↓</button>' +
+          '</span>'
+        : '';
+
       return '<li class="' + cls + (editable ? ' editable' : '') + '">' +
-        '<span class="q-name">' + icon + ' ' + esc(b.label) + '</span>' + tail + '</li>';
+        '<span class="q-name">' + icon + ' ' + esc(b.label) + '</span>' + moves + tail + '</li>';
     }).join('');
 
     if (state.queueEdit) {
@@ -14975,6 +15041,26 @@ body {
           // setMinutes 안에서 emit() 이 돌아 목록은 이미 다시 그려졌다.
           // 여기서는 바뀐 길이에 맞춰 목표 시간만 갱신한다.
           renderQueueTotals();
+          saveSession();
+        });
+      });
+
+      $$('#queueList .qm-b').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var i = +btn.dataset.mi, d = +btn.dataset.md;
+          var to = state.timer.moveStudy(i, d);
+          if (to < 0) { toast('이미 지났거나 진행 중인 블록은 옮길 수 없어요.', true); return; }
+          saveSession();
+
+          /* emit() 이 목록을 통째로 다시 그려 방금 누른 버튼은 사라졌다.
+           * 옮겨 간 자리의 같은 방향 버튼으로 초점을 보내 연달아 누를 수 있게 한다.
+           * 끝에 닿아 그 버튼이 꺼졌으면 반대쪽이 아니라 과목 이름 쪽으로 보낸다 —
+           * 반대쪽으로 옮기면 키보드로 한 번 더 누르는 순간 도로 제자리가 된다. */
+          var same = document.querySelector('#queueList .qm-b[data-mi="' + to + '"][data-md="' + d + '"]');
+          if (same && !same.disabled) { same.focus(); return; }
+          var li = document.querySelectorAll('#queueList li')[to];
+          var name = li && li.querySelector('.q-name');
+          if (name) { name.setAttribute('tabindex', '-1'); name.focus(); }
         });
       });
     }
@@ -15005,7 +15091,7 @@ body {
 
   function toggleQueueEdit() {
     state.queueEdit = !state.queueEdit;
-    $('queueEditBtn').textContent = state.queueEdit ? '완료' : '시간 조절';
+    $('queueEditBtn').textContent = state.queueEdit ? '완료' : '순서 · 시간';
     $('queueEditBtn').classList.toggle('on', state.queueEdit);
     $('queueEditHint').classList.toggle('is-hidden', !state.queueEdit);
     // renderTimer 는 타이머 상태 스냅숏을 인자로 받는다.
