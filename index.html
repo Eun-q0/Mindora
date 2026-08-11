@@ -5,16 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mindora — 오늘의 학습 준비도 코치</title>
 
-<!-- 일반 브라우저에서는 랜딩을 먼저 보여 주고, CTA로 들어온 뒤에는 같은 탭에서
-     다시 랜딩으로 튕기지 않는다. 설치형(PWA) 실행은 곧바로 앱을 연다. -->
+<!-- 처음 온 사람에게는 랜딩을 먼저 보여 주고, 이미 쓰는 사람은 곧바로 앱을 연다.
+     설치형(PWA) 실행도 곧바로 앱이다.
+
+     "이미 쓰는 사람"의 판정은 프로필 저장 여부다. sessionStorage 만 보던 때에는
+     탭을 닫으면 표시가 사라져서, 어제 공부한 사람이 오늘 북마크로 들어와도
+     매번 랜딩을 거쳐 "시작하기"를 다시 눌러야 했다. 매일 여는 앱에서는
+     그게 매일 한 번의 마찰이 된다.
+
+     반대로 프로필이 없으면 아직 아무것도 시작하지 않은 사람이므로 랜딩이 맞다.
+     해시(#timer 등)를 들고 들어온 경우도 앱을 목적지로 보고 튕기지 않는다 —
+     공유받은 딥링크가 소개 페이지로 떨어지면 링크가 깨진 것처럼 보인다. -->
 <script>
 (function () {
   var params = new URLSearchParams(location.search);
   var entering = params.get('start') === '1';
   var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-  var entered = false;
+  var entered = false, known = false;
 
   try { entered = sessionStorage.getItem('mindora.landingEntered.v1') === '1'; } catch (e) { /* 무시 */ }
+  try { known = !!localStorage.getItem('neurostudy.profile.v1'); } catch (e) { /* 무시 */ }
 
   if (entering) {
     try {
@@ -28,7 +38,7 @@
     return;
   }
 
-  if (!standalone && !entered) location.replace('landing/');
+  if (!standalone && !entered && !known && !location.hash) location.replace('landing/');
 })();
 </script>
 
@@ -50,12 +60,35 @@
      apex 로 옮기면 안 된다: 저장 기록(localStorage)은 출처별로 분리되므로
      대표를 바꾸는 순간 www 에 쌓인 기존 사용자 기록이 통째로 안 보이게 된다. -->
 <meta property="og:url" content="https://www.mindora.co.kr/">
-<meta property="og:image" content="https://www.mindora.co.kr/icon-512.png">
-<meta property="og:image:width" content="512">
-<meta property="og:image:height" content="512">
-<meta property="og:image:alt" content="Mindora 앱 아이콘">
-<meta name="twitter:card" content="summary">
+<!-- 카톡·디스코드·X 는 링크 카드를 1.91:1 로 그린다. 정사각 아이콘을 주면 잘리거나
+     구석에 작게 박히므로 1200x630 전용 이미지를 쓴다 (tools/make-og.ps1 로 생성). -->
+<meta property="og:image" content="https://www.mindora.co.kr/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Mindora — 무작정 오래 앉아 있는 공부는 그만. 오늘의 준비도 61점 예시 화면">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://www.mindora.co.kr/">
+
+<!-- 구조화 데이터. sitemap 에서 우선순위가 가장 높은 주소가 여기라
+     앱 카드(무료·카테고리)는 랜딩이 아니라 이쪽에 붙인다.
+     랜딩(/landing/)에는 같은 항목에 더해 FAQPage 가 들어 있다. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Mindora",
+  "alternateName": "민도라",
+  "url": "https://www.mindora.co.kr/",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Web (PWA)",
+  "inLanguage": "ko",
+  "description": "수면·스트레스·피로와 시험 일정을 바탕으로 오늘 시작할 과목과 시간을 제안하는 무료 학습 코치입니다. 설치도 회원가입도 없습니다.",
+  "image": "https://www.mindora.co.kr/og-cover.png",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" },
+  "isAccessibleForFree": true,
+  "privacyPolicy": "https://www.mindora.co.kr/privacy/"
+}
+</script>
 
 <!-- 홈 화면에 추가했을 때 앱처럼 보이게 -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -719,6 +752,19 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .s-cap { display: none; }
 .subject-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .subject-row { animation: pop 0.22s ease; }
+
+/* 과목 줄에는 ↑↓✕ 세 개가 들어가므로 마지막 칸을 그만큼 넓힌다.
+ * 계획표의 학원 줄은 ✕ 하나뿐이라 34px 그대로 둔다. */
+.subject-head:not(.vpai-subject-head), #subjectList .subject-row {
+  grid-template-columns: minmax(0,1.5fr) minmax(0,1.2fr) minmax(124px,1.15fr) minmax(0,1fr) minmax(0,1.15fr) 104px;
+}
+.s-ctl { display: flex; gap: 4px; }
+/* 기본 icon-btn 의 빨간 hover 는 삭제를 뜻한다. 순서 이동은 그 뜻이 아니다. */
+.s-up:hover:not(:disabled), .s-down:hover:not(:disabled) {
+  background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink);
+}
+.icon-btn:disabled { opacity: 0.32; cursor: default; }
+.icon-btn:disabled:hover { background: var(--surface); border-color: var(--line-2); color: var(--dim); }
 @keyframes pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 
 .vpai-academy-row { grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) 34px; }
@@ -1605,12 +1651,17 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   .subject-head { display: none; }
   .subject-row { grid-template-columns: 1fr 1fr; gap: 10px 7px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--line); position: relative; }
   .subject-row .s-cell-name { grid-column: 1 / -1; padding-right: 34px; }
+  /* 과목 줄은 ↑↓✕ 세 개가 오른쪽 위에 모여 앉으므로 이름 칸을 그만큼 더 비운다 */
+  #subjectList .subject-row .s-cell-name { padding-right: 92px; }
   /* 두 칸으로 접히면 한 칸이 130px 남짓이라 날짜 위젯이 기본 크기로는 안 들어간다.
    * min-width 를 풀어 둔 것만으로는 안쪽이 잘리므로, 좁은 화면에서만 여백과
    * 글자를 조금 줄여 달력 아이콘까지 통째로 칸 안에 들어오게 한다. */
   .subject-row input[type="date"].input { padding-left: 8px; padding-right: 8px; font-size: 13px; }
   .s-cap { display: block; font-size: 11px; color: var(--dim); font-weight: 600; padding-left: 2px; }
-  .subject-row .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
+  /* 학원 줄은 ✕ 가 직계 자식이고, 과목 줄은 .s-ctl 안에 들어 있다 */
+  .subject-row > .s-del { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
+  .subject-row > .s-ctl { position: absolute; top: 8px; right: 8px; gap: 3px; }
+  .s-ctl .icon-btn { width: 26px; height: 26px; }
   .two-col { grid-template-columns: 1fr; }
   .ct { grid-template-columns: 100px 1fr 54px; gap: 7px; }
   .ct-label { font-size: 11px; }
@@ -2656,6 +2707,14 @@ body {
 .cal-day .cday-row .cr-t { flex: 1; min-width: 0; color: var(--text); }
 .cal-day .cday-row .cr-v { flex: none; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* 순공 시간 직접 고치기 (캘린더에서 날짜를 고른 뒤) */
+.cal-day .cday-edit { margin-top: 10px; }
+.sed-row { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+.sed-row .sed-name { flex: 1; min-width: 0; }
+.sed-row .sed-min { flex: none; width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+.sed-row .sed-unit { flex: none; font-size: 13px; color: var(--muted); }
+.sed-row .sed-del { flex: none; padding: 6px 10px; }
+
 @media (max-width: 480px) {
   .goal-hero { padding: 14px; gap: 11px; }
   .goal-hero .gh-univ { font-size: 16px; }
@@ -3143,7 +3202,9 @@ body {
           <span>과목명</span><span>유형</span><span>시험일 <em>D-day 반영</em></span><span>중요도</span><span>준비도</span><span></span>
         </div>
         <div id="subjectList" class="subject-list"></div>
-        <p class="tiny">유형에 따라 어떤 과제 적합도 참고값을 우선 반영할지 결정됩니다.
+        <p class="tiny">↑↓ 버튼으로 <b>과목 순서를 바꿀 수 있습니다</b> — 자주 보는 과목을 위로 올려 두세요.
+          (순서는 목록을 보기 좋게 하는 것이고, 실제 학습 배치 순서는 시험일·중요도·준비도로 정해집니다.)
+          유형에 따라 어떤 과제 적합도 참고값을 우선 반영할지 결정됩니다.
           <b>📅 시험일을 넣으면 날짜가 가까운 과목에 시간이 더 배분됩니다</b> — 우선순위에서 가장 비중이 큰 항목입니다.
           비워 두어도 되고, 그때는 긴급도가 기본값으로 계산됩니다.</p>
       </div>
@@ -4076,6 +4137,80 @@ body {
       </div>
     </div>
 
+    <!-- 복구 코드 백업.
+         파일 백업은 "스스로 누르는 사람"에게만 통한다. 아무 일도 없는 날 그 버튼을
+         누르는 학생은 거의 없어서, 대부분은 잃고 나서야 백업이 있었다는 걸 안다.
+         코드 한 줄이면 그다음부터는 하루 한 번 저절로 올라간다. -->
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🔑</span><h3>복구 코드 — 기기를 바꿔도 그대로</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">복구 코드를 만들어 두면 기록이 하루 한 번 서버에 저장됩니다.
+          새 폰이나 다른 브라우저에서 <b>코드만 넣으면 그대로 돌아옵니다.</b> 회원가입은 하지 않습니다.
+          <b>올리기 전에 이 기기에서 암호로 잠그기 때문에 서버는 내용을 볼 수 없습니다.</b></p>
+
+        <div id="bkLinked" class="is-hidden">
+          <div class="field">
+            <label>내 복구 코드 <em>새 기기에서 이 값을 넣습니다</em></label>
+            <div class="file-row" style="margin-top:0">
+              <input type="text" id="bkCode" class="input code" readonly style="flex:1;min-width:230px" aria-label="내 복구 코드">
+              <button type="button" class="btn sm" id="bkCopy">복사</button>
+            </div>
+          </div>
+          <p class="tiny" id="bkSaved" style="margin:10px 0 0">—</p>
+          <label class="toggle" style="margin-top:12px"><input type="checkbox" id="bkAuto"><span><b>하루에 한 번 자동으로 저장</b> — 앱을 열 때 조용히 올립니다</span></label>
+          <div class="actions" style="margin-top:12px">
+            <button type="button" class="btn" id="bkPush">☁ 지금 저장하기</button>
+            <button type="button" class="btn ghost" id="bkUnlink">연결 끊기</button>
+          </div>
+          <p class="alert warn" style="margin-top:12px"><b>⚠</b><span>이 코드를 잃어버리면 되살릴 방법이 없습니다.
+            이메일도 비밀번호 찾기도 없는 구조입니다 — 캡처해 두거나 메모장에 옮겨 두세요.</span></p>
+        </div>
+
+        <div id="bkUnlinked">
+          <div class="actions">
+            <button type="button" class="btn" id="bkCreate">🔑 복구 코드 만들기</button>
+            <button type="button" class="btn ghost" id="bkRestoreOpen">📥 코드로 불러오기</button>
+          </div>
+          <div id="bkRestoreBox" class="is-hidden" style="margin-top:14px">
+            <div class="field">
+              <label for="bkInput">복구 코드 <em>MNDR- 뒤의 12자만 넣으면 됩니다</em></label>
+              <!-- 'MNDR-' 은 입력칸 밖에 둔다. 코드 알파벳에 M·N·D·R 이 모두 있어서,
+                   칸 안에 접두사가 섞여 있으면 코드 글자와 구분할 수 없다. -->
+              <div class="file-row" style="margin-top:0">
+                <span class="code" style="align-self:center;color:var(--dim);font-weight:700">MNDR-</span>
+                <input type="text" id="bkInput" class="input code" placeholder="XXXX-XXXX-XXXX"
+                       autocomplete="off" autocapitalize="characters" spellcheck="false"
+                       inputmode="latin" maxlength="14"
+                       style="flex:1;min-width:180px">
+                <button type="button" class="btn sm" id="bkRestore">불러오기</button>
+              </div>
+            </div>
+            <p class="alert warn" style="margin-top:10px"><b>⚠</b><span>불러오면 <b>이 기기의 기록을 서버의 것으로 덮어씁니다.</b>
+              지금 기기에만 있는 기록이 있다면 먼저 백업 파일로 내려받아 두세요.</span></p>
+          </div>
+        </div>
+
+        <div id="bkStatus" class="neis-status" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- 소개·개인정보처리방침으로 나가는 진짜 링크.
+         루트(/)에서 랜딩으로 가는 길이 자바스크립트 리다이렉트뿐이라
+         크롤러에게는 /landing/ 이 존재하지 않는 것과 같았다. 여기 <a> 가 그 길을 만든다.
+         사용자에게도 "이 앱이 내 기록을 어떻게 다루는지" 를 찾아볼 자리가 필요하다. -->
+    <div class="card wide">
+      <div class="card-head"><span class="ci">ℹ️</span><h3>앱 정보</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">Mindora 가 무엇을 이 브라우저에만 저장하고 무엇을 동의했을 때만
+          서버로 보내는지는 개인정보처리방침에 항목별로 적어 두었습니다.</p>
+        <div class="actions">
+          <a class="btn ghost" href="landing/">📖 Mindora 소개</a>
+          <a class="btn ghost" href="privacy/">🔒 개인정보처리방침</a>
+          <a class="btn ghost" href="mailto:0315les@naver.com?subject=Mindora%20문의">✉ 문의하기</a>
+        </div>
+      </div>
+    </div>
+
     <p class="admin-entry">
       <button type="button" class="admin-entry-btn" id="openAdmin">👑 관리자 화면</button>
     </p>
@@ -4297,7 +4432,11 @@ body {
         <option value="5">5 · 충분함</option>
       </select>
     </label>
-    <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
+    <div class="s-ctl">
+      <button type="button" class="icon-btn s-up" title="위로" aria-label="이 과목을 위로 옮기기">↑</button>
+      <button type="button" class="icon-btn s-down" title="아래로" aria-label="이 과목을 아래로 옮기기">↓</button>
+      <button type="button" class="icon-btn s-del" title="삭제" aria-label="이 과목 삭제">✕</button>
+    </div>
   </div>
 </template>
 
@@ -6483,6 +6622,61 @@ body {
     S.saveSessions(data);
   }
 
+  /** 그 날짜·과목의 순공 시간을 직접 정한다 (분, 절대값). 0 이하면 지운다.
+   *
+   *  왜 필요한가
+   *    타이머로만 쌓이면 두 가지가 영영 틀린 채로 남는다.
+   *      · 학원·독서실에서 앱을 못 켜고 공부한 시간 → 0분으로 남는다
+   *      · 타이머를 끄는 걸 잊고 밥 먹으러 간 시간 → 안 한 공부가 쌓인다
+   *    랭킹·리그·배지·젤리가 전부 이 숫자 위에 서 있어서, 한 번 틀어지면
+   *    사용자는 숫자 전체를 믿지 않게 된다.
+   *
+   *  man 표시를 남기는 이유
+   *    타이머가 잰 값과 손으로 넣은 값을 화면에서 구분해 보여 주기 위해서다.
+   *    리그 합계에서 빼지는 않는다 — 뺐다가는 "내가 기록했는데 왜 안 올라가지"가
+   *    되고, 어차피 타이머를 켜 두기만 해도 같은 일이 되므로 막는 효과도 없다.
+   *    (리그는 하루 5시간 상한이 따로 걸려 있다.)
+   */
+  function set(dateKey, subject, minutes, type) {
+    subject = String(subject || '').trim();
+    if (!dateKey || !subject) return false;
+
+    var data = all();
+    var m = Math.round(Math.max(0, Math.min(24 * 60, Number(minutes) || 0)) * 100) / 100;
+
+    if (!(m > 0)) return remove(dateKey, subject);
+
+    if (!data[dateKey]) data[dateKey] = {};
+    var prev = data[dateKey][subject];
+    data[dateKey][subject] = { t: type || (prev && prev.t) || 'mixed', m: m, man: 1 };
+    S.saveSessions(data);
+    return true;
+  }
+
+  /** 그 날짜의 과목 기록을 지운다. 그 날이 비면 날짜 칸도 함께 지운다. */
+  function remove(dateKey, subject) {
+    var data = all();
+    if (!data[dateKey] || !data[dateKey][subject]) return false;
+    delete data[dateKey][subject];
+    if (!Object.keys(data[dateKey]).length) delete data[dateKey];
+    S.saveSessions(data);
+    return true;
+  }
+
+  /** 지금까지 기록에 나온 과목 이름 (최근에 쓴 순서). 직접 입력할 때 후보로 쓴다. */
+  function knownSubjects() {
+    var data = all();
+    var seen = {}, out = [];
+    Object.keys(data).sort().reverse().forEach(function (d) {
+      Object.keys(data[d]).forEach(function (name) {
+        if (seen[name]) return;
+        seen[name] = 1;
+        out.push({ name: name, type: data[d][name].t });
+      });
+    });
+    return out;
+  }
+
   function dayMap(dateKey) { return all()[dateKey] || {}; }
 
   function dayTotal(dateKey) {
@@ -6494,7 +6688,7 @@ body {
   function daySubjects(dateKey) {
     var m = dayMap(dateKey);
     return Object.keys(m)
-      .map(function (name) { return { name: name, type: m[name].t, min: m[name].m }; })
+      .map(function (name) { return { name: name, type: m[name].t, min: m[name].m, manual: !!m[name].man }; })
       .sort(function (a, b) { return b.min - a.min; });
   }
 
@@ -6566,7 +6760,7 @@ body {
   }
 
   global.StudyLog = {
-    add: add, all: all,
+    add: add, set: set, remove: remove, all: all, knownSubjects: knownSubjects,
     dayTotal: dayTotal, daySubjects: daySubjects, todayTotal: todayTotal,
     rangeDays: rangeDays, rangeSubjects: rangeSubjects, rangeTotal: rangeTotal,
     week: week, weekTotal: weekTotal, streak: streak
@@ -7914,7 +8108,406 @@ body {
     hiddenOn: hiddenOn, setHidden: setHidden,
     adminDeleteDevice: adminDeleteDevice,
 
+    /* 이 파일 밖에서 RPC 를 부를 수 있는 유일한 통로.
+     * backup.js 가 쓴다 — 주소와 anon 키를 두 곳에 복사해 두면 프로젝트를 옮길 때
+     * 한쪽만 고치고 넘어가게 된다(실제로 2026-08-10 에 그래서 6일을 잃었다).
+     * 리그 동의(enabled)와 무관하게 열려 있다: 복구 코드 백업은 리그와 다른 기능이고,
+     * 리그를 꺼 둔 사람도 기록은 지키고 싶기 때문이다. */
+    rpc: function (fn, body) { return req('/rest/v1/rpc/' + fn, { method: 'POST', body: body || {} }); },
+
     SUPABASE_URL: SUPABASE_URL
+  };
+
+})(window);
+
+
+/* ===== src/js/backup.js ===== */
+/* =========================================================================
+ * backup.js — 복구 코드 백업 (기기를 바꿔도 기록이 따라오게)
+ *
+ * 왜 필요한가
+ *   학습 기록은 localStorage 에만 있다. 폰을 바꾸거나 브라우저 데이터를 지우면
+ *   몇 달치가 그대로 사라진다. 설정에 "백업 파일 내려받기" 가 있지만, 아무 일도
+ *   없는 날 그 버튼을 스스로 누르는 학생은 거의 없다. 그래서 잃고 나서야 안다.
+ *
+ * 어떻게 하는가
+ *   복구 코드 한 줄(MNDR-XXXX-XXXX-XXXX)로 서버에 한 칸을 잡는다.
+ *   새 기기에서 그 코드만 넣으면 그대로 돌아온다. 회원가입은 여전히 없다.
+ *
+ * 서버는 내용을 볼 수 없다
+ *   백업에는 이름·학교·학년·반이 들어 있다. 미성년자의 정보를 평문으로 서버에
+ *   쌓아 두지 않기 위해, 올리기 전에 앱이 직접 암호화한다.
+ *
+ *     키      = PBKDF2-SHA256(복구 코드, salt = slotId, 210,000회) → AES-GCM 256
+ *     본문    = base64( iv(12B) || AES-GCM 암호문 )
+ *     찾는 열쇠 = SHA-256("mindora.backup.v1|" + 복구 코드) 앞 32자
+ *
+ *   저장되는 것은 암호문과 slotId 뿐이다. 표를 통째로 가져가도 복구 코드를
+ *   되돌릴 수 없고, 따라서 복호화도 할 수 없다.
+ *
+ * ⚠ 코드를 잃어버리면 복구할 방법이 없다.
+ *   이메일도 비밀번호 찾기도 없는 구조라 그렇다. 화면에도 그렇게 적어 둔다.
+ *
+ * 서버 쪽은 supabase/schema_backup.sql 이다.
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var KEY = 'mindora.backup.v1';
+  var SALT_TAG = 'mindora.backup.v1|';
+  var ITERATIONS = 210000;
+
+  /* 사람이 받아 적을 코드다. 헷갈리는 글자(I·L·O·U·0·1)를 뺀 32자에서 뽑는다 —
+   * 손으로 옮겨 적다가 O 와 0 을 바꿔 쓰면 복구가 통째로 실패하기 때문이다. */
+  var ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ#@';
+  var CODE_LEN = 12;                 // 32^12 ≈ 1.2e18
+
+  /* 위 알파벳의 마지막 두 글자(#·@)는 자판에서 치기 나쁘다. 실제로는 30자만
+   * 쓰고(30^12 ≈ 5.3e17) 나머지 두 칸은 버린다 — 여전히 추측할 수 없는 크기다. */
+  var PICKABLE = 30;
+
+  function crypto_() { return global.crypto && global.crypto.subtle ? global.crypto : null; }
+
+  /** 이 브라우저에서 복구 코드 백업을 쓸 수 있는가.
+   *  WebCrypto 는 보안 컨텍스트(https 또는 localhost)에서만 열린다. */
+  function available() {
+    return !!(crypto_() && global.Cloud && Cloud.configured());
+  }
+
+  function unavailableReason() {
+    if (!global.Cloud || !Cloud.configured()) return '서버가 설정되지 않았습니다.';
+    if (!crypto_()) {
+      return global.isSecureContext === false
+        ? '주소가 https 일 때만 쓸 수 있습니다. (파일을 직접 열었을 때는 백업 파일을 쓰세요)'
+        : '이 브라우저는 암호화를 지원하지 않습니다.';
+    }
+    return '';
+  }
+
+  /* --------------------------------------------------------------- 상태 */
+
+  function load() {
+    var d = { code: '', savedAt: 0, bytes: 0, auto: true, lastError: '' };
+    try {
+      var o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object') return d;
+      return {
+        code: normalize(o.code || ''),
+        savedAt: o.savedAt || 0,
+        bytes: o.bytes || 0,
+        /* 코드를 한 번 만들어 둔 사람은 그 뒤로 신경 쓰고 싶지 않다.
+         * 그래서 기본은 자동 저장이고, 끄는 것은 선택이다. */
+        auto: o.auto !== false,
+        lastError: o.lastError || ''
+      };
+    } catch (e) { return d; }
+  }
+
+  function save(o) {
+    try { localStorage.setItem(KEY, JSON.stringify(o)); return true; }
+    catch (e) { return false; }
+  }
+
+  function patch(changes) {
+    var s = load();
+    Object.keys(changes || {}).forEach(function (k) { s[k] = changes[k]; });
+    save(s);
+    return s;
+  }
+
+  function linked() { return !!load().code; }
+
+  /* ----------------------------------------------------------- 코드 다루기 */
+
+  /** 입력한 코드를 표준형(대문자·구분선 제거)으로. 비교와 해시는 항상 이 값으로 한다.
+   *
+   *  ⚠ 여기서 'MNDR' 접두사를 떼면 안 된다. 코드 알파벳에 M·N·D·R 이 모두 들어 있어서
+   *    우연히 MNDR 로 시작하는 코드(약 81만분의 1)의 앞 네 글자가 잘려 나간다.
+   *    접두사 처리는 사람이 친 값을 받는 fromInput() 한 곳에서만, 길이로 판단한다. */
+  function normalize(raw) {
+    return String(raw == null ? '' : raw)
+      .toUpperCase()
+      .replace(/[^0-9A-Z]/g, '')
+      .slice(0, CODE_LEN);
+  }
+
+  /** 네 자씩 끊은 표기: XXXX-XXXX-XXXX */
+  function group(code) {
+    var c = normalize(code);
+    return c ? (c.match(/.{1,4}/g) || []).join('-') : '';
+  }
+
+  /** 화면·복사용 전체 표기: MNDR-XXXX-XXXX-XXXX */
+  function format(code) {
+    var g = group(code);
+    return g ? 'MNDR-' + g : '';
+  }
+
+  /** 사람이 치거나 붙여넣은 값에서 코드를 읽는다.
+   *  접두사가 붙어 있으면 글자 수가 정확히 CODE_LEN+4 가 되므로, 그때만 떼어 낸다.
+   *  (12자 코드 자체가 MNDR 로 시작하는 경우와 섞이지 않는 유일한 기준이다) */
+  function fromInput(raw) {
+    var s = String(raw == null ? '' : raw).toUpperCase().replace(/[^0-9A-Z]/g, '');
+    if (s.length === CODE_LEN + 4 && s.slice(0, 4) === 'MNDR') s = s.slice(4);
+    return s.slice(0, CODE_LEN);
+  }
+
+  function valid(code) { return normalize(code).length === CODE_LEN; }
+
+  /** 새 복구 코드를 만든다. 추측을 막는 값이라 Math.random 은 쓰지 않는다. */
+  function generate() {
+    var c = crypto_();
+    if (!c) throw new Error(unavailableReason());
+    var out = '';
+    /* 32로 나눈 나머지를 그대로 쓰면 앞쪽 글자가 더 자주 나온다(모듈로 편향).
+     * 30 이상이 나온 바이트는 버리고 다시 뽑아 고르게 만든다. */
+    while (out.length < CODE_LEN) {
+      var buf = new Uint8Array(CODE_LEN * 2);
+      c.getRandomValues(buf);
+      for (var i = 0; i < buf.length && out.length < CODE_LEN; i++) {
+        var v = buf[i] & 31;
+        if (v < PICKABLE) out += ALPHABET.charAt(v);
+      }
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------------- 암호화 */
+
+  function utf8(s) { return new TextEncoder().encode(s); }
+
+  function hex(buf) {
+    var b = new Uint8Array(buf), out = '';
+    for (var i = 0; i < b.length; i++) out += (b[i] + 0x100).toString(16).slice(1);
+    return out;
+  }
+
+  function b64(buf) {
+    var b = new Uint8Array(buf), s = '';
+    for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s);
+  }
+
+  function unb64(str) {
+    var s = atob(String(str || ''));
+    var b = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+    return b;
+  }
+
+  /** 행을 찾는 열쇠. 코드 자체는 서버로 가지 않는다. */
+  function slotId(code) {
+    return crypto_().subtle.digest('SHA-256', utf8(SALT_TAG + normalize(code)))
+      .then(function (d) { return hex(d).slice(0, 32); });
+  }
+
+  function deriveKey(code, slot) {
+    var c = crypto_();
+    return c.subtle.importKey('raw', utf8(normalize(code)), 'PBKDF2', false, ['deriveKey'])
+      .then(function (base) {
+        return c.subtle.deriveKey(
+          { name: 'PBKDF2', salt: utf8(slot), iterations: ITERATIONS, hash: 'SHA-256' },
+          base,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      });
+  }
+
+  function encrypt(code, slot, plaintext) {
+    var c = crypto_();
+    var iv = new Uint8Array(12);
+    c.getRandomValues(iv);
+    return deriveKey(code, slot).then(function (key) {
+      return c.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, utf8(plaintext));
+    }).then(function (ct) {
+      var merged = new Uint8Array(iv.length + ct.byteLength);
+      merged.set(iv, 0);
+      merged.set(new Uint8Array(ct), iv.length);
+      return b64(merged);
+    });
+  }
+
+  function decrypt(code, slot, payload) {
+    var c = crypto_();
+    var raw = unb64(payload);
+    if (raw.length < 13) return Promise.reject(new Error('백업이 손상되었습니다.'));
+    var iv = raw.slice(0, 12);
+    var ct = raw.slice(12);
+    return deriveKey(code, slot).then(function (key) {
+      return c.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ct);
+    }).then(function (buf) {
+      return new TextDecoder().decode(buf);
+    }, function () {
+      /* AES-GCM 은 키가 틀리면 복호화 단계에서 실패한다. 여기 오는 경우는
+       * 사실상 "코드는 맞는 칸을 찾았는데 키가 다르다" 뿐이라, 그렇게 말해 준다. */
+      throw new Error('복구 코드가 이 백업과 맞지 않습니다.');
+    });
+  }
+
+  /* ------------------------------------------------------------- 서버 왕복 */
+
+  /** 지금 기록을 서버의 내 칸에 올린다(덮어쓰기). */
+  function push(code) {
+    code = normalize(code || load().code);
+    if (!valid(code)) return Promise.reject(new Error('복구 코드가 없습니다.'));
+    if (!available()) return Promise.reject(new Error(unavailableReason()));
+
+    var plain = JSON.stringify(Store.exportAll());
+    var bytes = plain.length;
+    var slot;
+
+    return slotId(code)
+      .then(function (s) { slot = s; return encrypt(code, slot, plain); })
+      .then(function (payload) {
+        return Cloud.rpc('put_backup', { p_slot: slot, p_payload: payload, p_bytes: bytes });
+      })
+      .then(function () {
+        var st = patch({ code: code, savedAt: Date.now(), bytes: bytes, lastError: '' });
+        /* 파일 백업과 같은 취급을 한다 — 설정 화면의 "마지막 백업" 경고가
+         * 서버에 올린 뒤에도 계속 떠 있으면 사용자는 실패한 줄 안다. */
+        Store.markBackedUp();
+        return st;
+      }, function (e) {
+        patch({ lastError: e.message || '올리지 못했습니다.' });
+        throw e;
+      });
+  }
+
+  /** 서버의 칸을 읽어 온다. 아직 복원하지는 않는다 — 미리 보고 결정하게 한다. */
+  function peek(code) {
+    code = normalize(code);
+    if (!valid(code)) return Promise.reject(new Error('복구 코드는 12자입니다.'));
+    if (!available()) return Promise.reject(new Error(unavailableReason()));
+
+    var slot;
+    return slotId(code)
+      .then(function (s) { slot = s; return Cloud.rpc('get_backup', { p_slot: slot }); })
+      .then(function (rows) {
+        var row = rows && rows.length ? rows[0] : null;
+        if (!row) throw new Error('그 복구 코드로 저장된 백업이 없습니다.');
+        return decrypt(code, slot, row.payload).then(function (plain) {
+          var obj;
+          try { obj = JSON.parse(plain); }
+          catch (e) { throw new Error('백업을 읽을 수 없습니다.'); }
+          return {
+            data: obj,
+            savedAt: row.saved_at ? Date.parse(row.saved_at) : 0,
+            bytes: row.bytes || plain.length
+          };
+        });
+      });
+  }
+
+  /** peek 로 받아 둔 내용을 이 기기에 덮어쓴다. */
+  function restore(code, found) {
+    var n = Store.importAll(found.data);
+    patch({ code: normalize(code), savedAt: found.savedAt || Date.now(), bytes: found.bytes || 0, lastError: '' });
+    return n;
+  }
+
+  /** 서버의 칸을 지우고 이 기기의 연결도 끊는다. */
+  function unlink(alsoDeleteServer) {
+    var code = load().code;
+    var done = function () { save({ code: '', savedAt: 0, bytes: 0, auto: true, lastError: '' }); };
+
+    if (!alsoDeleteServer || !valid(code) || !available()) { done(); return Promise.resolve(false); }
+    return slotId(code)
+      .then(function (s) { return Cloud.rpc('drop_backup', { p_slot: s }); })
+      .then(function () { done(); return true; },
+            function (e) { done(); throw e; });   // 연결은 어쨌든 끊는다
+  }
+
+  /* --------------------------------------------------------- 자동 올리기
+   * 하루에 한 번이면 충분하다. 매번 올리면 통신도 낭비고, 서버에 남는 것도
+   * 어차피 마지막 한 판뿐이라 자주 올릴 이유가 없다.
+   * 실패해도 조용히 넘어간다 — 지하철에서 앱을 열 때마다 오류를 띄우면
+   * 사용자는 백업 자체를 꺼 버린다. */
+  var DAY = 24 * 60 * 60 * 1000;
+
+  function autoDue() {
+    var s = load();
+    return !!(s.code && s.auto && available() && Date.now() - s.savedAt > DAY);
+  }
+
+  function autoPush() {
+    if (!autoDue()) return Promise.resolve(false);
+    return push().then(function () { return true; }, function () { return false; });
+  }
+
+  /* ------------------------------------------------------------ 자체 점검
+   * 콘솔에서 `Backup.selfTest()`. 서버를 거치지 않고 암호화 왕복만 본다.
+   * 여기서 지키려는 불변식은 하나다 — 코드가 틀리면 절대 읽히지 않는다.
+   * 이게 깨지면 남의 백업이 열린다는 뜻이라 조용히 넘어가면 안 된다. */
+  function selfTest() {
+    if (!crypto_()) return Promise.resolve([{ ok: false, name: 'WebCrypto', got: unavailableReason() }]);
+
+    var out = [];
+    function check(name, cond, got) { out.push({ ok: !!cond, name: name, got: got }); }
+
+    var code = generate();
+    var other = generate();
+    var sample = JSON.stringify({ app: 'Mindora', data: { 'x': '한글도 그대로 왕복해야 한다' } });
+
+    check('코드 길이 ' + CODE_LEN + '자', code.length === CODE_LEN, code.length);
+    check('코드가 매번 다르다', code !== other, code + ' / ' + other);
+    check('표기 왕복', fromInput(format(code)) === code, format(code));
+    check('생성한 코드는 그대로', normalize(code) === code, normalize(code));
+    check('구분선·소문자 섞여도 같은 코드',
+      fromInput('mndr-' + code.slice(0, 4) + ' ' + code.slice(4)) === code);
+    /* 코드 알파벳에 M·N·D·R 이 있다. MNDR 로 시작하는 코드의 앞 네 글자가
+     * 접두사로 오인돼 잘려 나가면, 만든 사람은 영영 복구하지 못한다. */
+    check('MNDR 로 시작하는 코드도 안 잘린다',
+      normalize('MNDR23456789') === 'MNDR23456789' &&
+      fromInput('MNDR23456789') === 'MNDR23456789' &&
+      fromInput(format('MNDR23456789')) === 'MNDR23456789',
+      format('MNDR23456789'));
+
+    var slotA, slotB;
+    return slotId(code)
+      .then(function (s) { slotA = s; return slotId(code); })
+      .then(function (s) {
+        check('slotId 는 같은 코드에 항상 같다', s === slotA, slotA);
+        check('slotId 는 32자 16진수', /^[0-9a-f]{32}$/.test(slotA), slotA);
+        check('slotId 에 코드가 드러나지 않는다', slotA.indexOf(code.toLowerCase()) < 0);
+        return slotId(other);
+      })
+      .then(function (s) {
+        slotB = s;
+        check('다른 코드는 다른 칸', slotA !== slotB);
+        return encrypt(code, slotA, sample);
+      })
+      .then(function (payload) {
+        check('암호문에 평문이 남지 않는다', payload.indexOf('Mindora') < 0 && payload.indexOf('한글') < 0);
+        return decrypt(code, slotA, payload).then(function (plain) {
+          check('맞는 코드로 복호화', plain === sample, plain.slice(0, 40));
+          // 틀린 코드로는 반드시 실패해야 한다
+          return decrypt(other, slotA, payload).then(
+            function () { check('틀린 코드는 거부', false, '읽혀 버렸다'); },
+            function () { check('틀린 코드는 거부', true); }
+          );
+        });
+      })
+      .then(function () {
+        var bad = out.filter(function (r) { return !r.ok; });
+        /* eslint-disable no-console */
+        out.forEach(function (r) {
+          console.log((r.ok ? '  ok  ' : '  FAIL') + '  ' + r.name + (r.got !== undefined ? '  → ' + r.got : ''));
+        });
+        console.log(bad.length ? '❌ ' + bad.length + '개 실패' : '✅ ' + out.length + '개 통과');
+        return out;
+      });
+  }
+
+  global.Backup = {
+    available: available, unavailableReason: unavailableReason,
+    load: load, patch: patch, linked: linked,
+    normalize: normalize, group: group, format: format, fromInput: fromInput,
+    valid: valid, generate: generate,
+    push: push, peek: peek, restore: restore, unlink: unlink,
+    autoDue: autoDue, autoPush: autoPush, selfTest: selfTest,
+    CODE_LEN: CODE_LEN, STORAGE_KEY: KEY
   };
 
 })(window);
@@ -11069,6 +11662,57 @@ body {
     this.emit();
   };
 
+  /* ------------------------------------------------- 새로고침 뒤 이어하기
+   *
+   * 지금까지는 새로고침 한 번이면 오늘 플랜과 타이머 위치가 통째로 사라졌다.
+   * 잰 순공 시간은 남지만 "3블록 중 2번째를 하던 중" 이라는 맥락이 날아가서,
+   * 분석을 다시 누르고 처음 블록부터 시작해야 했다. */
+
+  /** 지금 상태를 그대로 담아 낸다. 돌아가는 중이면 남은 시간을 지금 기준으로
+   *  확정해서 담는다 — endsAt 은 절대 시각이라 다음 실행에서는 의미가 없다. */
+  Pomodoro.prototype.snapshot = function () {
+    return {
+      queue: this.queue,
+      index: this.index,
+      remainingMs: this.running ? Math.max(0, this.endsAt - Date.now()) : this.remainingMs,
+      running: this.running
+    };
+  };
+
+  /** snapshot() 이 담아 둔 상태로 되돌린다.
+   *
+   *  ⚠ 항상 **멈춘 채로** 돌아온다. 앱을 닫아 둔 동안 흐른 시간은 공부한 시간이
+   *    아니므로, 돌아가던 상태 그대로 이어 붙이면 하지 않은 공부가 기록된다.
+   *    다시 시작하는 것은 사용자가 누르게 둔다. */
+  Pomodoro.prototype.restore = function (s) {
+    if (!s || !s.queue || !s.queue.length) return false;
+    this.stop();
+
+    this.queue = s.queue.map(function (b) {
+      var min = Math.max(0, Number(b.minutes) || 0);
+      return {
+        kind: b.kind === 'study' ? 'study' : (b.kind === 'longBreak' ? 'longBreak' : 'break'),
+        label: b.label || (b.kind === 'study' ? b.subject : '휴식'),
+        subject: b.subject,
+        type: b.type || null,
+        color: b.color || null,
+        minutes: min,
+        ms: Math.round(min * 60 * 1000)
+      };
+    });
+
+    // 큐 밖을 가리키면 "다 끝난 상태" 로 본다 (queue.length 까지 허용)
+    this.index = Math.max(0, Math.min(Math.round(s.index) || 0, this.queue.length));
+
+    var cur = this.current();
+    var ms = Math.max(0, Number(s.remainingMs) || 0);
+    // 저장된 남은 시간이 블록 길이보다 클 수는 없다 (블록을 줄인 뒤 저장된 경우 등)
+    this.remainingMs = cur ? Math.min(ms, cur.ms) : 0;
+
+    this.emit();
+    return true;
+  };
+
   /* 블록 길이 조절 한도 — 계획은 추천일 뿐이라 사용자가 고칠 수 있어야 한다.
    * 다만 이미 지나갔거나 지금 돌아가는 블록을 건드리면 기록이 어긋나므로 막는다. */
   /* 휴식의 하한이 0 인 것은 "이 휴식은 건너뛴다" 를 고를 수 있게 하기 위해서다.
@@ -12878,9 +13522,41 @@ body {
     row.querySelector('.s-del').addEventListener('click', function () {
       if ($$('.subject-row', $('subjectList')).length <= 1) { toast('과목은 최소 1개가 필요합니다.', true); return; }
       row.remove();
+      syncSubjectMoves();
     });
+    row.querySelector('.s-up').addEventListener('click', function () { moveSubjectRow(row, -1, this); });
+    row.querySelector('.s-down').addEventListener('click', function () { moveSubjectRow(row, 1, this); });
+
     $('subjectList').appendChild(row);
+    syncSubjectMoves();
     return row;
+  }
+
+  /* 과목 순서 바꾸기.
+   *
+   *  끌어다 놓기는 좁은 화면에서 스크롤과 싸우고 키보드로는 아예 못 쓴다.
+   *  ↑↓ 버튼은 마우스·터치·키보드가 전부 같은 방법으로 쓸 수 있다.
+   *  누른 버튼에 초점을 되돌려 주므로 연달아 눌러 여러 칸을 옮길 수 있다. */
+  function moveSubjectRow(row, dir, btn) {
+    var sibling = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;                       // 끝에서는 버튼이 이미 꺼져 있다
+    if (dir < 0) $('subjectList').insertBefore(row, sibling);
+    else $('subjectList').insertBefore(sibling, row);
+    syncSubjectMoves();
+    /* 노드를 옮기면 초점이 풀리는 브라우저가 있어 직접 되돌린다.
+     * 끝에 닿아 그 버튼이 꺼졌으면 반대쪽 화살표 대신 과목명 칸으로 보낸다 —
+     * 반대쪽으로 초점을 옮기면 키보드로 한 번 더 누르는 순간 도로 내려간다. */
+    if (btn && !btn.disabled) btn.focus();
+    else row.querySelector('.s-name').focus();
+  }
+
+  /** 맨 위·맨 아래에서는 갈 곳이 없으므로 그쪽 버튼을 끈다 */
+  function syncSubjectMoves() {
+    var rows = $$('.subject-row', $('subjectList'));
+    rows.forEach(function (r, i) {
+      r.querySelector('.s-up').disabled = (i === 0);
+      r.querySelector('.s-down').disabled = (i === rows.length - 1);
+    });
   }
 
   function readSubjects() {
@@ -13743,6 +14419,7 @@ body {
     state.timer.load(p.timeline);
     input._date = Store.key();
     Store.saveInput(input);
+    saveSession();
     renderNav();
     goPage('secPlan');
   }
@@ -13898,6 +14575,104 @@ body {
     renderHome();   // 홈의 '오늘 순공' 타일도 같은 숫자를 본다
   }
 
+  /* ================================= 오늘 세션 이어하기 (새로고침 대비) ==
+   *
+   * 새로고침 한 번이면 오늘 플랜과 타이머 위치가 통째로 사라졌다. 잰 순공 시간은
+   * 남지만 "3블록 중 2번째를 하던 중" 이라는 맥락이 날아가서, 분석을 다시 누르고
+   * 처음 블록부터 시작해야 했다. 폰에서는 브라우저가 탭을 알아서 버리기 때문에
+   * 새로고침을 누르지 않아도 같은 일이 생긴다.
+   *
+   * 오늘 것만 되살린다. 어제 만든 플랜을 오늘 이어서 하는 것은 계획이 아니다.
+   * 백업 파일(BACKUP_KEYS)에는 넣지 않는다 — 다른 기기로 옮길 값이 아니다. */
+
+  var SESSION_KEY = 'mindora.session.v1';
+  var SESSION_SAVE_GAP = 10000;
+  var lastSessionSave = 0;
+
+  function saveSession() {
+    if (!state.analysis) return;
+    lastSessionSave = Date.now();
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        v: 1,
+        date: Store.key(),
+        savedAt: Date.now(),
+        analysis: state.analysis,
+        overrides: state.planOverrides,
+        timer: state.timer ? state.timer.snapshot() : null
+      }));
+    } catch (e) { /* 저장 공간이 모자라면 이어하기만 포기한다. 기록이 우선이다. */ }
+  }
+
+  function maybeSaveSession() {
+    if (Date.now() - lastSessionSave > SESSION_SAVE_GAP) saveSession();
+  }
+
+  function clearSession() {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* 무시 */ }
+  }
+
+  function loadSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (!s || s.v !== 1 || s.date !== Store.key()) return null;
+      if (!s.analysis || !s.analysis.capacities || !s.analysis.capacities.length) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  /** JSON 을 거치면 capacities 와 byId·ranked·top·bottom 이 서로 다른 사본이 된다.
+   *  원래는 같은 객체를 가리키고 있었으므로, 그 관계를 다시 이어 준다. */
+  function rehydrateAnalysis(a) {
+    a.byId = {};
+    a.capacities.forEach(function (c) { a.byId[c.id] = c; });
+    var sorted = a.capacities.slice().sort(function (x, y) { return y.exact - x.exact; });
+    a.ranked = sorted;
+    a.top = sorted[0];
+    a.bottom = sorted[sorted.length - 1];
+    return a;
+  }
+
+  function restoreSession(s) {
+    var a;
+    try { a = rehydrateAnalysis(s.analysis); } catch (e) { return false; }
+
+    state.analysis = a;
+    state.planOverrides = (s.overrides && typeof s.overrides === 'object') ? s.overrides : {};
+
+    /* 플랜은 저장하지 않고 분석에서 다시 만든다. 추천 수정(planOverrides)은 이미
+     * analysis.input.subjects[].recommendationAction 에 담겨 있어 같은 결과가 나오고,
+     * 엔진·플래너는 현재 시각을 보지 않아 결과가 달라질 여지도 없다. */
+    try {
+      state.plan = BrainPlanner.plan(a);
+      renderResult(a);
+      renderPlan(state.plan);
+    } catch (e) { state.analysis = null; return false; }
+
+    /* 타이머는 저장된 큐를 그대로 쓴다. 블록 길이를 손으로 고쳤을 수 있어서
+     * 플랜이 새로 만든 timeline 으로 덮으면 그 수정이 사라진다. */
+    var t = s.timer;
+    if (!(t && state.timer.restore(t))) state.timer.load(state.plan.timeline);
+
+    renderSoundNow();
+    return true;
+  }
+
+  /** 되살린 뒤 사용자에게 알린다. 조용히 이어 붙이면 "왜 이미 2번째지?" 가 된다. */
+  function announceResumed() {
+    var t = state.timer;
+    if (!t || !t.queue.length) return;
+
+    if (t.index >= t.queue.length) {
+      toast('오늘 계획한 블록을 이미 다 끝냈어요. 기록은 그대로 있습니다.');
+      return;
+    }
+    // toast 는 textContent 라 esc() 를 쓰면 과목명의 & 가 &amp; 로 보인다
+    var cur = t.current();
+    toast('이어서 할 수 있어요 — ' + (t.index + 1) + '/' + t.queue.length + ' 블록 · ' +
+          cur.label + ' ' + Math.max(1, Math.round(t.remainingMs / 60000)) + '분 남음');
+  }
+
   /* ------------------------------------------------------------- 타이머 */
 
   /* ------------------------------------------------- 백그라운드 알림 ---- */
@@ -13962,7 +14737,7 @@ body {
 
   function initTimer() {
     state.timer = new Pomodoro({
-      onTick: function (s) { trackStudy(s); renderTimer(s); syncSound(s); },
+      onTick: function (s) { trackStudy(s); renderTimer(s); syncSound(s); maybeSaveSession(); },
       onComplete: function (block) {
         commitSpan(true);
         if ($('soundOn').checked) Pomodoro.beep(block ? block.kind : 'study');
@@ -14004,7 +14779,7 @@ body {
       if (state.timer.index >= state.timer.queue.length) state.timer.reset();
       state.timer.toggle();
     });
-    $('btnSkip').addEventListener('click', function () { commitSpan(true); state.timer.skip(); });
+    $('btnSkip').addEventListener('click', function () { commitSpan(true); state.timer.skip(); saveSession(); });
     $('btnReset').addEventListener('click', function () {
       commitSpan(true);
       state.timer.reset();
@@ -14012,12 +14787,16 @@ body {
       Sound.stop();
       $('btnStart').textContent = '▶ 시작';
       setTimeout(renderSoundNow, 320);
+      saveSession();
       toast('타이머를 처음으로 되돌렸습니다. (기록된 순공 시간은 그대로 유지됩니다)');
     });
 
-    // 탭을 닫거나 숨길 때 진행 중인 구간을 저장
-    window.addEventListener('beforeunload', function () { commitSpan(true); });
-    document.addEventListener('visibilitychange', function () { if (document.hidden) commitSpan(false); });
+    // 탭을 닫거나 숨길 때 진행 중인 구간을 저장.
+    // 이어하기 정보도 같이 남긴다 — 폰은 숨긴 탭을 예고 없이 버린다.
+    window.addEventListener('beforeunload', function () { commitSpan(true); saveSession(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { commitSpan(false); saveSession(); }
+    });
   }
 
   function showStudyFeedback(block) {
@@ -15347,7 +16126,9 @@ body {
       rows.push(calRow(e.icon, e.label + (e.sub && e.label.indexOf(e.sub) < 0 ? ' · ' + e.sub : ''),
                        ddayText(dayDiff(k))));
     });
-    StudyLog.daySubjects(k).forEach(function (s) { rows.push(calRow('📖', s.name, fmtDurFine(s.min))); });
+    StudyLog.daySubjects(k).forEach(function (s) {
+      rows.push(calRow('📖', s.name + (s.manual ? ' ✏️' : ''), fmtDurFine(s.min)));
+    });
 
     var total = StudyLog.dayTotal(k);
     if (total > 0) rows.push(calRow('⏱️', '이 날 순공 합계', fmtDurFine(total)));
@@ -15355,13 +16136,118 @@ body {
     var rec = Store.recordOn(k);
     if (rec) rows.push(calRow('🧠', '학습 준비도 참고값', scoreBand(rec.overall) + ' · ' + displayScore(rec.overall) + '점'));
 
+    var future = k > Store.key();
+
     box.innerHTML =
       '<div class="cday-h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + DOW_KO[d.getDay()] + ')' +
         (k === Store.key() ? ' · 오늘' : '') + '</div>' +
       (rows.length ? rows.join('')
-        : '<p class="cday-empty">' + (k > Store.key()
+        : '<p class="cday-empty">' + (future
             ? '아직 오지 않은 날입니다. 등록된 일정이 없습니다.'
-            : '이 날은 기록도 일정도 없습니다.') + '</p>');
+            : '이 날은 기록도 일정도 없습니다.') + '</p>') +
+      /* 아직 오지 않은 날에 "공부한 시간"을 넣을 수는 없다 */
+      (future ? '' :
+        '<div class="cday-edit">' +
+          '<button type="button" class="btn ghost sm" id="calEditBtn">✏ 기록 고치기</button>' +
+        '</div>');
+
+    if ($('calEditBtn')) $('calEditBtn').addEventListener('click', function () { openStudyEditor(k); });
+  }
+
+  /* ======================================== 순공 시간 직접 고치기 ==
+   * 타이머로만 쌓이면 두 가지가 영영 틀린 채로 남는다.
+   *   · 학원·독서실에서 앱을 못 켜고 공부한 시간 → 0분
+   *   · 타이머를 끄는 걸 잊고 자리를 뜬 시간     → 안 한 공부가 쌓임
+   * 랭킹·리그·배지·젤리가 전부 이 숫자를 보고 있어서, 고칠 수 없으면
+   * 사용자는 숫자 전체를 믿지 않게 된다. */
+
+  function studyEditorRow(name, min, type) {
+    return '<div class="sed-row" data-name="' + esc(name) + '">' +
+      '<input type="text" class="input sed-name" value="' + esc(name) + '" aria-label="과목 이름" spellcheck="false">' +
+      '<input type="number" class="input sed-min" value="' + Math.round(min) + '" min="0" max="1440" step="5" aria-label="분">' +
+      '<span class="sed-unit">분</span>' +
+      '<button type="button" class="btn ghost sm sed-del" aria-label="이 줄 지우기">✕</button>' +
+      '<input type="hidden" class="sed-type" value="' + esc(type || 'mixed') + '">' +
+      '</div>';
+  }
+
+  function openStudyEditor(dateKey) {
+    var box = $('calDay');
+    var d = Store.parseKey(dateKey);
+    var subs = StudyLog.daySubjects(dateKey);
+
+    /* 후보는 지금 입력 화면의 과목 + 지난 기록에 나온 과목. 매번 타이핑하지 않게 한다. */
+    var opts = {};
+    readSubjects().forEach(function (s) { if (s.name) opts[s.name] = s.type; });
+    StudyLog.knownSubjects().forEach(function (s) { if (!opts[s.name]) opts[s.name] = s.type; });
+
+    box.innerHTML =
+      '<div class="cday-h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 · 기록 고치기</div>' +
+      '<p class="cday-empty" style="margin-bottom:10px">타이머 없이 공부한 시간을 넣거나, 잘못 쌓인 시간을 고칩니다. ' +
+        '<b>0분으로 두면 지워집니다.</b></p>' +
+      '<datalist id="sedNames">' +
+        Object.keys(opts).map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('') +
+      '</datalist>' +
+      '<div id="sedRows">' +
+        subs.map(function (s) { return studyEditorRow(s.name, s.min, s.type); }).join('') +
+      '</div>' +
+      '<button type="button" class="btn ghost sm" id="sedAdd" style="margin-top:8px">＋ 과목 추가</button>' +
+      '<div class="actions" style="margin-top:12px">' +
+        '<button type="button" class="btn" id="sedSave">저장</button>' +
+        '<button type="button" class="btn ghost" id="sedCancel">취소</button>' +
+      '</div>';
+
+    $$('.sed-name', box).forEach(function (el) { el.setAttribute('list', 'sedNames'); });
+
+    function bindDelete(root) {
+      $$('.sed-del', root).forEach(function (b) {
+        b.addEventListener('click', function () { b.closest('.sed-row').remove(); });
+      });
+    }
+    bindDelete(box);
+
+    $('sedAdd').addEventListener('click', function () {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = studyEditorRow('', 30, 'mixed');
+      var row = wrap.firstChild;
+      $('sedRows').appendChild(row);
+      row.querySelector('.sed-name').setAttribute('list', 'sedNames');
+      bindDelete(row);
+      row.querySelector('.sed-name').focus();
+    });
+
+    $('sedCancel').addEventListener('click', function () { renderCalDay(); });
+
+    $('sedSave').addEventListener('click', function () {
+      /* 화면에 남은 줄이 그 날의 전부다. 지운 줄은 기록에서도 지운다. */
+      var before = StudyLog.daySubjects(dateKey).map(function (s) { return s.name; });
+      var kept = {};
+      var bad = '';
+
+      $$('.sed-row', $('sedRows')).forEach(function (row) {
+        var name = row.querySelector('.sed-name').value.trim();
+        var min = Number(row.querySelector('.sed-min').value);
+        var type = row.querySelector('.sed-type').value;
+        if (!name) return;
+        if (!(min >= 0) || min > 1440) { bad = name; return; }
+        /* 같은 과목을 두 줄에 적었으면 합친다 — 둘 중 하나가 조용히 사라지면 안 된다 */
+        kept[name] = { min: (kept[name] ? kept[name].min : 0) + min, type: type };
+      });
+
+      if (bad) { toast('“' + bad + '” 의 시간이 올바르지 않습니다 (0~1440분).', true); return; }
+
+      before.forEach(function (n) { if (!kept[n]) StudyLog.remove(dateKey, n); });
+      Object.keys(kept).forEach(function (n) { StudyLog.set(dateKey, n, kept[n].min, kept[n].type); });
+
+      Group.syncSelf();
+      renderLiveTotal();
+      renderCalendar();
+      renderReport();
+      renderGroup();
+      renderLeague();
+      if (kidsOn()) renderKids();
+      toast('기록을 고쳤습니다. (' + fmtDurFine(StudyLog.dayTotal(dateKey)) + ')');
+    });
   }
 
   function initGoalCalendar() {
@@ -16786,6 +17672,149 @@ body {
       '<div class="ds"><div class="k">그룹원</div><div class="v">' + Group.members().length + '<small style="font-size:12px;color:var(--muted)">명</small></div></div>';
 
     renderStorageStatus();
+    renderBackupCard();
+  }
+
+  /* ============================================== 복구 코드 백업 (설정) ==
+   * 파일 백업과 나란히 두되 역할이 다르다.
+   *   파일  — 지금 이 순간을 내 손에 쥐는 것 (기기가 죽어도 파일은 남는다)
+   *   코드  — 앞으로를 자동으로 맡기는 것 (누르는 걸 잊어도 하루 한 번 올라간다)
+   * 둘 중 하나만 두면 각각의 실패 방식이 그대로 남는다. */
+
+  function bkStatus(msg, kind) {
+    var el = $('bkStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'neis-status' + (msg ? ' show ' + (kind || 'info') : '');
+  }
+
+  function renderBackupCard() {
+    if (!$('bkLinked')) return;
+
+    var on = Backup.linked();
+    $('bkLinked').classList.toggle('is-hidden', !on);
+    $('bkUnlinked').classList.toggle('is-hidden', on);
+
+    var s = Backup.load();
+
+    if (on) {
+      $('bkCode').value = Backup.format(s.code);
+      $('bkAuto').checked = s.auto;
+      $('bkSaved').innerHTML = s.savedAt
+        ? '마지막 저장 ' + esc(agoText(s.savedAt)) + ' · ' + Math.round((s.bytes || 0) / 1024) + 'KB'
+        : '아직 한 번도 올리지 않았습니다.';
+      if (s.lastError) bkStatus('마지막 저장이 실패했습니다 — ' + s.lastError, 'bad');
+      else bkStatus('');
+    } else if (!Backup.available()) {
+      bkStatus(Backup.unavailableReason(), 'info');
+    } else {
+      bkStatus('');
+    }
+
+    /* 쓸 수 없는 환경(파일로 직접 연 경우 등)에서는 버튼을 눌러 봐야 실패한다 */
+    var usable = Backup.available();
+    ['bkCreate', 'bkRestoreOpen', 'bkPush'].forEach(function (id) {
+      if ($(id)) $(id).disabled = !usable;
+    });
+  }
+
+  function initBackupCard() {
+    if (!$('bkCreate')) return;
+
+    $('bkCreate').addEventListener('click', function () {
+      if (!Backup.available()) { bkStatus(Backup.unavailableReason(), 'bad'); return; }
+      var code = Backup.generate();
+      bkStatus('복구 코드를 만들고 첫 저장을 올리는 중…', 'info');
+      Backup.push(code).then(function () {
+        renderBackupCard();
+        bkStatus('저장했습니다. 이 코드를 꼭 따로 적어 두세요.', 'ok');
+        celebrate(['🔑 복구 코드가 생겼어요']);
+      }, function (e) {
+        /* 실패했으면 코드를 남기지 않는다 — 서버에 없는 코드를 "내 코드" 라고
+         * 적어 두게 하면, 나중에 복구를 시도할 때가 되어서야 알게 된다. */
+        Backup.patch({ code: '', savedAt: 0, bytes: 0 });
+        renderBackupCard();
+        bkStatus('저장하지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkCopy').addEventListener('click', function () {
+      copyText($('bkCode').value, '복구 코드를 복사했어요!');
+    });
+
+    $('bkPush').addEventListener('click', function () {
+      bkStatus('저장하는 중…', 'info');
+      Backup.push().then(function () {
+        renderBackupCard();
+        renderStorageStatus();
+        bkStatus('지금 기록을 저장했습니다.', 'ok');
+      }, function (e) {
+        renderBackupCard();
+        bkStatus('저장하지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkAuto').addEventListener('change', function () {
+      Backup.patch({ auto: this.checked });
+      bkStatus(this.checked ? '앱을 열 때 하루 한 번 저절로 올립니다.' : '자동 저장을 껐습니다. 직접 눌러야 올라갑니다.', 'info');
+    });
+
+    $('bkUnlink').addEventListener('click', function () {
+      if (!confirm('연결을 끊고 서버에 저장된 백업도 지울까요?\n\n이 기기의 기록은 그대로 남습니다.\n복구 코드는 다시 만들어야 합니다.')) return;
+      bkStatus('지우는 중…', 'info');
+      Backup.unlink(true).then(function () {
+        renderBackupCard();
+        bkStatus('연결을 끊고 서버의 백업을 지웠습니다.', 'ok');
+      }, function (e) {
+        renderBackupCard();
+        bkStatus('연결은 끊었지만 서버에서 지우지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkRestoreOpen').addEventListener('click', function () {
+      var box = $('bkRestoreBox');
+      box.classList.toggle('is-hidden');
+      if (!box.classList.contains('is-hidden')) $('bkInput').focus();
+    });
+
+    /* 입력하는 동안 XXXX-XXXX-XXXX 모양으로 맞춰 준다.
+     * 카톡으로 받은 코드를 통째로 붙여넣는 경우가 많아 'MNDR-' 과 구분선이 섞여 들어온다 —
+     * fromInput 이 길이로 판단해 접두사만 떼어 낸다. */
+    $('bkInput').addEventListener('input', function () {
+      var caretAtEnd = this.selectionStart === this.value.length;
+      var f = Backup.group(Backup.fromInput(this.value));
+      if (f !== this.value) {
+        this.value = f;
+        if (caretAtEnd) this.setSelectionRange(f.length, f.length);
+      }
+    });
+
+    $('bkInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('bkRestore').click(); }
+    });
+
+    $('bkRestore').addEventListener('click', function () {
+      var code = Backup.fromInput($('bkInput').value);
+      if (!Backup.valid(code)) { bkStatus('복구 코드는 MNDR- 뒤에 12자입니다.', 'bad'); return; }
+
+      bkStatus('백업을 찾는 중…', 'info');
+      Backup.peek(code).then(function (found) {
+        var when = found.savedAt ? agoText(found.savedAt) : '시점 불명';
+        if (!confirm('백업을 찾았습니다 (' + when + ' 저장, 약 ' +
+                     Math.round((found.bytes || 0) / 1024) + 'KB).\n\n' +
+                     '이 기기의 기록을 이 백업으로 덮어쓸까요?\n되돌릴 수 없습니다.')) {
+          bkStatus('불러오기를 취소했습니다.', 'info');
+          return;
+        }
+        var n = Backup.restore(code, found);
+        bkStatus(n + '개 항목을 복원했습니다. 화면을 새로 불러옵니다…', 'ok');
+        /* 복원 뒤에는 통째로 다시 읽는 편이 안전하다. 프로필·과목·계획표·모리까지
+         * 저장소 전체가 바뀌었는데 화면만 부분 갱신하면 옛 값이 섞여 남는다. */
+        setTimeout(function () { location.reload(); }, 900);
+      }, function (e) {
+        bkStatus(e.message, 'bad');
+      });
+    });
   }
 
   /* 기록이 몇 달치 쌓이는 앱이라, 저장이 안전한 상태인지 스스로 알려 준다.
@@ -17528,6 +18557,7 @@ body {
     input._date = Store.key();   // 언제 입력한 값인지 기억해 다음 방문에 안내한다
     Store.saveInput(input);
     Store.pushRecord(a);
+    saveSession();               // 새로고침해도 이 플랜과 타이머 자리로 돌아온다
     Group.syncSelf();
 
     renderLiveTotal();
@@ -19137,7 +20167,7 @@ body {
 
   function init() {
     moveOptionalDailyCards();
-    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan(); initGoalCalendar();
+    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initBackupCard(); initTimetable(); initVacPlan(); initGoalCalendar();
     initMore();
     Slime.init({ toast: toast });
     Slime.touch();   // 앱을 닫아 둔 동안 농장이 모은 젤리를 먼저 정리해 둔다
@@ -19154,6 +20184,13 @@ body {
     /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
     Store.requestPersist().then(function () { renderStorageStatus(); });
+
+    /* 복구 코드를 만들어 둔 사람의 기록을 하루 한 번 올린다.
+     * 여는 순간에 붙이면 첫 화면이 그만큼 늦으므로 뒤로 미룬다.
+     * 실패해도 조용히 넘어간다 — 지하철에서 열 때마다 오류가 뜨면 기능을 꺼 버린다. */
+    setTimeout(function () {
+      Backup.autoPush().then(function (done) { if (done) renderStorageStatus(); });
+    }, 6000);
 
     // 끼니를 체크하면 급식 안내 문구와 채점 기준표를 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
@@ -19182,6 +20219,14 @@ body {
     if (saved) applyInput(saved);
     else { addSubjectRow({ name: '', type: 'calculate' }); addSubjectRow({ name: '', type: 'memorize' }); }
 
+    /* 오늘 만든 플랜과 타이머 자리를 되살린다.
+     * renderNav() 보다 먼저 해야 2·3·4번 탭이 열린 채로 시작하고,
+     * 해시로 들어온 #timer 도 입력 화면으로 튕기지 않는다. */
+    var resumed = false;
+    var sess = loadSession();
+    if (sess) resumed = restoreSession(sess);
+    if (!resumed && sess) clearSession();   // 못 읽는 값은 남겨 두지 않는다
+
     /* 프로필 게이트 */
     $('pfLevel').addEventListener('change', function () { fillGradeOptions(); });
     $('saveProfile').addEventListener('click', saveProfile);
@@ -19206,7 +20251,11 @@ body {
       } else if (!pg || !goPage(pg.id, true)) {
         goPage('secToday', false, true);
       }
-  
+
+      /* 되살렸으면 조용히 넘어가지 않는다 — 말없이 2번째 블록에서 시작하면
+       * 사용자에게는 앱이 자기 마음대로 움직인 것처럼 보인다. */
+      if (resumed) setTimeout(announceResumed, 900);
+
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';
@@ -19283,6 +20332,8 @@ body {
       // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
       // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
       Slime.reset();
+      // 기록을 지웠는데 오늘 플랜과 타이머 자리만 남아 다음 실행에 되살아나면 안 된다
+      clearSession();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
       renderLeague();
       renderPins();

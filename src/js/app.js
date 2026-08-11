@@ -1347,6 +1347,7 @@
     state.timer.load(p.timeline);
     input._date = Store.key();
     Store.saveInput(input);
+    saveSession();
     renderNav();
     goPage('secPlan');
   }
@@ -1502,6 +1503,104 @@
     renderHome();   // 홈의 '오늘 순공' 타일도 같은 숫자를 본다
   }
 
+  /* ================================= 오늘 세션 이어하기 (새로고침 대비) ==
+   *
+   * 새로고침 한 번이면 오늘 플랜과 타이머 위치가 통째로 사라졌다. 잰 순공 시간은
+   * 남지만 "3블록 중 2번째를 하던 중" 이라는 맥락이 날아가서, 분석을 다시 누르고
+   * 처음 블록부터 시작해야 했다. 폰에서는 브라우저가 탭을 알아서 버리기 때문에
+   * 새로고침을 누르지 않아도 같은 일이 생긴다.
+   *
+   * 오늘 것만 되살린다. 어제 만든 플랜을 오늘 이어서 하는 것은 계획이 아니다.
+   * 백업 파일(BACKUP_KEYS)에는 넣지 않는다 — 다른 기기로 옮길 값이 아니다. */
+
+  var SESSION_KEY = 'mindora.session.v1';
+  var SESSION_SAVE_GAP = 10000;
+  var lastSessionSave = 0;
+
+  function saveSession() {
+    if (!state.analysis) return;
+    lastSessionSave = Date.now();
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        v: 1,
+        date: Store.key(),
+        savedAt: Date.now(),
+        analysis: state.analysis,
+        overrides: state.planOverrides,
+        timer: state.timer ? state.timer.snapshot() : null
+      }));
+    } catch (e) { /* 저장 공간이 모자라면 이어하기만 포기한다. 기록이 우선이다. */ }
+  }
+
+  function maybeSaveSession() {
+    if (Date.now() - lastSessionSave > SESSION_SAVE_GAP) saveSession();
+  }
+
+  function clearSession() {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* 무시 */ }
+  }
+
+  function loadSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (!s || s.v !== 1 || s.date !== Store.key()) return null;
+      if (!s.analysis || !s.analysis.capacities || !s.analysis.capacities.length) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  /** JSON 을 거치면 capacities 와 byId·ranked·top·bottom 이 서로 다른 사본이 된다.
+   *  원래는 같은 객체를 가리키고 있었으므로, 그 관계를 다시 이어 준다. */
+  function rehydrateAnalysis(a) {
+    a.byId = {};
+    a.capacities.forEach(function (c) { a.byId[c.id] = c; });
+    var sorted = a.capacities.slice().sort(function (x, y) { return y.exact - x.exact; });
+    a.ranked = sorted;
+    a.top = sorted[0];
+    a.bottom = sorted[sorted.length - 1];
+    return a;
+  }
+
+  function restoreSession(s) {
+    var a;
+    try { a = rehydrateAnalysis(s.analysis); } catch (e) { return false; }
+
+    state.analysis = a;
+    state.planOverrides = (s.overrides && typeof s.overrides === 'object') ? s.overrides : {};
+
+    /* 플랜은 저장하지 않고 분석에서 다시 만든다. 추천 수정(planOverrides)은 이미
+     * analysis.input.subjects[].recommendationAction 에 담겨 있어 같은 결과가 나오고,
+     * 엔진·플래너는 현재 시각을 보지 않아 결과가 달라질 여지도 없다. */
+    try {
+      state.plan = BrainPlanner.plan(a);
+      renderResult(a);
+      renderPlan(state.plan);
+    } catch (e) { state.analysis = null; return false; }
+
+    /* 타이머는 저장된 큐를 그대로 쓴다. 블록 길이를 손으로 고쳤을 수 있어서
+     * 플랜이 새로 만든 timeline 으로 덮으면 그 수정이 사라진다. */
+    var t = s.timer;
+    if (!(t && state.timer.restore(t))) state.timer.load(state.plan.timeline);
+
+    renderSoundNow();
+    return true;
+  }
+
+  /** 되살린 뒤 사용자에게 알린다. 조용히 이어 붙이면 "왜 이미 2번째지?" 가 된다. */
+  function announceResumed() {
+    var t = state.timer;
+    if (!t || !t.queue.length) return;
+
+    if (t.index >= t.queue.length) {
+      toast('오늘 계획한 블록을 이미 다 끝냈어요. 기록은 그대로 있습니다.');
+      return;
+    }
+    // toast 는 textContent 라 esc() 를 쓰면 과목명의 & 가 &amp; 로 보인다
+    var cur = t.current();
+    toast('이어서 할 수 있어요 — ' + (t.index + 1) + '/' + t.queue.length + ' 블록 · ' +
+          cur.label + ' ' + Math.max(1, Math.round(t.remainingMs / 60000)) + '분 남음');
+  }
+
   /* ------------------------------------------------------------- 타이머 */
 
   /* ------------------------------------------------- 백그라운드 알림 ---- */
@@ -1566,7 +1665,7 @@
 
   function initTimer() {
     state.timer = new Pomodoro({
-      onTick: function (s) { trackStudy(s); renderTimer(s); syncSound(s); },
+      onTick: function (s) { trackStudy(s); renderTimer(s); syncSound(s); maybeSaveSession(); },
       onComplete: function (block) {
         commitSpan(true);
         if ($('soundOn').checked) Pomodoro.beep(block ? block.kind : 'study');
@@ -1608,7 +1707,7 @@
       if (state.timer.index >= state.timer.queue.length) state.timer.reset();
       state.timer.toggle();
     });
-    $('btnSkip').addEventListener('click', function () { commitSpan(true); state.timer.skip(); });
+    $('btnSkip').addEventListener('click', function () { commitSpan(true); state.timer.skip(); saveSession(); });
     $('btnReset').addEventListener('click', function () {
       commitSpan(true);
       state.timer.reset();
@@ -1616,12 +1715,16 @@
       Sound.stop();
       $('btnStart').textContent = '▶ 시작';
       setTimeout(renderSoundNow, 320);
+      saveSession();
       toast('타이머를 처음으로 되돌렸습니다. (기록된 순공 시간은 그대로 유지됩니다)');
     });
 
-    // 탭을 닫거나 숨길 때 진행 중인 구간을 저장
-    window.addEventListener('beforeunload', function () { commitSpan(true); });
-    document.addEventListener('visibilitychange', function () { if (document.hidden) commitSpan(false); });
+    // 탭을 닫거나 숨길 때 진행 중인 구간을 저장.
+    // 이어하기 정보도 같이 남긴다 — 폰은 숨긴 탭을 예고 없이 버린다.
+    window.addEventListener('beforeunload', function () { commitSpan(true); saveSession(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { commitSpan(false); saveSession(); }
+    });
   }
 
   function showStudyFeedback(block) {
@@ -2951,7 +3054,9 @@
       rows.push(calRow(e.icon, e.label + (e.sub && e.label.indexOf(e.sub) < 0 ? ' · ' + e.sub : ''),
                        ddayText(dayDiff(k))));
     });
-    StudyLog.daySubjects(k).forEach(function (s) { rows.push(calRow('📖', s.name, fmtDurFine(s.min))); });
+    StudyLog.daySubjects(k).forEach(function (s) {
+      rows.push(calRow('📖', s.name + (s.manual ? ' ✏️' : ''), fmtDurFine(s.min)));
+    });
 
     var total = StudyLog.dayTotal(k);
     if (total > 0) rows.push(calRow('⏱️', '이 날 순공 합계', fmtDurFine(total)));
@@ -2959,13 +3064,118 @@
     var rec = Store.recordOn(k);
     if (rec) rows.push(calRow('🧠', '학습 준비도 참고값', scoreBand(rec.overall) + ' · ' + displayScore(rec.overall) + '점'));
 
+    var future = k > Store.key();
+
     box.innerHTML =
       '<div class="cday-h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + DOW_KO[d.getDay()] + ')' +
         (k === Store.key() ? ' · 오늘' : '') + '</div>' +
       (rows.length ? rows.join('')
-        : '<p class="cday-empty">' + (k > Store.key()
+        : '<p class="cday-empty">' + (future
             ? '아직 오지 않은 날입니다. 등록된 일정이 없습니다.'
-            : '이 날은 기록도 일정도 없습니다.') + '</p>');
+            : '이 날은 기록도 일정도 없습니다.') + '</p>') +
+      /* 아직 오지 않은 날에 "공부한 시간"을 넣을 수는 없다 */
+      (future ? '' :
+        '<div class="cday-edit">' +
+          '<button type="button" class="btn ghost sm" id="calEditBtn">✏ 기록 고치기</button>' +
+        '</div>');
+
+    if ($('calEditBtn')) $('calEditBtn').addEventListener('click', function () { openStudyEditor(k); });
+  }
+
+  /* ======================================== 순공 시간 직접 고치기 ==
+   * 타이머로만 쌓이면 두 가지가 영영 틀린 채로 남는다.
+   *   · 학원·독서실에서 앱을 못 켜고 공부한 시간 → 0분
+   *   · 타이머를 끄는 걸 잊고 자리를 뜬 시간     → 안 한 공부가 쌓임
+   * 랭킹·리그·배지·젤리가 전부 이 숫자를 보고 있어서, 고칠 수 없으면
+   * 사용자는 숫자 전체를 믿지 않게 된다. */
+
+  function studyEditorRow(name, min, type) {
+    return '<div class="sed-row" data-name="' + esc(name) + '">' +
+      '<input type="text" class="input sed-name" value="' + esc(name) + '" aria-label="과목 이름" spellcheck="false">' +
+      '<input type="number" class="input sed-min" value="' + Math.round(min) + '" min="0" max="1440" step="5" aria-label="분">' +
+      '<span class="sed-unit">분</span>' +
+      '<button type="button" class="btn ghost sm sed-del" aria-label="이 줄 지우기">✕</button>' +
+      '<input type="hidden" class="sed-type" value="' + esc(type || 'mixed') + '">' +
+      '</div>';
+  }
+
+  function openStudyEditor(dateKey) {
+    var box = $('calDay');
+    var d = Store.parseKey(dateKey);
+    var subs = StudyLog.daySubjects(dateKey);
+
+    /* 후보는 지금 입력 화면의 과목 + 지난 기록에 나온 과목. 매번 타이핑하지 않게 한다. */
+    var opts = {};
+    readSubjects().forEach(function (s) { if (s.name) opts[s.name] = s.type; });
+    StudyLog.knownSubjects().forEach(function (s) { if (!opts[s.name]) opts[s.name] = s.type; });
+
+    box.innerHTML =
+      '<div class="cday-h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 · 기록 고치기</div>' +
+      '<p class="cday-empty" style="margin-bottom:10px">타이머 없이 공부한 시간을 넣거나, 잘못 쌓인 시간을 고칩니다. ' +
+        '<b>0분으로 두면 지워집니다.</b></p>' +
+      '<datalist id="sedNames">' +
+        Object.keys(opts).map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('') +
+      '</datalist>' +
+      '<div id="sedRows">' +
+        subs.map(function (s) { return studyEditorRow(s.name, s.min, s.type); }).join('') +
+      '</div>' +
+      '<button type="button" class="btn ghost sm" id="sedAdd" style="margin-top:8px">＋ 과목 추가</button>' +
+      '<div class="actions" style="margin-top:12px">' +
+        '<button type="button" class="btn" id="sedSave">저장</button>' +
+        '<button type="button" class="btn ghost" id="sedCancel">취소</button>' +
+      '</div>';
+
+    $$('.sed-name', box).forEach(function (el) { el.setAttribute('list', 'sedNames'); });
+
+    function bindDelete(root) {
+      $$('.sed-del', root).forEach(function (b) {
+        b.addEventListener('click', function () { b.closest('.sed-row').remove(); });
+      });
+    }
+    bindDelete(box);
+
+    $('sedAdd').addEventListener('click', function () {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = studyEditorRow('', 30, 'mixed');
+      var row = wrap.firstChild;
+      $('sedRows').appendChild(row);
+      row.querySelector('.sed-name').setAttribute('list', 'sedNames');
+      bindDelete(row);
+      row.querySelector('.sed-name').focus();
+    });
+
+    $('sedCancel').addEventListener('click', function () { renderCalDay(); });
+
+    $('sedSave').addEventListener('click', function () {
+      /* 화면에 남은 줄이 그 날의 전부다. 지운 줄은 기록에서도 지운다. */
+      var before = StudyLog.daySubjects(dateKey).map(function (s) { return s.name; });
+      var kept = {};
+      var bad = '';
+
+      $$('.sed-row', $('sedRows')).forEach(function (row) {
+        var name = row.querySelector('.sed-name').value.trim();
+        var min = Number(row.querySelector('.sed-min').value);
+        var type = row.querySelector('.sed-type').value;
+        if (!name) return;
+        if (!(min >= 0) || min > 1440) { bad = name; return; }
+        /* 같은 과목을 두 줄에 적었으면 합친다 — 둘 중 하나가 조용히 사라지면 안 된다 */
+        kept[name] = { min: (kept[name] ? kept[name].min : 0) + min, type: type };
+      });
+
+      if (bad) { toast('“' + bad + '” 의 시간이 올바르지 않습니다 (0~1440분).', true); return; }
+
+      before.forEach(function (n) { if (!kept[n]) StudyLog.remove(dateKey, n); });
+      Object.keys(kept).forEach(function (n) { StudyLog.set(dateKey, n, kept[n].min, kept[n].type); });
+
+      Group.syncSelf();
+      renderLiveTotal();
+      renderCalendar();
+      renderReport();
+      renderGroup();
+      renderLeague();
+      if (kidsOn()) renderKids();
+      toast('기록을 고쳤습니다. (' + fmtDurFine(StudyLog.dayTotal(dateKey)) + ')');
+    });
   }
 
   function initGoalCalendar() {
@@ -4390,6 +4600,149 @@
       '<div class="ds"><div class="k">그룹원</div><div class="v">' + Group.members().length + '<small style="font-size:12px;color:var(--muted)">명</small></div></div>';
 
     renderStorageStatus();
+    renderBackupCard();
+  }
+
+  /* ============================================== 복구 코드 백업 (설정) ==
+   * 파일 백업과 나란히 두되 역할이 다르다.
+   *   파일  — 지금 이 순간을 내 손에 쥐는 것 (기기가 죽어도 파일은 남는다)
+   *   코드  — 앞으로를 자동으로 맡기는 것 (누르는 걸 잊어도 하루 한 번 올라간다)
+   * 둘 중 하나만 두면 각각의 실패 방식이 그대로 남는다. */
+
+  function bkStatus(msg, kind) {
+    var el = $('bkStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'neis-status' + (msg ? ' show ' + (kind || 'info') : '');
+  }
+
+  function renderBackupCard() {
+    if (!$('bkLinked')) return;
+
+    var on = Backup.linked();
+    $('bkLinked').classList.toggle('is-hidden', !on);
+    $('bkUnlinked').classList.toggle('is-hidden', on);
+
+    var s = Backup.load();
+
+    if (on) {
+      $('bkCode').value = Backup.format(s.code);
+      $('bkAuto').checked = s.auto;
+      $('bkSaved').innerHTML = s.savedAt
+        ? '마지막 저장 ' + esc(agoText(s.savedAt)) + ' · ' + Math.round((s.bytes || 0) / 1024) + 'KB'
+        : '아직 한 번도 올리지 않았습니다.';
+      if (s.lastError) bkStatus('마지막 저장이 실패했습니다 — ' + s.lastError, 'bad');
+      else bkStatus('');
+    } else if (!Backup.available()) {
+      bkStatus(Backup.unavailableReason(), 'info');
+    } else {
+      bkStatus('');
+    }
+
+    /* 쓸 수 없는 환경(파일로 직접 연 경우 등)에서는 버튼을 눌러 봐야 실패한다 */
+    var usable = Backup.available();
+    ['bkCreate', 'bkRestoreOpen', 'bkPush'].forEach(function (id) {
+      if ($(id)) $(id).disabled = !usable;
+    });
+  }
+
+  function initBackupCard() {
+    if (!$('bkCreate')) return;
+
+    $('bkCreate').addEventListener('click', function () {
+      if (!Backup.available()) { bkStatus(Backup.unavailableReason(), 'bad'); return; }
+      var code = Backup.generate();
+      bkStatus('복구 코드를 만들고 첫 저장을 올리는 중…', 'info');
+      Backup.push(code).then(function () {
+        renderBackupCard();
+        bkStatus('저장했습니다. 이 코드를 꼭 따로 적어 두세요.', 'ok');
+        celebrate(['🔑 복구 코드가 생겼어요']);
+      }, function (e) {
+        /* 실패했으면 코드를 남기지 않는다 — 서버에 없는 코드를 "내 코드" 라고
+         * 적어 두게 하면, 나중에 복구를 시도할 때가 되어서야 알게 된다. */
+        Backup.patch({ code: '', savedAt: 0, bytes: 0 });
+        renderBackupCard();
+        bkStatus('저장하지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkCopy').addEventListener('click', function () {
+      copyText($('bkCode').value, '복구 코드를 복사했어요!');
+    });
+
+    $('bkPush').addEventListener('click', function () {
+      bkStatus('저장하는 중…', 'info');
+      Backup.push().then(function () {
+        renderBackupCard();
+        renderStorageStatus();
+        bkStatus('지금 기록을 저장했습니다.', 'ok');
+      }, function (e) {
+        renderBackupCard();
+        bkStatus('저장하지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkAuto').addEventListener('change', function () {
+      Backup.patch({ auto: this.checked });
+      bkStatus(this.checked ? '앱을 열 때 하루 한 번 저절로 올립니다.' : '자동 저장을 껐습니다. 직접 눌러야 올라갑니다.', 'info');
+    });
+
+    $('bkUnlink').addEventListener('click', function () {
+      if (!confirm('연결을 끊고 서버에 저장된 백업도 지울까요?\n\n이 기기의 기록은 그대로 남습니다.\n복구 코드는 다시 만들어야 합니다.')) return;
+      bkStatus('지우는 중…', 'info');
+      Backup.unlink(true).then(function () {
+        renderBackupCard();
+        bkStatus('연결을 끊고 서버의 백업을 지웠습니다.', 'ok');
+      }, function (e) {
+        renderBackupCard();
+        bkStatus('연결은 끊었지만 서버에서 지우지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkRestoreOpen').addEventListener('click', function () {
+      var box = $('bkRestoreBox');
+      box.classList.toggle('is-hidden');
+      if (!box.classList.contains('is-hidden')) $('bkInput').focus();
+    });
+
+    /* 입력하는 동안 XXXX-XXXX-XXXX 모양으로 맞춰 준다.
+     * 카톡으로 받은 코드를 통째로 붙여넣는 경우가 많아 'MNDR-' 과 구분선이 섞여 들어온다 —
+     * fromInput 이 길이로 판단해 접두사만 떼어 낸다. */
+    $('bkInput').addEventListener('input', function () {
+      var caretAtEnd = this.selectionStart === this.value.length;
+      var f = Backup.group(Backup.fromInput(this.value));
+      if (f !== this.value) {
+        this.value = f;
+        if (caretAtEnd) this.setSelectionRange(f.length, f.length);
+      }
+    });
+
+    $('bkInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('bkRestore').click(); }
+    });
+
+    $('bkRestore').addEventListener('click', function () {
+      var code = Backup.fromInput($('bkInput').value);
+      if (!Backup.valid(code)) { bkStatus('복구 코드는 MNDR- 뒤에 12자입니다.', 'bad'); return; }
+
+      bkStatus('백업을 찾는 중…', 'info');
+      Backup.peek(code).then(function (found) {
+        var when = found.savedAt ? agoText(found.savedAt) : '시점 불명';
+        if (!confirm('백업을 찾았습니다 (' + when + ' 저장, 약 ' +
+                     Math.round((found.bytes || 0) / 1024) + 'KB).\n\n' +
+                     '이 기기의 기록을 이 백업으로 덮어쓸까요?\n되돌릴 수 없습니다.')) {
+          bkStatus('불러오기를 취소했습니다.', 'info');
+          return;
+        }
+        var n = Backup.restore(code, found);
+        bkStatus(n + '개 항목을 복원했습니다. 화면을 새로 불러옵니다…', 'ok');
+        /* 복원 뒤에는 통째로 다시 읽는 편이 안전하다. 프로필·과목·계획표·모리까지
+         * 저장소 전체가 바뀌었는데 화면만 부분 갱신하면 옛 값이 섞여 남는다. */
+        setTimeout(function () { location.reload(); }, 900);
+      }, function (e) {
+        bkStatus(e.message, 'bad');
+      });
+    });
   }
 
   /* 기록이 몇 달치 쌓이는 앱이라, 저장이 안전한 상태인지 스스로 알려 준다.
@@ -5132,6 +5485,7 @@
     input._date = Store.key();   // 언제 입력한 값인지 기억해 다음 방문에 안내한다
     Store.saveInput(input);
     Store.pushRecord(a);
+    saveSession();               // 새로고침해도 이 플랜과 타이머 자리로 돌아온다
     Group.syncSelf();
 
     renderLiveTotal();
@@ -6741,7 +7095,7 @@
 
   function init() {
     moveOptionalDailyCards();
-    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initTimetable(); initVacPlan(); initGoalCalendar();
+    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initBackupCard(); initTimetable(); initVacPlan(); initGoalCalendar();
     initMore();
     Slime.init({ toast: toast });
     Slime.touch();   // 앱을 닫아 둔 동안 농장이 모은 젤리를 먼저 정리해 둔다
@@ -6758,6 +7112,13 @@
     /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
      * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
     Store.requestPersist().then(function () { renderStorageStatus(); });
+
+    /* 복구 코드를 만들어 둔 사람의 기록을 하루 한 번 올린다.
+     * 여는 순간에 붙이면 첫 화면이 그만큼 늦으므로 뒤로 미룬다.
+     * 실패해도 조용히 넘어간다 — 지하철에서 열 때마다 오류가 뜨면 기능을 꺼 버린다. */
+    setTimeout(function () {
+      Backup.autoPush().then(function (done) { if (done) renderStorageStatus(); });
+    }, 6000);
 
     // 끼니를 체크하면 급식 안내 문구와 채점 기준표를 다시 계산한다
     ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
@@ -6786,6 +7147,14 @@
     if (saved) applyInput(saved);
     else { addSubjectRow({ name: '', type: 'calculate' }); addSubjectRow({ name: '', type: 'memorize' }); }
 
+    /* 오늘 만든 플랜과 타이머 자리를 되살린다.
+     * renderNav() 보다 먼저 해야 2·3·4번 탭이 열린 채로 시작하고,
+     * 해시로 들어온 #timer 도 입력 화면으로 튕기지 않는다. */
+    var resumed = false;
+    var sess = loadSession();
+    if (sess) resumed = restoreSession(sess);
+    if (!resumed && sess) clearSession();   // 못 읽는 값은 남겨 두지 않는다
+
     /* 프로필 게이트 */
     $('pfLevel').addEventListener('change', function () { fillGradeOptions(); });
     $('saveProfile').addEventListener('click', saveProfile);
@@ -6810,7 +7179,11 @@
       } else if (!pg || !goPage(pg.id, true)) {
         goPage('secToday', false, true);
       }
-  
+
+      /* 되살렸으면 조용히 넘어가지 않는다 — 말없이 2번째 블록에서 시작하면
+       * 사용자에게는 앱이 자기 마음대로 움직인 것처럼 보인다. */
+      if (resumed) setTimeout(announceResumed, 900);
+
     } else {
       fillGradeOptions();
       $('cancelProfile').style.display = 'none';
@@ -6887,6 +7260,8 @@
       // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
       // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
       Slime.reset();
+      // 기록을 지웠는데 오늘 플랜과 타이머 자리만 남아 다음 실행에 되살아나면 안 된다
+      clearSession();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
       renderLeague();
       renderPins();

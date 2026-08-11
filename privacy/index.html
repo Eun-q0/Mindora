@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<title>개인정보처리방침 — Mindora</title>
+<meta name="description" content="Mindora 가 어떤 정보를 이 브라우저에 저장하고, 어떤 정보를 동의했을 때만 서버로 보내며, 어떻게 지울 수 있는지 정리한 문서입니다.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1220" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://www.mindora.co.kr/privacy/">
+<link rel="icon" href="../icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindora">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="개인정보처리방침 — Mindora">
+<meta property="og:description" content="무엇이 이 브라우저에만 남고, 무엇이 동의했을 때만 서버로 가는지 항목별로 적었습니다.">
+<meta property="og:url" content="https://www.mindora.co.kr/privacy/">
+<meta property="og:image" content="https://www.mindora.co.kr/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<style>
+/* 랜딩(landing/index.html)과 같은 토큰을 쓰되, 읽기 위한 문서라 최소한만 남긴다.
+   외부 폰트·이미지 의존 없음 — 파일 하나로 열린다. */
+:root{
+  --bg:#ffffff; --soft:#f6f8fb; --surface:#ffffff;
+  --line:#eaeef5; --line-2:#d4dbe6;
+  --text:#151b26; --muted:#5f6b7a; --dim:#687588;
+  --accent:#6d4aff; --accent-2:#5b7cff; --cyan:#22b8d8;
+  --accent-soft:#f1edff; --accent-line:#e0d8ff; --accent-ink:#4a37a0;
+  --r:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1220; --soft:#141828; --surface:#181c2b;
+    --line:#272d3e; --line-2:#3a4258;
+    --text:#e9ecf5; --muted:#aeb7cc; --dim:#909ab3;
+    --accent:#9b83ff; --accent-2:#8fa5ff; --cyan:#5ad2ec;
+    --accent-soft:#241f42; --accent-line:#413873; --accent-ink:#cabfff;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Segoe UI','Malgun Gothic','Noto Sans KR',sans-serif;
+  font-size:16px; line-height:1.75; letter-spacing:-.02em; -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent); text-underline-offset:3px}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--cyan); outline-offset:3px; border-radius:8px}
+.wrap{width:min(760px,100% - 40px); margin-inline:auto}
+
+header.top{border-bottom:1px solid var(--line); padding:18px 0; position:sticky; top:0; z-index:5;
+  background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:blur(12px)}
+.brand{display:inline-flex; align-items:center; gap:9px; font-weight:800; font-size:18px; letter-spacing:-.05em; color:inherit; text-decoration:none}
+.brand-mark{width:28px; height:28px; border-radius:9px; flex:none}
+
+main{padding:44px 0 80px}
+h1{font-size:clamp(26px,5vw,38px); font-weight:800; letter-spacing:-.045em; line-height:1.32; margin:0}
+.updated{margin:14px 0 0; color:var(--dim); font-size:14px}
+.intro{margin:26px 0 0; color:var(--muted)}
+
+.callout{margin:30px 0 0; padding:20px 22px; border:1px solid var(--accent-line); border-radius:var(--r);
+  background:color-mix(in srgb,var(--accent-soft) 60%,transparent); color:var(--accent-ink)}
+/* 제목만 블록으로 띄운다. `b` 전체에 걸면 본문 안의 강조까지 줄바꿈된다. */
+.callout > b:first-child{display:block; margin-bottom:6px}
+.callout p{margin:0; font-size:15px; line-height:1.7}
+.callout p b{font-weight:800}
+
+h2{font-size:21px; font-weight:800; letter-spacing:-.035em; margin:46px 0 0; padding-top:24px; border-top:1px solid var(--line)}
+h2 .n{display:inline-block; min-width:1.6em; color:var(--accent)}
+h3{font-size:16.5px; font-weight:800; letter-spacing:-.03em; margin:26px 0 0}
+p{margin:14px 0 0}
+ul{margin:14px 0 0; padding-left:1.2em}
+li{margin:7px 0}
+.muted{color:var(--muted)}
+.tiny{font-size:13.5px; color:var(--dim)}
+
+.tbl{width:100%; margin-top:16px; border-collapse:collapse; font-size:14.5px; display:block; overflow-x:auto}
+.tbl table{width:100%; border-collapse:collapse; min-width:520px}
+.tbl th,.tbl td{border:1px solid var(--line); padding:10px 12px; text-align:left; vertical-align:top}
+.tbl th{background:var(--soft); font-weight:700; white-space:nowrap}
+.tbl td b{font-weight:700}
+
+.contact{margin-top:18px; padding:20px 22px; border:1px solid var(--line); border-radius:var(--r); background:var(--soft)}
+.contact p{margin:6px 0 0}
+.contact .mail{font-weight:800; font-size:17px; letter-spacing:-.02em}
+
+footer{border-top:1px solid var(--line); padding:26px 0 46px; color:var(--dim); font-size:13.5px}
+footer nav{display:flex; flex-wrap:wrap; gap:8px 20px; margin-bottom:12px}
+footer nav a{color:var(--muted); text-decoration:none; font-weight:600}
+footer nav a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../landing/">
+      <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="mk" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#22b8d8"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#mk)"/><text x="256" y="358" font-size="272" text-anchor="middle">🧠</text></svg>Mindora
+    </a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>개인정보처리방침</h1>
+    <p class="updated">시행일 2026년 8월 10일 · 최종 수정 2026년 8월 10일</p>
+
+    <p class="intro">Mindora(이하 “서비스”)는 회원가입을 받지 않습니다. 학습 기록은 기본적으로 이용자의 브라우저 안에만
+      저장되며, 서버로 나가는 기능은 이용자가 항목별로 켰을 때만 동작합니다. 이 문서는 <b>무엇이 기기에 남고,
+      무엇이 동의했을 때만 서버로 가며, 어떻게 지울 수 있는지</b>를 실제 동작 그대로 적은 것입니다.</p>
+
+    <div class="callout">
+      <b>세 줄 요약</b>
+      <p>① 회원가입·로그인이 없고 이름·연락처를 받지 않습니다.
+        ② 학습 기록·프로필·계획표·등록한 음악은 <b>이 브라우저 저장소에만</b> 남고 서버로 가지 않습니다.
+        ③ 학교 리그·학급 대항전·포스트잇·관리자 공개는 <b>각각 따로 켜야</b> 동작하며, 언제든 끄면 즉시 중단되고 서버 기록 삭제를 요청합니다.</p>
+    </div>
+
+    <h2><span class="n">1.</span> 이 브라우저에만 저장되는 정보</h2>
+    <p>아래 항목은 이용자의 기기(브라우저 localStorage · IndexedDB)에만 저장됩니다. 서비스 운영자는 이 값을 볼 수 없고,
+      어떤 서버로도 전송되지 않습니다.</p>
+    <ul>
+      <li><b>프로필</b> — 이름(별명), 학교명, 학교급, 학년, 반, 주간 목표 시간</li>
+      <li><b>오늘의 상태 입력</b> — 수면 시간·질·규칙성, 스트레스, 피로도, 기분, 식사·수분·카페인·운동, 학습 시각</li>
+      <li><b>학습 준비도 참고값</b>과 그 이력 (최근 180일)</li>
+      <li><b>순공 시간 기록</b> — 날짜별·과목별 분</li>
+      <li><b>공부 후 피드백 · 시험 회고 · 개인 학습 실험</b> 응답</li>
+      <li><b>목표 대학·다짐·D-day</b>, 방학 계획표, 모리(캐릭터) 성장, 배지·경험치, 사운드 설정, 식사 알리미 시각</li>
+      <li><b>직접 등록한 음악 파일</b> — IndexedDB 에 저장되며 전송되지 않습니다</li>
+      <li><b>나이스 API 인증키</b> — 개인 자격 증명이므로 백업 파일에도 포함하지 않습니다</li>
+    </ul>
+    <p class="tiny">브라우저 데이터를 지우거나 기기를 바꾸면 위 기록은 함께 사라집니다. 서비스는 이를 복구할 수 없으므로
+      설정 화면의 <b>백업 파일 내려받기</b>를 권합니다.</p>
+
+    <h2><span class="n">2.</span> 동의했을 때만 서버로 전송되는 정보</h2>
+    <p>아래 기능은 <b>기본값이 모두 꺼짐</b>이며, 설정에서 각각 따로 켜야 동작합니다. 하나를 켜도 나머지는 켜지지 않습니다.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>기능</th><th>전송되는 항목</th><th>목적</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>학교 리그</b></td>
+            <td>학교명, 주차, 주간 순공 시간, 무작위 기기 번호(UUID), 랭킹 숨김 여부</td>
+            <td>학교별 주간 순공 시간 합계 비교</td>
+          </tr>
+          <tr>
+            <td><b>학급 대항전</b></td>
+            <td>위 항목 + 학교급, 학년, 반, 닉네임</td>
+            <td>같은 학교·학년·반 단위 순위표 구성</td>
+          </tr>
+          <tr>
+            <td><b>우리 반 포스트잇</b></td>
+            <td>위 항목 + 쪽지 내용, 색, 화면상 위치</td>
+            <td>같은 반 학생 간 짧은 메시지 공유</td>
+          </tr>
+          <tr>
+            <td><b>관리자에게 내 기록 보이기</b></td>
+            <td>닉네임, 학교명, 주차, 주간 순공 시간, 무작위 기기 번호</td>
+            <td>학교 관리자(교사)의 학습 현황 확인</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>전송하지 않는 것:</b> 과목명, 시험 일정, 수면·스트레스·피로·기분 등 상태 입력, 학습 준비도 참고값,
+      공부 후 피드백, 계획표, 등록한 음악은 위 기능을 모두 켜도 서버로 가지 않습니다.</p>
+    <p class="tiny">닉네임은 순위표에 그대로 표시되므로 실명 사용을 권하지 않습니다. 같은 반에서 5명 이상이 참여해야
+      개별 순위가 다른 학생에게 공개되며, <b>내 랭킹 숨기기</b>를 켜면 반 합계에는 포함되되 개별 줄은 보이지 않습니다.</p>
+
+    <h2><span class="n">3.</span> 보관 기간과 파기</h2>
+    <ul>
+      <li><b>기기 안의 기록</b> — 이용자가 지울 때까지. 학습 준비도 이력은 최근 180일만 유지하고 오래된 것부터 자동으로 지웁니다.</li>
+      <li><b>리그·관리자 공개 기록</b> — 서버에서 <b>60일</b>이 지난 주차 기록을 정기적으로 삭제합니다.</li>
+      <li><b>포스트잇</b> — 작성 시 고른 수명(10 · 15 · 20 · 30분)이 지나면 서버에서 삭제됩니다.</li>
+      <li><b>동의를 끄면</b> 새 전송이 즉시 중단되고, 그 기기가 올린 서버 기록의 삭제를 요청합니다.
+        연결 문제로 실패하면 기기에 요청을 보관해 두었다가 다음 실행 때 다시 시도합니다.</li>
+    </ul>
+
+    <h2><span class="n">4.</span> 처리를 위탁하거나 정보가 전달되는 곳</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>대상</th><th>전달되는 것</th><th>사유</th></tr></thead>
+        <tbody>
+          <tr><td><b>Supabase</b> (데이터베이스 호스팅)</td><td>2항의 전송 항목</td><td>리그·순위표·포스트잇 저장</td></tr>
+          <tr><td><b>Vercel</b> (웹 호스팅)</td><td>접속 IP·브라우저 정보 등 일반적인 서버 접속 기록</td><td>사이트 전송</td></tr>
+          <tr><td><b>나이스 교육정보 개방 포털</b></td><td>학교 검색어, 학교 코드, 조회 날짜, (시간표 조회 시) 학년·반</td><td>학교 검색·급식·학사일정·시간표 조회</td></tr>
+          <tr><td><b>Google Fonts</b></td><td>글꼴을 받는 과정에서 접속 IP</td><td>앱 화면의 계획표 글씨체</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tiny">나이스 조회는 이용자가 학교를 검색하거나 급식·학사일정을 볼 때만 발생하며, 이름·닉네임·학습 기록은
+      포함되지 않습니다. 위 사업자에 대한 이용을 원하지 않으면 해당 기능을 쓰지 않으면 됩니다 —
+      온라인 기능을 모두 꺼도 분석·플랜·타이머·계획표·로컬 기록은 그대로 동작합니다.</p>
+
+    <h2><span class="n">5.</span> 쿠키와 유사 기술</h2>
+    <p>서비스는 광고·분석 목적의 쿠키를 심지 않습니다. 다만 아래 브라우저 저장소를 기능 목적으로 사용합니다.</p>
+    <ul>
+      <li><b>localStorage</b> — 1항의 학습 기록 전부, 그리고 각 공유 기능의 동의 여부</li>
+      <li><b>sessionStorage</b> — 소개 페이지를 거쳐 앱으로 들어왔는지 표시 (탭을 닫으면 사라짐)</li>
+      <li><b>IndexedDB</b> — 이용자가 등록한 음악 파일</li>
+      <li><b>Cache Storage</b> — 오프라인 실행을 위한 앱 화면 사본 (서비스 워커)</li>
+    </ul>
+
+    <h2><span class="n">6.</span> 만 14세 미만 이용자</h2>
+    <p>서비스는 초·중학생도 이용 대상으로 하며, 학교급을 초등학교·중학교로 고르면 성장 모드가 켜집니다.
+      회원가입과 연락처 수집이 없어 기본 이용에는 개인정보 제공이 필요하지 않습니다.
+      다만 <b>2항의 서버 전송 기능(학교 리그·학급 대항전·포스트잇·관리자 공개)은
+      닉네임과 학교·학년·반이 함께 전송</b>되므로, 만 14세 미만 이용자는 보호자와 함께 켤지 결정하시기 바랍니다.
+      보호자는 아래 연락처로 해당 기록의 삭제를 요청할 수 있습니다.</p>
+
+    <h2><span class="n">7.</span> 이용자의 권리와 행사 방법</h2>
+    <ul>
+      <li><b>열람·내려받기</b> — 설정 → 데이터 관리 → <b>백업 파일 내려받기</b>로 기기에 저장된 전부를 JSON 으로 받을 수 있습니다.</li>
+      <li><b>삭제</b> — 같은 화면의 <b>모든 기록 삭제</b>로 기기의 기록을 즉시 지웁니다.</li>
+      <li><b>동의 철회</b> — 각 공유 기능의 스위치를 끄면 전송이 중단되고 서버 기록 삭제가 요청됩니다.
+        철회 완료 여부는 각 설정 아래에서 확인할 수 있습니다.</li>
+      <li><b>그 밖의 요청</b> — 위 방법으로 해결되지 않으면 아래 연락처로 문의해 주세요.</li>
+    </ul>
+
+    <h2><span class="n">8.</span> 안전성 확보 조치</h2>
+    <ul>
+      <li>모든 통신은 HTTPS 로 암호화합니다.</li>
+      <li>서버 데이터는 행 수준 보안(RLS)으로 접근을 제한하며, 학생 개별 기록은 별도로 만든 관리자 계정으로만 조회됩니다.</li>
+      <li>기기를 식별하는 값은 이름이나 연락처가 아니라 <b>무작위로 생성한 번호(UUID)</b>이며, 이 값만으로는 개인을 특정할 수 없습니다.</li>
+      <li>포스트잇 내용은 게시 전과 표시 시점 양쪽에서 욕설·비하 표현을 걸러 냅니다.</li>
+    </ul>
+
+    <h2><span class="n">9.</span> 광고</h2>
+    <p>현재 서비스에는 광고가 게재되어 있지 않습니다. 향후 Google AdSense 등 광고를 도입하는 경우,
+      광고 사업자가 쿠키를 사용해 맞춤 광고를 제공할 수 있으며 그 시점에 이 방침을 먼저 갱신하고
+      아래 시행일을 바꿔 안내하겠습니다.</p>
+
+    <h2><span class="n">10.</span> 문의처</h2>
+    <div class="contact">
+      <p class="mail"><a href="mailto:0315les@naver.com">0315les@naver.com</a></p>
+      <p class="tiny">개인정보 열람·삭제 요청, 오류 신고, 보호자 문의를 모두 이 주소로 받습니다.
+        서버 기록 삭제를 요청하실 때는 앱 설정 화면에 표시된 <b>기기 번호</b>를 함께 알려 주시면 정확히 찾을 수 있습니다.</p>
+    </div>
+
+    <h2><span class="n">11.</span> 방침의 변경</h2>
+    <p>이 방침을 바꿀 때는 변경 내용과 시행일을 이 페이지 상단에 표시합니다.
+      전송 항목이 늘어나는 등 이용자에게 불리한 변경은 시행 전에 앱 화면에서 함께 안내합니다.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <nav>
+      <a href="../landing/">Mindora 소개</a>
+      <a href="../?start=1">앱 열기</a>
+      <a href="../landing/#privacy">데이터 안내 요약</a>
+      <a href="../landing/#faq">자주 묻는 질문</a>
+    </nav>
+    <div>© 2026 Mindora · 서비스의 점수와 계획은 학습 참고값이며 의학적 진단이 아닙니다.</div>
+  </div>
+</footer>
+
+</body>
+</html>

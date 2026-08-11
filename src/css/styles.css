@@ -2605,6 +2605,14 @@ body {
 .cal-day .cday-row .cr-t { flex: 1; min-width: 0; color: var(--text); }
 .cal-day .cday-row .cr-v { flex: none; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* 순공 시간 직접 고치기 (캘린더에서 날짜를 고른 뒤) */
+.cal-day .cday-edit { margin-top: 10px; }
+.sed-row { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+.sed-row .sed-name { flex: 1; min-width: 0; }
+.sed-row .sed-min { flex: none; width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+.sed-row .sed-unit { flex: none; font-size: 13px; color: var(--muted); }
+.sed-row .sed-del { flex: none; padding: 6px 10px; }
+
 @media (max-width: 480px) {
   .goal-hero { padding: 14px; gap: 11px; }
   .goal-hero .gh-univ { font-size: 16px; }

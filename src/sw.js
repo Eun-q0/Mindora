@@ -17,13 +17,16 @@
 'use strict';
 
 /* 정책을 바꿀 때마다 올린다. activate 에서 옛 버전 캐시를 통째로 지운다. */
-var VERSION = 'neurostudy-v8';
+var VERSION = 'neurostudy-v9';
 var SHELL = ['./', './index.html', './manifest.webmanifest',
              './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png',
              './icon.svg', './icon-maskable.svg',
              // 프로필 캐릭터 그림 — 이것만 없으면 랭킹·설정 화면이 텅 비어 보인다
              './avatar-sheet.png',
-             './landing/', './landing/index.html'];
+             './landing/', './landing/index.html',
+             // 개인정보처리방침은 "지금 당장" 보고 싶은 문서다. 지하철에서 열었다가
+             // 못 읽으면 그 자체가 신뢰 문제라 셸에 함께 담는다.
+             './privacy/', './privacy/index.html'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(

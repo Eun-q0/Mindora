@@ -5,16 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mindora — 오늘의 학습 준비도 코치</title>
 
-<!-- 일반 브라우저에서는 랜딩을 먼저 보여 주고, CTA로 들어온 뒤에는 같은 탭에서
-     다시 랜딩으로 튕기지 않는다. 설치형(PWA) 실행은 곧바로 앱을 연다. -->
+<!-- 처음 온 사람에게는 랜딩을 먼저 보여 주고, 이미 쓰는 사람은 곧바로 앱을 연다.
+     설치형(PWA) 실행도 곧바로 앱이다.
+
+     "이미 쓰는 사람"의 판정은 프로필 저장 여부다. sessionStorage 만 보던 때에는
+     탭을 닫으면 표시가 사라져서, 어제 공부한 사람이 오늘 북마크로 들어와도
+     매번 랜딩을 거쳐 "시작하기"를 다시 눌러야 했다. 매일 여는 앱에서는
+     그게 매일 한 번의 마찰이 된다.
+
+     반대로 프로필이 없으면 아직 아무것도 시작하지 않은 사람이므로 랜딩이 맞다.
+     해시(#timer 등)를 들고 들어온 경우도 앱을 목적지로 보고 튕기지 않는다 —
+     공유받은 딥링크가 소개 페이지로 떨어지면 링크가 깨진 것처럼 보인다. -->
 <script>
 (function () {
   var params = new URLSearchParams(location.search);
   var entering = params.get('start') === '1';
   var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-  var entered = false;
+  var entered = false, known = false;
 
   try { entered = sessionStorage.getItem('mindora.landingEntered.v1') === '1'; } catch (e) { /* 무시 */ }
+  try { known = !!localStorage.getItem('neurostudy.profile.v1'); } catch (e) { /* 무시 */ }
 
   if (entering) {
     try {
@@ -28,7 +38,7 @@
     return;
   }
 
-  if (!standalone && !entered) location.replace('landing/');
+  if (!standalone && !entered && !known && !location.hash) location.replace('landing/');
 })();
 </script>
 
@@ -50,12 +60,35 @@
      apex 로 옮기면 안 된다: 저장 기록(localStorage)은 출처별로 분리되므로
      대표를 바꾸는 순간 www 에 쌓인 기존 사용자 기록이 통째로 안 보이게 된다. -->
 <meta property="og:url" content="https://www.mindora.co.kr/">
-<meta property="og:image" content="https://www.mindora.co.kr/icon-512.png">
-<meta property="og:image:width" content="512">
-<meta property="og:image:height" content="512">
-<meta property="og:image:alt" content="Mindora 앱 아이콘">
-<meta name="twitter:card" content="summary">
+<!-- 카톡·디스코드·X 는 링크 카드를 1.91:1 로 그린다. 정사각 아이콘을 주면 잘리거나
+     구석에 작게 박히므로 1200x630 전용 이미지를 쓴다 (tools/make-og.ps1 로 생성). -->
+<meta property="og:image" content="https://www.mindora.co.kr/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Mindora — 무작정 오래 앉아 있는 공부는 그만. 오늘의 준비도 61점 예시 화면">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://www.mindora.co.kr/">
+
+<!-- 구조화 데이터. sitemap 에서 우선순위가 가장 높은 주소가 여기라
+     앱 카드(무료·카테고리)는 랜딩이 아니라 이쪽에 붙인다.
+     랜딩(/landing/)에는 같은 항목에 더해 FAQPage 가 들어 있다. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Mindora",
+  "alternateName": "민도라",
+  "url": "https://www.mindora.co.kr/",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Web (PWA)",
+  "inLanguage": "ko",
+  "description": "수면·스트레스·피로와 시험 일정을 바탕으로 오늘 시작할 과목과 시간을 제안하는 무료 학습 코치입니다. 설치도 회원가입도 없습니다.",
+  "image": "https://www.mindora.co.kr/og-cover.png",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" },
+  "isAccessibleForFree": true,
+  "privacyPolicy": "https://www.mindora.co.kr/privacy/"
+}
+</script>
 
 <!-- 홈 화면에 추가했을 때 앱처럼 보이게 -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -1473,6 +1506,80 @@
       </div>
     </div>
 
+    <!-- 복구 코드 백업.
+         파일 백업은 "스스로 누르는 사람"에게만 통한다. 아무 일도 없는 날 그 버튼을
+         누르는 학생은 거의 없어서, 대부분은 잃고 나서야 백업이 있었다는 걸 안다.
+         코드 한 줄이면 그다음부터는 하루 한 번 저절로 올라간다. -->
+    <div class="card wide">
+      <div class="card-head"><span class="ci">🔑</span><h3>복구 코드 — 기기를 바꿔도 그대로</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">복구 코드를 만들어 두면 기록이 하루 한 번 서버에 저장됩니다.
+          새 폰이나 다른 브라우저에서 <b>코드만 넣으면 그대로 돌아옵니다.</b> 회원가입은 하지 않습니다.
+          <b>올리기 전에 이 기기에서 암호로 잠그기 때문에 서버는 내용을 볼 수 없습니다.</b></p>
+
+        <div id="bkLinked" class="is-hidden">
+          <div class="field">
+            <label>내 복구 코드 <em>새 기기에서 이 값을 넣습니다</em></label>
+            <div class="file-row" style="margin-top:0">
+              <input type="text" id="bkCode" class="input code" readonly style="flex:1;min-width:230px" aria-label="내 복구 코드">
+              <button type="button" class="btn sm" id="bkCopy">복사</button>
+            </div>
+          </div>
+          <p class="tiny" id="bkSaved" style="margin:10px 0 0">—</p>
+          <label class="toggle" style="margin-top:12px"><input type="checkbox" id="bkAuto"><span><b>하루에 한 번 자동으로 저장</b> — 앱을 열 때 조용히 올립니다</span></label>
+          <div class="actions" style="margin-top:12px">
+            <button type="button" class="btn" id="bkPush">☁ 지금 저장하기</button>
+            <button type="button" class="btn ghost" id="bkUnlink">연결 끊기</button>
+          </div>
+          <p class="alert warn" style="margin-top:12px"><b>⚠</b><span>이 코드를 잃어버리면 되살릴 방법이 없습니다.
+            이메일도 비밀번호 찾기도 없는 구조입니다 — 캡처해 두거나 메모장에 옮겨 두세요.</span></p>
+        </div>
+
+        <div id="bkUnlinked">
+          <div class="actions">
+            <button type="button" class="btn" id="bkCreate">🔑 복구 코드 만들기</button>
+            <button type="button" class="btn ghost" id="bkRestoreOpen">📥 코드로 불러오기</button>
+          </div>
+          <div id="bkRestoreBox" class="is-hidden" style="margin-top:14px">
+            <div class="field">
+              <label for="bkInput">복구 코드 <em>MNDR- 뒤의 12자만 넣으면 됩니다</em></label>
+              <!-- 'MNDR-' 은 입력칸 밖에 둔다. 코드 알파벳에 M·N·D·R 이 모두 있어서,
+                   칸 안에 접두사가 섞여 있으면 코드 글자와 구분할 수 없다. -->
+              <div class="file-row" style="margin-top:0">
+                <span class="code" style="align-self:center;color:var(--dim);font-weight:700">MNDR-</span>
+                <input type="text" id="bkInput" class="input code" placeholder="XXXX-XXXX-XXXX"
+                       autocomplete="off" autocapitalize="characters" spellcheck="false"
+                       inputmode="latin" maxlength="14"
+                       style="flex:1;min-width:180px">
+                <button type="button" class="btn sm" id="bkRestore">불러오기</button>
+              </div>
+            </div>
+            <p class="alert warn" style="margin-top:10px"><b>⚠</b><span>불러오면 <b>이 기기의 기록을 서버의 것으로 덮어씁니다.</b>
+              지금 기기에만 있는 기록이 있다면 먼저 백업 파일로 내려받아 두세요.</span></p>
+          </div>
+        </div>
+
+        <div id="bkStatus" class="neis-status" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- 소개·개인정보처리방침으로 나가는 진짜 링크.
+         루트(/)에서 랜딩으로 가는 길이 자바스크립트 리다이렉트뿐이라
+         크롤러에게는 /landing/ 이 존재하지 않는 것과 같았다. 여기 <a> 가 그 길을 만든다.
+         사용자에게도 "이 앱이 내 기록을 어떻게 다루는지" 를 찾아볼 자리가 필요하다. -->
+    <div class="card wide">
+      <div class="card-head"><span class="ci">ℹ️</span><h3>앱 정보</h3></div>
+      <div class="card-body">
+        <p class="tiny" style="margin:0 0 14px">Mindora 가 무엇을 이 브라우저에만 저장하고 무엇을 동의했을 때만
+          서버로 보내는지는 개인정보처리방침에 항목별로 적어 두었습니다.</p>
+        <div class="actions">
+          <a class="btn ghost" href="landing/">📖 Mindora 소개</a>
+          <a class="btn ghost" href="privacy/">🔒 개인정보처리방침</a>
+          <a class="btn ghost" href="mailto:0315les@naver.com?subject=Mindora%20문의">✉ 문의하기</a>
+        </div>
+      </div>
+    </div>
+
     <p class="admin-entry">
       <button type="button" class="admin-entry-btn" id="openAdmin">👑 관리자 화면</button>
     </p>
@@ -1772,6 +1879,7 @@
 <script src="js/avatar.js"></script>
 <script src="js/group.js"></script>
 <script src="js/cloud.js"></script>
+<script src="js/backup.js"></script>
 <script src="js/league.js"></script>
 <script src="js/filter.js"></script>
 <script src="js/notes.js"></script>

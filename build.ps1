@@ -17,7 +17,7 @@ $html = ReadUtf8 (Join-Path $src 'index.html')
 $css = ReadUtf8 (Join-Path $src 'css\styles.css')
 
 # 로드 순서 = 의존 순서. src/index.html 의 script 태그와 반드시 일치해야 한다.
-$jsFiles = @('engine.js', 'planner.js', 'storage.js', 'meals.js', 'studylog.js', 'avatar.js', 'group.js', 'cloud.js', 'league.js', 'filter.js', 'notes.js', 'neis.js', 'kids.js', 'sound.js', 'report.js', 'pomodoro.js', 'slime.js', 'app.js')
+$jsFiles = @('engine.js', 'planner.js', 'storage.js', 'meals.js', 'studylog.js', 'avatar.js', 'group.js', 'cloud.js', 'backup.js', 'league.js', 'filter.js', 'notes.js', 'neis.js', 'kids.js', 'sound.js', 'report.js', 'pomodoro.js', 'slime.js', 'app.js')
 $js = ($jsFiles | ForEach-Object {
         "/* ===== src/js/$_ ===== */`r`n" + (ReadUtf8 (Join-Path $src "js\$_"))
     }) -join "`r`n`r`n"
@@ -42,9 +42,12 @@ $outPath = Join-Path $root 'index.html'
 # src/ 를 원본으로 두는 이유: 개발 서버(src/)와 배포본(루트)이 같은 파일을 보게 해야
 # "로컬에선 되는데 배포하면 안 되는" 상황을 막을 수 있다.
 # ads.txt 도 같은 이유로 여기 둔다 — 애드센스 크롤러가 도메인 루트에서 직접 받아 간다.
+# og-cover.png 는 카톡·디스코드 링크 미리보기 카드입니다. 앱과 랜딩과 개인정보처리방침이
+# 모두 도메인 루트의 /og-cover.png 를 가리키므로 여기서 함께 복사합니다.
+# (다시 만들려면: powershell -ExecutionPolicy Bypass -File tools/make-og.ps1)
 $assets = @('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-maskable.svg',
             'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png',
-            'avatar-sheet.png',
+            'avatar-sheet.png', 'og-cover.png',
             'ads.txt', 'robots.txt', 'sitemap.xml')
 foreach ($a in $assets) {
     $from = Join-Path $src $a

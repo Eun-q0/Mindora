@@ -788,6 +788,13 @@
     hiddenOn: hiddenOn, setHidden: setHidden,
     adminDeleteDevice: adminDeleteDevice,
 
+    /* 이 파일 밖에서 RPC 를 부를 수 있는 유일한 통로.
+     * backup.js 가 쓴다 — 주소와 anon 키를 두 곳에 복사해 두면 프로젝트를 옮길 때
+     * 한쪽만 고치고 넘어가게 된다(실제로 2026-08-10 에 그래서 6일을 잃었다).
+     * 리그 동의(enabled)와 무관하게 열려 있다: 복구 코드 백업은 리그와 다른 기능이고,
+     * 리그를 꺼 둔 사람도 기록은 지키고 싶기 때문이다. */
+    rpc: function (fn, body) { return req('/rest/v1/rpc/' + fn, { method: 'POST', body: body || {} }); },
+
     SUPABASE_URL: SUPABASE_URL
   };
 

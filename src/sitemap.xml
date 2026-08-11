@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- 세 주소 모두 올린다.
+     / 는 앱 본체(설치한 PWA 가 가리키는 곳), /landing/ 은 실제 소개 글이 있는 곳,
+     /privacy/ 는 개인정보처리방침이다.
+     / 만 올려 두면 크롤러가 받는 건 950KB 짜리 앱 문서 하나뿐이고,
+     정작 읽을 내용이 있는 /landing/ 은 발견될 길이 없다. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.mindora.co.kr/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.mindora.co.kr/landing/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.mindora.co.kr/privacy/</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

@@ -17,9 +17,64 @@
 <meta property="og:title" content="Mindora — 오늘 상태에 맞는 공부부터">
 <meta property="og:description" content="30초 상태 체크로 지금 시작하기 쉬운 과목과 공부 시간을 정리해 보세요.">
 <meta property="og:url" content="https://www.mindora.co.kr/landing/">
-<meta property="og:image" content="https://www.mindora.co.kr/icon-512.png">
-<meta name="twitter:card" content="summary">
-  
+<!-- 카톡·디스코드·X 는 링크 카드를 1.91:1 로 그린다. 정사각 아이콘을 주면 잘리거나
+     구석에 작게 박히므로 1200x630 전용 이미지를 쓴다 (tools/make-og.ps1 로 생성). -->
+<meta property="og:image" content="https://www.mindora.co.kr/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Mindora — 무작정 오래 앉아 있는 공부는 그만. 오늘의 준비도 61점 예시 화면">
+<meta name="twitter:card" content="summary_large_image">
+
+<!-- 구조화 데이터: FAQ 는 아래 <details> 6개와 같은 내용이어야 한다.
+     질문을 고치면 여기도 같이 고칠 것 — 어긋나면 구글이 무시한다. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "Mindora",
+      "url": "https://www.mindora.co.kr/",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web (PWA)",
+      "inLanguage": "ko",
+      "description": "수면·피로·스트레스 등 오늘 상태를 바탕으로 학습 준비도 참고값을 만들고, 무엇부터 몇 분 공부할지 정리해 주는 무료 웹 학습 코치입니다.",
+      "image": "https://www.mindora.co.kr/og-cover.png",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" },
+      "featureList": [
+        "학습 준비도 5영역 참고값",
+        "과목별 시간 배분과 우선순위",
+        "컨디션 맞춤 뽀모도로 타이머",
+        "실시간 합성 집중 사운드 10종",
+        "우리 반·학교 순공 시간 리그",
+        "주간 학습 리포트",
+        "방학 계획표 자동 배분",
+        "급식·학사일정 자동 표시"
+      ],
+      "isAccessibleForFree": true,
+      "privacyPolicy": "https://www.mindora.co.kr/privacy/"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "정말 무료인가요?",
+          "acceptedAnswer": { "@type": "Answer", "text": "네. 결제도 구독도 없고 회원가입도 받지 않습니다. 링크를 열면 바로 씁니다." } },
+        { "@type": "Question", "name": "앱을 설치해야 하나요?",
+          "acceptedAnswer": { "@type": "Answer", "text": "아니요, 브라우저에서 그대로 돌아갑니다. 홈 화면에 추가하면 앱처럼 전체 화면으로 열리고, 인터넷이 끊겨도 대부분의 기능이 동작합니다." } },
+        { "@type": "Question", "name": "친구들과 등수는 어떻게 겨루나요?",
+          "acceptedAnswer": { "@type": "Answer", "text": "학교 리그에 동의하면 학교별 주간 순공 시간이 집계됩니다. 학급 대항전에도 별도로 동의하면 같은 학교·학년·반 친구들과 자동으로 순위표가 만들어지며, 닉네임과 학급 정보가 전송된다는 안내를 먼저 확인합니다." } },
+        { "@type": "Question", "name": "초등학생·중학생도 쓸 수 있나요?",
+          "acceptedAnswer": { "@type": "Answer", "text": "학교급을 초등학교나 중학교로 고르면 성장 모드가 켜집니다. 순공 1분이 1 경험치가 되고, 레벨이 오르면 캐릭터가 자라며, 배지 16종과 주간 도장판이 생깁니다. 설명 문구도 쉬운 말로 바뀝니다." } },
+        { "@type": "Question", "name": "기기를 바꾸면 기록이 사라지나요?",
+          "acceptedAnswer": { "@type": "Answer", "text": "기록은 그 브라우저 안에 저장되므로, 옮길 때는 설정에서 백업 파일을 내려받아 새 기기에서 불러오면 됩니다." } },
+        { "@type": "Question", "name": "점수가 낮게 나오면 어떻게 되나요?",
+          "acceptedAnswer": { "@type": "Answer", "text": "더 몰아붙이는 대신 집중 시간을 줄입니다. 38점 아래면 15분 집중 / 10분 휴식의 회복 우선 모드로 바뀌고, 난도 높은 과제 대신 오답노트처럼 부담이 적은 학습법을 제안합니다." } }
+      ]
+    }
+  ]
+}
+</script>
+
 
 <style>
 /* ══════════════════════════════════════════════════════════
@@ -659,6 +714,24 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <article class="feat"><div class="ico">📊</div><h3>주간 리포트</h3>
           <p>요일별·과목별 분포와 컨디션 추이. 총평은 실제 기록된 수치에서만 뽑습니다.</p>
           <span class="note">근거가 없으면 그 문장은 아예 만들지 않습니다</span></article>
+
+        <article class="feat"><div class="ico">🫧</div><h3>모리 키우기 · 말랑이 도감</h3>
+          <p>순공 1분에 젤리 1개. 알에서 시작한 모리가 5단계를 거쳐 말랑이 9종 중 하나가 됩니다.</p>
+          <span class="note">방치로 버는 젤리가 공부를 앞지르지 않게 묶어 두었습니다</span></article>
+        <article class="feat"><div class="ico">📋</div><h3>방학 계획표</h3>
+          <p>과목과 학원 시간을 넣으면 일주일 표로 자동 배분됩니다. 손으로 고치고 이미지로 저장해 붙여 두세요.</p></article>
+        <article class="feat"><div class="ico">🍱</div><h3>급식 · 학사일정 자동 표시</h3>
+          <p>학교를 한 번 고르면 오늘 급식과 알레르기 정보가 뜨고, 중간·기말·모의고사가 달력에 저절로 올라옵니다.</p>
+          <span class="note">나이스에 학교가 올린 일정을 그대로 받아 옵니다</span></article>
+        <article class="feat"><div class="ico">🎯</div><h3>목표 · D-day · 학습 캘린더</h3>
+          <p>목표 대학과 한 줄 다짐, 시험까지 남은 날, 한 달 치 순공 시간 막대를 홈에서 한눈에 봅니다.</p></article>
+        <article class="feat"><div class="ico">📌</div><h3>우리 반 포스트잇</h3>
+          <p>같은 반 친구들과 화면 아무 자리에나 붙이는 쪽지. 고른 시간이 지나면 저절로 사라집니다.</p>
+          <span class="note">욕설·비하 표현은 붙기 전에 걸러집니다</span></article>
+        <article class="feat"><div class="ico">⭐</div><h3>초·중 성장 모드</h3>
+          <p>학교급을 초·중으로 고르면 경험치·레벨·배지 16종·주간 도장판이 켜지고 설명이 쉬운 말로 바뀝니다.</p>
+          <span class="note">배지는 실제 기록에서만 판정합니다 — 그냥 주는 보상은 없습니다</span></article>
+
       </div>
     </div>
   </section>
@@ -715,6 +788,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   
             <li>백업 파일로 내려받아 다른 기기로 옮길 수 있습니다</li>
           </ul>
+          <p style="margin-top:16px"><a href="../privacy/" style="color:var(--accent);font-weight:700">개인정보처리방침 전문 보기 →</a></p>
         </div>
       </div>
     </div>
@@ -760,7 +834,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
     </a>
  
     <span>오늘 상태에 맞는 학습 루틴</span>
-    <nav><a href="../?start=1">앱 열기</a><a href="#features">기능</a><a href="#privacy">데이터 안내</a><a href="#faq">FAQ</a></nav>
+    <nav><a href="../?start=1">앱 열기</a><a href="#features">기능</a><a href="#privacy">데이터 안내</a><a href="#faq">FAQ</a><a href="../privacy/">개인정보처리방침</a><a href="mailto:0315les@naver.com?subject=Mindora%20문의">문의</a></nav>
   </div>
   <div class="wrap" style="margin-top:18px;color:var(--dim);font-size:12.5px">
     화면 속 점수·계획은 설명을 위한 예시이며 진단 결과가 아닙니다. © 2026 Mindora

@@ -106,6 +106,57 @@
     this.emit();
   };
 
+  /* ------------------------------------------------- 새로고침 뒤 이어하기
+   *
+   * 지금까지는 새로고침 한 번이면 오늘 플랜과 타이머 위치가 통째로 사라졌다.
+   * 잰 순공 시간은 남지만 "3블록 중 2번째를 하던 중" 이라는 맥락이 날아가서,
+   * 분석을 다시 누르고 처음 블록부터 시작해야 했다. */
+
+  /** 지금 상태를 그대로 담아 낸다. 돌아가는 중이면 남은 시간을 지금 기준으로
+   *  확정해서 담는다 — endsAt 은 절대 시각이라 다음 실행에서는 의미가 없다. */
+  Pomodoro.prototype.snapshot = function () {
+    return {
+      queue: this.queue,
+      index: this.index,
+      remainingMs: this.running ? Math.max(0, this.endsAt - Date.now()) : this.remainingMs,
+      running: this.running
+    };
+  };
+
+  /** snapshot() 이 담아 둔 상태로 되돌린다.
+   *
+   *  ⚠ 항상 **멈춘 채로** 돌아온다. 앱을 닫아 둔 동안 흐른 시간은 공부한 시간이
+   *    아니므로, 돌아가던 상태 그대로 이어 붙이면 하지 않은 공부가 기록된다.
+   *    다시 시작하는 것은 사용자가 누르게 둔다. */
+  Pomodoro.prototype.restore = function (s) {
+    if (!s || !s.queue || !s.queue.length) return false;
+    this.stop();
+
+    this.queue = s.queue.map(function (b) {
+      var min = Math.max(0, Number(b.minutes) || 0);
+      return {
+        kind: b.kind === 'study' ? 'study' : (b.kind === 'longBreak' ? 'longBreak' : 'break'),
+        label: b.label || (b.kind === 'study' ? b.subject : '휴식'),
+        subject: b.subject,
+        type: b.type || null,
+        color: b.color || null,
+        minutes: min,
+        ms: Math.round(min * 60 * 1000)
+      };
+    });
+
+    // 큐 밖을 가리키면 "다 끝난 상태" 로 본다 (queue.length 까지 허용)
+    this.index = Math.max(0, Math.min(Math.round(s.index) || 0, this.queue.length));
+
+    var cur = this.current();
+    var ms = Math.max(0, Number(s.remainingMs) || 0);
+    // 저장된 남은 시간이 블록 길이보다 클 수는 없다 (블록을 줄인 뒤 저장된 경우 등)
+    this.remainingMs = cur ? Math.min(ms, cur.ms) : 0;
+
+    this.emit();
+    return true;
+  };
+
   /* 블록 길이 조절 한도 — 계획은 추천일 뿐이라 사용자가 고칠 수 있어야 한다.
    * 다만 이미 지나갔거나 지금 돌아가는 블록을 건드리면 기록이 어긋나므로 막는다. */
   /* 휴식의 하한이 0 인 것은 "이 휴식은 건너뛴다" 를 고를 수 있게 하기 위해서다.
