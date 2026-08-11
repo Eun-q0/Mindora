@@ -20248,8 +20248,13 @@ body {
         // 막힌 홈으로 돌려보내지 않고 곧바로 입력 화면에서 시작하게 한다.
         goPage('secInput', false, true);
         setTimeout(function () { toast('타이머를 만들려면 오늘 상태를 먼저 확인해 주세요.'); }, 250);
+      /* 홈은 secHome 이다. 개편 때 [오늘] 화면(secToday)이 탭 목록에서 빠졌는데
+       * 여기만 그대로 남아 있었다. secToday 는 openPages() 에도 HIDDEN_PAGES 에도
+       * 없어서 goPage 가 조용히 false 를 돌려주고, 그러면 어떤 섹션도 열리지 않는다.
+       * 그때 화면에 남는 것은 유일하게 is-hidden 이 없는 secProfile — 즉 이미 쓰던
+       * 사람이 앱을 열 때마다 프로필 입력 화면을 보고 있었다. */
       } else if (!pg || !goPage(pg.id, true)) {
-        goPage('secToday', false, true);
+        goPage('secHome', false, true);
       }
 
       /* 되살렸으면 조용히 넘어가지 않는다 — 말없이 2번째 블록에서 시작하면
