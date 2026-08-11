@@ -1197,12 +1197,58 @@
     return slimeSvg(stageOf(curSpecies(d), levelOf(d.xp).level), isHungry(d));
   }
 
+  /* ------------------------------------------------- 친구에게 보여줄 도감 요약
+   *
+   * 랭킹에서 같은 반 친구를 누르면 그 친구의 도감을 보여준다. 그러려면 이 값이
+   * 서버에 올라가야 하는데(league.js 가 report_league 로 함께 올린다),
+   * 서버는 순서가 있는 배열이 편하다. SPECIES 의 순서를 그대로 쓴다.
+   *
+   * ⚠ 이 순서가 서버에 올라가는 순서와 화면에 다시 그리는 순서를 모두 정한다.
+   *   SPECIES 앞에 새 종류를 끼워 넣으면 이미 올라간 옛 기록이 다른 종류로
+   *   읽힌다 — 새 종류는 항상 배열 끝에 추가할 것.
+   */
+  function dexSummary() {
+    var d = load();
+    return {
+      distinct: dexCount(d),
+      total: SPECIES.length,
+      /* "2,0,1,0,0,3,0,0,0" 처럼 SPECIES 순서대로 마릿수를 늘어놓는다.
+       * JSON 대신 쓰는 이유는 순전히 크기다 — 최대 9개 한 자리 숫자면
+       * 리그 전송 페이로드에 몇 바이트 더하지 않는다. */
+      counts: SPECIES.map(function (sp) { return d.dex[sp.id] || 0; })
+    };
+  }
+
+  /** "2,0,1,..." 형태를 counts 배열로. 자릿수가 안 맞거나 못 읽으면 전부 0 — 친구
+   *  도감이 텅 빈 것처럼 보일 뿐 화면이 깨지지는 않는다. */
+  function parseDexCsv(csv) {
+    var parts = String(csv || '').split(',');
+    return SPECIES.map(function (sp, i) {
+      var n = parseInt(parts[i], 10);
+      return isFinite(n) && n > 0 ? Math.min(999, n) : 0;
+    });
+  }
+
+  /** 화면에 뿌릴 최소 정보만 — 전체 SPECIES(단계별 SVG 좌표 전부)를 밖으로
+   *  내보내면 다른 화면이 내부 구조에 얽매이게 된다. */
+  function speciesList() {
+    return SPECIES.map(function (sp) { return { id: sp.id, name: sp.name, rare: sp.rare, line: sp.line }; });
+  }
+
+  /** 다 자란 모습의 SVG. 친구 도감·내 도감이 같은 그림을 쓴다. */
+  function speciesFaceSvg(id) {
+    var sp = speciesBy(id);
+    return sp ? slimeSvg(finalOf(sp), false) : '';
+  }
+
   global.Slime = {
     init: function (opt) { if (opt && opt.toast) toast = opt.toast; },
     open: open, stop: stop, render: render, touch: touch,
     summary: summary, reset: reset,
     jelly: jelly, spend: spend, faceSvg: faceSvg,
-    takeDecayNote: takeDecayNote, MIN_PER_JELLY: MIN_PER_JELLY
+    takeDecayNote: takeDecayNote, MIN_PER_JELLY: MIN_PER_JELLY,
+    dexSummary: dexSummary, parseDexCsv: parseDexCsv,
+    speciesList: speciesList, speciesFaceSvg: speciesFaceSvg
   };
 
 })(window);

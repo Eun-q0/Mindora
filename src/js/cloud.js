@@ -281,17 +281,26 @@
       p_hidden: !!st.hidden,
       /* 순위표에 보일 이름. 학급 대항에 동의한 경우에만 싣고,
        * 아니면 빈 값을 보내 서버에 남아 있던 값을 지운다. */
-      p_nickname: useClass ? String(cls.nick || '') : ''
+      p_nickname: useClass ? String(cls.nick || '') : '',
+      /* 완주 레벨·말랑이 도감. 닉네임과 같은 규칙 — 학급 대항전을 끄면
+       * 빈 값으로 다시 올려 서버에 남아 있던 값을 지운다.
+       * (표시일 뿐 검증되는 값이 아니다: report_league 의 순공 시간과 같은
+       *  신뢰 구조라, 클라이언트가 조작해 올릴 수 있다는 한계를 그대로 안는다.) */
+      p_level_num: useClass ? Math.max(1, Math.round(cls.levelNum || 1)) : 0,
+      p_dex: useClass ? String(cls.dex || '') : ''
     };
 
     var sig = school + '|' + weekKey + '|' + mins + '|' +
               body.p_level + '/' + body.p_grade + '/' + body.p_klass +
-              '|' + (body.p_hidden ? 'h' : '') + '|' + body.p_nickname;
+              '|' + (body.p_hidden ? 'h' : '') + '|' + body.p_nickname +
+              '|' + body.p_level_num + '|' + body.p_dex;
 
     if (!force && st.lastSig === sig && (Date.now() - st.lastPush) < MIN_PUSH_GAP) {
       return Promise.resolve(false);
     }
 
+    /* 같은 이름의 11-인자 오버로드다. 앞의 7-·9-인자 버전도 그대로 살아
+     * 있다(schema.sql·schema_class_league.sql) — 캐시된 옛 앱이 계속 동작해야 한다. */
     return req('/rest/v1/rpc/report_league', {
       method: 'POST',
       body: body
@@ -599,7 +608,10 @@
           minutes: Math.max(0, r.minutes | 0),
           updatedAt: r.updated_at ? Date.parse(r.updated_at) : 0,
           me: !!r.is_me,
-          hidden: !!r.is_hidden
+          hidden: !!r.is_hidden,
+          // 완주 레벨·말랑이 도감. 학급 대항전을 껐거나 옛 앱을 쓰는 사람은 0/빈 문자열로 온다.
+          levelNum: Math.max(0, r.level_num | 0),
+          dex: String(r.dex || '')
         };
       });
     }, function () { return []; });

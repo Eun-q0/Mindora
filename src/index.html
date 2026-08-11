@@ -1021,6 +1021,17 @@
       <div class="card-body"><div id="rankList" class="rank-list"></div></div>
     </div>
 
+    <!-- 같은 반 친구를 누르면 여기 완주 레벨과 말랑이 도감이 뜬다.
+         학급 대항전으로 서버와 동기화된 랭킹(renderClassRank)에서만 채워진다 —
+         로컬 전용 랭킹은 친구의 레벨·도감을 애초에 모른다. -->
+    <div class="card wide is-hidden" id="friendCard">
+      <div class="card-head">
+        <span class="ci">🧑‍🤝‍🧑</span><h3 id="friendName">친구</h3>
+        <button type="button" class="btn ghost sm" id="friendClose" style="margin-left:auto">닫기</button>
+      </div>
+      <div class="card-body" id="friendBody"></div>
+    </div>
+
     <div class="card wide">
       <div class="card-head"><span class="ci">📊</span><h3>과제 적합도 참고값 — 그룹 평균 대비 나</h3></div>
       <div class="card-body"><div id="groupCompare" class="gcmp"></div></div>

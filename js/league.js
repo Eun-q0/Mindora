@@ -375,9 +375,13 @@
 
     // 학급 정보는 Cloud 쪽에서 동의 여부를 보고 실을지 결정한다.
     // 닉네임은 순위표에 그대로 보이는 값이라, 입력 화면에서 실명을 권하지 않는다고 안내한다.
+    // 완주 레벨·말랑이 도감도 같은 동의(학급 대항전)로만 함께 실린다 —
+    // 랭킹에서 같은 반 친구를 눌렀을 때 보여 주는 값이 이것이다.
     var cls = {
       level: p.level, grade: p.grade, klass: norm(p.klass),
-      nick: norm(p.nick)
+      nick: norm(p.nick),
+      levelNum: global.Level ? global.Level.summary().level : 1,
+      dex: global.Slime ? global.Slime.dexSummary().counts.join(',') : ''
     };
 
     return C.push(school, wk, myCappedWeek(), force, cls)

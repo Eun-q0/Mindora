@@ -28,7 +28,9 @@
     lastSoundKey: null, // 같은 상태에서 사운드를 다시 트는 것을 막는다
     planOverrides: {}, // 과목별 추천 수정(exclude / shorter)
     pendingFeedback: null,
-    resumeAfterFeedback: false
+    resumeAfterFeedback: false,
+    classRows: [],     // 서버와 동기화된 반 랭킹의 마지막 응답 (친구 카드가 다시 찾아 쓴다)
+    friendTag: null     // 지금 열려 있는 친구 카드의 태그 (없으면 안 열려 있음)
   };
 
   /* ------------------------------------------------------------- helpers */
@@ -1734,6 +1736,9 @@
         if ($('soundOn').checked) Pomodoro.beep(block ? block.kind : 'study');
         if (block && block.kind === 'study') {
           Kids.addBlock();
+          /* 완주 포인트. 건너뛴 블록은 여기까지 오지 않는다 —
+           * skip() 은 onComplete 를 부르지 않고 바로 다음 블록으로 넘어간다. */
+          Level.award(block.minutes);
           state.resumeAfterFeedback = state.timer.running;
           state.timer.pause();
           showStudyFeedback(block);
@@ -1750,7 +1755,7 @@
         renderLiveTotal();
         renderGroup();
         renderLeague();
-        if (block && block.kind === 'study') setTimeout(awardKids, 1200);
+        if (block && block.kind === 'study') setTimeout(function () { awardLevel(); awardKids(); }, 1200);
       },
       onFinishAll: function () {
         commitSpan(true);
@@ -5127,6 +5132,17 @@
   }
 
   /** 미션·배지·레벨업을 판정하고 축하 메시지를 띄운다 */
+  /* 완주 레벨업 축하. 초·중 성장 모드와 달리 학교급을 가리지 않는다.
+   * 레벨이 여러 칸 올랐어도 축하는 한 줄로 모은다 — 토스트가 줄줄이 뜨면
+   * 정작 마지막에 뜬 것만 보이고 나머지는 스쳐 지나간다. */
+  function awardLevel() {
+    var n = Level.takeLevelUp();
+    if (!n) return;
+    var s = Level.summary();
+    toast('🎉 레벨 업! Lv.' + s.level + ' — 블록 ' + s.blocks + '개 완주', 'party');
+    renderGroup();
+  }
+
   function awardKids() {
     if (!kidsOn()) return;
     var res = Kids.evaluate();
@@ -5167,25 +5183,43 @@
 
       var max = rows.reduce(function (m, r) { return Math.max(m, r.minutes); }, 0);
 
+      // 클릭했을 때 다시 서버를 부르지 않도록 지금 받은 목록을 들고 있는다.
+      // 친구 카드를 닫지 않고 있었으면 최신 값으로 바로 다시 그린다.
+      state.classRows = rows;
+
       $('rankList').innerHTML = rows.map(function (r, i) {
         var rank = i + 1;
         var medal = rank <= 3 ? ' m' + rank : '';
         var badge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
         var w = max > 0 ? (r.minutes / max * 100) : 0;
         var color = Group.avatarColor(r.tag);
-        return '<div class="rank' + (r.me ? ' is-me' : '') + (rank === 1 ? ' top1' : '') + '">' +
+        return '<div class="rank clickable' + (r.me ? ' is-me' : '') + (rank === 1 ? ' top1' : '') + '" data-ridx="' + i + '" tabindex="0" role="button" aria-label="' + esc(r.tag) + ' 레벨·도감 보기">' +
           '<div class="rk-pos' + medal + '">' + badge + '</div>' +
           '<div class="rk-tag" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
           '<div class="rk-info">' +
             '<div class="rk-name">' + esc(r.tag) +
               (r.me ? '<span class="me-tag">나</span>' : '') +
-              (r.me && r.hidden ? '<span class="me-tag">숨김</span>' : '') + '</div>' +
+              (r.me && r.hidden ? '<span class="me-tag">숨김</span>' : '') +
+              (r.levelNum > 0 ? '<span class="brain">Lv.' + r.levelNum + '</span>' : '') + '</div>' +
             '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
             '<div class="rk-date">' + (r.me ? '실시간 반영' : agoText(r.updatedAt)) + '</div>' +
           '</div>' +
           '<div class="rk-time">' + durHtml(r.minutes) + '</div>' +
+          '<div class="rk-chev" aria-hidden="true">›</div>' +
         '</div>';
       }).join('');
+
+      $$('#rankList .rank[data-ridx]').forEach(function (el) {
+        var open = function () { openFriendCard(+el.dataset.ridx); };
+        el.addEventListener('click', open);
+        el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      });
+
+      // 열려 있던 친구 카드가 이번에 새로 받은 목록에도 있으면 값만 갱신한다
+      if (state.friendTag) {
+        var again = rows.filter(function (r) { return r.tag === state.friendTag; })[0];
+        if (again) renderFriendCard(again); else closeFriendCard();
+      }
 
       $('groupHero').innerHTML =
         '<div><p class="gh-name">' + esc(cid.label) + '</p>' +
@@ -5199,6 +5233,63 @@
           '<div class="gh-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '<small>일</small></div></div>' +
         '</div>';
     }, function () { /* 못 받아 오면 로컬 목록을 그대로 둔다 */ });
+  }
+
+  /* --------------------------------------------------- 친구 카드 (레벨·도감)
+   *
+   * 같은 반 랭킹(renderClassRank)에서 친구를 누르면 연다. 로컬 전용 랭킹에는
+   * 애초에 레벨·도감 데이터가 없어 이 카드가 뜨지 않는다 — 학급 대항전에
+   * 동의하고 5명 이상 모인 반에서만 나오는, 지금 랭킹과 같은 조건이다.
+   *
+   * ⚠ 이 값은 검증되지 않는다. 순공 시간과 같은 신뢰 구조라 서버가
+   *   "정말 그만큼 키웠는지" 확인할 방법이 없다 — 그래서 표시만 하고,
+   *   이 값으로 무언가를 주고받는 기능은 만들지 않았다. */
+
+  function openFriendCard(idx) {
+    var r = state.classRows[idx];
+    if (!r) return;
+    renderFriendCard(r);
+    $('friendCard').classList.remove('is-hidden');
+    $('friendCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeFriendCard() {
+    state.friendTag = null;
+    $('friendCard').classList.add('is-hidden');
+  }
+
+  function renderFriendCard(r) {
+    state.friendTag = r.tag;
+    var color = Group.avatarColor(r.tag);
+    $('friendName').textContent = r.tag + (r.me ? ' (나)' : '');
+
+    var counts = Slime.parseDexCsv(r.dex);
+    var species = Slime.speciesList();
+    var got = counts.reduce(function (n, c) { return n + (c > 0 ? 1 : 0); }, 0);
+
+    var grid = species.map(function (sp, i) {
+      var n = counts[i] || 0;
+      var fig = n ? Slime.speciesFaceSvg(sp.id) : '<span class="sd-unknown" aria-hidden="true">?</span>';
+      return '<div class="sd-cell' + (n ? ' got' : '') + '"' + (n ? ' title="' + esc(sp.line) + '"' : '') + '>' +
+        '<div class="sd-fig">' + fig + (n > 1 ? '<span class="sd-n">×' + n + '</span>' : '') + '</div>' +
+        '<b>' + (n ? esc(sp.name) : '???') + '</b>' +
+        '<span class="sd-rare">' + esc(sp.rare) + '</span>' +
+        '</div>';
+    }).join('');
+
+    $('friendBody').innerHTML =
+      '<div class="fr-head">' +
+        '<div class="rk-tag fr-av" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
+        '<div>' +
+          '<div class="fr-level">' + (r.levelNum > 0 ? '🏅 학습 레벨 Lv.' + r.levelNum : '아직 완주 레벨이 없습니다') + '</div>' +
+          '<div class="fr-time">이번 주 순공 ' + durHtml(r.minutes) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="sl-dex" style="margin-top:16px;padding-top:14px">' +
+        '<div class="sl-dex-head"><b>📖 말랑이 도감</b><span>' + got + ' / ' + species.length + ' 종</span></div>' +
+        '<div class="sl-dex-grid">' + grid + '</div>' +
+      '</div>' +
+      '<p class="tiny" style="margin-top:12px">완주 레벨과 도감은 본인이 신고한 값으로, 순공 시간처럼 서버가 정확성을 검증하지 않습니다.</p>';
   }
 
   function renderGroup() {
@@ -5218,6 +5309,15 @@
         '<div class="gh-stat"><div class="k">내 순위</div><div class="v">' + (myRank ? myRank + '<small>위</small>' : '—') + '</div></div>' +
         '<div class="gh-stat"><div class="k">' + (isWeek ? '내 주간 순공' : '내 오늘 순공') + '</div><div class="v">' + durHtml(r.me ? r.me.value : 0) + '</div></div>' +
         '<div class="gh-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '<small>일</small></div></div>' +
+        /* 완주 레벨. 순공 시간과 다른 것을 세므로 나란히 둔다 —
+         * 오래 앉아 있는 것과 시작한 것을 끝내는 것은 같지 않다. */
+        (function () {
+          var lv = Level.summary();
+          return '<div class="gh-stat" title="집중 블록을 건너뛰지 않고 완주하면 오릅니다 (' +
+            lv.into + '/' + lv.need + ')">' +
+            '<div class="k">학습 레벨</div><div class="v">Lv.' + lv.level +
+            '<small>' + lv.blocks + '블록</small></div></div>';
+        })() +
       '</div>';
 
     $('rankList').innerHTML = r.list.length ? r.list.map(function (m) {
@@ -7282,6 +7382,7 @@
     $('profileChip').addEventListener('click', function () { openProfile(true); });
 
     $('editProfile').addEventListener('click', function () { openProfile(true); });
+    $('friendClose').addEventListener('click', closeFriendCard);
     initAvatarPage();
 
     if (Store.profile()) {
@@ -7388,6 +7489,7 @@
       // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
       // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
       Slime.reset();
+      Level.reset();
       // 기록을 지웠는데 오늘 플랜과 타이머 자리만 남아 다음 실행에 되살아나면 안 된다
       clearSession();
       renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
