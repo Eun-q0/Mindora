@@ -219,74 +219,8 @@
     return { avg: acc, count: n };
   }
 
-  /* ------------------------------------------------- 학교명 자동완성 ---- */
-
-  /* 학교급별로 붙는 정식 접미사 */
-  var SUFFIX = {
-    '초등학교': ['초등학교'],
-    '중학교': ['중학교', '여자중학교'],
-    '고등학교': ['고등학교', '여자고등학교'],
-    '대학교': ['대학교'],
-    '기타': ['고등학교', '중학교', '초등학교', '대학교']
-  };
-
-  /* 입력 도중에 나올 수 있는 부분 접미사 — 긴 것부터 잘라 낸다 */
-  var PARTIAL = [
-    '여자고등학교', '여자중학교', '고등학교', '중학교', '초등학교', '대학교',
-    '여자고등학', '여자중학', '여자고등', '여자중', '고등학', '초등학', '중학', '대학',
-    '여고', '여중', '고등', '초등', '여자', '고', '중', '초', '대', '여'
-  ];
-
-  /** "한빛고" → "한빛" 처럼 학교 이름의 몸통만 남긴다 */
-  function stemOf(q) {
-    for (var i = 0; i < PARTIAL.length; i++) {
-      var p = PARTIAL[i];
-      if (q.length > p.length && q.slice(-p.length) === p) return q.slice(0, -p.length);
-    }
-    return q;
-  }
-
-  /**
-   * 학교명 후보를 만든다.
-   *  1) 전에 입력했던 학교와 그룹원들의 학교 중 검색어에 맞는 것
-   *  2) 입력한 몸통에 학교급 접미사를 붙인 완성형
-   * 인터넷 없이 도는 앱이라 전국 학교 목록을 갖고 있지는 않다.
-   * 대신 타이핑을 줄여 주는 데 초점을 맞춘다.
-   */
-  function schoolSuggestions(query, level) {
-    var q = norm(query);
-    var known = S.recentSchools().concat(members().map(function (m) { return m.school; }));
-    var seen = {}, out = [];
-
-    function push(name, kind) {
-      name = norm(name);
-      if (!name || seen[name]) return;
-      seen[name] = 1;
-      out.push({ name: name, kind: kind });
-    }
-
-    if (!q) {
-      known.forEach(function (n) { push(n, 'recent'); });
-      return out.slice(0, 6);
-    }
-
-    // 1) 아는 학교 중 검색어를 포함하는 것 먼저
-    known.forEach(function (n) { if (norm(n).indexOf(q) === 0) push(n, 'recent'); });
-    known.forEach(function (n) { if (norm(n).indexOf(q) > 0) push(n, 'recent'); });
-
-    // 2) 접미사를 붙인 완성형
-    var stem = stemOf(q);
-    if (stem) {
-      var sufs = SUFFIX[level] || SUFFIX['고등학교'];
-      sufs.forEach(function (suf) { push(stem + suf, 'complete'); });
-    }
-
-    // 이미 정확히 입력한 값은 후보에서 뺀다
-    return out.filter(function (o) { return o.name !== q; }).slice(0, 6);
-  }
-
   global.Group = {
-    GRADES: GRADES, SUFFIX: SUFFIX, stemOf: stemOf, schoolSuggestions: schoolSuggestions,
+    GRADES: GRADES,
     groupId: groupId, groupLabel: groupLabel, memberId: memberId,
     avatarColor: avatarColor, initial: initial,
     members: members, selfRecord: selfRecord, syncSelf: syncSelf,

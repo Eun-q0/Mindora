@@ -701,15 +701,16 @@
     if (qq && o.name.indexOf(qq) === 0) shown = '<b>' + esc(qq) + '</b>' + esc(o.name.slice(qq.length));
 
     var attrs = ' data-name="' + esc(o.name) + '"';
-    var sub = '', tag = '', icon = '🏫';
+    var sub = '', tag = '완성', icon = '🏫';
 
+    // 나이스 응답만 학교 코드를 갖는다 — 나이스가 죽었을 때 내장 목록으로
+    // 떨어지면(neis.js) 코드가 없어 급식·시간표 조회로 이어지지 않는다.
     if (o.schoolCode) {
       attrs += ' data-school="' + esc(o.schoolCode) + '" data-edu="' + esc(o.eduCode) + '"' +
                ' data-region="' + esc(o.region) + '" data-kind="' + esc(o.kind) + '" data-level="' + esc(o.level) + '"';
       sub = '<span class="asub">' + esc(o.region) + ' · ' + esc(o.kind) + '</span>';
       tag = '나이스';
-    } else if (o.kind === 'recent') { icon = '🕘'; tag = '이전 입력'; }
-    else { tag = '완성'; }
+    }
 
     return '<button type="button" class="ac-item"' + attrs + '>' +
       '<span class="ai">' + icon + '</span>' +
@@ -732,15 +733,11 @@
   function openAc() {
     var q = $('pfSchool').value;
     var level = schoolLevel($('pfLevel').value);
-    var offline = Group.schoolSuggestions(q, level);
 
-    /* 나이스는 인증키가 없어도 실제 학교를 돌려준다.
-     * 예전에는 키가 있을 때만 물어봐서, 키 없는 사용자에게는
-     * "직접 입력한 학교 + 접미사 붙인 추측" 만 보였다.
-     * 이제 두 글자만 쳐도 실제 학교 목록을 받아 온다. */
+    // 나이스는 인증키가 없어도 실제 학교를 돌려준다. 두 글자 미만은 검색하지 않는다.
     var useNeis = q.trim().length >= 2;
-    paintAc(offline, useNeis);
-    if (!useNeis) return;
+    if (!useNeis) { closeAc(); return; }
+    paintAc([], true);
 
     clearTimeout(acTimer);
     var seq = ++acSeq;
@@ -755,10 +752,10 @@
       };
       Neis.searchSchools(q, level).then(function (rows) {
         if (!stillValid()) return;
-        paintAc(rows.length ? rows.slice(0, 8) : offline, false);
+        paintAc(rows.slice(0, 8), false);
       }).catch(function () {
         if (!stillValid()) return;
-        paintAc(offline, false);                          // 실패하면 오프라인 후보 유지
+        closeAc();
       });
     }, 280);
   }
