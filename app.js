@@ -1,0 +1,7630 @@
+/* =========================================================================
+ * app.js — UI 바인딩 및 렌더링
+ * ========================================================================= */
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  /* 청주여자고등학교 전용 앱이다. 사용자가 학교를 다시 입력하게 하지 않고
+   * 공개된 학교 기본정보와 나이스 식별자를 한 곳에서만 관리한다. */
+  var DEDICATED_SCHOOL = {
+    name: '청주여자고등학교',
+    level: '고등학교',
+    eduCode: 'M10',
+    schoolCode: '8000069',
+    region: '충청북도',
+    kind: '고등학교',
+    address: '충청북도 청주시 청원구 충청대로107번길 82'
+  };
+
+  function dedicatedSchoolNeis() {
+    return {
+      name: DEDICATED_SCHOOL.name,
+      eduCode: DEDICATED_SCHOOL.eduCode,
+      schoolCode: DEDICATED_SCHOOL.schoolCode,
+      region: DEDICATED_SCHOOL.region,
+      kind: DEDICATED_SCHOOL.kind
+    };
+  }
+
+  var state = {
+    analysis: null,
+    plan: null,
+    timer: null,
+    rankRange: 'today',
+    leagueMode: 'class',  // 기본 판은 반 대항
+    lgSchool: '', lgGrade: '',
+    weekOffset: 0,
+    queueEdit: false,   // 타이머 진행 순서에서 블록 길이를 고치는 중인가
+    page: 'secHome',
+    pickedSchool: null,  // 나이스에서 고른 학교 (급식 조회용 코드 포함)
+    vacplan: null,      // 방학 계획표 모델
+    calMonth: null,     // 학습 캘린더가 보고 있는 달 (그 달 1일)
+    calPick: null,      // 캘린더에서 고른 날짜 (없으면 오늘)
+    calSched: {},       // 나이스 학사일정 (YYYYMMDD → 행사 목록). 받은 구간을 쌓아 간다.
+    calSchedDone: {},   // 이미 받아 온 구간 표시 — 같은 달을 반복해 조회하지 않는다
+    span: null,        // 진행 중인 순공 구간
+    lastFlush: 0,
+    lastSoundKey: null, // 같은 상태에서 사운드를 다시 트는 것을 막는다
+    planOverrides: {}, // 과목별 추천 수정(exclude / shorter)
+    pendingFeedback: null,
+    resumeAfterFeedback: false,
+    classRows: [],     // 서버와 동기화된 반 랭킹의 마지막 응답 (친구 카드가 다시 찾아 쓴다)
+    friendTag: null     // 지금 열려 있는 친구 카드의 태그 (없으면 안 열려 있음)
+  };
+
+  /* ------------------------------------------------------------- helpers */
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  /* 조사 붙이기. 사용자가 적은 이름에는 '을(를)' 로 두지만, 앱이 가진 고정된
+   * 이름(상점 물건 같은)에는 받침을 보고 하나만 골라 쓴다 — 훨씬 잘 읽힌다. */
+  function josa(word, withFinal, withoutFinal) {
+    var last = String(word || '').slice(-1);
+    var code = last.charCodeAt(0);
+    if (!(code >= 0xac00 && code <= 0xd7a3)) return withoutFinal;   // 한글이 아니면 받침 없는 쪽
+    return ((code - 0xac00) % 28) ? withFinal : withoutFinal;
+  }
+
+  function displayScore(n) { return Math.max(0, Math.min(100, Math.round(Number(n || 0) / 5) * 5)); }
+  function scoreBand(n) {
+    n = Number(n || 0);
+    if (n >= 75) return '높음';
+    if (n >= 60) return '보통 이상';
+    if (n >= 45) return '보통';
+    if (n >= 30) return '보통 이하';
+    return '낮음';
+  }
+
+  function maskEmail(email) {
+    var parts = String(email || '').split('@');
+    if (parts.length !== 2) return '관리자 계정';
+    var name = parts[0];
+    var shown = name.slice(0, Math.min(4, Math.max(1, name.length - 2)));
+    return shown + '***@' + parts[1];
+  }
+
+  function fmtHour(h) {
+    var t = ((h % 24) + 24) % 24;
+    var hh = Math.floor(t), mm = Math.round((t - hh) * 60);
+    if (mm >= 60) { mm -= 60; hh = (hh + 1) % 24; }
+    return pad(hh) + ':' + pad(mm);
+  }
+  function fmtDur(min) {
+    if (min > 0 && min < 1) return Math.max(1, Math.round(min * 60)) + '초';
+    var m = Math.floor(min);
+    var h = Math.floor(m / 60), r = m % 60;
+    if (h && r) return h + '시간 ' + r + '분';
+    if (h) return h + '시간';
+    return r + '분';
+  }
+  /* 가중치는 손으로 정한 값이라 소수점 표기는 없는 정밀도를 있는 것처럼 보이게 한다.
+   * 정수로 반올림해서 보여 준다. */
+  function signed(v) {
+    var n = Math.round(v);
+    if (n === 0) return v === 0 ? '0' : (v > 0 ? '+0' : '−0');
+    return (n > 0 ? '+' : '−') + Math.abs(n);
+  }
+
+  /** "3시간 전" 처럼 상대 시각으로 (그룹 기록이 얼마나 낡았는지 정직하게 보여준다) */
+  function agoText(ts) {
+    if (!ts) return '시각 미상';
+    var m = Math.floor((Date.now() - ts) / 60000);
+    if (m < 2) return '방금';
+    if (m < 60) return m + '분 전';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + '시간 전';
+    return Math.floor(h / 24) + '일 전';
+  }
+
+  /** 1분 미만도 버리지 않는 표기 — 순공 시간은 초 단위 체감이 중요하다 */
+  function fmtDurFine(min) {
+    var sec = Math.round(min * 60);
+    if (sec <= 0) return '0분';
+    if (sec < 60) return sec + '초';
+    var m = Math.floor(sec / 60), h = Math.floor(m / 60), r = m % 60;
+    if (!h) return m + '분';
+    return r ? (h + '시간 ' + r + '분') : (h + '시간');
+  }
+
+  /** 숫자는 크게, 단위는 작게 */
+  function durHtml(min) {
+    var sec = Math.round(min * 60);
+    if (sec < 60) return sec + '<small>초</small>';
+    var m = Math.floor(sec / 60), h = Math.floor(m / 60), r = m % 60;
+    if (!h) return m + '<small>분</small>';
+    return r ? (h + '<small>시간</small> ' + r + '<small>분</small>') : (h + '<small>시간</small>');
+  }
+
+  var toastEl = null, toastTimer = null;
+  function toast(msg, kind) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'toast';
+      // 화면을 못 보는 사용자도 알림을 들을 수 있어야 한다.
+      // 오류는 즉시(assertive), 나머지는 하던 말이 끝난 뒤(polite) 읽힌다.
+      toastEl.setAttribute('role', 'status');
+      toastEl.setAttribute('aria-live', 'polite');
+      document.body.appendChild(toastEl);
+    }
+    toastEl.setAttribute('aria-live', (kind === true || kind === 'err') ? 'assertive' : 'polite');
+    var extra = kind === true || kind === 'err' ? ' err' : (kind === 'party' ? ' party' : '');
+    toastEl.textContent = msg;
+    toastEl.className = 'toast show' + extra;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toastEl.className = 'toast' + extra;
+      toastEl.textContent = '';
+      toastEl.removeAttribute('aria-live');
+    }, kind === 'party' ? 4200 : 3200);
+  }
+
+  /** 축하할 게 여러 개면 하나씩 순서대로 띄운다 */
+  function celebrate(list) {
+    if (!list.length) return;
+    list.forEach(function (msg, i) {
+      setTimeout(function () { toast(msg, 'party'); }, i * 2300);
+    });
+  }
+
+  function kidsOn() { return Kids.enabled(); }
+
+  function parentMode(p) {
+    p = p || Store.profile();
+    return !!p && p.level === '학부모';
+  }
+
+  function profileEligibility(p) {
+    if (!p) return false;
+    return parentMode(p) ? p.eligibility === 'parent' : p.eligibility === 'age14';
+  }
+
+  function schoolLevel(level) { return level === '학부모' ? '초등학교' : level; }
+
+  function disableParentSharing() {
+    Cloud.setClassEnabled(false);
+    Cloud.setStudentShareEnabled(false);
+    Cloud.setEnabled(false);
+    return Promise.all([
+      Cloud.forgetStudent()['catch'](function () { return false; }),
+      Cloud.forget()['catch'](function () { return false; })
+    ]);
+  }
+
+  function migrateDedicatedSchoolProfile() {
+    var p = Store.profile();
+    if (!p) return false;
+
+    var old = {
+      nick: p.nick, school: p.school, level: p.level, grade: p.grade,
+      klass: p.klass, goal: p.goal, avatar: p.avatar, eligibility: p.eligibility,
+      neis: p.neis
+    };
+    var movedSchool = p.school !== DEDICATED_SCHOOL.name || p.level !== DEDICATED_SCHOOL.level;
+
+    p.school = DEDICATED_SCHOOL.name;
+    p.level = DEDICATED_SCHOOL.level;
+    p.neis = dedicatedSchoolNeis();
+
+    /* 다른 학교/학부모 프로필에서 넘어온 서버 동의는 새 학교 동의로 간주하지 않는다.
+     * 기존 서버 레코드 삭제를 먼저 예약하고, 청여고에서는 다시 선택하게 한다. */
+    if (movedSchool) {
+      delete p.eligibility;
+      Group.remove(Group.memberId(old));
+      disableParentSharing();
+    }
+    Store.saveProfile(p);
+    return true;
+  }
+
+
+  /* ============================================================ 라우팅 ==
+   * 한 번에 한 페이지만 보여 준다. 길게 스크롤할 필요가 없도록
+   * 상단 탭으로 전환하고 주소창 해시(#timer 등)로도 이동할 수 있게 한다. */
+
+  /* 상단 바에는 홈과 번호 붙은 4단계만 남긴다.
+   *   home            — 앱을 열면 처음 보이는 요약 화면
+   *   번호가 붙은 넷   — 순서대로 밟는 실제 단계 (입력 → 분석 → 플랜 → 타이머)
+   *   tool 로 표시한 것 — 아무 때나 열어 보는 기능들. 상단 바에 늘어놓지 않고
+   *                      [더보기] 메뉴와 홈 화면의 바로가기 타일에서만 들어간다.
+   * 예전에는 탭 10개가 한 줄에 늘어서서 무엇이 순서고 무엇이 기능인지
+   * 한눈에 들어오지 않았고, 좁은 화면에서는 가로로 스크롤해야 했다. */
+  var PAGES = [
+    /* 홈은 모리를 키우는 화면이 맡는다. 개편 때 들어온 [오늘] 화면(secToday)의
+     * 코드는 지우지 않고 남겨 두었다 — 탭 목록에만 없어서 열리지 않을 뿐이다. */
+    { id: 'secHome', label: '홈', hash: 'home', home: true, icon: '🏠' },
+    { id: 'secInput', num: '1', label: '입력', hash: 'input' },
+    { id: 'secResult', num: '2', label: '준비도', hash: 'result', needAnalysis: true },
+    { id: 'secPlan', num: '3', label: '학습 플랜', hash: 'plan', needAnalysis: true },
+    { id: 'secTimer', num: '4', label: '타이머', hash: 'timer', needAnalysis: true },
+    { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true, icon: '📅', desc: '방학·주간 계획표 만들기' },
+    { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true, icon: '★', desc: '경험치 · 배지 · 미션' },
+    { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true, studentOnly: true, icon: '🏅', desc: '같은 반 순공 시간 등수' },
+    { id: 'secLeague', label: '리그', hash: 'league', tool: true, studentOnly: true, icon: '🏆', desc: '반 대항 · 학교 대항 주간 리그' },
+    { id: 'secReport', label: '리포트', hash: 'report', tool: true, icon: '📈', desc: '주간 학습 리포트' },
+    { id: 'secSettings', label: '설정', hash: 'settings', tool: true, icon: '⚙️', desc: '프로필 · 사운드 · 데이터' }
+  ];
+
+  /* 상단 탭에는 없지만 이동은 되는 페이지들.
+   * 관리자 화면은 학생이 쓸 일이 없어 탭에서 빼고 [설정] 맨 아래에서만 들어간다. */
+  var HIDDEN_PAGES = [
+    { id: 'secAdmin', label: '관리자', hash: 'admin', tool: true },
+    // 캐릭터 꾸미기는 매일 열 화면이 아니라 [설정 → 내 프로필] 에서만 들어간다
+    { id: 'secAvatar', label: '캐릭터 꾸미기', hash: 'avatar', tool: true }
+  ];
+
+  var ALL_PAGES = PAGES.concat(HIDDEN_PAGES);
+  var ALL_SECTIONS = ALL_PAGES.map(function (p) { return p.id; }).concat(['secProfile']);
+
+  function pageBy(id) { return ALL_PAGES.filter(function (p) { return p.id === id; })[0] || null; }
+  function pageByHash(h) { return ALL_PAGES.filter(function (p) { return p.hash === h; })[0] || null; }
+
+  /** 지금 열 수 있는 페이지 목록 (프로필 없음 → 없음 / 분석 전 → 일부 잠금) */
+  function openPages() {
+    if (!Store.profile() || !profileEligibility(Store.profile())) return [];
+    return PAGES.filter(function (p) {
+      if (p.kidsOnly && !kidsOn()) return false;
+      if (p.studentOnly && parentMode()) return false;
+      if (p.needAnalysis && !state.analysis) return false;
+      return true;
+    });
+  }
+
+  function renderNav() {
+    var open = openPages();
+    var steps = open.filter(function (p) { return !p.tool; });
+    var tools = open.filter(function (p) { return p.tool; });
+
+    $('stepNav').innerHTML = steps.map(function (p) {
+      // 홈과 단계 사이에 한 번만 선을 그어 "요약" 과 "순서" 를 갈라 준다
+      var div = p.num === '1' ? '<span class="step-div" aria-hidden="true"></span>' : '';
+      var accessibleName = p.home ? p.label : p.num + ' ' + p.label;
+      return div + '<button type="button" class="step' + (p.home ? ' is-home' : '') + '" data-go="' + p.id + '" aria-label="' + esc(accessibleName) + '">' +
+        (p.home ? '<i aria-hidden="true">' + p.icon + '</i>' : '<i>' + p.num + '</i>') +
+        '<span>' + esc(p.label) + '</span></button>';
+    }).join('');
+
+    $('moreBtn').classList.toggle('is-hidden', !tools.length);
+    $('moreMenu').innerHTML = tools.map(function (p) {
+      return '<button type="button" class="mm-item" role="menuitem" data-go="' + p.id + '">' +
+        '<span class="mm-ic" aria-hidden="true">' + esc(p.icon || '•') + '</span>' +
+        '<span class="mm-txt"><b>' + esc(p.label) + '</b><span>' + esc(p.desc || '') + '</span></span></button>';
+    }).join('');
+
+    $$('.step, .mm-item').forEach(function (b) {
+      b.addEventListener('click', function () { closeMore(); goPage(b.dataset.go); });
+    });
+    setActiveStep(state.page);
+    renderHomeQuick();
+  }
+
+  /* ------------------------------------------------------------- 더보기 */
+
+  function closeMore() {
+    $('moreMenu').classList.add('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleMore() {
+    var open = $('moreMenu').classList.toggle('is-hidden');
+    $('moreBtn').setAttribute('aria-expanded', open ? 'false' : 'true');
+  }
+
+  function initMore() {
+    $('moreBtn').addEventListener('click', function (e) { e.stopPropagation(); toggleMore(); });
+    // 바깥을 누르거나 Esc 를 누르면 닫힌다 — 메뉴가 열린 채 화면을 가리지 않게
+    document.addEventListener('click', function (e) {
+      if (!$('moreMenu').contains(e.target) && e.target !== $('moreBtn')) closeMore();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMore(); });
+    $('brandHome').addEventListener('click', function () {
+      goPage(Store.profile() ? 'secHome' : 'secProfile');
+    });
+  }
+
+  function setActiveStep(id) {
+    $$('.step').forEach(function (b) {
+      var on = b.dataset.go === id;
+      b.classList.toggle('is-active', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+      if (on && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+    // 지금 보고 있는 화면이 [더보기] 안에 있으면 버튼 자체를 켜 둔다.
+    // 안 그러면 상단 바 어디에도 표시가 없어 길을 잃는다.
+    var inMore = false;
+    $$('.mm-item').forEach(function (b) {
+      var on = b.dataset.go === id;
+      b.classList.toggle('is-active', on);
+      if (on) inMore = true;
+    });
+    $('moreBtn').classList.toggle('is-active', inMore);
+  }
+
+  function renderPageNav() {
+    var open = openPages();
+    var idx = -1;
+    open.forEach(function (p, i) { if (p.id === state.page) idx = i; });
+    if (idx < 0) { $('pageNav').innerHTML = ''; return; }
+
+    var prev = open[idx - 1], next = open[idx + 1];
+
+    // 분석 전 입력 화면에서는 '분석하기' 버튼이 다음 단계이므로 하단 이동을 감춘다
+    if (state.page === 'secInput' && !state.analysis) { $('pageNav').innerHTML = ''; return; }
+    $('pageNav').innerHTML =
+      (prev ? '<button type="button" class="pn prev" data-go="' + prev.id + '"><span class="arw">←</span>' +
+        '<span><span class="k">이전</span><span class="v">' + esc(prev.label) + '</span></span></button>' : '') +
+      (next ? '<button type="button" class="pn next" data-go="' + next.id + '">' +
+        '<span><span class="k">다음</span><span class="v">' + esc(next.label) + '</span></span><span class="arw">→</span></button>' : '');
+
+    $$('#pageNav .pn').forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.go); });
+    });
+  }
+
+  /** 실제 페이지 전환 */
+  function goPage(id, skipHash, replaceHash) {
+    var open = openPages();
+    var allowed = open.some(function (p) { return p.id === id; });
+
+    if (id === 'secProfile') allowed = true; // 프로필 편집은 언제나 가능
+    // 탭에 없는 페이지(관리자)는 프로필만 있으면 들어갈 수 있다.
+    // 실제 자물쇠는 화면 안의 로그인이지 이 라우팅이 아니다.
+    if (!allowed && Store.profile() && HIDDEN_PAGES.some(function (p) { return p.id === id; })) allowed = true;
+
+    if (!allowed) {
+      var p = pageBy(id);
+      if (p && p.needAnalysis) toast('먼저 오늘의 데이터를 분석해 주세요.', true);
+      else if (p && p.kidsOnly) toast('이 기능은 청여고 전용 모드에서 사용하지 않습니다.', true);
+      return false;
+    }
+
+    ALL_SECTIONS.forEach(function (sid) {
+      var el = $(sid);
+      if (!el) return;
+      el.classList.add('is-hidden');
+      el.classList.remove('is-active');
+    });
+    var el = $(id);
+    el.classList.remove('is-hidden');
+    // 애니메이션을 매번 다시 걸기 위해 리플로우를 한 번 강제한다
+    void el.offsetWidth;
+    el.classList.add('is-active');
+
+    state.page = id;
+    setActiveStep(id);
+    renderPageNav();
+
+    // 들어올 때마다 최신 값으로 다시 그린다
+    if (id === 'secHome') { renderHome(); Slime.open($('slimeRoot')); }
+    else Slime.stop();   // 홈을 떠나면 자동 생산 타이머를 멈춘다 (기록은 시각으로 남는다)
+    if (id === 'secLeague') { renderLeague(); leagueSync(false); pinRefresh(); }
+    if (id === 'secToday') renderTodayHome();
+    if (id === 'secAdmin' && Cloud.adminSession()) { renderAdminServer(); renderAdminLocal(); }
+    if (id === 'secAvatar') openAvatarPage();
+    // 저장 상태·마지막 백업 날짜가 지난 화면 그대로 남지 않게 한다
+    if (id === 'secSettings') renderSettingsPage();
+    // 시간이 흐르면 "아직 / 지남" 이 바뀐다 — 들어올 때마다 다시 판단한다
+    if (id === 'secInput') renderMealSched();
+    // 같은 반 명단은 서버에서 오므로, 들어올 때마다 다시 받아 온다
+    if (id === 'secGroup') renderGroup();
+    // 타이머에서 막 기록한 짧은 구간도 즉시 보이도록 진입할 때 다시 집계한다
+    if (id === 'secReport') renderReport();
+
+    var pg = pageBy(id);
+    if (!skipHash && pg) {
+      var nextHash = '#' + pg.hash;
+      if (location.hash !== nextHash) {
+        try {
+          if (replaceHash) history.replaceState(null, '', nextHash);
+          else history.pushState(null, '', nextHash);
+        } catch (e) { location.hash = pg.hash; }
+      }
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!skipHash) {
+      var heading = el.querySelector('h2');
+      if (heading) {
+        heading.setAttribute('tabindex', '-1');
+        try { heading.focus({ preventScroll: true }); } catch (e) { heading.focus(); }
+      }
+    }
+    return true;
+  }
+
+  var goto = goPage; // 기존 호출부 호환
+
+  function show(id) { /* 페이지 방식에서는 renderNav 가 노출을 결정한다 */ }
+  function hide(id) { var el = $(id); if (el) el.classList.add('is-hidden'); }
+  function visible(id) { return !$(id).classList.contains('is-hidden'); }
+
+  /* --------------------------------------------------------------- 입력 UI */
+
+  function paintRange(el) {
+    var min = parseFloat(el.min), max = parseFloat(el.max), v = parseFloat(el.value);
+    el.style.setProperty('--pct', ((v - min) / (max - min) * 100) + '%');
+  }
+
+  var RANGE_FMT = {
+    sleepHours: function (v) { return v + '시간'; },
+    stress: function (v) { return v + ' / 10'; },
+    fatigue: function (v) { return v + ' / 10'; },
+    hoursSinceMeal: function (v) { return v + '시간'; },
+    water: function (v) { return v + '컵'; },
+    caffeine: function (v) { return v + '잔'; },
+    exercise: function (v) { return v + '분'; },
+    availableHours: function (v) { return v + '시간'; },
+    pfGoal: function (v) { return v + '시간'; },
+    sndVol: function (v) { return v + '%'; }
+  };
+
+  function initRanges() {
+    $$('input[type="range"]').forEach(function (el) {
+      var out = $(el.dataset.out);
+      var fmt = RANGE_FMT[el.id] || function (v) { return v; };
+      var sync = function () { paintRange(el); if (out) out.textContent = fmt(el.value); };
+      el.addEventListener('input', sync);
+      sync();
+    });
+  }
+
+  function syncAllRanges() {
+    $$('input[type="range"]').forEach(function (el) { el.dispatchEvent(new Event('input')); });
+  }
+
+  function paintSegs() {
+    $$('.seg').forEach(function (seg) {
+      var hidden = $(seg.dataset.target);
+      $$('button', seg).forEach(function (b) {
+        var on = b.dataset.v === hidden.value;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    });
+  }
+
+  function initSegs() {
+    $$('.seg').forEach(function (seg) {
+      seg.addEventListener('click', function (e) {
+        var b = e.target.closest('button');
+        if (!b) return;
+        $(seg.dataset.target).value = b.dataset.v;
+        paintSegs();
+      });
+    });
+    paintSegs();
+  }
+
+  function moveOptionalDailyCards() {
+    var grid = $('detailBody').querySelector('.grid-2');
+    ['dailyMealCard', 'dailyTimetableCard'].forEach(function (id) {
+      var card = $(id);
+      if (card && grid) grid.insertBefore(card, grid.firstChild);
+    });
+  }
+
+  /* ------------------------------------------------------------ 과목 행 */
+
+  function addSubjectRow(data) {
+    var row = $('subjectRowTpl').content.cloneNode(true).querySelector('.subject-row');
+    if (data) {
+      row.querySelector('.s-name').value = data.name || '';
+      row.querySelector('.s-type').value = data.type || 'mixed';
+      row.querySelector('.s-date').value = data.examDate || '';
+      row.querySelector('.s-imp').value = String(data.importance || 3);
+      row.querySelector('.s-ready').value = String(data.readiness || 3);
+    }
+    row.querySelector('.s-del').addEventListener('click', function () {
+      if ($$('.subject-row', $('subjectList')).length <= 1) { toast('과목은 최소 1개가 필요합니다.', true); return; }
+      row.remove();
+      syncSubjectMoves();
+    });
+    row.querySelector('.s-up').addEventListener('click', function () { moveSubjectRow(row, -1, this); });
+    row.querySelector('.s-down').addEventListener('click', function () { moveSubjectRow(row, 1, this); });
+
+    $('subjectList').appendChild(row);
+    syncSubjectMoves();
+    return row;
+  }
+
+  /* 과목 순서 바꾸기.
+   *
+   *  끌어다 놓기는 좁은 화면에서 스크롤과 싸우고 키보드로는 아예 못 쓴다.
+   *  ↑↓ 버튼은 마우스·터치·키보드가 전부 같은 방법으로 쓸 수 있다.
+   *  누른 버튼에 초점을 되돌려 주므로 연달아 눌러 여러 칸을 옮길 수 있다. */
+  function moveSubjectRow(row, dir, btn) {
+    var sibling = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;                       // 끝에서는 버튼이 이미 꺼져 있다
+    if (dir < 0) $('subjectList').insertBefore(row, sibling);
+    else $('subjectList').insertBefore(sibling, row);
+    syncSubjectMoves();
+    /* 노드를 옮기면 초점이 풀리는 브라우저가 있어 직접 되돌린다.
+     * 끝에 닿아 그 버튼이 꺼졌으면 반대쪽 화살표 대신 과목명 칸으로 보낸다 —
+     * 반대쪽으로 초점을 옮기면 키보드로 한 번 더 누르는 순간 도로 내려간다. */
+    if (btn && !btn.disabled) btn.focus();
+    else row.querySelector('.s-name').focus();
+  }
+
+  /** 맨 위·맨 아래에서는 갈 곳이 없으므로 그쪽 버튼을 끈다 */
+  function syncSubjectMoves() {
+    var rows = $$('.subject-row', $('subjectList'));
+    rows.forEach(function (r, i) {
+      r.querySelector('.s-up').disabled = (i === 0);
+      r.querySelector('.s-down').disabled = (i === rows.length - 1);
+    });
+  }
+
+  function readSubjects() {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    return $$('.subject-row', $('subjectList')).map(function (row, i) {
+      var name = row.querySelector('.s-name').value.trim();
+      if (!name) return null;
+      var dv = row.querySelector('.s-date').value;
+      var daysLeft = null;
+      if (dv) {
+        var d = new Date(dv + 'T00:00:00');
+        if (!isNaN(d)) daysLeft = Math.round((d - today) / 86400000);
+      }
+      var action = state.planOverrides[name] || '';
+      return {
+        id: 'sub' + i, name: name,
+        type: row.querySelector('.s-type').value,
+        examDate: dv || null, daysLeft: daysLeft,
+        importance: parseInt(row.querySelector('.s-imp').value, 10),
+        readiness: parseInt(row.querySelector('.s-ready').value, 10),
+        preference: Store.recommendationPreference(name, row.querySelector('.s-type').value),
+        recommendationAction: action
+      };
+    }).filter(Boolean);
+  }
+
+  /* ---------------------------------------------------------- 입력 수집 */
+
+  function collectInput() {
+    var st = $('startTime').value, startHour;
+    if (st) {
+      var p = st.split(':');
+      startHour = parseInt(p[0], 10) + parseInt(p[1], 10) / 60;
+    } else {
+      var now = new Date();
+      startHour = now.getHours() + now.getMinutes() / 60;
+    }
+    var bt = $('bedTime').value, bedHour = null;
+    if (bt) {
+      var q = bt.split(':');
+      bedHour = parseInt(q[0], 10) + parseInt(q[1], 10) / 60;
+    }
+    return {
+      startHour: startHour, hour: startHour, bedHour: bedHour,
+      sleep: {
+        hours: parseFloat($('sleepHours').value),
+        quality: parseInt($('sleepQuality').value, 10),
+        regularity: parseInt($('sleepRegularity').value, 10)
+      },
+      stress: parseInt($('stress').value, 10),
+      fatigue: parseInt($('fatigue').value, 10),
+      mood: parseInt($('mood').value, 10),
+      meals: {
+        breakfast: $('mealBreakfast').checked,
+        lunch: $('mealLunch').checked,
+        dinner: $('mealDinner').checked
+      },
+      hoursSinceMeal: parseFloat($('hoursSinceMeal').value),
+      /* 끼니를 언제 먹기로 했는지는 계획표가 정한다 — 표준 시각을 박아 두면
+       * 아침 8시에 점심을 안 먹었다고 감점되는 일이 생긴다. */
+      mealPlan: MealPlan.engineInput(),
+      water: parseInt($('water').value, 10),
+      caffeine: parseInt($('caffeine').value, 10),
+      exercise: parseInt($('exercise').value, 10),
+      availableHours: parseFloat($('availableHours').value),
+      fixedPomodoro: $('fixedPomodoro').checked,
+      subjects: readSubjects()
+    };
+  }
+
+  function applyInput(inp) {
+    if (!inp) return;
+    $('sleepHours').value = inp.sleep.hours;
+    $('sleepQuality').value = inp.sleep.quality;
+    $('sleepRegularity').value = inp.sleep.regularity;
+    $('stress').value = inp.stress;
+    $('fatigue').value = inp.fatigue;
+    $('mood').value = inp.mood;
+    $('mealBreakfast').checked = !!inp.meals.breakfast;
+    $('mealLunch').checked = !!inp.meals.lunch;
+    $('mealDinner').checked = !!inp.meals.dinner;
+    $('hoursSinceMeal').value = inp.hoursSinceMeal;
+    $('water').value = inp.water;
+    $('caffeine').value = inp.caffeine;
+    $('exercise').value = inp.exercise;
+    $('availableHours').value = inp.availableHours;
+    $('fixedPomodoro').checked = !!inp.fixedPomodoro;   // 예전 기록에 없으면 꺼진 상태(자동)
+    // 취침 시각은 나중에 추가된 항목이라 예전 기록에는 없다 — 기본값을 유지한다
+    if (inp.bedHour !== null && inp.bedHour !== undefined) {
+      $('bedTime').value = pad(Math.floor(inp.bedHour)) + ':' + pad(Math.round((inp.bedHour % 1) * 60));
+    }
+
+    $('subjectList').innerHTML = '';
+    (inp.subjects && inp.subjects.length ? inp.subjects : [null, null]).forEach(addSubjectRow);
+
+    syncAllRanges();
+    paintSegs();
+  }
+
+  /* ============================================================ 프로필 == */
+
+  function renderProfileModeFields() {
+    $('pfSchool').value = DEDICATED_SCHOOL.name;
+    $('pfLevel').value = DEDICATED_SCHOOL.level;
+    $('pfNickLabel').textContent = '닉네임';
+    $('pfNickHint').textContent = '같은 반 친구들 순위표에 그대로 보입니다';
+    $('pfGradeLabel').textContent = '학년';
+    $('pfClassLabel').textContent = '반';
+    $('pfModeNote').innerHTML = '학년과 반은 <b>청여고 학급 시간표·우리 반 순위·포스트잇</b>에 공통으로 사용됩니다.';
+    $('pfEligibilityText').innerHTML = '<b>학생 이용자는 만 14세 이상입니다.</b> 서비스 이용 조건을 확인했습니다.';
+    $('pfLeagueWrap').classList.remove('is-hidden');
+  }
+
+  function fillGradeOptions(keepValue) {
+    var list = Group.GRADES[DEDICATED_SCHOOL.level];
+    $('pfGrade').innerHTML = list.map(function (g) {
+      return '<option value="' + esc(g) + '">' + esc(g === '해당 없음' ? g : g + '학년') + '</option>';
+    }).join('');
+    if (keepValue && list.indexOf(keepValue) >= 0) $('pfGrade').value = keepValue;
+  }
+
+  /* ------------------------------------------------- 학교명 자동완성 ---- */
+
+  var acIndex = -1, acTimer = null, acSeq = 0;
+
+  function renderSchoolChoiceStatus() {
+    var el = $('pfSchoolStatus');
+    if (!el) return;
+    var school = $('pfSchool').value.trim();
+    var prev = Store.profile();
+    var picked = state.pickedSchool && state.pickedSchool.name === school;
+    var saved = prev && prev.neis && prev.neis.name === school;
+    if (picked || saved) {
+      el.textContent = '✅ 나이스 학교를 선택했습니다. 급식과 학급 시간표를 조회할 수 있습니다.';
+    } else if (school) {
+      el.textContent = '⚠ 직접 입력한 학교입니다. 저장은 가능하지만 급식과 학급 시간표는 조회할 수 없습니다.';
+    } else {
+      el.textContent = '목록에서 실제 학교를 선택하면 급식과 학급 시간표를 볼 수 있습니다.';
+    }
+  }
+
+  function acItems() { return $$('#schoolAc .ac-item'); }
+
+  function closeAc() { $('schoolAc').classList.add('is-hidden'); acIndex = -1; }
+
+  function pickAc(btn) {
+    $('pfSchool').value = btn.dataset.name;
+    if (btn.dataset.school) {
+      // 나이스에서 고른 학교 — 급식 조회에 쓸 코드를 함께 보관한다
+      state.pickedSchool = {
+        name: btn.dataset.name,
+        eduCode: btn.dataset.edu,
+        schoolCode: btn.dataset.school,
+        region: btn.dataset.region || '',
+        kind: btn.dataset.kind || ''
+      };
+      if (btn.dataset.level && Group.GRADES[btn.dataset.level] &&
+          !($('pfLevel').value === '학부모' && btn.dataset.level === '초등학교')) {
+        $('pfLevel').value = btn.dataset.level;
+        fillGradeOptions($('pfGrade').value);
+      }
+    } else {
+      state.pickedSchool = null; // 직접 입력한 이름은 코드가 없다
+    }
+    closeAc();
+    renderSchoolChoiceStatus();
+    $('pfSchool').focus();
+  }
+
+  function acRow(o) {
+    var qq = $('pfSchool').value.trim();
+    var shown = esc(o.name);
+    if (qq && o.name.indexOf(qq) === 0) shown = '<b>' + esc(qq) + '</b>' + esc(o.name.slice(qq.length));
+
+    var attrs = ' data-name="' + esc(o.name) + '"';
+    var sub = '', tag = '완성', icon = '🏫';
+
+    // 나이스 응답만 학교 코드를 갖는다 — 나이스가 죽었을 때 내장 목록으로
+    // 떨어지면(neis.js) 코드가 없어 급식·시간표 조회로 이어지지 않는다.
+    if (o.schoolCode) {
+      attrs += ' data-school="' + esc(o.schoolCode) + '" data-edu="' + esc(o.eduCode) + '"' +
+               ' data-region="' + esc(o.region) + '" data-kind="' + esc(o.kind) + '" data-level="' + esc(o.level) + '"';
+      sub = '<span class="asub">' + esc(o.region) + ' · ' + esc(o.kind) + '</span>';
+      tag = '나이스';
+    }
+
+    return '<button type="button" class="ac-item"' + attrs + '>' +
+      '<span class="ai">' + icon + '</span>' +
+      '<span class="an">' + shown + sub + '</span>' +
+      '<span class="at">' + tag + '</span></button>';
+  }
+
+  function paintAc(list, loading) {
+    if (!list.length && !loading) { closeAc(); return; }
+    $('schoolAc').innerHTML = list.map(acRow).join('') +
+      (loading ? '<div class="ac-loading">🔎 나이스에서 학교를 찾는 중…</div>'
+               : '<div class="ac-hint">목록에 없으면 전체 이름을 직접 입력하셔도 됩니다.</div>');
+    acItems().forEach(function (b) {
+      b.addEventListener('mousedown', function (e) { e.preventDefault(); pickAc(b); });
+    });
+    $('schoolAc').classList.remove('is-hidden');
+    acIndex = -1;
+  }
+
+  function openAc() {
+    var q = $('pfSchool').value;
+    var level = schoolLevel($('pfLevel').value);
+
+    // 나이스는 인증키가 없어도 실제 학교를 돌려준다. 두 글자 미만은 검색하지 않는다.
+    var useNeis = q.trim().length >= 2;
+    if (!useNeis) { closeAc(); return; }
+    paintAc([], true);
+
+    clearTimeout(acTimer);
+    var seq = ++acSeq;
+    acTimer = setTimeout(function () {
+      // 결과가 도착했을 때 아직 유효한 요청인지 판단한다.
+      // 포커스로 판정하면 창이 잠깐 focus 를 잃어도 결과가 사라지므로,
+      // "더 최근 입력이 없고, 목록이 아직 열려 있고, 입력값이 그대로인가" 로 본다.
+      var stillValid = function () {
+        return seq === acSeq &&
+               !$('schoolAc').classList.contains('is-hidden') &&
+               $('pfSchool').value === q;
+      };
+      Neis.searchSchools(q, level).then(function (rows) {
+        if (!stillValid()) return;
+        paintAc(rows.slice(0, 8), false);
+      }).catch(function () {
+        if (!stillValid()) return;
+        closeAc();
+      });
+    }, 280);
+  }
+
+  function initSchoolAc() {
+    $('pfSchool').value = DEDICATED_SCHOOL.name;
+    $('pfLevel').value = DEDICATED_SCHOOL.level;
+    state.pickedSchool = dedicatedSchoolNeis();
+  }
+
+  function renderProfileChip() {
+    var p = Store.profile();
+    var chip = $('profileChip');
+    if (!p) { chip.classList.add('is-hidden'); return; }
+    chip.classList.remove('is-hidden');
+    $('pcAvatar').innerHTML = Avatar.html(Avatar.get(), Avatar.lifetimeMinutes(), 'av-xs');
+    $('pcName').textContent = p.nick;
+    $('pcGroup').textContent = Group.groupLabel(p);
+    chip.setAttribute('aria-label', p.nick + ' 프로필 열기, ' + Group.groupLabel(p));
+  }
+
+  function openProfile(edit) {
+    var p = Store.profile();
+    if (p) {
+      $('pfNick').value = p.nick || '';
+      $('pfSchool').value = DEDICATED_SCHOOL.name;
+      $('pfLevel').value = DEDICATED_SCHOOL.level;
+      fillGradeOptions(p.grade);
+      $('pfClass').value = p.klass || '';
+      $('pfGoal').value = p.goal || 25;
+      state.pickedSchool = dedicatedSchoolNeis();
+      syncAllRanges();
+      $('pfEligibility').checked = profileEligibility(p);
+    } else {
+      $('pfSchool').value = DEDICATED_SCHOOL.name;
+      $('pfLevel').value = DEDICATED_SCHOOL.level;
+      state.pickedSchool = dedicatedSchoolNeis();
+      fillGradeOptions();
+      $('pfEligibility').checked = false;
+    }
+    renderProfileModeFields();
+    renderSchoolChoiceStatus();
+    renderCloudSettings(); // pfLeague 체크박스를 지금의 Cloud 상태로 맞춘다
+    $('cancelProfile').style.display = p && profileEligibility(p) ? '' : 'none';
+    goPage('secProfile');
+  }
+
+  function saveProfile() {
+    var nick = $('pfNick').value.trim();
+    var school = DEDICATED_SCHOOL.name;
+    if (!nick) { toast('닉네임을 입력해 주세요.', true); $('pfNick').focus(); return; }
+    if (!$('pfEligibility').checked) {
+      toast('만 14세 이상 이용 확인이 필요합니다.', true);
+      $('pfEligibility').focus();
+      return;
+    }
+
+    var prev = Store.profile();
+
+    /* 학년이 비면 반 리그에 조용히 못 들어간다. 목록이 아직 안 채워진 상태로
+     * 저장되는 경우가 있어(선택지가 비어 있으면 value 가 '' 다) 여기서 막는다. */
+    if (!$('pfGrade').value) {
+      fillGradeOptions();
+      if (!$('pfGrade').value) {
+        toast('학년을 선택해 주세요.', true); $('pfGrade').focus(); return;
+      }
+    }
+
+    var klass = $('pfClass').value.trim();
+    if (!/^\d+$/.test(klass) || +klass < 1 || +klass > 20) {
+      toast('반을 1~20 사이 숫자로 입력해 주세요.', true); $('pfClass').focus(); return;
+    }
+
+    var p = {
+      nick: nick, school: school,
+      level: DEDICATED_SCHOOL.level,
+      grade: $('pfGrade').value,
+      klass: klass,
+      goal: parseInt($('pfGoal').value, 10),
+      eligibility: 'age14',
+      neis: dedicatedSchoolNeis()
+    };
+
+    // 프로필 폼은 아바타를 다루지 않는다. 여기서 넘겨받지 않으면 저장할 때마다 꾸민 게 초기화된다.
+    if (prev && prev.avatar) p.avatar = prev.avatar;
+
+    // 그룹이 바뀌면 이전 내 기록은 새 id 로 옮겨야 하므로 옛 항목을 지운다
+    if (prev && Group.memberId(prev) !== Group.memberId(p)) Group.remove(Group.memberId(prev));
+
+    // 학교나 학년이 바뀌면 남의 학교 학사일정이 달력에 남아 있으면 안 된다
+    if (!prev || prev.school !== p.school || prev.grade !== p.grade ||
+        (prev.neis && prev.neis.schoolCode) !== (p.neis && p.neis.schoolCode)) {
+      resetSchedule();
+    }
+
+    Store.saveProfile(p);
+    Store.rememberSchool(school);
+    Group.syncSelf();
+    renderProfileChip();
+    unlockApp();
+    renderGroup();
+    renderLeague();
+    renderReport();
+    renderKids();
+    renderSettingsPage();
+    renderMeals();
+    fillTtGradeOptions(p.grade);
+    $('ttClass').value = p.klass || '';
+    renderTimetable();
+    // 계획표 제목을 손대지 않았다면 새 이름을 따라가게 한다
+    if (state.vacplan && state.vacplan.titleAuto !== false) {
+      state.vacplan.title = nick + '의 계획표';
+      vpSave();
+      if ($('vpTitle')) $('vpTitle').value = state.vacplan.title;
+      vpRenderPreview();
+    }
+    // 리그 참가를 프로필이 없던 시점(첫 화면)에 이미 켰다면 그때는 보낼 학교가 없어
+    // 조용히 넘어갔었다 — 이제 프로필이 생겼으니 한 번 밀어 준다.
+    if (Cloud.enabled()) leagueSync(true);
+    toast('청여고 ' + p.grade + '학년 ' + p.klass + '반으로 설정했습니다.');
+    goPage(prev ? 'secSettings' : 'secHome');
+  }
+
+  function unlockApp() { renderNav(); renderPageNav(); }
+
+  /* ------------------------------------------------------- 결과 렌더링 */
+
+  function renderResult(a) {
+    var now = new Date();
+    $('analyzedAt').textContent =
+      now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일 ' +
+      fmtHour(a.input.hour) + ' 기준 · 자기보고 입력 기반 추정 · 모델 v1 · 참고값은 5점 단위로 표시';
+
+    var C = 2 * Math.PI * 92;
+    var fill = $('gaugeFill');
+    fill.style.strokeDasharray = C;
+    fill.style.strokeDashoffset = C;
+    setTimeout(function () { fill.style.strokeDashoffset = C * (1 - displayScore(a.overall) / 100); }, 60);
+
+    animateNum($('overallScore'), displayScore(a.overall));
+    $('overallState').textContent = scoreBand(a.overall);
+    $('overallState').className = 'g-state ' + a.state.tone;
+
+    // 5개 능력은 같은 뿌리(수면·피로)에서 나와 서로 붙어 움직인다.
+    // 편차가 충분히 벌어졌을 때만 "무엇이 낫다" 고 말한다.
+    $('heroTitle').textContent = a.capMeaningful
+      ? '오늘 자기보고 입력에서는 ' + a.top.label + '가 상대적으로 높고, ' + a.bottom.label + '가 상대적으로 낮게 추정됐습니다.'
+      : '오늘은 과제 유형별 준비도 차이가 크지 않습니다. 먼저 시작하기 쉬운 과목을 고르세요.';
+    $('heroLine').textContent = a.state.line + ' ' + dominantDriver(a);
+
+    $('alertList').innerHTML = a.alerts.map(function (x) {
+      return '<div class="alert ' + x.level + '"><b>' + (x.level === 'bad' ? '⚠' : '!') + '</b><span>' + esc(x.text) + '</span></div>';
+    }).join('') || '<div class="alert warn"><b>✓</b><span>현재 입력에서 특별히 조정할 항목은 없습니다. 실제 체감을 보며 계획을 바꾸세요.</span></div>';
+
+    $('aiBriefingLine').textContent = buildAiBriefing(a);
+
+    renderCapStrip(a);
+    renderRadar(a);
+    renderCapBars(a);
+    renderCapDetails(a);
+    collapseResultDetail();
+  }
+
+  /* ------------------------------------------------------- 규칙 기반 브리핑 한 줄
+   * 점수만 늘어놓지 않고, 어제 대비 변화 + 오늘 먼저/뒤로 할 과목 유형까지
+   * 한 문장으로 묶어 오늘 결과를 빠르게 이해하게 한다. */
+
+  function bestTypeFor(capId) {
+    var best = null, bestW = -1;
+    Object.keys(BrainPlanner.TYPES).forEach(function (id) {
+      if (id === 'mixed') return;
+      var w = BrainPlanner.TYPES[id].affinity[capId] || 0;
+      if (w > bestW) { bestW = w; best = id; }
+    });
+    return best ? BrainPlanner.TYPES[best] : null;
+  }
+
+  function buildAiBriefing(a) {
+    var yKey = Store.key(new Date(Date.now() - 86400000));
+    var y = Store.recordOn(yKey);
+
+    var trend = '';
+    if (y) {
+      var sleepDiff = a.input.sleep.hours - y.sleep;
+      var overallDiff = displayScore(a.overall) - displayScore(y.overall);
+      if (Math.abs(sleepDiff) >= 0.4) {
+        trend = '어제보다 수면이 ' + round1(Math.abs(sleepDiff)) + '시간 ' + (sleepDiff < 0 ? '부족합니다.' : '늘었습니다.') + ' ';
+      } else if (Math.abs(overallDiff) >= 5) {
+        trend = '어제보다 학습 준비도 참고값이 ' + Math.abs(overallDiff) + '점 ' + (overallDiff < 0 ? '낮게' : '높게') + ' 나타났습니다. ';
+      }
+    }
+
+    var advice;
+    if (a.capMeaningful) {
+      var good = bestTypeFor(a.top.id);
+      var bad = bestTypeFor(a.bottom.id);
+      advice = '오늘은 ' + good.label + '(' + good.hint.split(' · ')[0] + ' 등)을 먼저 시도하고, ' +
+        bad.label + '은 다음 순서로 두어 보세요.';
+    } else {
+      advice = a.state.line;
+    }
+
+    return trend + advice;
+  }
+
+  function round1(n) { return Math.round(n * 10) / 10; }
+
+  /* -------------------------------------------------- 결과 요약 스트립
+   * 결과 화면이 길어 한눈에 안 들어온다는 이야기가 있어,
+   * 기본은 점수 5개까지만 보여 주고 근거는 눌렀을 때 펼치도록 했다. */
+
+  function renderCapStrip(a) {
+    var mean = Math.round(a.capMean);
+
+    $('capStrip').innerHTML = a.capacities.map(function (c) {
+      var rel = Math.round(c.rel / 5) * 5;
+      var relCls = rel >= 2 ? 'up' : (rel <= -2 ? 'dn' : 'flat');
+      var relTxt = rel === 0 ? '±0' : (rel > 0 ? '+' + rel : '−' + Math.abs(rel));
+      var isTop = a.capMeaningful && c.id === a.top.id;
+
+      return '<button type="button" class="cap-chip' + (isTop ? ' is-top' : '') + '"' +
+        ' data-cap="' + c.id + '" aria-label="' + esc(c.label) + ' ' + scoreBand(c.score) + ', 자세히 보기">' +
+        '<span class="cc-ic">' + c.icon + '</span>' +
+        '<span class="cc-score" style="color:' + c.color + '">' + displayScore(c.score) + '</span>' +
+        '<span class="cc-name">' + esc(c.short) + '</span>' +
+        '<span class="cc-track"><i class="cc-fill" data-w="' + displayScore(c.score) + '" style="width:0;background:' + c.color + '"></i></span>' +
+        '<span class="cc-rel ' + relCls + '">' + relTxt + '</span>' +
+      '</button>';
+    }).join('');
+
+    $('capStripNote').innerHTML = a.capMeaningful
+      ? '오늘 자기보고 입력에서는 <b>' + esc(a.top.label) + '</b>가 다른 유형보다 상대적으로 높게 추정됐습니다. 실제 체감이 다르면 추천을 바꿔 주세요.'
+      : '오늘은 유형 간 차이가 작아 <b>어떤 과목이 특별히 유리하다고 말하기 어렵습니다.</b> 먼저 시작하기 쉬운 과목을 고르세요.';
+
+    setTimeout(function () {
+      $$('.cc-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; });
+    }, 80);
+
+    // 칩을 누르면 상세를 펼치고 그 능력의 근거 카드로 데려간다
+    $$('.cap-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () { openCapDetail(chip.dataset.cap); });
+    });
+  }
+
+  function detailOpen() { return !$('resultDetail').classList.contains('is-hidden'); }
+
+  function collapseResultDetail() {
+    $('resultDetail').classList.add('is-hidden');
+    $('resultMore').setAttribute('aria-expanded', 'false');
+    $('resultMore').querySelector('.rm-txt').textContent = '자세한 분석 보기';
+    $$('.cd').forEach(function (c) { c.classList.remove('open'); });
+    $$('.cap-bar').forEach(function (b) { b.classList.remove('on'); });
+  }
+
+  function expandResultDetail() {
+    $('resultDetail').classList.remove('is-hidden');
+    $('resultMore').setAttribute('aria-expanded', 'true');
+    $('resultMore').querySelector('.rm-txt').textContent = '자세한 분석 접기';
+    // 숨어 있는 동안 막대 애니메이션이 돌지 않았을 수 있어 다시 채운다
+    $$('.cb-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; });
+  }
+
+  function toggleResultDetail() {
+    if (detailOpen()) collapseResultDetail();
+    else expandResultDetail();
+  }
+
+  /** 특정 능력의 근거 카드를 펼쳐 보여 준다 */
+  function openCapDetail(capId) {
+    expandResultDetail();
+
+    var card = document.querySelector('.cd[data-cap="' + capId + '"]');
+    if (!card) return;
+
+    $$('.cd').forEach(function (c) { c.classList.remove('open'); });
+    card.classList.add('open');
+    $$('.cap-bar').forEach(function (b) { b.classList.toggle('on', b.dataset.cap === capId); });
+
+    // 레이아웃이 잡힌 뒤에 스크롤해야 위치가 맞는다
+    setTimeout(function () { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60);
+  }
+
+  function dominantDriver(a) {
+    var totals = {};
+    a.capacities.forEach(function (cap) {
+      var w = BrainEngine.OVERALL_WEIGHTS[cap.id];
+      cap.contribs.forEach(function (c) { totals[c.id] = (totals[c.id] || 0) + w * c.points; });
+    });
+    var arr = Object.keys(totals).map(function (k) { return { id: k, v: totals[k] }; })
+      .sort(function (x, y) { return Math.abs(y.v) - Math.abs(x.v); });
+    if (!arr.length) return '';
+    var f = a.factors[arr[0].id];
+    return '이번 참고값에서 가장 크게 반영된 입력은 ' + f.label + '(' + f.display + ')이며, ' + (arr[0].v < 0 ? '낮추는' : '높이는') + ' 방향으로 반영됐습니다.';
+  }
+
+  // 카운트업은 장식이므로 값을 먼저 확정해 둔다.
+  // 백그라운드 탭에서는 rAF 가 한 번도 돌지 않아서, 애니메이션에만 의존하면
+  // 분석 직후 앱을 전환한 사용자는 돌아왔을 때 0 점에서 굳은 화면을 보게 된다.
+  function animateNum(el, target) {
+    var final = Math.round(target);
+    el.textContent = final;
+
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || document.hidden) return;
+
+    var dur = 900, t0 = performance.now(), done = false;
+
+    function finish() {
+      if (done) return;
+      done = true;
+      el.textContent = final;
+      document.removeEventListener('visibilitychange', onHide);
+    }
+    function onHide() { if (document.hidden) finish(); }
+    document.addEventListener('visibilitychange', onHide);
+
+    el.textContent = '0';
+    function step(t) {
+      if (done) return;
+      var p = Math.min(1, (t - t0) / dur);
+      el.textContent = Math.round(final * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+      else finish();
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ------------------------------------------------------------- 레이더 */
+
+  function renderRadar(a) {
+    var cx = 170, cy = 152, R = 104, n = a.capacities.length;
+    var svg = [];
+
+    function pt(i, r) {
+      var ang = -Math.PI / 2 + (2 * Math.PI * i) / n;
+      return [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r];
+    }
+
+    [0.25, 0.5, 0.75, 1].forEach(function (k) {
+      var pts = [];
+      for (var i = 0; i < n; i++) pts.push(pt(i, R * k).map(function (v) { return v.toFixed(1); }).join(','));
+      svg.push('<polygon points="' + pts.join(' ') + '" fill="none" stroke="rgba(22,26,39,0.10)" stroke-width="1"/>');
+    });
+    for (var i = 0; i < n; i++) {
+      var p = pt(i, R);
+      svg.push('<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '" stroke="rgba(22,26,39,0.10)" stroke-width="1"/>');
+    }
+
+    var dpts = a.capacities.map(function (c, idx) {
+      return pt(idx, R * (c.score / 100)).map(function (v) { return v.toFixed(1); }).join(',');
+    });
+    svg.push('<defs><radialGradient id="radarGrad"><stop offset="0%" stop-color="rgba(109,74,255,0.42)"/><stop offset="100%" stop-color="rgba(8,145,178,0.16)"/></radialGradient></defs>');
+    svg.push('<polygon points="' + dpts.join(' ') + '" fill="url(#radarGrad)" stroke="#6d4aff" stroke-width="2" stroke-linejoin="round"/>');
+
+    a.capacities.forEach(function (c, idx) {
+      var p2 = pt(idx, R * (c.score / 100));
+      svg.push('<circle cx="' + p2[0].toFixed(1) + '" cy="' + p2[1].toFixed(1) + '" r="4.5" fill="' + c.color + '" stroke="#ffffff" stroke-width="2"/>');
+      var lp = pt(idx, R + 26);
+      var anchor = lp[0] > cx + 12 ? 'start' : (lp[0] < cx - 12 ? 'end' : 'middle');
+      svg.push('<text x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '" text-anchor="' + anchor + '" fill="#5b6579" font-size="11.5" font-weight="600">' + esc(c.short) + '</text>');
+      svg.push('<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 14).toFixed(1) + '" text-anchor="' + anchor + '" fill="' + c.color + '" font-size="12.5" font-weight="800">' + displayScore(c.score) + '</text>');
+    });
+
+    $('radar').innerHTML = svg.join('');
+    $('radarLegend').innerHTML = a.capacities.map(function (c) {
+      return '<span><i style="background:' + c.color + '"></i>' + esc(c.label) + '</span>';
+    }).join('');
+  }
+
+  /* ---------------------------------------------------------- 능력 카드 */
+
+  function levelTag(level) {
+    // 앱 전체 색과 같은 계열로 — 초록·주황 대신 --good/--warn 토큰과 맞춘 파랑·로즈브라운
+    if (level === 'high') return { t: '우수', c: '#2a55a8', b: '#eaf1fc' };
+    if (level === 'mid') return { t: '보통', c: '#3f5bc4', b: '#eaeeff' };
+    return { t: '낮음', c: '#7a4f3b', b: '#f6efec' };
+  }
+
+  function renderCapBars(a) {
+    var mean = displayScore(a.capMean);
+    $('capBars').innerHTML = a.capacities.map(function (c) {
+      var tg = levelTag(c.level);
+      var shownScore = displayScore(c.score);
+      var rel = shownScore - mean;
+      var relCls = rel >= 2 ? 'up' : (rel <= -2 ? 'dn' : 'flat');
+      var relTxt = rel === 0 ? '평균' : (rel > 0 ? '+' + rel : '−' + Math.abs(rel));
+      return '<button type="button" class="cap-bar" data-cap="' + c.id + '">' +
+        '<div class="cb-top"><span>' + c.icon + '</span><span class="cb-name">' + esc(c.label) + '</span>' +
+        '<span class="cb-tag" style="color:' + tg.c + ';background:' + tg.b + '">' + tg.t + '</span>' +
+        '<span class="cb-rel ' + relCls + '" title="오늘 5개 과제 적합도 평균(' + mean + '점) 대비">' + relTxt + '</span>' +
+        '<span class="cb-score" style="color:' + c.color + '">' + shownScore + '</span></div>' +
+        '<div class="cb-track"><div class="cb-fill" data-w="' + shownScore + '" style="background:linear-gradient(90deg,' + c.color + '99,' + c.color + ')"></div>' +
+        '<div class="cb-mean" style="left:calc(' + mean + '% - 1px)" title="오늘 평균 참고값 ' + mean + '점"></div></div>' +
+        '<div class="cb-desc">' + esc(kidsOn() && c.kidsDesc ? c.kidsDesc : c.desc) + '</div></button>';
+    }).join('') +
+      '<p class="tiny">세로선은 오늘 5개 과제 적합도 참고값의 평균(' + mean + '점)입니다. 같은 자기보고 입력을 함께 참고하므로 값이 비슷하게 움직일 수 있습니다. ' +
+      (a.capMeaningful
+        ? '오늘은 과제 유형 간 차이가 ' + displayScore(a.capSpread) + '점으로 나타나 <b>평균 대비 편차</b>를 과목 순서에 참고할 수 있습니다.'
+        : '오늘은 최고·최저 차이가 약 ' + displayScore(a.capSpread) + '점이라 <b>어떤 과목이 특별히 유리하다고 말하기 어렵습니다.</b> 전체 준비도 구간을 참고해 총량만 조절하세요.') + '</p>';
+
+    setTimeout(function () { $$('.cb-fill').forEach(function (el) { el.style.width = el.dataset.w + '%'; }); }, 80);
+
+    $$('.cap-bar').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var card = document.querySelector('.cd[data-cap="' + btn.dataset.cap + '"]');
+        if (!card) return;
+        // 이미 열려 있으면 접는다
+        if (card.classList.contains('open')) {
+          card.classList.remove('open');
+          btn.classList.remove('on');
+          return;
+        }
+        openCapDetail(btn.dataset.cap);
+      });
+    });
+  }
+
+  /* -------------------------------------------------------- 산출 근거 */
+
+  function renderCapDetails(a) {
+    $('capDetails').innerHTML = a.capacities.map(function (c) {
+      var maxAbs = Math.max.apply(null, c.contribs.map(function (x) { return Math.abs(x.points); }).concat([1]));
+
+      var rows = c.contribs.map(function (ct) {
+        var pos = ct.points >= 0;
+        var w = (Math.abs(ct.points) / maxAbs) * 50;
+        return '<div class="ct">' +
+          '<div class="ct-label">' + ct.icon + '<b>' + esc(ct.label) + '</b></div>' +
+          '<div class="ct-mid"><div class="ct-bar ' + (pos ? 'pos' : 'neg') + '" style="width:' + w.toFixed(1) + '%"></div></div>' +
+          '<div class="ct-val ' + (pos ? 'pos' : 'neg') + '">' + signed(ct.points) + '</div>' +
+          '<div class="ct-note"><b>' + esc(ct.display) + '</b> · 가중치 ' + Math.round(ct.weight * 100) + '% — ' + esc(ct.note) + '</div>' +
+        '</div>';
+      }).join('');
+
+      var circPct = Math.round((c.circMult - 1) * 100);
+      var atTime = '지금 시각(' + fmtHour(a.input.hour) + ')은';
+      var circText = circPct === 0
+        ? atTime + ' ' + c.label + '의 평균 구간이라 보정이 없습니다.'
+        : (circPct > 0
+            ? atTime + ' ' + c.label + '이 상대적으로 잘 올라오는 시간대라 ' + circPct + '% 가산됐습니다.'
+            : atTime + ' ' + c.label + '의 일주기 저점에 가까워 ' + Math.abs(circPct) + '% 감산됐습니다.');
+
+      return '<div class="cd" data-cap="' + c.id + '">' +
+        '<button type="button" class="cd-head">' +
+          '<span class="dot" style="background:' + c.color + '"></span>' +
+          '<span class="nm">' + c.icon + ' ' + esc(c.label) + '</span>' +
+          '<span class="sc" style="color:' + c.color + '">' + scoreBand(c.score) + ' · ' + displayScore(c.score) + '점</span>' +
+          '<span class="chev">▼</span></button>' +
+        '<div class="cd-body">' +
+          '<div class="contrib">' + rows + '</div>' +
+          '<div class="calc-line"><span>입력 범위</span><span class="v">오늘의 자기보고 항목</span></div>' +
+          '<div class="calc-line"><span>표시 방식</span><span class="v">5점 단위 참고값</span></div>' +
+          '<div class="calc-line"><span>시간대 반영</span><span class="v">' + (circPct === 0 ? '중립' : (circPct > 0 ? '상향' : '하향')) + '</span></div>' +
+          '<div class="calc-line total"><span>추정 결과</span><span class="v">' + scoreBand(c.score) + ' · ' + displayScore(c.score) + '점</span></div>' +
+          '<div class="why">' + whyText(c, circText) + '</div>' +
+        '</div></div>';
+    }).join('');
+
+    $$('.cd-head').forEach(function (h) {
+      h.addEventListener('click', function () {
+        var cd = h.parentElement, wasOpen = cd.classList.contains('open');
+        $$('.cd').forEach(function (x) { x.classList.remove('open'); });
+        if (!wasOpen) cd.classList.add('open');
+      });
+    });
+  }
+
+  function whyText(c, circText) {
+    var pos = c.contribs.filter(function (x) { return x.points > 0.4; });
+    var neg = c.contribs.filter(function (x) { return x.points < -0.4; });
+    var parts = ['<b>왜 ' + esc(c.label) + '가 ' + scoreBand(c.score) + '으로 추정됐나요?</b>'];
+
+    if (neg.length) {
+      parts.push('낮추는 방향으로 가장 크게 반영된 입력은 <b>' + esc(neg[0].label) + '(' + esc(neg[0].display) + ')</b>' +
+        (neg[1] ? ', 그다음은 <b>' + esc(neg[1].label) + '(' + esc(neg[1].display) + ')</b>입니다' : '입니다') + '.');
+    }
+    if (pos.length) {
+      parts.push('높이는 방향으로 가장 크게 반영된 입력은 <b>' + esc(pos[0].label) + '(' + esc(pos[0].display) + ')</b>' +
+        (pos[1] ? ', 그다음은 <b>' + esc(pos[1].label) + '</b>입니다' : '입니다') + '.');
+    }
+    if (!pos.length && !neg.length) parts.push('모든 지표가 중립에 가까워 큰 가감 요인이 없습니다.');
+    parts.push(circText);
+
+    if (c.level === 'high') parts.push('→ 오늘은 이 유형을 먼저 시도해 볼 수 있지만, 실제 체감이 다르면 추천을 바꾸세요.');
+    else if (c.level === 'low') parts.push('→ 오늘은 이 유형을 짧게 시작하고, 실제 체감이 어렵다면 복습 과제로 바꾸세요.');
+
+    return parts.join(' ');
+  }
+
+  /* --------------------------------------------------------- 플랜 렌더링 */
+
+  function renderPlan(p) {
+    $('planHeadline').textContent = p.headline;
+    renderCurfew(p);
+    renderGoalTiers(p);
+
+    $('pomSummary').innerHTML =
+      '<div class="pm hi"><div class="pm-k">추천 모드</div><div class="pm-v" style="font-size:17px">' + esc(p.pomodoro.name) + '</div></div>' +
+      '<div class="pm"><div class="pm-k">집중 / 휴식</div><div class="pm-v">' + p.pomodoro.focus + '<small>분</small> / ' + p.pomodoro.short + '<small>분</small></div></div>' +
+      '<div class="pm"><div class="pm-k">총 학습 시간</div><div class="pm-v">' + Math.floor(p.plannedStudyMin / 60) + '<small>시간</small> ' + (p.plannedStudyMin % 60) + '<small>분</small></div></div>' +
+      '<div class="pm"><div class="pm-k">집중 블록</div><div class="pm-v">' + p.totalBlocks + '<small>개</small></div></div>' +
+      '<div class="pom-note">⚙️ ' + esc(p.pomodoroReason) + ' ' + esc(p.scaleNote) +
+        ' 긴 휴식은 ' + p.pomodoro.cycle + '블록마다 ' + p.pomodoro.long + '분으로 배치했습니다.</div>';
+
+    var total = p.plannedStudyMin || 1;
+    $('allocBar').innerHTML = p.subjects.map(function (s) {
+      var pct = s.minutes / total * 100;
+      return '<div class="ab" style="width:' + pct.toFixed(2) + '%;background:' + s.color + '" title="' + esc(s.name) + ' ' + s.minutes + '분">' +
+        (pct > 11 ? esc(s.name) : '') + '</div>';
+    }).join('');
+
+    /* 과목마다 근거·공부법·지표를 다 펼쳐 두면 화면이 너무 길어진다.
+     * 기본은 "무엇을 얼마나" 한 줄만 두고, 누르면 이유가 펼쳐지게 한다. */
+    $('subjectPlans').innerHTML = p.subjects.map(function (s) {
+      var act = state.planOverrides[s.name] || '';
+      var dd = s.daysLeft === null ? '' :
+        '<span class="sp-chip dday' + (s.daysLeft > 7 ? ' far' : '') + '">' + (s.daysLeft < 0 ? '종료' : (s.daysLeft === 0 ? 'D-DAY' : 'D-' + s.daysLeft)) + '</span>';
+      return '<div class="sp" style="--c:' + s.color + '" data-subj="' + esc(s.name) + '">' +
+        '<button type="button" class="sp-top" aria-expanded="false">' +
+          '<span class="sp-lead">' +
+            '<span class="sp-name">' + esc(s.name) + '</span>' +
+            '<span class="sp-chip">' + s.typeIcon + ' ' + esc(s.typeLabel) + '</span>' + dd +
+          '</span>' +
+          '<span class="sp-time">' + fmtDur(s.minutes) + '<small>' + s.blocks + '블록</small></span>' +
+          '<span class="sp-arw" aria-hidden="true">▾</span>' +
+        '</button>' +
+        '<div class="sp-body">' +
+          '<p class="sp-reason">' + esc(s.reason) + '</p>' +
+          '<div class="sp-method"><h5>' + esc(s.method) + '</h5><p>' +
+            esc(kidsOn() && s.methodBodyKids ? s.methodBodyKids : s.methodBody) + '</p></div>' +
+          '<div class="sp-meta">' +
+            '<span><b>우선순위</b> ' + Math.round(s.priority * 100) + '</span>' +
+            '<span><b>긴급도</b> ' + Math.round(s.urgency * 100) + '%</span>' +
+            '<span><b>중요도</b> ' + s.importanceRaw + '/5</span>' +
+            '<span><b>준비도</b> ' + s.readiness + '/5</span>' +
+            '<span><b>오늘 과제 적합도</b> ' + scoreBand(s.domCapScore) + ' · 자기보고 입력 기반</span>' +
+          '</div>' +
+          '<div class="sp-actions">' +
+            '<button type="button" class="sp-action" data-plan-action="change" data-subject="' + esc(s.name) + '">과목 바꾸기</button>' +
+            '<button type="button" class="sp-action' + (act === 'shorter' ? ' on' : '') + '" data-plan-action="shorter" data-subject="' + esc(s.name) + '">− 시간 줄이기</button>' +
+            '<button type="button" class="sp-action' + (act === 'longer' ? ' on' : '') + '" data-plan-action="longer" data-subject="' + esc(s.name) + '">＋ 시간 늘리기</button>' +
+            '<button type="button" class="sp-action" data-plan-action="exclude" data-subject="' + esc(s.name) + '">오늘 제외</button>' +
+            '<button type="button" class="sp-action" data-plan-action="bad" data-subject="' + esc(s.name) + '" data-type="' + esc(s.type) + '">이 추천이 맞지 않음</button>' +
+          '</div>' +
+        '</div></div>';
+    }).join('') || '<p class="tiny">' + (p.curfew && p.curfew.bedtimeNow
+      ? '취침 시각이 지나 오늘은 블록을 배정하지 않았습니다.'
+      : '배정된 과목이 없습니다. 가용 학습 시간을 늘리거나 과목을 추가해 주세요.') + '</p>';
+
+    $('planTapHint').style.display = p.subjects.length ? '' : 'none';
+    // 커퓨를 넘긴 상태에서 "이 플랜으로 시작" 을 눌러 봐야 돌릴 블록이 없다
+    $('startTimerBtn').style.display = p.subjects.length ? '' : 'none';
+
+    // 한 번에 하나만 펼친다 — 여러 개가 열리면 접은 의미가 없다
+    $$('#subjectPlans .sp-top').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var card = btn.parentElement;
+        var willOpen = !card.classList.contains('open');
+        $$('#subjectPlans .sp').forEach(function (c) {
+          c.classList.remove('open');
+          c.querySelector('.sp-top').setAttribute('aria-expanded', 'false');
+        });
+        if (willOpen) {
+          card.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+
+    $$('#subjectPlans .sp-action').forEach(function (btn) {
+      btn.addEventListener('click', function () { handlePlanAction(btn.dataset.planAction, btn.dataset.subject, btn.dataset.type); });
+    });
+
+    // 커퓨로 전부 빠진 경우는 배너가 이미 설명하고 있어 중복이다
+    $('droppedNote').innerHTML = (p.dropped.length && !(p.curfew && p.curfew.bedtimeNow))
+      ? '<p class="tiny">⏸ 오늘 가용 시간으로는 ' + esc(p.dropped.map(function (d) { return d.name; }).join(', ')) +
+        ' 까지 배정할 수 없었습니다. 우선순위가 낮아 내일로 미루는 편이 전체 성과에 유리합니다.</p>' : '';
+
+    $('timeline').innerHTML = p.timeline.map(function (b) {
+      if (b.kind === 'study') {
+        return '<div class="tl study" style="--c:' + b.color + '"><span class="tl-time">' + fmtHour(b.start) + ' – ' + fmtHour(b.end) + '</span>' +
+          '<span class="tl-name">' + esc(b.subject) + '<span class="fit">상대 적합도 참고 ' + b.fit + '%</span></span></div>';
+      }
+      return '<div class="tl ' + b.kind + '"><span class="tl-time">' + fmtHour(b.start) + ' – ' + fmtHour(b.end) + '</span>' +
+        '<span class="tl-name">' + (b.kind === 'longBreak' ? '🌿 긴 휴식' : '☕ 휴식') + ' ' + b.minutes + '분</span></div>';
+    }).join('');
+
+    if (p.timeline.length) {
+      $('timeline').insertAdjacentHTML('beforeend',
+        '<p class="tiny">🏁 예상 종료 ' + fmtHour(p.endHour) + ' · 순공 ' + fmtDur(p.plannedStudyMin) + ' + 휴식 ' + fmtDur(p.plannedBreakMin) +
+        '. 같은 과목을 연달아 붙이지 않고 번갈아 배치했습니다. 시간대별 준비도 참고값을 순서에 일부 반영했습니다.</p>');
+    }
+
+    $('restList').innerHTML = p.rest.map(function (r) {
+      return '<div class="rest"><div class="ri">' + r.icon + '</div><div><h5>' + esc(r.title) + '</h5><p>' + esc(r.text) + '</p></div></div>';
+    }).join('');
+
+    collapsePlanDetail();
+  }
+
+  function renderGoalTiers(p) {
+    var box = $('goalTiers');
+    var study = p.timeline.filter(function (b) { return b.kind === 'study'; });
+    if (!study.length) { box.innerHTML = ''; return; }
+    var first = study[0];
+    var second = study[1];
+    box.innerHTML =
+      '<div class="goal-tier min"><div class="gt-k">오늘의 최소 목표</div>' +
+        '<div class="gt-v">' + esc(first.subject) + ' ' + first.minutes + '분</div>' +
+        '<div class="gt-note">이 한 블록만 끝내도 오늘 목표를 달성한 것으로 봅니다.</div></div>' +
+      '<div class="goal-tier"><div class="gt-k">상태가 괜찮다면</div>' +
+        '<div class="gt-v">' + (second ? esc(second.subject) + ' ' + second.minutes + '분 추가' : esc(first.subject) + ' 10분 연장') + '</div>' +
+        '<div class="gt-note">확장 목표는 선택입니다. 실제 체감이 어렵다면 건너뛰어도 됩니다.</div></div>';
+  }
+
+  function refreshPlanFromOverrides() {
+    var input = collectInput();
+    var a = BrainEngine.analyze(input);
+    var p = BrainPlanner.plan(a);
+    state.analysis = a;
+    state.plan = p;
+    renderResult(a);
+    renderPlan(p);
+    state.timer.load(p.timeline);
+    input._date = Store.key();
+    Store.saveInput(input);
+    saveSession();
+    renderNav();
+    goPage('secPlan');
+  }
+
+  function handlePlanAction(action, subject, type) {
+    if (action === 'change') {
+      goPage('secInput');
+      var row = $$('.subject-row', $('subjectList')).filter(function (r) { return r.querySelector('.s-name').value.trim() === subject; })[0];
+      if (row) row.querySelector('.s-name').focus();
+      toast('과목명·유형·시험 일정을 고친 뒤 다시 분석하세요.');
+      return;
+    }
+    if (action === 'bad') {
+      Store.addFeedback({ subject: subject, type: type || 'mixed', recommendation: -1 });
+      toast('이 추천이 맞지 않았다는 기록을 다음 추천에 반영합니다.');
+      return;
+    }
+    /* 블록 길이는 짧게 / 기본 / 길게 세 단계를 오간다.
+     * 줄이기만 있으면 한 번 잘못 누른 뒤 되돌릴 방법이 없어, 반대 버튼이 곧 취소가 된다. */
+    if (action === 'shorter' || action === 'longer') {
+      var LADDER = ['shorter', '', 'longer'];
+      var cur = LADDER.indexOf(state.planOverrides[subject] || '');
+      if (cur < 0) cur = 1;
+      var next = cur + (action === 'longer' ? 1 : -1);
+      if (next < 0 || next >= LADDER.length) {
+        toast(subject + ' 블록은 이미 가장 ' + (action === 'longer' ? '깁니다' : '짧습니다') +
+          '. 더 바꾸려면 [입력] 에서 학습 시간을 조정하세요.', true);
+        return;
+      }
+      if (LADDER[next]) state.planOverrides[subject] = LADDER[next];
+      else delete state.planOverrides[subject];
+      refreshPlanFromOverrides();
+      toast(LADDER[next] === 'shorter' ? subject + ' 블록을 한 단계 짧게 바꿨습니다.'
+          : LADDER[next] === 'longer' ? subject + ' 블록을 한 단계 길게 바꿨습니다.'
+          : subject + ' 블록을 기본 길이로 되돌렸습니다.');
+      return;
+    }
+
+    state.planOverrides[subject] = action;
+    refreshPlanFromOverrides();
+    toast(subject + '을(를) 오늘 플랜에서 제외했습니다.');
+  }
+
+  /* 취침 커퓨 안내.
+   * 수면을 최대 변수로 쓰는 앱이 "일찍 자라" 고 조언하면서 동시에 새벽까지
+   * 타임라인을 깔면 조언 두 개가 정면으로 부딪힌다. 커퓨를 넘긴 시점에는
+   * 플랜 대신 취침을 1순위로 내세운다. */
+  function renderCurfew(p) {
+    var el = $('curfewBanner');
+    var c = p.curfew;
+    if (!c || (!c.bedtimeNow && !c.cut)) { el.className = 'is-hidden'; el.innerHTML = ''; return; }
+
+    if (c.bedtimeNow) {
+      el.className = 'curfew now';
+      el.innerHTML =
+        '<div class="cf-ic">🛏️</div>' +
+        '<div><h4>' + (c.passed ? '지금은 자야 할 시간입니다' : '오늘은 여기까지가 좋습니다') + '</h4>' +
+        '<p>' + (c.passed
+          ? '목표 취침 ' + fmtHour(c.bedHour) + '을(를) ' + fmtDur(-c.minutesLeft) + ' 넘겼습니다. ' +
+            '지금 한 블록을 더 하는 것보다, 자고 일어나 내일 아침에 하는 편이 같은 시간으로 더 많이 남습니다.'
+          : '취침까지 ' + fmtDur(c.minutesLeft) + ' 남았습니다. 새 집중 블록을 시작하기엔 짧습니다.') +
+        ' 알람을 맞추고 아침에 다시 열어 주세요.</p>' +
+        '<p class="tiny">취침 시각을 바꾸려면 <b>[입력] → 수면 리듬 · 학습 시간</b>에서 조정하세요.</p></div>';
+      return;
+    }
+
+    el.className = 'curfew cut';
+    el.innerHTML =
+      '<div class="cf-ic">⏳</div>' +
+      '<div><h4>취침 시각에 맞춰 잘랐습니다</h4>' +
+      '<p>목표 취침 ' + fmtHour(c.bedHour) + ' 기준으로 잠들기 전 ' + c.windDownMin + '분을 비워 두면 ' +
+      fmtDur(c.minutesLeft) + '이 남습니다. 가용 시간보다 짧아 이쪽에 맞춰 플랜을 줄였습니다.</p></div>';
+  }
+
+  /* 타임라인·휴식 가이드는 계획을 세울 때보다 실제로 돌릴 때 필요한 정보다.
+   * 기본은 접어 두고 필요할 때 펼친다. */
+
+  function collapsePlanDetail() {
+    if (!$('planDetail')) return;
+    $('planDetail').classList.add('is-hidden');
+    $('planMore').setAttribute('aria-expanded', 'false');
+    $('planMore').querySelector('.rm-txt').textContent = '타임라인 · 휴식 가이드 보기';
+  }
+
+  function togglePlanDetail() {
+    var open = !$('planDetail').classList.contains('is-hidden');
+    if (open) { collapsePlanDetail(); return; }
+    $('planDetail').classList.remove('is-hidden');
+    $('planMore').setAttribute('aria-expanded', 'true');
+    $('planMore').querySelector('.rm-txt').textContent = '타임라인 · 휴식 가이드 접기';
+  }
+
+  /* ======================================================= 순공 시간 == */
+
+  /** 집중 구간을 열고 닫으며 실제 흐른 시간만 기록한다 */
+  function openSpan(block) {
+    state.span = { subject: block.subject, type: block.type, since: Date.now(), cap: block.ms };
+    state.lastFlush = Date.now();
+  }
+
+  function commitSpan(close) {
+    if (!state.span) return;
+    var now = Date.now();
+    var since = state.span.since;
+    var ms = Math.max(0, Math.min(now - since, state.span.cap));
+    if (ms > 1000) {
+      var end = since + ms;
+      var sinceDate = new Date(since);
+      // 탭이 백그라운드에서 오래 멈춰 있다 자정을 넘겨 돌아온 경우,
+      // 흐른 시간을 자정 기준으로 어제·오늘 몫으로 나눠 기록한다.
+      var nextMidnight = new Date(sinceDate.getFullYear(), sinceDate.getMonth(), sinceDate.getDate() + 1).getTime();
+      if (end > nextMidnight) {
+        StudyLog.add(state.span.subject, state.span.type, (nextMidnight - since) / 60000, sinceDate);
+        StudyLog.add(state.span.subject, state.span.type, (end - nextMidnight) / 60000, new Date(nextMidnight));
+      } else {
+        StudyLog.add(state.span.subject, state.span.type, ms / 60000, sinceDate);
+      }
+      Group.syncSelf();
+      renderLiveTotal();
+      if (kidsOn()) renderKids();
+    }
+    if (close) state.span = null;
+    else { state.span.since = now; state.lastFlush = now; }
+  }
+
+  function trackStudy(s) {
+    var isStudy = s.running && s.block && s.block.kind === 'study' && !s.done;
+    if (isStudy) {
+      if (!state.span || state.span.subject !== s.block.subject) { commitSpan(true); openSpan(s.block); }
+      else if (Date.now() - state.lastFlush > 20000) commitSpan(false); // 중간 저장
+    } else if (state.span) {
+      commitSpan(true);
+    }
+  }
+
+  function renderLiveTotal() {
+    var todayMin = StudyLog.todayTotal();
+    var subs = StudyLog.daySubjects(Store.key());
+
+    $('todayTotal').innerHTML = durHtml(todayMin);
+
+    var p = Store.profile();
+    var goal = state.plan ? state.plan.plannedStudyMin : ((p ? p.goal : 25) * 60 / 7);
+    var pct = goal > 0 ? Math.min(100, todayMin / goal * 100) : 0;
+    $('goalText').textContent = fmtDur(goal) + ' 중 ' + Math.round(pct) + '%';
+    $('goalFill').style.width = pct.toFixed(1) + '%';
+
+    $('todayBreakdown').innerHTML = subs.length
+      ? subs.map(function (s) { return esc(s.name) + ' ' + fmtDurFine(s.min); }).join(' · ')
+      : '아직 기록된 순공 시간이 없습니다.';
+
+    $('recDot').className = 'rec-dot' + (state.span ? ' live' : '');
+    renderHome();   // 홈의 '오늘 순공' 타일도 같은 숫자를 본다
+  }
+
+  /* ================================= 오늘 세션 이어하기 (새로고침 대비) ==
+   *
+   * 새로고침 한 번이면 오늘 플랜과 타이머 위치가 통째로 사라졌다. 잰 순공 시간은
+   * 남지만 "3블록 중 2번째를 하던 중" 이라는 맥락이 날아가서, 분석을 다시 누르고
+   * 처음 블록부터 시작해야 했다. 폰에서는 브라우저가 탭을 알아서 버리기 때문에
+   * 새로고침을 누르지 않아도 같은 일이 생긴다.
+   *
+   * 오늘 것만 되살린다. 어제 만든 플랜을 오늘 이어서 하는 것은 계획이 아니다.
+   * 백업 파일(BACKUP_KEYS)에는 넣지 않는다 — 다른 기기로 옮길 값이 아니다. */
+
+  var SESSION_KEY = 'mindora.session.v1';
+  var SESSION_SAVE_GAP = 10000;
+  var lastSessionSave = 0;
+
+  function saveSession() {
+    if (!state.analysis) return;
+    lastSessionSave = Date.now();
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        v: 1,
+        date: Store.key(),
+        savedAt: Date.now(),
+        analysis: state.analysis,
+        overrides: state.planOverrides,
+        timer: state.timer ? state.timer.snapshot() : null
+      }));
+    } catch (e) { /* 저장 공간이 모자라면 이어하기만 포기한다. 기록이 우선이다. */ }
+  }
+
+  function maybeSaveSession() {
+    if (Date.now() - lastSessionSave > SESSION_SAVE_GAP) saveSession();
+  }
+
+  function clearSession() {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* 무시 */ }
+  }
+
+  function loadSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (!s || s.v !== 1 || s.date !== Store.key()) return null;
+      if (!s.analysis || !s.analysis.capacities || !s.analysis.capacities.length) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  /** JSON 을 거치면 capacities 와 byId·ranked·top·bottom 이 서로 다른 사본이 된다.
+   *  원래는 같은 객체를 가리키고 있었으므로, 그 관계를 다시 이어 준다. */
+  function rehydrateAnalysis(a) {
+    a.byId = {};
+    a.capacities.forEach(function (c) { a.byId[c.id] = c; });
+    var sorted = a.capacities.slice().sort(function (x, y) { return y.exact - x.exact; });
+    a.ranked = sorted;
+    a.top = sorted[0];
+    a.bottom = sorted[sorted.length - 1];
+    return a;
+  }
+
+  function restoreSession(s) {
+    var a;
+    try { a = rehydrateAnalysis(s.analysis); } catch (e) { return false; }
+
+    state.analysis = a;
+    state.planOverrides = (s.overrides && typeof s.overrides === 'object') ? s.overrides : {};
+
+    /* 플랜은 저장하지 않고 분석에서 다시 만든다. 추천 수정(planOverrides)은 이미
+     * analysis.input.subjects[].recommendationAction 에 담겨 있어 같은 결과가 나오고,
+     * 엔진·플래너는 현재 시각을 보지 않아 결과가 달라질 여지도 없다. */
+    try {
+      state.plan = BrainPlanner.plan(a);
+      renderResult(a);
+      renderPlan(state.plan);
+    } catch (e) { state.analysis = null; return false; }
+
+    /* 타이머는 저장된 큐를 그대로 쓴다. 블록 길이를 손으로 고쳤을 수 있어서
+     * 플랜이 새로 만든 timeline 으로 덮으면 그 수정이 사라진다. */
+    var t = s.timer;
+    if (!(t && state.timer.restore(t))) state.timer.load(state.plan.timeline);
+
+    renderSoundNow();
+    return true;
+  }
+
+  /** 되살린 뒤 사용자에게 알린다. 조용히 이어 붙이면 "왜 이미 2번째지?" 가 된다. */
+  function announceResumed() {
+    var t = state.timer;
+    if (!t || !t.queue.length) return;
+
+    if (t.index >= t.queue.length) {
+      toast('오늘 계획한 블록을 이미 다 끝냈어요. 기록은 그대로 있습니다.');
+      return;
+    }
+    // toast 는 textContent 라 esc() 를 쓰면 과목명의 & 가 &amp; 로 보인다
+    var cur = t.current();
+    toast('이어서 할 수 있어요 — ' + (t.index + 1) + '/' + t.queue.length + ' 블록 · ' +
+          cur.label + ' ' + Math.max(1, Math.round(t.remainingMs / 60000)) + '분 남음');
+  }
+
+  /* ------------------------------------------------------------- 타이머 */
+
+  /* ------------------------------------------------- 백그라운드 알림 ---- */
+
+  /** 다른 탭을 보고 있어도 블록이 끝난 걸 알 수 있게 한다 */
+  function notify(title, body) {
+    try {
+      if (!('Notification' in window)) return;
+      if (!document.hidden) return;              // 화면을 보고 있으면 토스트로 충분
+      if (Notification.permission !== 'granted') return;
+      var n = new Notification(title, { body: body, tag: 'neurostudy-block', icon: undefined });
+      n.onclick = function () { window.focus(); n.close(); };
+    } catch (e) { /* 지원하지 않는 환경은 조용히 무시 */ }
+  }
+
+  function askNotifyPermission() {
+    try {
+      if (!('Notification' in window)) return;
+      if (Notification.permission !== 'default') return;
+      Notification.requestPermission();
+    } catch (e) { /* 무시 */ }
+  }
+
+  /* -------------------------------------------------- 백업 (파일 입출력) */
+
+  function exportData() {
+    var payload = Store.exportAll();
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mindora-backup-' + Store.key() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    Store.markBackedUp();
+    renderSettingsPage();
+    toast('백업 파일을 내려받았습니다. 인증키는 포함되지 않습니다.');
+  }
+
+  function importData(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var obj;
+      try { obj = JSON.parse(reader.result); }
+      catch (e) { toast('JSON 파일을 읽을 수 없습니다.', true); return; }
+
+      var when = obj && obj.exportedAt ? new Date(obj.exportedAt).toLocaleString('ko-KR') : '알 수 없음';
+      if (!confirm('백업을 불러오면 지금 기기의 기록·프로필·그룹이 모두 덮어써집니다.\n\n백업 시점: ' + when + '\n\n계속할까요?')) return;
+
+      try {
+        var n = Store.importAll(obj);
+        toast(n + '개 항목을 복원했습니다. 새로고침합니다.');
+        setTimeout(function () { location.reload(); }, 900);
+      } catch (e) {
+        toast(e.message || '복원에 실패했습니다.', true);
+      }
+    };
+    reader.onerror = function () { toast('파일을 읽지 못했습니다.', true); };
+    reader.readAsText(file);
+  }
+
+  function initTimer() {
+    state.timer = new Pomodoro({
+      onTick: function (s) { trackStudy(s); renderTimer(s); syncSound(s); maybeSaveSession(); },
+      onComplete: function (block) {
+        commitSpan(true);
+        if ($('soundOn').checked) Pomodoro.beep(block ? block.kind : 'study');
+        if (block && block.kind === 'study') {
+          Kids.addBlock();
+          /* 완주 포인트. 건너뛴 블록은 여기까지 오지 않는다 —
+           * skip() 은 onComplete 를 부르지 않고 바로 다음 블록으로 넘어간다. */
+          Level.award(block.minutes);
+          state.resumeAfterFeedback = state.timer.running;
+          state.timer.pause();
+          showStudyFeedback(block);
+        }
+        if (block) {
+          var msg = block.kind === 'study'
+            ? (kidsOn()
+                ? '🎉 ' + block.subject + ' ' + block.minutes + '분 완주! +' + block.minutes + ' XP'
+                : '집중 블록 완료 — ' + block.subject)
+            : '휴식 종료 — 다시 집중할 시간입니다';
+          toast(msg);
+          notify(block.kind === 'study' ? '집중 블록 완료' : '휴식 종료', msg);
+        }
+        renderLiveTotal();
+        renderGroup();
+        renderLeague();
+        if (block && block.kind === 'study') setTimeout(function () { awardLevel(); awardKids(); }, 1200);
+      },
+      onFinishAll: function () {
+        commitSpan(true);
+        Sound.stop();
+        state.lastSoundKey = null;
+        setTimeout(renderSoundNow, 320);
+        toast(kidsOn() ? '🏁 오늘 계획한 공부를 다 끝냈어요. 정말 대단해요!' : '🎉 오늘의 학습 플랜을 모두 완료했습니다!');
+        $('btnStart').textContent = '▶ 시작';
+        renderLiveTotal(); renderGroup(); renderLeague(); renderReport();
+        setTimeout(awardKids, 1200);
+      }
+    });
+
+    $('btnStart').addEventListener('click', function () {
+      if (!state.timer.queue.length) { toast('먼저 플랜을 생성해 주세요.', true); return; }
+      askNotifyPermission();   // 사용자가 직접 누른 시점에만 요청한다
+      if (state.timer.index >= state.timer.queue.length) state.timer.reset();
+      state.timer.toggle();
+    });
+    $('btnSkip').addEventListener('click', function () { commitSpan(true); state.timer.skip(); saveSession(); });
+    $('btnReset').addEventListener('click', function () {
+      commitSpan(true);
+      state.timer.reset();
+      state.lastSoundKey = null;
+      Sound.stop();
+      $('btnStart').textContent = '▶ 시작';
+      setTimeout(renderSoundNow, 320);
+      saveSession();
+      toast('타이머를 처음으로 되돌렸습니다. (기록된 순공 시간은 그대로 유지됩니다)');
+    });
+
+    // 탭을 닫거나 숨길 때 진행 중인 구간을 저장.
+    // 이어하기 정보도 같이 남긴다 — 폰은 숨긴 탭을 예고 없이 버린다.
+    window.addEventListener('beforeunload', function () { commitSpan(true); saveSession(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { commitSpan(false); saveSession(); }
+    });
+  }
+
+  function showStudyFeedback(block) {
+    state.pendingFeedback = block;
+    $('feedbackSubject').textContent = block.subject + ' · ' + block.minutes + '분';
+    $$('.feedback-options').forEach(function (group) {
+      delete group.dataset.selected;
+      $$('button', group).forEach(function (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); });
+    });
+    $('feedbackSave').disabled = true;
+    $('feedbackModal').classList.remove('is-hidden');
+    setTimeout(function () {
+      var first = $('feedbackModal').querySelector('button');
+      if (first) first.focus();
+    }, 30);
+  }
+
+  function closeStudyFeedback(resume) {
+    $('feedbackModal').classList.add('is-hidden');
+    state.pendingFeedback = null;
+    if (resume && state.resumeAfterFeedback && state.timer.current()) state.timer.start();
+    state.resumeAfterFeedback = false;
+  }
+
+  function initStudyFeedback() {
+    $$('.feedback-options').forEach(function (group) {
+      $$('button', group).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          group.dataset.selected = btn.dataset.v;
+          $$('button', group).forEach(function (b) {
+            var on = b === btn;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          $('feedbackSave').disabled = $$('.feedback-options').some(function (g) { return g.dataset.selected === undefined; });
+        });
+      });
+    });
+    $('feedbackSkip').addEventListener('click', function () { closeStudyFeedback(true); });
+    $('feedbackSave').addEventListener('click', function () {
+      var block = state.pendingFeedback;
+      if (!block) return;
+      var values = {};
+      $$('.feedback-options').forEach(function (g) { values[g.dataset.feedback] = Number(g.dataset.selected); });
+      Store.addFeedback({
+        subject: block.subject, type: block.type || 'mixed', minutes: block.minutes,
+        focus: values.focus, difficulty: values.difficulty, recommendation: values.recommendation
+      });
+      toast('피드백을 저장했습니다. 다음 추천에 조금씩 반영합니다.');
+      closeStudyFeedback(true);
+      renderReport();
+    });
+  }
+
+  /* 휴식하는 동안 띄우는 글귀.
+   *
+   * 30분에 하나씩 바뀐다. renderTimer 는 1초에 한 번씩 도는데 그때마다 새로
+   * 뽑으면 글자가 깜빡이며 계속 갈아엎히므로, 시각을 30분 칸으로 잘라 그 칸
+   * 번호로 고른다 — 같은 30분 안에서는 몇 번을 다시 그려도 같은 글귀가 나온다.
+   *
+   * 칸 번호에 7을 곱해 고르는 이유는 7과 30이 서로소여서다. 순서대로 1·2·3…
+   * 이 아니라 흩어져 나오면서도 30개를 다 돌기 전에는 같은 글귀가 다시 나오지
+   * 않는다 (한 바퀴에 15시간). 무작위로 뽑으면 연달아 같은 게 나올 수 있다. */
+  var REST_QUOTE_MS = 30 * 60 * 1000;
+  var REST_QUOTES = [
+    '지금 잠을 자면 꿈을 꾸지만 지금 공부하면 꿈을 이룬다.',
+    '내가 헛되이 보낸 오늘은 어제 죽은 이가 갈망하던 내일이다.',
+    '늦었다고 생각했을 때가 가장 빠른 때이다',
+    '오늘 할 일을 내일로 미루지 마라.',
+    '공부할 때의 고통은 잠깐이지만 못 배운 고통은 평생이다.',
+    '공부는 시간이 부족한 것이 아니라 노력이 부족한 것이다.',
+    '행복은 성적순이 아닐지 몰라도 성공은 성적순이다.',
+    '공부가 인생의 전부는 아니다. 그러나 인생의 전부도 아닌 공부 하나도 정복하지 못한다면 과연 무슨 일을 할 수 있겠는가?',
+    '피할 수 없는 고통은 즐겨라.',
+    '남보다 더 일찍 더 부지런히 노력해야 성공을 맛 볼 수 있다.',
+    '성공은 아무나 하는 것이 아니다. 철저한 자기 관리와 노력에서 비롯된다.',
+    '시간은 간다.',
+    '지금 흘린 침은 내일 흘릴 눈물이 된다.',
+    '개같이 공부해서 정승같이 놀자.',
+    '오늘 걷지 않으면, 내일 뛰어야 한다.',
+    '미래에 투자하는 사람은 현실에 충실한 사람이다.',
+    '학벌이 돈이다.',
+    '오늘 보낸 하루는 내일 다시 돌아오지 않는다.',
+    '지금 이 순간에도 적들의 책장은 넘어가고 있다.',
+    'No pains No gains 고통이 없으면 얻는 것도 없다.',
+    '꿈이 바로 앞에 있는데, 당신은 왜 팔을 뻗지 않는가?',
+    '눈이 감기는가? 그럼 미래를 향한 눈도 감긴다.',
+    '세상의 한 조각이 되어라. 너 없이는 완성될지 않도록.',
+    '성적은 투자한 시간의 절대량에 비례한다.',
+    '가장 위대한 일은 남들이 자고 있을 때 이뤄진다.',
+    '지금 헛되이 보내는 이 시간이 시험을 코앞에 둔 시점에서 얼마나 절실하게 느껴지겠는가?',
+    '불가능이란 노력하지 않는 자의 변명이다.',
+    '노력의 대가는 이유 없이 사라지지 않는다.',
+    '오늘 걷지 않으면 내일은 뛰어야 한다.',
+    '한 시간 더 공부하면 남편 얼굴이 바뀐다'
+  ];
+
+  function restQuote() {
+    var slot = Math.floor(Date.now() / REST_QUOTE_MS);
+    return REST_QUOTES[(slot * 7) % REST_QUOTES.length];
+  }
+
+  function renderTimer(s) {
+    var C = 2 * Math.PI * 112;
+    var dial = $('dialFill');
+    dial.style.strokeDasharray = C;
+
+    var resting = false;
+    if (s.done || !s.block) {
+      $('phaseLabel').textContent = s.total ? '완료' : '대기 중';
+      $('timeLeft').textContent = '00:00';
+      $('currentSubject').textContent = s.total ? '모든 블록을 마쳤습니다' : '플랜을 만들면 여기에 표시됩니다';
+      dial.style.strokeDashoffset = C;
+    } else {
+      var isStudy = s.block.kind === 'study';
+      var sec = Math.ceil(s.remainingMs / 1000);
+      $('timeLeft').textContent = pad(Math.floor(sec / 60)) + ':' + pad(sec % 60);
+      $('phaseLabel').textContent = isStudy ? '집중' : (s.block.kind === 'longBreak' ? '긴 휴식' : '휴식');
+      $('currentSubject').textContent = isStudy
+        ? s.block.subject + ' · ' + s.block.minutes + '분 블록'
+        : '화면에서 눈을 떼고 몸을 움직이세요';
+      dial.style.strokeDashoffset = C * (1 - (s.totalMs ? s.remainingMs / s.totalMs : 0));
+      dial.style.stroke = isStudy ? (s.block.color || '#6d4aff') : '#3f6fd1';
+      resting = !isStudy;
+    }
+
+    /* 쉬는 동안에만 글귀를 띄운다. 집중할 때 옆에 읽을거리를 두면 그게 방해다.
+     * 내용이 실제로 바뀔 때만 DOM 을 건드려 1초마다 글자가 깜빡이지 않게 한다. */
+    var qBox = $('restQuote');
+    if (qBox) {
+      qBox.classList.toggle('is-hidden', !resting);
+      if (resting) {
+        var q = restQuote();
+        if (qBox.textContent !== q) qBox.textContent = q;
+      }
+    }
+
+    $('btnStart').textContent = s.running ? '⏸ 일시정지' : '▶ 시작';
+    $('recDot').className = 'rec-dot' + (state.span ? ' live' : '');
+
+    var studyBlocks = state.timer.queue.filter(function (b) { return b.kind === 'study'; });
+    var doneCount = state.timer.queue.slice(0, s.index).filter(function (b) { return b.kind === 'study'; }).length;
+    $('progressDots').innerHTML = studyBlocks.map(function (b, i) {
+      var cls = i < doneCount ? 'done' : (i === doneCount && !s.done ? 'now' : '');
+      return '<span class="pd ' + cls + '" title="' + esc(b.subject) + '"></span>';
+    }).join('');
+
+    $('queueList').innerHTML = state.timer.queue.map(function (b, i) {
+      var cls = i < s.index ? 'done' : (i === s.index ? 'now' : '');
+      var icon = b.kind === 'study' ? '📖' : (b.kind === 'longBreak' ? '🌿' : '☕');
+      var editable = state.queueEdit && state.timer.canEdit(i);
+      var lim = state.timer.limitFor(i);
+
+      var tail = editable
+        ? '<span class="qe">' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="-1"' +
+              (b.minutes <= lim.min ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 단위로 줄이기">−</button>' +
+            '<span class="qe-v">' + b.minutes + '<small>분</small></span>' +
+            '<button type="button" class="qe-b" data-qi="' + i + '" data-qd="1"' +
+              (b.minutes >= lim.max ? ' disabled' : '') + ' aria-label="' + esc(b.label) + ' 5분 단위로 늘리기">＋</button>' +
+          '</span>'
+        : '<span class="qt">' + b.minutes + '분</span>';
+
+      /* 순서 바꾸기는 집중 블록에만 붙인다. 휴식은 제자리에 두고 과목만 옮긴다. */
+      var moves = (editable && b.kind === 'study')
+        ? '<span class="qm">' +
+            '<button type="button" class="qm-b" data-mi="' + i + '" data-md="-1"' +
+              (state.timer.canMoveStudy(i, -1) ? '' : ' disabled') +
+              ' aria-label="' + esc(b.label) + ' 앞으로 옮기기">↑</button>' +
+            '<button type="button" class="qm-b" data-mi="' + i + '" data-md="1"' +
+              (state.timer.canMoveStudy(i, 1) ? '' : ' disabled') +
+              ' aria-label="' + esc(b.label) + ' 뒤로 옮기기">↓</button>' +
+          '</span>'
+        : '';
+
+      return '<li class="' + cls + (editable ? ' editable' : '') + '">' +
+        '<span class="q-name">' + icon + ' ' + esc(b.label) + '</span>' + moves + tail + '</li>';
+    }).join('');
+
+    if (state.queueEdit) {
+      $$('#queueList .qe-b').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var i = +btn.dataset.qi, d = +btn.dataset.qd;
+          var cur = state.timer.queue[i];
+          if (!cur) return;
+          var next = state.timer.setMinutes(i, snapMinutes(cur.minutes, d));
+          if (next === null) { toast('이미 지났거나 진행 중인 블록은 바꿀 수 없어요.', true); return; }
+          // setMinutes 안에서 emit() 이 돌아 목록은 이미 다시 그려졌다.
+          // 여기서는 바뀐 길이에 맞춰 목표 시간만 갱신한다.
+          renderQueueTotals();
+          saveSession();
+        });
+      });
+
+      $$('#queueList .qm-b').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var i = +btn.dataset.mi, d = +btn.dataset.md;
+          var to = state.timer.moveStudy(i, d);
+          if (to < 0) { toast('이미 지났거나 진행 중인 블록은 옮길 수 없어요.', true); return; }
+          saveSession();
+
+          /* emit() 이 목록을 통째로 다시 그려 방금 누른 버튼은 사라졌다.
+           * 옮겨 간 자리의 같은 방향 버튼으로 초점을 보내 연달아 누를 수 있게 한다.
+           * 끝에 닿아 그 버튼이 꺼졌으면 반대쪽이 아니라 과목 이름 쪽으로 보낸다 —
+           * 반대쪽으로 옮기면 키보드로 한 번 더 누르는 순간 도로 제자리가 된다. */
+          var same = document.querySelector('#queueList .qm-b[data-mi="' + to + '"][data-md="' + d + '"]');
+          if (same && !same.disabled) { same.focus(); return; }
+          var li = document.querySelectorAll('#queueList li')[to];
+          var name = li && li.querySelector('.q-name');
+          if (name) { name.setAttribute('tabindex', '-1'); name.focus(); }
+        });
+      });
+    }
+  }
+
+  /* 5분 눈금 위의 다음(이전) 칸으로 옮긴다.
+   *
+   * 예전에는 현재 값에 ±5 를 더했다. 그러면 7분에서 ＋를 누르면 12분, 17분… 이 되어
+   * 10분·15분 같은 흔한 값에는 영원히 닿지 못했다. 눈금에 붙여 주면
+   * 7 → 10 → 15, 7 → 5 → 0 처럼 항상 깔끔한 값으로 떨어진다. */
+  var MIN_STEP = 5;
+  function snapMinutes(cur, dir) {
+    return dir > 0
+      ? (Math.floor(cur / MIN_STEP) + 1) * MIN_STEP
+      : (Math.ceil(cur / MIN_STEP) - 1) * MIN_STEP;
+  }
+
+  /** 블록 길이를 바꾸면 목표 시간과 타임라인 표기도 같이 움직여야 한다 */
+  function renderQueueTotals() {
+    if (state.plan) {
+      state.plan.plannedStudyMin = state.timer.studyMinutes();
+      state.plan.plannedBreakMin = state.timer.queue.reduce(function (s, b) {
+        return s + (b.kind === 'study' ? 0 : b.minutes);
+      }, 0);
+    }
+    renderLiveTotal();
+  }
+
+  function toggleQueueEdit() {
+    state.queueEdit = !state.queueEdit;
+    $('queueEditBtn').textContent = state.queueEdit ? '완료' : '순서 · 시간';
+    $('queueEditBtn').classList.toggle('on', state.queueEdit);
+    $('queueEditHint').classList.toggle('is-hidden', !state.queueEdit);
+    // renderTimer 는 타이머 상태 스냅숏을 인자로 받는다.
+    // emit() 이 그 스냅숏을 만들어 onTick 으로 넘겨 주므로 이걸 쓴다.
+    state.timer.emit();
+  }
+
+  /* ======================================================== 집중 사운드 == */
+
+  /** 지금 재생해야 할 사운드를 과목 유형 + 오늘 상태로 결정 */
+  function soundFor(subjectType) {
+    return Sound.recommend(subjectType || 'mixed', state.analysis);
+  }
+
+  function currentBlockType() {
+    var b = state.timer && state.timer.current();
+    return b && b.kind === 'study' ? (b.type || 'mixed') : null;
+  }
+
+  function renderSoundNow() {
+    var type = currentBlockType();
+    var rec = soundFor(type || (state.plan && state.plan.subjects[0] ? state.plan.subjects[0].type : 'mixed'));
+    var playing = Sound.currentTrackId();
+    var live = playing && playing !== 'off';
+    var shown = live ? (Sound.trackById(playing) || rec) : rec;
+
+    $('sndNow').innerHTML =
+      '<div class="sn-icon' + (live ? ' on' : '') + '">' + (shown.icon || '🎧') + '</div>' +
+      '<div><div class="sn-name">' + esc(shown.name) +
+        (live ? '<span class="sn-tag">재생 중</span>' : '') +
+        (!live && rec.override ? '<span class="sn-tag auto">상태 맞춤</span>' : '') + '</div>' +
+        '<p class="sn-reason">' + esc(live ? (shown.desc || '') : rec.reason) + '</p></div>';
+
+    $('sndToggle').textContent = live ? '■ 정지' : '▶ 재생';
+    renderSoundPicker();
+  }
+
+  function renderSoundPicker() {
+    var cur = Sound.currentTrackId();
+    var items = Sound.TRACKS.concat(Sound.customCache().map(function (c) {
+      return { id: 'custom:' + c.id, name: c.name, icon: '🎵' };
+    }));
+    $('sndPicker').innerHTML = items.map(function (t) {
+      return '<button type="button" class="snd-chip' + (cur === t.id ? ' on' : '') + '" data-track="' + esc(t.id) + '">' +
+        t.icon + ' ' + esc(t.name) + '</button>';
+    }).join('');
+
+    $$('#sndPicker .snd-chip').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.dataset.track;
+        if (id === 'off') { Sound.stop(); toast('사운드를 껐습니다.'); }
+        else if (!Sound.play(id)) { toast('이 브라우저에서는 사운드를 재생할 수 없습니다.', true); return; }
+        else toast((Sound.trackById(id) || {}).name + ' 재생');
+        setTimeout(renderSoundNow, 320);
+      });
+    });
+  }
+
+  function trackOptions(selected, includeOff) {
+    var items = (includeOff ? Sound.TRACKS : Sound.TRACKS.filter(function (t) { return t.id !== 'off'; }))
+      .concat(Sound.customCache().map(function (c) { return { id: 'custom:' + c.id, name: '🎵 ' + c.name, icon: '' }; }));
+    return items.map(function (t) {
+      var label = (t.icon ? t.icon + ' ' : '') + t.name;
+      return '<option value="' + esc(t.id) + '"' + (t.id === selected ? ' selected' : '') + '>' + esc(label) + '</option>';
+    }).join('');
+  }
+
+  function renderSoundSettings() {
+    var s = Sound.settings();
+
+    $('sndMap').innerHTML = Object.keys(Sound.TYPE_LABEL).map(function (type) {
+      var sel = s.map[type];
+      var t = Sound.trackById(sel);
+      var warn = (t && t.lyrics && (type === 'reading' || type === 'memorize'))
+        ? '<div class="sm-warn">⚠ 가사 있는 음악은 글 읽기·암기와 뇌의 언어 영역이 겹쳐 방해가 됩니다. 가사 없는 소리를 권합니다.</div>' : '';
+      return '<div class="sm-row">' +
+        '<span class="sm-label">' + esc(Sound.TYPE_LABEL[type]) + '</span>' +
+        '<select class="input sm-sel" data-type="' + type + '"' +
+          ' aria-label="' + esc(Sound.TYPE_LABEL[type]) + ' 과목에 재생할 사운드">' +
+          trackOptions(sel, true) + '</select>' +
+        '</div>' + warn;
+    }).join('');
+
+    $$('.sm-sel').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var st = Sound.settings();
+        st.map[sel.dataset.type] = sel.value;
+        Sound.saveSettings(st);
+        renderSoundSettings();
+        renderSoundNow();
+        toast(Sound.TYPE_LABEL[sel.dataset.type] + ' → ' + (Sound.trackById(sel.value) || {}).name);
+      });
+    });
+
+    $('sndBreak').innerHTML = trackOptions(s.breakTrack, true);
+    $('sndAuto').checked = s.autoPlay;
+    $('sndFollow').checked = s.followState;
+    $('sndVol').value = Math.round(s.volume * 100);
+    $('sndVol').dispatchEvent(new Event('input'));
+
+    renderCustomList();
+  }
+
+  function fileSize(bytes) {
+    return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(bytes / 1024)) + 'KB';
+  }
+
+  function renderCustomList() {
+    var list = Sound.customCache();
+    $('customList').innerHTML = list.length
+      ? list.map(function (c) {
+          return '<div class="custom-item"><span>🎵</span>' +
+            '<span class="cn">' + esc(c.name) + '</span>' +
+            '<span class="cs">' + fileSize(c.size) + '</span>' +
+            '<button type="button" class="icon-btn snd-del" data-id="' + esc(c.id) + '" title="삭제">✕</button></div>';
+        }).join('')
+      : '<div class="custom-empty">등록된 음악이 없습니다. 파일을 추가하면 위의 과목별 설정에서 고를 수 있어요.<br>여러 곡을 넣으면 순서대로 이어서 재생됩니다.</div>';
+
+    $$('.snd-del').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var c = Sound.customCache().filter(function (x) { return x.id === b.dataset.id; })[0];
+        if (!c || !confirm('"' + c.name + '" 을(를) 삭제할까요?')) return;
+        if (Sound.currentTrackId() === 'custom:' + c.id) Sound.stop();
+        Sound.removeCustom(c.id).then(function () {
+          // 이 곡을 쓰던 과목 설정은 기본값으로 되돌린다
+          var st = Sound.settings(), changed = false;
+          Object.keys(st.map).forEach(function (k) {
+            if (st.map[k] === 'custom:' + c.id) { st.map[k] = Sound.DEFAULT_MAP[k]; changed = true; }
+          });
+          if (st.breakTrack === 'custom:' + c.id) { st.breakTrack = 'off'; changed = true; }
+          if (changed) Sound.saveSettings(st);
+          renderSoundSettings(); renderSoundNow();
+          toast('삭제했습니다.');
+        });
+      });
+    });
+  }
+
+  function initSound() {
+    if (!Sound.supported) {
+      $('sndNow').innerHTML = '<div class="sn-icon">🔇</div><div><div class="sn-name">사운드를 쓸 수 없는 브라우저입니다</div>' +
+        '<p class="sn-reason">Web Audio 를 지원하는 최신 브라우저에서 열어 주세요.</p></div>';
+      $('sndToggle').disabled = true;
+      return;
+    }
+
+    $('sndToggle').addEventListener('click', function () {
+      if (Sound.isPlaying()) { Sound.stop(); setTimeout(renderSoundNow, 300); return; }
+      var rec = soundFor(currentBlockType() || (state.plan && state.plan.subjects[0] ? state.plan.subjects[0].type : 'mixed'));
+      Sound.play(rec.id);
+      setTimeout(renderSoundNow, 320);
+    });
+
+    $('sndVol').addEventListener('input', function () { Sound.setVolume(parseInt($('sndVol').value, 10) / 100); });
+
+    $('sndBreak').addEventListener('change', function () {
+      var s = Sound.settings(); s.breakTrack = $('sndBreak').value; Sound.saveSettings(s);
+    });
+    $('sndAuto').addEventListener('change', function () {
+      var s = Sound.settings(); s.autoPlay = $('sndAuto').checked; Sound.saveSettings(s);
+    });
+    $('sndFollow').addEventListener('change', function () {
+      var s = Sound.settings(); s.followState = $('sndFollow').checked; Sound.saveSettings(s);
+      renderSoundNow();
+    });
+
+    $('sndFile').addEventListener('change', function (e) {
+      var files = Array.prototype.slice.call(e.target.files || []);
+      if (!files.length) return;
+      var okCount = 0;
+      files.reduce(function (chain, f) {
+        return chain.then(function () {
+          return Sound.addCustom(f).then(function () { okCount++; },
+            function (err) { toast(err.message || (f.name + ' 추가 실패'), true); });
+        });
+      }, Promise.resolve()).then(function () {
+        e.target.value = '';
+        renderSoundSettings(); renderSoundNow();
+        if (okCount) toast(okCount + '곡을 추가했습니다. 과목별 설정에서 고를 수 있어요.');
+      });
+    });
+
+    Sound.listCustom().then(function () { renderSoundSettings(); renderSoundNow(); });
+  }
+
+  /** 타이머 상태가 바뀔 때 사운드를 따라가게 한다 */
+  function syncSound(s) {
+    var set = Sound.settings();
+    if (!set.autoPlay || !Sound.supported) return;
+
+    var key = (s.done || !s.block) ? 'none' : (s.block.kind + ':' + (s.block.subject || '') + ':' + (s.running ? 'run' : 'pause'));
+    if (key === state.lastSoundKey) return;
+    state.lastSoundKey = key;
+
+    if (s.done || !s.block || !s.running) {
+      if (!s.running && Sound.isPlaying()) Sound.stop();
+      setTimeout(renderSoundNow, 320);
+      return;
+    }
+    if (s.block.kind === 'study') Sound.play(soundFor(s.block.type || 'mixed').id);
+    else Sound.play(set.breakTrack);
+    setTimeout(renderSoundNow, 340);
+  }
+
+  /* ================================================ 입력 부담 줄이기 == */
+
+  /* 매일 바뀌는 항목은 5~8개뿐인데 전에는 15개를 다 만져야 했다.
+   * 자주 안 바뀌는 항목은 접어 두고, 지난 입력을 그대로 쓸 수 있게 한다. */
+
+  var DETAIL_IDS = ['water', 'caffeine', 'exercise', 'sleepRegularity', 'availableHours'];
+
+  function toggleDetail(open) {
+    var wrap = $('detailToggle').parentElement;
+    var body = $('detailBody');
+    var willOpen = open === undefined ? body.classList.contains('is-hidden') : open;
+    body.classList.toggle('is-hidden', !willOpen);
+    wrap.classList.toggle('open', willOpen);
+    $('detailToggle').setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    $('detailToggle').querySelector('.ch-icon').textContent = willOpen ? '−' : '＋';
+  }
+
+  /** 접힌 영역에 지금 어떤 값이 들어 있는지 한 줄로 보여 준다 */
+  function updateDetailSummary() {
+    var t = $('detailToggle');
+    if (!t) return;
+    var span = t.querySelector('.ch-text span');
+    span.textContent = '수분 ' + $('water').value + '컵 · 카페인 ' + $('caffeine').value + '잔 · 운동 ' +
+      $('exercise').value + '분 · 가용 ' + $('availableHours').value + '시간' +
+      ($('bedTime').value ? ' · 취침 ' + $('bedTime').value : '');
+  }
+
+  /* 분석을 돌리기 전에도 "취침까지 몇 시간 남았는지" 를 보여 준다.
+   * 가용 시간을 6시간으로 잡아 놓고 취침까지 2시간뿐인 상황을 입력 단계에서 알 수 있다. */
+  function updateCurfewHint() {
+    var el = $('curfewHint');
+    if (!el) return;
+    var inp = { startHour: 0, bedHour: null };
+
+    var st = $('startTime').value;
+    if (st) {
+      var p = st.split(':');
+      inp.startHour = parseInt(p[0], 10) + parseInt(p[1], 10) / 60;
+    } else {
+      var now = new Date();
+      inp.startHour = now.getHours() + now.getMinutes() / 60;
+    }
+    var bt = $('bedTime').value;
+    if (!bt) { el.textContent = ''; el.className = 'tiny'; return; }
+    var q = bt.split(':');
+    inp.bedHour = parseInt(q[0], 10) + parseInt(q[1], 10) / 60;
+
+    var left = BrainPlanner.curfewMinutes(inp);
+    var want = parseFloat($('availableHours').value) * 60;
+
+    if (left < 0) {
+      el.className = 'tiny warn';
+      el.textContent = '⚠ 목표 취침 시각을 ' + fmtDur(-left) + ' 넘겼습니다. 오늘은 플랜 대신 취침을 권합니다.';
+    } else if (left < want) {
+      el.className = 'tiny warn';
+      el.textContent = '⚠ 취침까지 ' + fmtDur(left) + '뿐입니다(잠들기 전 30분 제외). 플랜은 이 시간에 맞춰 줄어듭니다.';
+    } else {
+      el.className = 'tiny';
+      el.textContent = '취침까지 ' + fmtDur(left) + ' 사용할 수 있습니다(잠들기 전 30분 제외).';
+    }
+  }
+
+  function renderQuickNote() {
+    var box = $('quickNote');
+    var saved = Store.loadInput();
+    if (!saved || !saved._date) { box.innerHTML = ''; box.className = ''; return; }
+
+    var today = Store.key();
+    var same = saved._date === today;
+    var d = Store.parseKey(saved._date);
+    var days = Math.round((Store.parseKey(today) - d) / 86400000);
+    var when = same ? '오늘' : (days === 1 ? '어제' : days + '일 전');
+
+    box.className = 'quick-note';
+    box.innerHTML =
+      '<div class="qn-icon">' + (same ? '✅' : '🕘') + '</div>' +
+      '<div><div class="qn-title">' + when + ' 입력값을 불러왔습니다</div>' +
+      '<div class="qn-sub">수면 <b>' + saved.sleep.hours + '시간</b> · 스트레스 <b>' + saved.stress +
+      '</b> · 피로 <b>' + saved.fatigue + '</b> · 가용 <b>' + saved.availableHours + '시간</b><br>' +
+      (same ? '오늘 이미 입력한 값입니다. 바뀐 것만 고치고 다시 분석하면 됩니다.'
+            : '<b>오늘 컨디션</b>만 고쳐서 바로 분석하세요. 세부 항목은 그대로 둬도 됩니다.') + '</div></div>' +
+      '<button type="button" class="btn primary sm" id="quickAnalyze">그대로 분석 →</button>';
+
+    $('quickAnalyze').addEventListener('click', runAnalysis);
+  }
+
+  function renderTodayHome() {
+    var box = $('todayHome');
+    if (!box || !Store.profile()) return;
+    var rec = Store.recordOn(Store.key());
+    var saved = Store.loadInput();
+    var first = state.plan && state.plan.subjects[0];
+    var upcoming = (saved && saved.subjects || []).filter(function (s) { return s.daysLeft === null || s.daysLeft >= 0; })
+      .sort(function (a, b) {
+        if (a.daysLeft === null) return 1;
+        if (b.daysLeft === null) return -1;
+        return a.daysLeft - b.daysLeft;
+      })[0];
+    var title = first
+      ? first.name + ' ' + Math.min(first.minutes, state.plan.pomodoro.focus) + '분부터 시작하세요'
+      : (rec ? '오늘 준비도는 확인했습니다. 과목 추천을 다시 만들 수 있어요.' : '오늘 상태를 10초만 확인해 주세요');
+    var meta = rec
+      ? '학습 준비도 ' + scoreBand(rec.overall) + ' · 수면 ' + rec.sleep + '시간 · 피로 ' + rec.fatigue + '/10'
+      : (saved ? '이전 입력값을 불러와 바뀐 항목만 고치면 됩니다.' : '수면·피로·스트레스·기분과 오늘 과목만 확인합니다.');
+    var exam = upcoming && upcoming.examDate
+      ? (upcoming.daysLeft === 0 ? upcoming.name + ' D-DAY' : upcoming.name + ' D-' + upcoming.daysLeft)
+      : '등록된 가까운 시험 없음';
+    box.innerHTML = '<div class="today-hero"><div class="today-kicker">' + (rec ? '오늘의 추천' : '오늘의 시작') + '</div>' +
+      '<h3>' + esc(title) + '</h3><p class="today-meta">' + esc(meta) + '</p>' +
+      '<div class="today-actions">' +
+        (first ? '<button type="button" class="btn primary lg" id="todayStart">바로 시작</button>' : '<button type="button" class="btn primary lg" id="todayCheck">10초 컨디션 확인</button>') +
+        '<button type="button" class="btn ghost" id="todayEdit">입력값 수정</button></div></div>' +
+      '<div class="today-stats"><div class="today-stat"><div class="k">오늘 순공</div><div class="v">' + fmtDurFine(StudyLog.todayTotal()) + '</div></div>' +
+      '<div class="today-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '일</div></div>' +
+      '<div class="today-stat"><div class="k">가까운 시험</div><div class="v">' + esc(exam) + '</div></div></div>';
+    if ($('todayCheck')) $('todayCheck').addEventListener('click', function () { goPage('secInput'); });
+    if ($('todayEdit')) $('todayEdit').addEventListener('click', function () { goPage('secInput'); });
+    if ($('todayStart')) $('todayStart').addEventListener('click', function () {
+      goPage('secTimer');
+      setTimeout(function () { if (!state.timer.running) state.timer.start(); }, 250);
+    });
+  }
+
+  /* ============================================================ 급식 == */
+
+  var MEAL_FIELD = { '조식': 'mealBreakfast', '중식': 'mealLunch', '석식': 'mealDinner' };
+  var DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+  function renderMeals() {
+    var box = $('mealToday');
+    if (!box) return;
+    var p = Store.profile();
+
+    /* 청여고 나이스 식별자는 프로필에 자동으로 들어간다. */
+    if (!p || !p.neis || !p.neis.schoolCode) {
+      box.innerHTML = '<div class="meal-empty">청여고 학교 연결 정보를 확인하지 못했습니다. ' +
+        '<button type="button" class="btn ghost sm" id="mealGoProfile">프로필 다시 저장</button></div>';
+      var b = $('mealGoProfile');
+      if (b) b.addEventListener('click', function () { openProfile(true); });
+      return;
+    }
+
+    box.innerHTML = '<div class="meal-loading">🍱 오늘 급식을 불러오는 중…</div>';
+
+    Neis.todayMeals(p.neis).then(function (list) {
+      if (!list.length) {
+        box.innerHTML = '<div class="meal-empty">오늘(' + Store.key() + ')은 등록된 급식이 없습니다. ' +
+          '주말이거나 방학·재량휴업일일 수 있어요.</div>';
+        return;
+      }
+
+      box.innerHTML = list.map(function (m) {
+        var dishes = m.dishes.map(function (d) {
+          var al = d.allergens.length ? '<i title="' + d.allergens.map(function (n) { return Neis.ALLERGENS[n]; }).join(', ') + '">' +
+            d.allergens.join('.') + '</i>' : '';
+          return '<span class="mc-dish">' + esc(d.name) + al + '</span>';
+        }).join('');
+        var alSet = {};
+        m.dishes.forEach(function (d) { d.allergens.forEach(function (n) { alSet[n] = 1; }); });
+        var alNames = Object.keys(alSet).map(function (n) { return n + ' ' + Neis.ALLERGENS[n]; });
+
+        return '<div class="meal-card">' +
+          '<div class="mc-head"><span class="mc-type ' + esc(m.type) + '">' + esc(m.type) + '</span>' +
+          (m.kcal ? '<span class="mc-kcal">' + esc(m.kcal) + '</span>' : '') + '</div>' +
+          '<div class="mc-body"><div class="mc-dishes">' + dishes + '</div>' +
+          (alNames.length ? '<p class="mc-note">알레르기 유발 — ' + esc(alNames.join(' · ')) + '</p>' : '') +
+          '</div></div>';
+      }).join('');
+
+      // 급식이 있는데 그 끼니를 체크하지 않았으면 살짝 알려 준다
+      var unchecked = list.filter(function (m) {
+        var f = MEAL_FIELD[m.type];
+        return f && $(f) && !$(f).checked;
+      }).map(function (m) { return m.type; });
+
+      if (unchecked.length) {
+        box.insertAdjacentHTML('beforeend',
+          '<p class="mc-note">💡 오늘 ' + esc(unchecked.join('·')) + ' 급식이 있습니다. 먹었다면 위에서 체크해 주세요.</p>');
+      }
+    }).catch(function (err) {
+      var msg = String(err && err.message || err);
+      box.innerHTML = '<div class="meal-empty">급식을 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
+        '<b>인터넷 연결을 확인한 뒤 다시 시도해 주세요.</b></div>';
+    });
+  }
+
+  /* ================================================ 식사 시간 알리미 ==
+   *
+   * 시각의 출처는 meals.js 한 곳뿐이다. 알림도, 준비도 채점도 같은 값을 본다.
+   * 두 곳에서 따로 시각을 정하면 "알림은 12시에 왔는데 12시 반에 결식 처리" 같은
+   * 앞뒤가 안 맞는 화면이 나온다. */
+
+  var MEAL_BOX = { breakfast: 'mealBreakfast', lunch: 'mealLunch', dinner: 'mealDinner' };
+
+  function mealEaten(id) {
+    var el = $(MEAL_BOX[id]);
+    return !!(el && el.checked);
+  }
+
+  var MEAL_SOURCE_TXT = {
+    plan: '계획표',
+    'plan-other': '계획표(다른 요일)',
+    manual: '직접 지정',
+    unplanned: '계획표에 없음',
+    'default': '표준 시각'
+  };
+
+  /** [입력] 화면에 "무엇을 기준으로 채점하는가" 를 그대로 펼쳐 놓는다 */
+  function renderMealSched() {
+    var box = $('mealSched');
+    if (!box) return;
+
+    var sc = MealPlan.schedule();
+    var now = new Date();
+    var nowH = now.getHours() + now.getMinutes() / 60;
+    var grace = BrainEngine.MEAL_GRACE;
+
+    var chips = sc.meals.map(function (m) {
+      var eaten = mealEaten(m.id);
+      var cls, tail;
+      if (!m.counts) { cls = 'off'; tail = '안 먹는 끼니'; }
+      else if (eaten) { cls = 'done'; tail = '먹음'; }
+      else if (nowH >= m.hour + grace) { cls = 'miss'; tail = '지남'; }
+      else if (m.hour - nowH <= 1) { cls = 'soon'; tail = '곧'; }
+      else { cls = ''; tail = '아직'; }
+
+      return '<span class="ms-chip ' + cls + '">' + m.icon + ' ' + esc(m.label) +
+        ' ' + MealPlan.fmtHour(m.hour) + ' <i>' + tail + '</i></span>';
+    }).join('');
+
+    var why;
+    if (!sc.hasPlan) {
+      why = '계획표가 아직 비어 있어 <b>표준 시각</b>으로 채점합니다. ' +
+        '<b>계획표</b>에 식사 시간을 넣으면 그 시각을 기준으로 바뀌고, 알림도 받을 수 있습니다.';
+    } else if (!sc.planHasMeal) {
+      why = '계획표에 식사 칸이 없어 <b>표준 시각</b>으로 채점합니다. ' +
+        '계획표에 <b>아침식사 · 점심식사 · 저녁식사</b>처럼 적어 두면 그 시각을 씁니다.';
+    } else {
+      why = '<b>계획표</b>에서 읽은 시각입니다. 아직 시간이 안 된 끼니는 <b>점수에 반영하지 않고</b>, ' +
+        '계획표에 없는 끼니는 결식으로 세지 않습니다.';
+    }
+
+    var nx = MealPlan.next();
+    if (nx && !nx.tomorrow) {
+      why += ' 다음 끼니는 <b>' + esc(nx.meal.label) + ' ' + MealPlan.fmtHour(nx.meal.hour) +
+        '</b> (' + fmtDur(Math.round(nx.inHours * 60)) + ' 뒤).';
+    }
+
+    box.innerHTML = '<div class="ms-row">' + chips + '</div><p class="ms-why">' + why + '</p>';
+  }
+
+  /* ------------------------------------------------------------- 배너 */
+
+  var mealBanner = null;   // 지금 배너에 떠 있는 끼니
+
+  function hideMealBanner() {
+    var el = $('mealAlarm');
+    if (!el) return;
+    el.classList.remove('show');
+    setTimeout(function () { if (!mealBanner) el.classList.add('is-hidden'); }, 300);
+    mealBanner = null;
+  }
+
+  function showMealBanner(meal, info) {
+    var el = $('mealAlarm');
+    if (!el) return;
+    mealBanner = meal;
+
+    var lead = info.leadMin ? info.leadMin + '분 뒤 ' : '';
+    $('maBnIcon').textContent = meal.icon;
+    $('maBnTitle').textContent = lead
+      ? lead + meal.label + ' 식사 시간이에요'
+      : meal.label + ' 먹을 시간이에요';
+    $('maBnSub').textContent = MealPlan.fmtHour(meal.hour) + ' · ' +
+      (MEAL_SOURCE_TXT[meal.source] || '계획표') + ' 기준';
+
+    el.classList.remove('is-hidden');
+    /* 리플로우를 강제해야 트랜지션이 실제로 돈다.
+     * requestAnimationFrame 은 화면이 가려져 있으면 아예 불리지 않아,
+     * 배경 탭에서 알림이 뜬 경우 배너가 투명한 채로 남는다. */
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  function fireMealAlarm(meal, info) {
+    /* 토스트는 쓰지 않는다 — 배너와 같은 자리(화면 아래 가운데)에 떠서 서로 가린다.
+     * 배너는 스스로 사라지지 않으므로 [먹었어요] 를 누를 시간도 준다. */
+    showMealBanner(meal, info);
+
+    notify(meal.icon + ' ' + meal.label + ' 식사 시간 (' + MealPlan.fmtHour(meal.hour) + ')',
+      '먹고 나면 [입력] 화면에서 체크해 주세요. 학습 준비도에 함께 반영됩니다.');
+    if (info.sound) { try { Pomodoro.beep('break'); } catch (e) { /* 소리는 없어도 그만 */ } }
+  }
+
+  /** 배너의 [먹었어요] — 체크까지 해 줘야 준비도가 실제로 달라진다 */
+  function markMealEaten(meal) {
+    var box = $(MEAL_BOX[meal.id]);
+    if (box && !box.checked) {
+      box.checked = true;
+      // change 를 직접 쏴서 급식 안내·기준표가 같이 다시 그려지게 한다
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    var sinceEl = $('hoursSinceMeal');
+    if (sinceEl) { sinceEl.value = 0; sinceEl.dispatchEvent(new Event('input')); }
+
+    var saved = Store.loadInput();
+    if (saved && saved.meals) {
+      saved.meals[meal.id] = true;
+      saved.hoursSinceMeal = 0;
+      Store.saveInput(saved);
+    }
+
+    hideMealBanner();
+    toast(meal.label + ' 먹은 것으로 기록했어요. 다시 분석하면 준비도에 반영됩니다.');
+  }
+
+  /* ------------------------------------------------------------- 설정 */
+
+  function renderMealAlarmRows() {
+    var wrap = $('maRows');
+    if (!wrap) return;
+    var s = MealPlan.settings();
+    var sc = MealPlan.schedule();
+
+    wrap.innerHTML = sc.meals.map(function (m) {
+      var manual = s.times[m.id] || '';
+      var sub = MEAL_SOURCE_TXT[m.source] || '';
+      if (!m.alarmable) sub += ' — 시각을 직접 넣으면 알려 드립니다';
+      return '<div class="ma-row' + (m.on && m.alarmable ? '' : ' is-off') + '" data-meal="' + m.id + '">' +
+        '<span class="ma-ic" aria-hidden="true">' + m.icon + '</span>' +
+        '<span class="ma-name"><b>' + esc(m.label) + ' ' + MealPlan.fmtHour(m.hour) + '</b>' +
+        '<span>' + esc(sub) + '</span></span>' +
+        '<input type="time" class="input ma-time" value="' + esc(manual) + '" ' +
+        'aria-label="' + esc(m.label) + ' 시각 직접 지정 (비우면 계획표를 따릅니다)">' +
+        '<label class="toggle"><input type="checkbox" class="ma-en"' + (m.on ? ' checked' : '') +
+        ' aria-label="' + esc(m.label) + ' 알림 사용"><span>알림</span></label>' +
+        '</div>';
+    }).join('');
+
+    $$('.ma-row', wrap).forEach(function (row) {
+      var id = row.dataset.meal;
+      row.querySelector('.ma-time').addEventListener('change', function () {
+        var v = this.value;
+        // 못 읽는 값은 저장하지 않는다 — 비우면 다시 계획표를 따라간다
+        if (v && MealPlan.parseHM(v) === null) { this.value = ''; v = ''; }
+        var patch = { times: {} }; patch.times[id] = v;
+        MealPlan.patch(patch);
+        renderMealAlarmRows(); renderMealAlarmStatus(); renderMealSched();
+      });
+      row.querySelector('.ma-en').addEventListener('change', function () {
+        var patch = { enabled: {} }; patch.enabled[id] = this.checked;
+        MealPlan.patch(patch);
+        renderMealAlarmRows(); renderMealAlarmStatus();
+      });
+    });
+  }
+
+  function renderMealAlarmStatus() {
+    var el = $('maStatus');
+    if (!el) return;
+    var s = MealPlan.settings();
+    var sc = MealPlan.schedule();
+
+    var live = sc.meals.filter(function (m) { return m.alarmable && m.on; });
+    var msgs = [];
+
+    if (!s.on) msgs.push('알리미가 꺼져 있습니다.');
+    else if (!live.length) {
+      msgs.push('알릴 끼니가 없습니다 — 계획표에 식사 시간을 넣거나 위에서 시각을 직접 지정하세요.');
+    } else {
+      var nx = MealPlan.next();
+      msgs.push('다음 알림: ' + live.map(function (m) { return m.label + ' ' + MealPlan.fmtHour(m.hour); }).join(' · ') +
+        (nx ? ' (가장 가까운 끼니 ' + fmtDur(Math.round(nx.inHours * 60)) + ' 뒤)' : ''));
+    }
+
+    var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    if (perm === 'granted') msgs.push('브라우저 알림 허용됨 — 다른 탭을 보고 있어도 뜹니다.');
+    else if (perm === 'denied') msgs.push('브라우저 알림이 차단돼 있습니다. 앱 화면 안에서만 알려 드립니다.');
+    else if (perm === 'default') msgs.push('브라우저 알림을 허용하면 다른 탭에서도 받을 수 있습니다.');
+
+    el.className = 'neis-status show' + (s.on && !live.length ? ' err' : '');
+    el.textContent = msgs.join(' ');
+  }
+
+  function renderMealAlarmSettings() {
+    var s = MealPlan.settings();
+    if (!$('maOn')) return;
+    $('maOn').checked = s.on;
+    $('maLead').value = String(s.leadMin);
+    $('maSound').checked = s.sound;
+    $('maBody').classList.toggle('is-off', !s.on);
+    renderMealAlarmRows();
+    renderMealAlarmStatus();
+  }
+
+  function initMealAlarm() {
+    if (!$('maOn')) return;
+
+    $('maOn').addEventListener('change', function () {
+      MealPlan.patch({ on: this.checked });
+      renderMealAlarmSettings();
+    });
+    $('maLead').addEventListener('change', function () {
+      MealPlan.patch({ leadMin: parseInt(this.value, 10) || 0 });
+      renderMealAlarmStatus();
+    });
+    $('maSound').addEventListener('change', function () {
+      MealPlan.patch({ sound: this.checked });
+    });
+    $('maPerm').addEventListener('click', function () {
+      if (!('Notification' in window)) { toast('이 브라우저는 알림을 지원하지 않습니다.', true); return; }
+      // 권한 요청은 사용자가 직접 누른 시점에만 — 자동 요청은 대부분 거절당한다
+      Notification.requestPermission().then(function () { renderMealAlarmStatus(); });
+    });
+    $('maGoPlan').addEventListener('click', function () { goPage('secVacPlan'); });
+    $('maTest').addEventListener('click', function () {
+      var sc = MealPlan.schedule();
+      var nx = MealPlan.next();
+      var meal = (nx && nx.meal) || sc.meals[0];
+      fireMealAlarm(meal, { leadMin: 0, sound: MealPlan.settings().sound });
+    });
+
+    $('maBnAte').addEventListener('click', function () { if (mealBanner) markMealEaten(mealBanner); });
+    $('maBnLater').addEventListener('click', hideMealBanner);
+    $('maBnClose').addEventListener('click', hideMealBanner);
+
+    MealPlan.start({ isEaten: mealEaten, onFire: fireMealAlarm });
+
+    /* 화면을 오래 가려 두면 브라우저가 타이머를 늦춘다.
+     * 돌아온 순간 한 번 더 확인해서 지난 끼니를 놓치지 않게 한다. */
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) { MealPlan.check(); renderMealSched(); }
+    });
+  }
+
+  /* ============================================================== 홈 ==
+   * 앱을 열면 처음 보이는 화면. 새로 계산하는 값은 없고, 다른 화면이 이미
+   * 갖고 있는 숫자(뇌 컨디션 · 순공 시간 · 등수)를 모아 보여 주기만 한다. */
+
+  function renderHomeQuick() {
+    var box = $('homeQuick');
+    if (!box) return;
+    var open = openPages().filter(function (p) { return p.tool; });
+    box.innerHTML = open.map(function (p) {
+      return '<button type="button" class="hq" data-go="' + p.id + '">' +
+        '<span class="hq-ic" aria-hidden="true">' + esc(p.icon || '•') + '</span>' +
+        '<b>' + esc(p.label) + '</b><span class="hq-d">' + esc(p.desc || '') + '</span></button>';
+    }).join('');
+    $$('.hq', box).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.go); });
+    });
+  }
+
+  function renderHome() {
+    // 홈을 보고 있을 때만 그린다. 다른 화면에서 순공 시간이 바뀔 때마다
+    // 여기까지 계산할 이유가 없고, 홈에 들어오는 순간 goPage 가 다시 부른다.
+    if (state.page !== 'secHome') return;
+    var p = Store.profile();
+    if (!p) return;
+
+    $('hmNick').textContent = p.nick || '학습자';
+
+    var now = new Date();
+    $('hmDate').textContent = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 (' + DOW_KO[now.getDay()] + ')';
+
+    /* 뇌 컨디션 도넛 — 오늘 분석한 적이 없으면 저장된 마지막 기록을 쓰고,
+     * 그것도 없으면 빈 상태로 둔다. 없는 점수를 지어내지 않는다. */
+    var a = state.analysis;
+    var hist = Store.history();
+    var last = hist.length ? hist[hist.length - 1] : null;
+    var score = null, label = '', fresh = false;
+    if (a) { score = a.overall; label = a.state.label; fresh = true; }
+    else if (last) { score = last.overall; label = last.date === Store.key() ? '오늘 기록' : '지난 기록'; fresh = last.date === Store.key(); }
+
+    var dial = $('hmDial');
+    if (score == null) {
+      $('hmScore').textContent = '—';
+      $('hmState').textContent = '분석 전';
+      dial.style.setProperty('--pct', '0%');
+      dial.classList.add('is-empty');
+    } else {
+      $('hmScore').textContent = score;
+      $('hmState').textContent = label;
+      dial.style.setProperty('--pct', score + '%');
+      dial.classList.remove('is-empty');
+    }
+
+    $('hmLine').textContent = a ? a.state.line
+      : (last && last.date === Store.key() ? '오늘 분석한 결과가 남아 있어요.' : '오늘 컨디션을 넣으면 맞춤 플랜을 짜 드릴게요.');
+
+    /* 숫자 타일 */
+    var todayMin = StudyLog.todayTotal();
+    var weekMin = StudyLog.weekTotal(0);
+    var dailyGoal = (p.goal || 25) * 60 / 7;
+    $('hmToday').textContent = fmtDur(todayMin);
+    $('hmTodaySub').textContent = todayMin > 0
+      ? '오늘 목표의 ' + Math.round(Math.min(999, todayMin / dailyGoal * 100)) + '%'
+      : '타이머로 재기';
+    $('hmWeek').textContent = fmtDur(weekMin);
+    $('hmWeekSub').textContent = '주간 목표 ' + (p.goal || 25) + '시간';
+    $('hmStreak').textContent = StudyLog.streak() + '일';
+
+    // 혼자뿐일 때 '1위' 는 등수가 아니라 착시다 — 사람이 둘 이상일 때만 순위를 말한다
+    var r = Group.rank('today');
+    $('hmRank').textContent = (r.me && r.count > 1) ? r.me.rank + '위' : '—';
+    $('hmRankSub').textContent = r.count > 1 ? '같은 반 ' + r.count + '명 중' : '같은 반 친구를 기다리는 중';
+
+    /* 큰 버튼은 지금 할 일 하나만 가리킨다 */
+    var cta = $('hmCta');
+    if (!state.analysis) {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secInput">' +
+        '🧠 오늘의 데이터 넣고 분석하기</button>';
+    } else if (state.timer && state.timer.running) {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secTimer">⏱️ 타이머로 돌아가기</button>';
+    } else {
+      cta.innerHTML = '<button type="button" class="btn primary lg home-cta" data-go="secTimer">▶ 공부 시작하기</button>' +
+        '<button type="button" class="btn lg home-cta2" data-go="secPlan">오늘의 플랜 보기</button>';
+    }
+    $$('[data-go]', cta).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.go); });
+    });
+
+    renderGoalCard();
+    renderCalendar();
+    renderHomeQuick();
+  }
+
+  /* ============================================ 목표 · D-day · 학습 캘린더 ==
+   *
+   * 달력을 새로 만들면서 지킨 것 두 가지.
+   *
+   *  1) 새로 입력받는 것은 목표 대학과 직접 등록한 D-day 뿐이다.
+   *     시험 일정은 [입력] 화면의 과목에 이미 적혀 있으므로 그대로 끌어다 쓴다 —
+   *     같은 날짜를 두 곳에 적게 하면 반드시 한쪽이 낡는다.
+   *  2) 달력 칸에는 지어낸 값을 넣지 않는다. 실제로 타이머로 잰 순공 시간과
+   *     등록된 일정만 겹쳐 놓는다. 아무것도 안 한 날은 비어 있는 게 맞다. */
+
+  var GOAL_KEY = 'mindora.goal.v1';
+  var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function goalLoad() {
+    var d = { university: '', major: '', motto: '', ddays: [] };
+    try {
+      var raw = localStorage.getItem(GOAL_KEY);
+      if (!raw) return d;
+      var o = JSON.parse(raw);
+      if (!o || typeof o !== 'object') return d;
+      return {
+        university: String(o.university || '').slice(0, 40),
+        major: String(o.major || '').slice(0, 40),
+        motto: String(o.motto || '').slice(0, 60),
+        ddays: (Array.isArray(o.ddays) ? o.ddays : [])
+          .filter(function (x) { return x && x.label && DATE_RE.test(x.date); })
+          .map(function (x) { return { label: String(x.label).slice(0, 30), date: x.date }; })
+          .slice(0, 12)
+      };
+    } catch (e) { return d; }
+  }
+
+  function goalSave(g) {
+    try { localStorage.setItem(GOAL_KEY, JSON.stringify(g)); return true; }
+    catch (e) { return false; }
+  }
+
+  /** 오늘 기준 남은 날 수 (음수면 지난 날) */
+  function dayDiff(dateKey) {
+    return Math.round((Store.parseKey(dateKey) - Store.parseKey(Store.key())) / 86400000);
+  }
+
+  function ddayText(diff) {
+    if (diff === 0) return 'D-DAY';
+    return diff > 0 ? 'D-' + diff : 'D+' + (-diff);
+  }
+
+  function firstOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+
+  /* ------------------------------------------------- 나이스 학사일정 가져오기
+   *
+   * 중간·기말·모의고사·영어듣기는 학교가 학기 초에 나이스에 올려 둔다.
+   * 사용자가 손으로 옮겨 적게 하면 반드시 틀리거나 낡으므로 그대로 받아 온다.
+   * 받은 구간은 state.calSched 에 쌓아 두고, 같은 구간은 다시 묻지 않는다
+   * (하루치 캐시는 neis.js 가 따로 맡는다). */
+
+  function mergeSched(byDate) {
+    Object.keys(byDate).forEach(function (d) {
+      var cur = state.calSched[d] || (state.calSched[d] = []);
+      byDate[d].forEach(function (e) {
+        var dup = cur.some(function (x) { return x.name === e.name; });
+        if (!dup) cur.push(e);
+      });
+    });
+  }
+
+  /** tag 는 "이 구간은 이미 물어봤다" 는 표시다 */
+  function fetchSched(tag, promise) {
+    if (state.calSchedDone[tag]) return;
+    var p = Store.profile();
+    // 학교를 목록에서 고르지 않았으면 학교 코드가 없어 조회할 수 없다
+    if (!p || !p.neis || !p.neis.schoolCode) return;
+
+    state.calSchedDone[tag] = true;
+    promise(p).then(function (byDate) {
+      if (!byDate || !Object.keys(byDate).length) return;
+      mergeSched(byDate);
+      renderCalendar();
+      renderDdayList();
+    });
+  }
+
+  function loadMonthSchedule(y, mo) {
+    fetchSched('m' + y + '-' + mo, function (p) {
+      return Neis.monthSchedule(p.neis, y, mo, p.grade);
+    });
+  }
+
+  /** 다가오는 시험을 D-day 로 띄우려면 보고 있는 달 밖도 알아야 한다 */
+  function loadUpcomingSchedule() {
+    fetchSched('upcoming', function (p) {
+      return Neis.upcomingSchedule(p.neis, 150, p.grade);
+    });
+  }
+
+  /** 학교를 바꾸면 남의 학교 일정이 남아 있으면 안 된다 */
+  function resetSchedule() {
+    state.calSched = {};
+    state.calSchedDone = {};
+  }
+
+  /* 달력 점 색은 세 갈래로만 나눈다. 갈래마다 색을 주면 알록달록해서
+   * 정작 "시험이 언제인지" 가 안 보인다. 정확한 이름은 아래 상세와 D-day 가 말한다. */
+  var EXAMISH = { exam: 1, mock: 1, listen: 1 };
+  function dotClass(kind) {
+    if (kind === 'dday') return 'dday';
+    return EXAMISH[kind] ? 'exam' : 'sch';
+  }
+
+  function ymdToKey(d) { return d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8); }
+
+  /** 날짜별 일정 — 등록한 D-day + [입력] 의 과목 시험일 + 나이스 학사일정 */
+  function calEvents() {
+    var map = {};
+    function put(k, ev) { (map[k] || (map[k] = [])).push(ev); }
+
+    goalLoad().ddays.forEach(function (d) { put(d.date, { kind: 'dday', icon: '📌', label: d.label }); });
+
+    var saved = Store.loadInput();
+    ((saved && saved.subjects) || []).forEach(function (s) {
+      if (s.examDate && DATE_RE.test(s.examDate)) {
+        put(s.examDate, { kind: 'exam', icon: '📘', label: s.name + ' 시험' });
+      }
+    });
+
+    // 학교가 올린 이름을 그대로 쓴다 — 우리가 고쳐 쓰지 않는다
+    Object.keys(state.calSched).forEach(function (d8) {
+      state.calSched[d8].forEach(function (e) {
+        put(ymdToKey(d8), {
+          kind: e.kind, icon: e.icon, label: e.name,
+          short: e.short, sub: e.label, detail: e.detail, neis: true
+        });
+      });
+    });
+    return map;
+  }
+
+  /* ------------------------------------------------------------ 목표 카드 */
+
+  function renderGoalCard() {
+    var hero = $('goalHero');
+    if (!hero) return;
+    var g = goalLoad();
+
+    if (g.university || g.major || g.motto) {
+      hero.className = 'goal-hero';
+      hero.innerHTML = '<span class="gh-ic" aria-hidden="true">🎓</span><div class="gh-txt">' +
+        '<div class="gh-univ">' + esc(g.university || '내 목표') + '</div>' +
+        (g.major ? '<div class="gh-major">' + esc(g.major) + '</div>' : '') +
+        (g.motto ? '<div class="gh-motto">' + esc(g.motto) + '</div>' : '') +
+        '</div>';
+    } else {
+      hero.className = 'goal-hero is-empty';
+      hero.innerHTML = '<span class="gh-ic" aria-hidden="true">🎓</span><div class="gh-txt">' +
+        '<div class="gh-univ">목표 대학을 아직 적지 않았습니다</div>' +
+        '<div class="gh-major">오른쪽 위 <b>수정</b> 을 눌러 목표와 한 줄 다짐, D-day 를 등록해 보세요.</div></div>';
+    }
+    renderDdayList();
+  }
+
+  /** 여러 날에 걸친 같은 시험은 첫날 하나로 접는다 (중간고사 4일 → 한 줄) */
+  function schedExamRows() {
+    var out = [], seen = {};
+    Object.keys(state.calSched).sort().forEach(function (d8) {
+      state.calSched[d8].forEach(function (e) {
+        if (!EXAMISH[e.kind] || seen[e.name]) return;
+        seen[e.name] = 1;
+        out.push({ kind: 'sched', label: e.name, sub: e.label, date: ymdToKey(d8) });
+      });
+    });
+    return out;
+  }
+
+  /** 가까운 미래 → 먼 미래 → 최근에 지난 것 순 */
+  function ddayRows() {
+    var rows = goalLoad().ddays.map(function (d) {
+      return { kind: 'dday', label: d.label, date: d.date };
+    });
+    var saved = Store.loadInput();
+    ((saved && saved.subjects) || []).forEach(function (s) {
+      if (s.examDate && DATE_RE.test(s.examDate)) rows.push({ kind: 'exam', label: s.name, date: s.examDate });
+    });
+    rows = rows.concat(schedExamRows());
+    rows.forEach(function (r) { r.diff = dayDiff(r.date); });
+    return rows.sort(function (a, b) {
+      var au = a.diff >= 0, bu = b.diff >= 0;
+      if (au !== bu) return au ? -1 : 1;         // 앞으로 올 날이 먼저
+      return au ? a.diff - b.diff : b.diff - a.diff;
+    });
+  }
+
+  function renderDdayList() {
+    var box = $('ddayList');
+    if (!box) return;
+    var rows = ddayRows();
+
+    if (!rows.length) {
+      box.className = 'dday-empty';
+      box.textContent = '등록된 D-day 가 없습니다. [입력] 화면에서 과목에 시험일을 적으면 여기에도 함께 나타납니다.';
+      return;
+    }
+
+    box.className = 'dday-list';
+    box.innerHTML = rows.slice(0, 7).map(function (r, i) {
+      var cls = r.diff < 0 ? ' past' : (r.diff <= 7 ? ' soon' : '');
+      // 학사일정은 갈래 이름(모의고사·영어듣기…)을 그대로 꼬리표로 쓴다
+      var tag = r.kind === 'sched' ? (r.sub || '학사일정') : (r.kind === 'exam' ? '시험' : 'D-day');
+      return '<div class="dd' + (i === 0 ? ' lead' : '') + '">' +
+        '<span class="dd-tag' + (r.kind === 'dday' ? '' : ' exam') + '">' + esc(tag) + '</span>' +
+        '<span class="dd-name">' + esc(r.label) + '</span>' +
+        '<span class="dd-date">' + esc(r.date) + '</span>' +
+        '<span class="dd-num' + cls + '">' + ddayText(r.diff) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* --------------------------------------------------------------- 편집 */
+
+  function addDdayRow(d) {
+    var list = $('ddayEditList');
+    if (!list) return;
+    var row = document.createElement('div');
+    row.className = 'dday-row';
+    row.innerHTML =
+      '<input type="text" class="input dr-name" maxlength="30" placeholder="예) 수능" value="' +
+        esc((d && d.label) || '') + '" aria-label="D-day 이름">' +
+      '<input type="date" class="input dr-date" value="' + esc((d && d.date) || '') + '" aria-label="D-day 날짜">' +
+      '<button type="button" class="icon-btn dr-del" title="이 줄 삭제" aria-label="이 D-day 삭제">✕</button>';
+    row.querySelector('.dr-del').addEventListener('click', function () { row.remove(); });
+    list.appendChild(row);
+  }
+
+  function openGoalForm(open) {
+    var f = $('goalForm');
+    if (!f) return;
+    var show = open === undefined ? f.classList.contains('is-hidden') : !!open;
+
+    if (show) {
+      var g = goalLoad();
+      $('goalUniv').value = g.university;
+      $('goalMajor').value = g.major;
+      $('goalMotto').value = g.motto;
+      $('ddayEditList').innerHTML = '';
+      g.ddays.forEach(addDdayRow);
+      if (!g.ddays.length) addDdayRow();
+    }
+    f.classList.toggle('is-hidden', !show);
+    $('goalEdit').textContent = show ? '접기' : '수정';
+  }
+
+  function saveGoal() {
+    var ddays = $$('.dday-row', $('ddayEditList')).map(function (row) {
+      var label = row.querySelector('.dr-name').value.trim();
+      var date = row.querySelector('.dr-date').value;
+      // 이름과 날짜가 둘 다 있어야 D-day 다. 반쯤 적다 만 줄은 조용히 버린다.
+      if (!label || !DATE_RE.test(date)) return null;
+      return { label: label, date: date };
+    }).filter(Boolean).slice(0, 12);
+
+    var ok = goalSave({
+      university: $('goalUniv').value.trim(),
+      major: $('goalMajor').value.trim(),
+      motto: $('goalMotto').value.trim(),
+      ddays: ddays
+    });
+    if (!ok) { toast('저장에 실패했습니다. 브라우저 저장소를 확인해 주세요.', true); return; }
+
+    openGoalForm(false);
+    renderGoalCard();
+    renderCalendar();
+    toast('목표를 저장했습니다.');
+  }
+
+  /* --------------------------------------------------------------- 달력 */
+
+  function shiftMonth(n) {
+    var b = state.calMonth || firstOfMonth(new Date());
+    state.calMonth = new Date(b.getFullYear(), b.getMonth() + n, 1);
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    var grid = $('calGrid');
+    if (!grid) return;
+
+    if (!state.calMonth) state.calMonth = firstOfMonth(new Date());
+    var base = state.calMonth;
+    var y = base.getFullYear(), mo = base.getMonth();
+    $('calTitle').textContent = y + '년 ' + (mo + 1) + '월';
+
+    // 보고 있는 달의 학사일정과, D-day 에 쓸 앞으로의 시험 일정을 받아 둔다
+    loadMonthSchedule(y, mo);
+    loadUpcomingSchedule();
+
+    var events = calEvents();
+    var today = Store.key();
+    var lead = new Date(y, mo, 1).getDay();          // 일=0
+    var lastDay = new Date(y, mo + 1, 0).getDate();
+
+    /* 막대 길이는 그 달에서 가장 많이 공부한 날을 기준으로 잡는다.
+     * 고정 상한을 두면 공부량이 적은 달은 전부 눈금 하나로 뭉개져 보인다. */
+    var mins = [], i;
+    for (i = 1; i <= lastDay; i++) mins.push(StudyLog.dayTotal(Store.key(new Date(y, mo, i))));
+    var max = Math.max.apply(null, mins.concat([1]));
+
+    var cells = [];
+    for (i = 0; i < lead; i++) cells.push('<div class="cal-cell blank"></div>');
+
+    for (i = 1; i <= lastDay; i++) {
+      var d = new Date(y, mo, i);
+      var k = Store.key(d);
+      var dow = d.getDay();
+      var min = mins[i - 1];
+      var evs = events[k] || [];
+
+      var cls = 'cal-cell' + (dow === 0 ? ' sun' : (dow === 6 ? ' sat' : '')) +
+        (k === today ? ' today' : '') + (k > today ? ' future' : '') +
+        (k === state.calPick ? ' picked' : '');
+
+      var label = (mo + 1) + '월 ' + i + '일' +
+        (min > 0 ? ', 순공 ' + fmtDur(min) : '') +
+        (evs.length ? ', ' + evs.map(function (e) { return e.label; }).join(', ') : '');
+
+      /* 시험류는 점만 찍지 않고 '중간'·'모의'·'듣기' 처럼 두 글자로 적어 준다.
+       * 달력을 열자마자 시험 주간이 어디인지 읽히는 것이 이 화면의 핵심이다. */
+      var badge = '';
+      for (var bi = 0; bi < evs.length; bi++) {
+        if (evs[bi].short) { badge = '<span class="cd-tag">' + esc(evs[bi].short) + '</span>'; break; }
+      }
+
+      var dots = evs.length
+        ? '<span class="cd-dots">' + evs.slice(0, 3).map(function (e) {
+            return '<i class="' + dotClass(e.kind) + '"></i>';
+          }).join('') + '</span>'
+        : '';
+
+      cells.push('<button type="button" class="' + cls + '" data-date="' + k + '"' +
+        ' aria-label="' + esc(label) + '">' +
+        '<span class="cd-n">' + i + '</span>' + badge +
+        (min > 0
+          ? '<span class="cd-bar" style="width:' + Math.max(20, min / max * 100).toFixed(0) + '%"></span>' +
+            '<span class="cd-min">' + Math.round(min) + '분</span>'
+          : '') +
+        dots + '</button>');
+    }
+
+    grid.innerHTML = cells.join('');
+    $$('.cal-cell[data-date]', grid).forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.calPick = b.dataset.date;
+        renderCalendar();
+      });
+    });
+
+    var note = $('calNote');
+    if (note) {
+      var prof = Store.profile();
+      note.innerHTML = (prof && prof.neis && prof.neis.schoolCode)
+        ? '중간·기말·모의고사·영어듣기는 <b>나이스 학사일정</b>에서 학교가 올린 이름 그대로 가져옵니다. ' +
+          '일정이 바뀌었다면 <b>설정 → 청여고 학교 데이터 → 최신 학교 데이터 다시 받기</b>를 누르세요.'
+        : '중간·기말·모의고사·영어듣기를 자동으로 채우려면 <b>설정 → 내 프로필</b> 에서 ' +
+          '<b>프로필을 다시 저장</b>해 주세요. 청여고 학교 정보는 자동으로 연결됩니다.';
+    }
+
+    renderCalDay();
+  }
+
+  function calRow(icon, text, value) {
+    return '<div class="cday-row"><span class="cr-ic" aria-hidden="true">' + icon + '</span>' +
+      '<span class="cr-t">' + esc(text) + '</span>' +
+      '<span class="cr-v">' + esc(value) + '</span></div>';
+  }
+
+  function renderCalDay() {
+    var box = $('calDay');
+    if (!box) return;
+
+    var k = state.calPick || Store.key();
+    var d = Store.parseKey(k);
+    var rows = [];
+
+    /* 학사일정은 학교가 올린 이름 그대로, 옆에 갈래(모의고사·영어듣기…)를 덧붙인다.
+     * 이름만으로는 무슨 날인지 모호한 학교가 많다. */
+    (calEvents()[k] || []).forEach(function (e) {
+      rows.push(calRow(e.icon, e.label + (e.sub && e.label.indexOf(e.sub) < 0 ? ' · ' + e.sub : ''),
+                       ddayText(dayDiff(k))));
+    });
+    StudyLog.daySubjects(k).forEach(function (s) {
+      rows.push(calRow('📖', s.name + (s.manual ? ' ✏️' : ''), fmtDurFine(s.min)));
+    });
+
+    var total = StudyLog.dayTotal(k);
+    if (total > 0) rows.push(calRow('⏱️', '이 날 순공 합계', fmtDurFine(total)));
+
+    var rec = Store.recordOn(k);
+    if (rec) rows.push(calRow('🧠', '학습 준비도 참고값', scoreBand(rec.overall) + ' · ' + displayScore(rec.overall) + '점'));
+
+    var future = k > Store.key();
+
+    box.innerHTML =
+      '<div class="cday-h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + DOW_KO[d.getDay()] + ')' +
+        (k === Store.key() ? ' · 오늘' : '') + '</div>' +
+      (rows.length ? rows.join('')
+        : '<p class="cday-empty">' + (future
+            ? '아직 오지 않은 날입니다. 등록된 일정이 없습니다.'
+            : '이 날은 기록도 일정도 없습니다.') + '</p>') +
+      /* 아직 오지 않은 날에 "공부한 시간"을 넣을 수는 없다 */
+      (future ? '' :
+        '<div class="cday-edit">' +
+          '<button type="button" class="btn ghost sm" id="calEditBtn">✏ 기록 고치기</button>' +
+        '</div>');
+
+    if ($('calEditBtn')) $('calEditBtn').addEventListener('click', function () { openStudyEditor(k); });
+  }
+
+  /* ======================================== 순공 시간 직접 고치기 ==
+   * 타이머로만 쌓이면 두 가지가 영영 틀린 채로 남는다.
+   *   · 학원·독서실에서 앱을 못 켜고 공부한 시간 → 0분
+   *   · 타이머를 끄는 걸 잊고 자리를 뜬 시간     → 안 한 공부가 쌓임
+   * 랭킹·리그·배지·젤리가 전부 이 숫자를 보고 있어서, 고칠 수 없으면
+   * 사용자는 숫자 전체를 믿지 않게 된다. */
+
+  function studyEditorRow(name, min, type) {
+    return '<div class="sed-row" data-name="' + esc(name) + '">' +
+      '<input type="text" class="input sed-name" value="' + esc(name) + '" aria-label="과목 이름" spellcheck="false">' +
+      '<input type="number" class="input sed-min" value="' + Math.round(min) + '" min="0" max="1440" step="5" aria-label="분">' +
+      '<span class="sed-unit">분</span>' +
+      '<button type="button" class="btn ghost sm sed-del" aria-label="이 줄 지우기">✕</button>' +
+      '<input type="hidden" class="sed-type" value="' + esc(type || 'mixed') + '">' +
+      '</div>';
+  }
+
+  function openStudyEditor(dateKey) {
+    var box = $('calDay');
+    var d = Store.parseKey(dateKey);
+    var subs = StudyLog.daySubjects(dateKey);
+
+    /* 후보는 지금 입력 화면의 과목 + 지난 기록에 나온 과목. 매번 타이핑하지 않게 한다. */
+    var opts = {};
+    readSubjects().forEach(function (s) { if (s.name) opts[s.name] = s.type; });
+    StudyLog.knownSubjects().forEach(function (s) { if (!opts[s.name]) opts[s.name] = s.type; });
+
+    box.innerHTML =
+      '<div class="cday-h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 · 기록 고치기</div>' +
+      '<p class="cday-empty" style="margin-bottom:10px">타이머 없이 공부한 시간을 넣거나, 잘못 쌓인 시간을 고칩니다. ' +
+        '<b>0분으로 두면 지워집니다.</b></p>' +
+      '<datalist id="sedNames">' +
+        Object.keys(opts).map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('') +
+      '</datalist>' +
+      '<div id="sedRows">' +
+        subs.map(function (s) { return studyEditorRow(s.name, s.min, s.type); }).join('') +
+      '</div>' +
+      '<button type="button" class="btn ghost sm" id="sedAdd" style="margin-top:8px">＋ 과목 추가</button>' +
+      '<div class="actions" style="margin-top:12px">' +
+        '<button type="button" class="btn" id="sedSave">저장</button>' +
+        '<button type="button" class="btn ghost" id="sedCancel">취소</button>' +
+      '</div>';
+
+    $$('.sed-name', box).forEach(function (el) { el.setAttribute('list', 'sedNames'); });
+
+    function bindDelete(root) {
+      $$('.sed-del', root).forEach(function (b) {
+        b.addEventListener('click', function () { b.closest('.sed-row').remove(); });
+      });
+    }
+    bindDelete(box);
+
+    $('sedAdd').addEventListener('click', function () {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = studyEditorRow('', 30, 'mixed');
+      var row = wrap.firstChild;
+      $('sedRows').appendChild(row);
+      row.querySelector('.sed-name').setAttribute('list', 'sedNames');
+      bindDelete(row);
+      row.querySelector('.sed-name').focus();
+    });
+
+    $('sedCancel').addEventListener('click', function () { renderCalDay(); });
+
+    $('sedSave').addEventListener('click', function () {
+      /* 화면에 남은 줄이 그 날의 전부다. 지운 줄은 기록에서도 지운다. */
+      var before = StudyLog.daySubjects(dateKey).map(function (s) { return s.name; });
+      var kept = {};
+      var bad = '';
+
+      $$('.sed-row', $('sedRows')).forEach(function (row) {
+        var name = row.querySelector('.sed-name').value.trim();
+        var min = Number(row.querySelector('.sed-min').value);
+        var type = row.querySelector('.sed-type').value;
+        if (!name) return;
+        if (!(min >= 0) || min > 1440) { bad = name; return; }
+        /* 같은 과목을 두 줄에 적었으면 합친다 — 둘 중 하나가 조용히 사라지면 안 된다 */
+        kept[name] = { min: (kept[name] ? kept[name].min : 0) + min, type: type };
+      });
+
+      if (bad) { toast('“' + bad + '” 의 시간이 올바르지 않습니다 (0~1440분).', true); return; }
+
+      before.forEach(function (n) { if (!kept[n]) StudyLog.remove(dateKey, n); });
+      Object.keys(kept).forEach(function (n) { StudyLog.set(dateKey, n, kept[n].min, kept[n].type); });
+
+      Group.syncSelf();
+      renderLiveTotal();
+      renderCalendar();
+      renderReport();
+      renderGroup();
+      renderLeague();
+      if (kidsOn()) renderKids();
+      toast('기록을 고쳤습니다. (' + fmtDurFine(StudyLog.dayTotal(dateKey)) + ')');
+    });
+  }
+
+  function initGoalCalendar() {
+    if (!$('goalHero')) return;
+
+    $('goalEdit').addEventListener('click', function () { openGoalForm(); });
+    $('goalCancel').addEventListener('click', function () { openGoalForm(false); });
+    $('goalSave').addEventListener('click', saveGoal);
+    $('ddayAdd').addEventListener('click', function () { addDdayRow(); });
+
+    $('calPrev').addEventListener('click', function () { shiftMonth(-1); });
+    $('calNext').addEventListener('click', function () { shiftMonth(1); });
+    $('calToday').addEventListener('click', function () {
+      state.calMonth = firstOfMonth(new Date());
+      state.calPick = Store.key();
+      renderCalendar();
+    });
+
+    renderGoalCard();
+    renderCalendar();
+  }
+
+  /* ============================================================ 시간표 == */
+
+  function fillTtGradeOptions(keepValue) {
+    var p = Store.profile();
+    $('ttGrade').value = keepValue || (p && p.grade) || '1';
+  }
+
+  function renderTimetable() {
+    var box = $('ttToday');
+    if (!box) return;
+    var p = Store.profile();
+    if (!p) return;
+    $('ttGrade').value = p.grade || '1';
+    $('ttClass').value = p.klass || '';
+    if ($('ttProfileClass')) {
+      $('ttProfileClass').textContent = p.klass
+        ? '청여고 ' + p.grade + '학년 ' + p.klass + '반 · 프로필과 연결됨'
+        : '프로필에서 반을 설정하면 시간표를 불러옵니다.';
+    }
+
+    if (!Neis.hasTimetable(p.level)) {
+      box.innerHTML = '<div class="meal-empty">' + esc(p.level) + '은(는) 나이스 시간표 조회를 지원하지 않습니다.</div>';
+      return;
+    }
+
+    if (!p.neis || !p.neis.schoolCode) {
+      box.innerHTML = '<div class="meal-empty">청여고 학교 연결 정보를 확인하지 못했습니다. ' +
+        '<button type="button" class="btn ghost sm" id="ttGoProfile">프로필 다시 저장</button></div>';
+      var b = $('ttGoProfile');
+      if (b) b.addEventListener('click', function () { openProfile(true); });
+      return;
+    }
+
+    var grade = p.grade;
+    var klass = p.klass;
+    if (!klass) {
+      box.innerHTML = '<div class="meal-empty">시간표를 보려면 <b>설정 → 내 프로필</b>에서 반을 입력해 주세요.</div>';
+      return;
+    }
+
+    box.innerHTML = '<div class="meal-loading">🗓️ 이번 주 시간표를 불러오는 중…</div>';
+
+    Neis.weekTimetable(p.neis, grade, klass).then(function (byDate) {
+      var dates = Object.keys(byDate).sort();
+      if (!dates.length) {
+        box.innerHTML = '<div class="meal-empty">이번 주 ' + esc(grade) + '학년 ' + esc(klass) + '반은 등록된 시간표가 없습니다. ' +
+          '방학·재량휴업일일 수 있어요.</div>';
+        return;
+      }
+
+      var todayKey = Store.key();
+      box.innerHTML = dates.map(function (d) {
+        var list = byDate[d];
+        if (!list.length) return '';
+        var ymdKey = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+        var dow = DOW_KO[new Date(d.slice(0, 4), d.slice(4, 6) - 1, d.slice(6, 8)).getDay()];
+        var label = (d.slice(4, 6).replace(/^0/, '')) + '/' + (d.slice(6, 8).replace(/^0/, '')) + '(' + dow + ')' +
+          (ymdKey === todayKey ? ' · 오늘' : '');
+
+        return '<div class="meal-card' + (ymdKey === todayKey ? ' tt-today' : '') + '">' +
+          '<div class="mc-head"><span class="mc-type 중식">' + esc(label) + '</span></div>' +
+          '<div class="mc-body"><div class="tt-list">' +
+          list.map(function (t) {
+            return '<div class="tt-row"><span class="tt-period">' + esc(t.period || '') + '교시</span>' +
+              '<span class="tt-subject">' + esc(t.subject || '-') + '</span>' +
+              (t.classroom ? '<span class="tt-room">' + esc(t.classroom) + '</span>' : '') + '</div>';
+          }).join('') + '</div></div></div>';
+      }).join('');
+    }).catch(function (err) {
+      var msg = String(err && err.message || err);
+      box.innerHTML = '<div class="meal-empty">시간표를 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
+        '<b>인터넷 연결을 확인한 뒤 다시 시도해 주세요.</b></div>';
+    });
+  }
+
+  function initTimetable() {
+    fillTtGradeOptions();
+  }
+
+  /* ====================================================== 방학 계획표 == */
+
+  var VP_KEY = 'neurostudy.vacplan.v1';
+
+  /* 귀여운 글씨체는 구글 폰트(무료·상업적 사용 가능)를 쓴다 — index.html <head> 에서 미리 불러온다.
+   * family 가 있으면 이미지로 저장하기 전에 그 폰트가 실제로 로드됐는지 기다린다 —
+   * 안 그러면 캔버스가 폰트 로드 전에 그려져 기본 서체로 찍히는 경우가 있다. */
+  var VP_FONTS = [
+    { id: 'sans', label: '기본 고딕 — 깔끔한 기본', family: 'Noto Sans KR', css: "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif" },
+    { id: 'cute4', label: '통통체 — 또렷하고 진한', family: 'Do Hyeon', css: "'Do Hyeon','Malgun Gothic',sans-serif" },
+    { id: 'cute2', label: '동글동글체 — 귀여운', family: 'Jua', css: "'Jua','Malgun Gothic',sans-serif" },
+    { id: 'cute1', label: '말랑 손글씨 — 손으로 쓴', family: 'Gaegu', css: "'Gaegu','Malgun Gothic',cursive" }
+  ];
+
+  /* 머리글(요일 줄) 파스텔톤 8색 */
+  var VP_COLORS = ['#ffb3ba', '#ffdfba', '#fdf5ba', '#baffc9', '#bae1ff', '#d0baff', '#ffbae5', '#c4fff0'];
+
+  /* 색 조합(팔레트) — 하나를 고르면 과목 색이 한꺼번에 바뀐다.
+   *
+   *   head   : 요일 줄 색
+   *   colors : 과목에 처음 나온 순서대로 배정되는 칸 색
+   *
+   * 글자를 #2f2f2f 로 얹으므로 칸 색은 모두 밝게 잡았다.
+   *
+   * 순서는 많이 쓸 것 같은 순이다 — 맨 앞이 새로 만들 때의 기본값이 된다.
+   * 참고한 계획표들도 채도 낮은 쪽이 많아서 무채색·차분한 조합을 앞에 뒀다. */
+  var VP_PALETTES = [
+    {
+      id: 'mono', name: '모노 그레이', head: '#cfd4da',
+      colors: ['#f0f1f3', '#e4e7ea', '#eceae7', '#dcdfe2', '#f2efec', '#e8eaec', '#d6d9dc', '#f5f5f5']
+    },
+    {
+      id: 'night', name: '밤하늘', head: '#aab8d8',
+      colors: ['#e0e5f2', '#e6e2f0', '#dde6ef', '#e9e9f3', '#d9e2ee', '#e4dfec', '#eef0f6', '#e2e6ea']
+    },
+    {
+      id: 'berrymatcha', name: '딸기 말차', head: '#c3d9a8',
+      colors: ['#fbdce2', '#e8f0d8', '#f7c9d3', '#d5e3bd', '#fdf3e7', '#f0dde1', '#dfe9cd', '#f6ece0']
+    },
+    {
+      id: 'peach', name: '피치 크림', head: '#ffb5a7',
+      colors: ['#ffe5d9', '#fcd5ce', '#fae1dd', '#ffeadd', '#f8edeb', '#fde2c8', '#f4dcd6', '#f0efeb']
+    },
+    {
+      id: 'milk', name: '딸기 우유', head: '#f8bbd0',
+      colors: ['#fde3ec', '#fbe0e0', '#fdeee4', '#f7e2f0', '#f4e6f7', '#fdf0e6', '#f0e4e8', '#f7f1f0']
+    },
+    {
+      id: 'sea', name: '바다 유리', head: '#a7d8de',
+      colors: ['#d6f0f2', '#dcecfa', '#e2e8f8', '#d4eae6', '#e6f4f1', '#dde7f0', '#eaf2f8', '#e9e4dc']
+    },
+    {
+      id: 'forest', name: '숲속 아침', head: '#a3c9a8',
+      colors: ['#dceccd', '#e8f2dc', '#d6e8d5', '#eef1dd', '#dfe9de', '#e6ecd9', '#f0f2e4', '#e5e0d2']
+    },
+    {
+      id: 'autumn', name: '가을 산책', head: '#e0b1a0',
+      colors: ['#f8ddd0', '#fbeacd', '#f0e6c8', '#dfe5d0', '#e9dcd2', '#f5d9d2', '#e3dbc9', '#f6f0e8']
+    },
+    {
+      id: 'spring', name: '봄 소풍', head: '#b7e4c7',
+      colors: ['#d8f3dc', '#fdf8dc', '#ffe5d4', '#d7ecfa', '#e8ddf7', '#e4f0d9', '#fde2e4', '#f6f2e7']
+    }
+  ];
+
+  function vpPalette(id) {
+    return VP_PALETTES.filter(function (p) { return p.id === id; })[0] || VP_PALETTES[0];
+  }
+
+  function vpFont(id) {
+    return VP_FONTS.filter(function (x) { return x.id === id; })[0] || VP_FONTS[0];
+  }
+
+  function vpFontCss(id) { return vpFont(id).css; }
+
+  /** 귀여운 폰트를 고른 경우, 이미지를 그리기 전에 실제 로드를 기다린다 */
+  function vpEnsureFontLoaded(id) {
+    var f = vpFont(id);
+    if (!f.family || !document.fonts || !document.fonts.load) return Promise.resolve();
+    // 캔버스에서 실제로 쓰는 굵기·크기를 모두 미리 받아 둔다
+    return Promise.all([
+      document.fonts.load("700 27px '" + f.family + "'"),
+      document.fonts.load("700 12.5px '" + f.family + "'"),
+      document.fonts.load("600 11.5px '" + f.family + "'")
+    ]).catch(function () { /* 폰트 서버에 연결 안 되면 기본 서체로 대체된다 */ });
+  }
+
+  /** 07:00~23:00 빈 줄만 만든다.
+   *  예시 내용을 채워 두지 않는 이유는, 자동 계획표가 먼저 큰 틀을 세우고
+   *  사용자가 그 위에서 다듬는 순서이기 때문이다. 남의 계획을 지우는 일부터
+   *  시키면 시작 문턱만 높아진다. */
+  function vpEmptyRows() {
+    var rows = [];
+    for (var h = 7; h <= 23; h++) rows.push({ time: pad(h) + ':00', cells: ['', '', '', '', '', '', ''] });
+    return rows;
+  }
+
+  /** 시간표에 사용자가 쓴 내용이 하나라도 있는지 */
+  function vpHasContent(m) {
+    return m.rows.some(function (r) {
+      return r.cells.some(function (c) { return String(c || '').trim(); });
+    });
+  }
+
+  function vpDefaultModel() {
+    // 프로필에 적어 둔 이름을 그대로 써서 "지민의 계획표" 처럼 만들어 준다
+    var p = Store.profile();
+    var nick = p && String(p.nick || '').trim();
+    return {
+      subtitle: '여름방학',
+      title: nick ? nick + '의 계획표' : '나의 계획표',
+      titleAuto: true,   // 사용자가 제목을 직접 고치면 false 가 된다
+      mode: 'term',      // 'term' 학기 중 · 'vacation' 방학
+      font: 'sans',
+      palette: VP_PALETTES[0].id,
+      color: VP_PALETTES[0].head,
+      days: ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'],
+      colors: {},
+      rows: vpEmptyRows()
+    };
+  }
+
+  function vpLoad() {
+    try {
+      var raw = localStorage.getItem(VP_KEY);
+      if (!raw) return vpDefaultModel();
+      var m = JSON.parse(raw);
+      if (!m || !m.rows || !m.days || !m.rows.length || !m.days.length) return vpDefaultModel();
+      // 옛 저장본에는 없던 항목들을 채워 준다
+      if (typeof m.subtitle !== 'string') m.subtitle = '';
+      if (m.mode !== 'term' && m.mode !== 'vacation') m.mode = 'term';
+      if (!m.colors || typeof m.colors !== 'object') m.colors = {};
+      if (!VP_PALETTES.some(function (p) { return p.id === m.palette; })) m.palette = VP_PALETTES[0].id;
+      // 목록에서 사라진 글씨체를 저장해 뒀다면 기본값으로 되돌린다
+      if (!VP_FONTS.some(function (f) { return f.id === m.font; })) m.font = VP_FONTS[0].id;
+      return m;
+    } catch (e) { return vpDefaultModel(); }
+  }
+
+  /** 새로 등장한 과목에 지금 팔레트의 색을 차례로 배정한다 (이미 정해진 색은 건드리지 않는다) */
+  function vpEnsureColors(m) {
+    if (!m.colors) m.colors = {};
+    var pal = vpPalette(m.palette).colors;
+    var idx = Object.keys(m.colors).length;
+    m.rows.forEach(function (r) {
+      r.cells.forEach(function (c) {
+        var t = String(c || '').trim();
+        if (!t || m.colors[t]) return;
+        m.colors[t] = pal[idx % pal.length];
+        idx++;
+      });
+    });
+  }
+
+  /** 색 조합을 고르면 요일 줄 색과 과목 색을 그 조합으로 전부 다시 칠한다 */
+  function vpApplyPalette(id) {
+    var m = state.vacplan;
+    var p = vpPalette(id);
+    m.palette = p.id;
+    m.color = p.head;
+    m.colors = {};          // 비워 두면 vpEnsureColors 가 새 조합으로 다시 배정한다
+    vpEnsureColors(m);
+    vpSave();
+
+    renderVpPalettes();
+    paintVpSwatches();
+    buildVpTable();
+    renderVpLegend();
+    vpRenderPreview();
+  }
+
+  function renderVpPalettes() {
+    var wrap = $('vpPalettes');
+    if (!wrap) return;
+    var m = state.vacplan;
+
+    wrap.innerHTML = VP_PALETTES.map(function (p) {
+      var chips = [p.head].concat(p.colors.slice(0, 5)).map(function (c) {
+        return '<i style="background:' + c + '"></i>';
+      }).join('');
+      return '<button type="button" class="vp-pal' + (p.id === m.palette ? ' on' : '') + '">' +
+        '<span class="vp-pal-chips">' + chips + '</span>' +
+        '<span class="vp-pal-name">' + esc(p.name) + '</span></button>';
+    }).join('');
+
+    $$('.vp-pal', wrap).forEach(function (b, i) {
+      b.addEventListener('click', function () { vpApplyPalette(VP_PALETTES[i].id); });
+    });
+  }
+
+  /** 표에 쓰인 과목을 처음 나온 순서대로 (중복 없이) 모은다 */
+  function vpActivities(m) {
+    var seen = {}, list = [];
+    m.rows.forEach(function (r) {
+      r.cells.forEach(function (c) {
+        var t = String(c || '').trim();
+        if (!t || seen[t]) return;
+        seen[t] = true;
+        list.push(t);
+      });
+    });
+    return list;
+  }
+
+  /**
+   * 붙어 있는 같은 내용의 칸을 하나의 큰 블록으로 합친다.
+   * 인스타 계획표들이 "국어" 를 세 시간짜리 한 칸으로 그리는 그 모양을 만드는 부분이다.
+   * 가로로 먼저 늘리고, 그 폭 그대로 아래로 늘려서 직사각형만 만든다.
+   * 빈 칸은 합치지 않는다 — 합쳐 버리면 개별로 채워 넣을 수 없다.
+   */
+  function vpMergeRects(m) {
+    var rows = m.rows;
+    var R = rows.length, C = m.days.length;
+    var used = [], r, c;
+    for (r = 0; r < R; r++) { used.push([]); for (c = 0; c < C; c++) used[r].push(false); }
+
+    var txtAt = function (rr, cc) { return String(rows[rr].cells[cc] || '').trim(); };
+    var rects = [];
+
+    for (r = 0; r < R; r++) {
+      for (c = 0; c < C; c++) {
+        if (used[r][c]) continue;
+        var txt = txtAt(r, c);
+        if (!txt) { used[r][c] = true; rects.push({ r: r, c: c, rs: 1, cs: 1, text: '' }); continue; }
+
+        var cs = 1;
+        while (c + cs < C && !used[r][c + cs] && txtAt(r, c + cs) === txt) cs++;
+
+        var rs = 1, canGrow = true;
+        while (canGrow && r + rs < R) {
+          for (var k = 0; k < cs; k++) {
+            if (used[r + rs][c + k] || txtAt(r + rs, c + k) !== txt) { canGrow = false; break; }
+          }
+          if (canGrow) rs++;
+        }
+
+        for (var a = 0; a < rs; a++) for (var b = 0; b < cs; b++) used[r + a][c + b] = true;
+        rects.push({ r: r, c: c, rs: rs, cs: cs, text: txt });
+      }
+    }
+    return rects;
+  }
+
+  /* 칸을 한 글자 칠 때마다 불린다 — 여기서 다른 화면까지 다시 그리지 않는다.
+   * 식사 시각을 쓰는 쪽은 모두 저장소를 그때그때 다시 읽으므로 자동으로 따라온다.
+   *   알리미      — 30초마다 MealPlan.check() 가 새로 읽는다
+   *   입력·설정   — goPage 가 들어갈 때 다시 그린다 */
+  function vpSave() {
+    try { localStorage.setItem(VP_KEY, JSON.stringify(state.vacplan)); } catch (e) { /* 무시 */ }
+  }
+
+  function vpHexToRgb(hex) {
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || ''));
+    return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 109, g: 74, b: 255 };
+  }
+
+  function vpContrast(hex) {
+    var c = vpHexToRgb(hex);
+    var lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+    return lum > 150 ? '#141414' : '#ffffff';
+  }
+
+  function vpTint(hex, alpha) {
+    var c = vpHexToRgb(hex);
+    return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + alpha + ')';
+  }
+
+  function buildVpTable() {
+    var table = $('vpTable');
+    if (!table) return;
+    var m = state.vacplan;
+    var acc = m.color || '#6d4aff';
+    var fg = vpContrast(acc);
+    var tint = vpTint(acc, 0.12);
+
+    table.innerHTML =
+      '<thead><tr><th class="vp-corner"></th>' +
+      m.days.map(function (d, i) {
+        return '<th class="vp-day" data-day="' + i + '" contenteditable="true" spellcheck="false"></th>';
+      }).join('') + '<th class="vp-corner"></th></tr></thead>' +
+      '<tbody>' + m.rows.map(function (r, ri) {
+        return '<tr data-row="' + ri + '">' +
+          '<td class="vp-time" contenteditable="true" spellcheck="false"></td>' +
+          r.cells.map(function (c, ci) {
+            return '<td class="vp-cell" data-col="' + ci + '" contenteditable="true" spellcheck="false"></td>';
+          }).join('') +
+          // 시간대는 시각 순서대로 이어지는 목록이라 중간을 빼면 표에 구멍이 생긴다.
+          // 그래서 지우는 건 맨 끝에서만 — 칸 자체는 남겨 둬야 열이 어긋나지 않는다.
+          '<td class="vp-rowdel">' +
+            (ri === m.rows.length - 1
+              ? '<button type="button" class="vp-del" data-row="' + ri + '" title="마지막 시간대 삭제">✕</button>'
+              : '') +
+          '</td></tr>';
+      }).join('') + '</tbody>';
+
+    $$('.vp-day', table).forEach(function (th, i) {
+      th.textContent = m.days[i] || '';
+      th.style.background = acc;
+      th.style.color = fg;
+      th.addEventListener('input', function () { m.days[i] = th.textContent.trim(); vpSave(); });
+    });
+    $$('.vp-time', table).forEach(function (td, i) {
+      td.textContent = m.rows[i].time || '';
+      td.style.background = tint;
+      td.addEventListener('input', function () { m.rows[i].time = td.textContent.trim(); vpSave(); });
+    });
+    vpEnsureColors(m);
+    $$('.vp-cell', table).forEach(function (td) {
+      var tr = td.closest('tr'); var ri = parseInt(tr.dataset.row, 10);
+      var ci = parseInt(td.dataset.col, 10);
+      var val = m.rows[ri].cells[ci] || '';
+      td.textContent = val;
+      td.style.background = val ? (m.colors[val.trim()] || '#ffffff') : '#ffffff';
+      td.addEventListener('input', function () {
+        m.rows[ri].cells[ci] = td.textContent.trim();
+        vpSave();
+        vpRefresh();
+      });
+    });
+    $$('.vp-del', table).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (m.rows.length <= 1) { toast('시간대는 최소 1개가 필요합니다.', true); return; }
+        var row = m.rows[parseInt(btn.dataset.row, 10)];
+        var label = row && row.time ? row.time + ' 시간대' : '이 시간대';
+        if (!confirm(label + '를 삭제할까요? 되돌릴 수 없습니다.')) return;
+        m.rows.splice(parseInt(btn.dataset.row, 10), 1);
+        vpSave();
+        buildVpTable();
+        vpRenderPreview();
+        renderVpLegend();
+      });
+    });
+
+    table.style.fontFamily = vpFontCss(m.font);
+    table.style.setProperty('--vp-accent', acc);
+  }
+
+  /* 칸을 고칠 때마다 표 전체를 다시 만들면 입력 중 커서가 튄다.
+   * 그래서 편집 중에는 미리보기와 색상 목록만 다시 그린다. */
+  var vpRefreshTimer = null;
+  function vpRefresh() {
+    clearTimeout(vpRefreshTimer);
+    vpRefreshTimer = setTimeout(function () {
+      vpRenderPreview();
+      renderVpLegend();
+    }, 260);
+  }
+
+  function renderVpLegend() {
+    var wrap = $('vpLegend');
+    if (!wrap) return;
+    var m = state.vacplan;
+    vpEnsureColors(m);
+    var list = vpActivities(m);
+
+    if (!list.length) {
+      wrap.innerHTML = '<p class="tiny" style="margin:0">칸을 채우면 과목별 색상을 여기서 고를 수 있습니다.</p>';
+      return;
+    }
+
+    wrap.innerHTML = list.map(function (t) {
+      return '<span class="vp-lg"><input type="color" value="' + esc(m.colors[t]) + '" aria-label="' + esc(t) + ' 색상 고르기">' +
+        '<button type="button" class="vp-lg-name">' + esc(t) + '</button></span>';
+    }).join('');
+
+    // 과목 이름을 속성에 넣으면 따옴표·꺾쇠 때문에 깨질 수 있어 순서(index)로 잇는다
+    $$('.vp-lg', wrap).forEach(function (row, i) {
+      var name = list[i];
+      row.querySelector('input[type="color"]').addEventListener('input', function (e) {
+        m.colors[name] = e.target.value;
+        vpSave();
+        buildVpTable();
+        vpRenderPreview();
+      });
+      row.querySelector('.vp-lg-name').addEventListener('click', function () {
+        var next = prompt('과목명을 바꿉니다. 이 이름이 들어간 모든 칸이 함께 바뀝니다.', name);
+        if (next === null) return;
+        next = next.trim();
+        if (!next || next === name) return;
+        vpRenameActivity(name, next);
+      });
+    });
+  }
+
+  /** 과목별 색상 목록에서 이름을 바꾸면, 시간표 안의 같은 이름을 쓰는 모든 칸을 한 번에 바꾼다 */
+  function vpRenameActivity(oldName, newName) {
+    var m = state.vacplan;
+    m.rows.forEach(function (r) {
+      r.cells = r.cells.map(function (c) { return c === oldName ? newName : c; });
+    });
+    if (m.colors[oldName] && !m.colors[newName]) m.colors[newName] = m.colors[oldName];
+    delete m.colors[oldName];
+    vpSave();
+    buildVpTable();
+    renderVpLegend();
+    vpRenderPreview();
+    toast('"' + oldName + '"을(를) "' + newName + '"(으)로 모두 바꿨습니다.');
+  }
+
+  function paintVpSwatches() {
+    var wrap = $('vpSwatches');
+    if (!wrap) return;
+    var m = state.vacplan;
+    wrap.innerHTML = VP_COLORS.map(function (c) {
+      return '<button type="button" class="vp-swatch' + (c === m.color ? ' on' : '') + '" style="background:' +
+        c + '" data-c="' + c + '" title="' + c + '" aria-label="' + c + '"></button>';
+    }).join('') +
+      '<input type="color" id="vpColorCustom" class="vp-swatch vp-swatch-custom" value="' + (m.color || '#6d4aff') + '" title="직접 선택">';
+
+    $$('.vp-swatch[data-c]', wrap).forEach(function (b) {
+      b.addEventListener('click', function () {
+        m.color = b.dataset.c;
+        vpSave();
+        paintVpSwatches();
+        buildVpTable();
+        vpRenderPreview();
+      });
+    });
+    $('vpColorCustom').addEventListener('input', function () {
+      m.color = this.value;
+      vpSave();
+      buildVpTable();
+      vpRenderPreview();
+      $$('.vp-swatch[data-c]', wrap).forEach(function (b) { b.classList.toggle('on', b.dataset.c === m.color); });
+    });
+  }
+
+  /** 칸 안에 가운데 정렬로 줄바꿈해 그린다. 넘치면 마지막 줄을 말줄임 처리한다. */
+  function vpWrapText(ctx, text, cx, cy, maxWidth, lineHeight, maxLines) {
+    if (!text) return;
+    var limit = maxLines || 3;
+    var words = String(text).split(/\s+/).filter(Boolean);
+    var lines = [], cur = '';
+
+    words.forEach(function (w) {
+      var test = cur ? cur + ' ' + w : w;
+      if (cur && ctx.measureText(test).width > maxWidth) { lines.push(cur); cur = w; }
+      else { cur = test; }
+      while (ctx.measureText(cur).width > maxWidth && cur.length > 1) {
+        var i = cur.length - 1;
+        while (i > 1 && ctx.measureText(cur.slice(0, i)).width > maxWidth) i--;
+        lines.push(cur.slice(0, i));
+        cur = cur.slice(i);
+      }
+    });
+    if (cur) lines.push(cur);
+
+    if (lines.length > limit) {
+      lines = lines.slice(0, limit);
+      var last = lines[limit - 1];
+      while (last.length > 1 && ctx.measureText(last + '…').width > maxWidth) last = last.slice(0, -1);
+      lines[limit - 1] = last + '…';
+    }
+
+    var startY = cy - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach(function (l, i) { ctx.fillText(l, cx, startY + i * lineHeight); });
+  }
+
+  /**
+   * 계획표를 캔버스에 그린다. 화면 미리보기와 저장되는 이미지가 같은 함수를 쓰므로
+   * 미리보기에 보이는 그대로가 파일로 나간다.
+   */
+  function vpDraw(canvas) {
+    var m = state.vacplan;
+    vpEnsureColors(m);
+
+    var acc = m.color || VP_COLORS[4];
+    var fontCss = vpFontCss(m.font);
+    var days = m.days, rows = m.rows;
+
+    var leftW = 76, colW = 112, rowH = 30, headH = 32;
+    var padX = 26, padTop = 20, padBottom = 26, gap = 14;
+    var sub = String(m.subtitle || '').trim();
+    var subH = sub ? 22 : 0;
+    var titleH = 40;
+
+    var gridW = leftW + days.length * colW;
+    var gridH = headH + rows.length * rowH;
+    var W = padX * 2 + gridW;
+    var H = padTop + subH + titleH + gap + gridH + padBottom;
+
+    var dpr = 2;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    /* 머리말 — 작은 부제 위, 큰 제목 아래 */
+    if (sub) {
+      ctx.fillStyle = '#8a8a8a';
+      ctx.font = '700 14px ' + fontCss;
+      ctx.fillText(sub, W / 2, padTop + subH / 2);
+    }
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '700 27px ' + fontCss;
+    ctx.fillText(String(m.title || '일일 계획표'), W / 2, padTop + subH + titleH / 2);
+
+    var gx = padX, gy = padTop + subH + titleH + gap;
+
+    /* 요일 머리줄 */
+    ctx.fillStyle = acc;
+    ctx.fillRect(gx, gy, gridW, headH);
+    ctx.fillStyle = vpContrast(acc);
+    ctx.font = '700 12.5px ' + fontCss;
+    days.forEach(function (d, i) {
+      vpWrapText(ctx, d, gx + leftW + i * colW + colW / 2, gy + headH / 2, colW - 8, 13, 1);
+    });
+    ctx.fillStyle = vpContrast(acc);
+    ctx.font = '700 12.5px ' + fontCss;
+    ctx.fillText('시간', gx + leftW / 2, gy + headH / 2);
+
+    /* 시간 열 */
+    var bodyTop = gy + headH;
+    ctx.fillStyle = '#f4f4f4';
+    ctx.fillRect(gx, bodyTop, leftW, rows.length * rowH);
+    ctx.fillStyle = '#4a4a4a';
+    ctx.font = '600 11.5px ' + fontCss;
+    rows.forEach(function (r, ri) {
+      vpWrapText(ctx, r.time || '', gx + leftW / 2, bodyTop + ri * rowH + rowH / 2, leftW - 8, 12, 2);
+    });
+
+    /* 본문 — 붙어 있는 같은 내용은 하나의 블록으로 */
+    var rects = vpMergeRects(m);
+    rects.forEach(function (rc) {
+      var x = gx + leftW + rc.c * colW;
+      var y = bodyTop + rc.r * rowH;
+      var w = rc.cs * colW, h = rc.rs * rowH;
+
+      ctx.fillStyle = rc.text ? (m.colors[rc.text] || '#ffffff') : '#ffffff';
+      ctx.fillRect(x, y, w, h);
+
+      if (rc.text) {
+        ctx.fillStyle = '#2f2f2f';
+        ctx.font = '600 11.5px ' + fontCss;
+        vpWrapText(ctx, rc.text, x + w / 2, y + h / 2, w - 10, 13, Math.max(1, Math.floor(h / 13)));
+      }
+    });
+
+    /* 격자 — 합쳐진 블록은 테두리를 그리지 않아 하나로 보인다 */
+    ctx.strokeStyle = '#cfcfcf';
+    ctx.lineWidth = 1;
+    var line = function (x1, y1, x2, y2) {
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x1) + 0.5, Math.round(y1) + 0.5);
+      ctx.lineTo(Math.round(x2) + 0.5, Math.round(y2) + 0.5);
+      ctx.stroke();
+    };
+
+    rects.forEach(function (rc) {
+      var x = gx + leftW + rc.c * colW;
+      var y = bodyTop + rc.r * rowH;
+      ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, rc.cs * colW, rc.rs * rowH);
+    });
+    rows.forEach(function (r, ri) {
+      line(gx, bodyTop + ri * rowH, gx + leftW, bodyTop + ri * rowH);
+    });
+    line(gx, bodyTop + rows.length * rowH, gx + leftW, bodyTop + rows.length * rowH);
+    line(gx + leftW, gy, gx + leftW, bodyTop + rows.length * rowH);
+    days.forEach(function (d, i) {
+      var x = gx + leftW + (i + 1) * colW;
+      line(x, gy, x, gy + headH);
+    });
+
+    /* 바깥 테두리 */
+    ctx.strokeStyle = '#9a9a9a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(gx, gy, gridW, gridH);
+
+    return canvas;
+  }
+
+  function vpRenderPreview() {
+    var canvas = $('vpPreview');
+    if (!canvas) return;
+    vpDraw(canvas);
+  }
+
+  function exportVacPlanImage() {
+    var btn = $('vpDownload');
+    if (btn) { btn.disabled = true; btn.textContent = '이미지 준비 중…'; }
+
+    vpEnsureFontLoaded(state.vacplan.font).then(function () {
+      var canvas = vpDraw($('vpPreview') || document.createElement('canvas'));
+      var m = state.vacplan;
+      var name = [String(m.subtitle || '').trim(), String(m.title || '계획표').trim()]
+        .filter(Boolean).join(' ').replace(/[\\/:*?"<>|]/g, '').trim() || '계획표';
+
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = name + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      toast('이미지로 저장했습니다.');
+      if (btn) { btn.disabled = false; btn.textContent = '🖼️ 이미지로 저장'; }
+    });
+  }
+
+  /* ------------------------------------------------------- 규칙 기반 계획표 자동 채우기 */
+
+  /* 요일 칩은 시간표의 열과 1:1로 맞아야 하므로 열 이름에서 직접 만든다.
+   * 사용자가 요일 이름을 고쳐 뒀다면 칩도 그 이름을 따라간다. */
+  var VP_DAY_SHORT = ['월', '화', '수', '목', '금', '토', '일'];
+
+  function vpDayShort(i) {
+    var d = String((state.vacplan && state.vacplan.days && state.vacplan.days[i]) || '').trim();
+    return d ? d.slice(0, 1) : (VP_DAY_SHORT[i] || String(i + 1));
+  }
+
+  function addVpAiAcademyRow(data) {
+    var row = $('vpAiAcademyRowTpl').content.cloneNode(true).querySelector('.vpai-academy-row');
+    var picked = (data && data.days) || [0, 1, 2, 3, 4];   // 기본은 평일
+    row.querySelector('.va-days').innerHTML = state.vacplan.days.map(function (d, i) {
+      return '<label class="va-day"><input type="checkbox"' + (picked.indexOf(i) >= 0 ? ' checked' : '') +
+        ' aria-label="' + esc(d) + '"><span>' + esc(vpDayShort(i)) + '</span></label>';
+    }).join('');
+    if (data) {
+      row.querySelector('.va-name').value = data.name || '';
+      row.querySelector('.va-start').value = data.start || '';
+      row.querySelector('.va-end').value = data.end || '';
+    }
+    row.querySelector('.va-del').addEventListener('click', function () { row.remove(); });
+    $('vpAiAcademyList').appendChild(row);
+    return row;
+  }
+
+  /** "HH:MM" → 시(소수). 못 읽으면 fallback */
+  function vpAiParseTime(str, fallback) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(str || '').trim());
+    if (!m) return fallback;
+    var h = Math.max(0, Math.min(23, parseInt(m[1], 10)));
+    return h + parseInt(m[2], 10) / 60;
+  }
+
+  function addVpAiSubjectRow(data) {
+    var row = $('vpAiSubjectRowTpl').content.cloneNode(true).querySelector('.vpai-subject-row');
+    if (data) {
+      row.querySelector('.vs-name').value = data.name || '';
+      row.querySelector('.vs-hours').value = String(data.hours || 5);
+    }
+    row.querySelector('.vs-del').addEventListener('click', function () {
+      row.remove();
+      renderVpAiSubjectTotal();
+    });
+    $('vpAiSubjectList').appendChild(row);
+    renderVpAiSubjectTotal();
+    return row;
+  }
+
+  function vpAiReadSubjects() {
+    return $$('.vpai-subject-row').map(function (row) {
+      var name = row.querySelector('.vs-name').value.trim();
+      var hours = Math.max(0, Math.min(80, parseInt(row.querySelector('.vs-hours').value, 10) || 0));
+      if (!name || !hours) return null;
+      return { name: name, hours: hours };
+    }).filter(Boolean);
+  }
+
+  function renderVpAiSubjectTotal() {
+    var el = $('vpAiSubjectTotal');
+    if (!el) return;
+    var total = vpAiReadSubjects().reduce(function (a, s) { return a + s.hours; }, 0);
+    el.innerHTML = total
+      ? '주간 목표 합계 <b>' + total + '시간</b>. 빈 시간이 남으면 자유 시간으로 두고, 모자라면 비율대로 줄여서 넣습니다.'
+      : '과목과 시간을 넣으면 고정 일정을 뺀 자리에 그만큼 배정합니다.';
+  }
+
+  /** 주간 목표 시간을 실제로 남은 칸 수(capacity)에 맞춰 확정한다.
+   *
+   *  요청이 넘치면 비율대로 줄이되 최대잔여법으로 합을 정확히 맞추고,
+   *  모자라면 남은 만큼을 '자유 시간' 으로 만들어 같은 저울에 올린다.
+   *  자유 시간을 따로 빼 두지 않고 함께 섞어야 특정 요일만 통째로 비지 않는다. */
+  function vpAiAllocate(subjects, capacity) {
+    var pool = subjects.map(function (s) { return { name: s.name, slots: s.hours }; });
+    var want = pool.reduce(function (a, p) { return a + p.slots; }, 0);
+    if (!pool.length || capacity <= 0) return { pool: [], want: want, capacity: capacity, scaled: false };
+
+    if (want > capacity) {
+      var exact = pool.map(function (p) { return p.slots / want * capacity; });
+      var base = exact.map(function (v) { return Math.floor(v); });
+      var used = base.reduce(function (a, b) { return a + b; }, 0);
+      var rem = exact.map(function (v, i) { return { i: i, f: v - base[i] }; })
+                     .sort(function (a, b) { return b.f - a.f; });
+      for (var k = 0; used < capacity; k++, used++) base[rem[k % rem.length].i]++;
+      pool.forEach(function (p, i) { p.slots = base[i]; });
+    } else if (want < capacity) {
+      pool.push({ name: '자유 시간', slots: capacity - want });
+    }
+    return {
+      pool: pool.filter(function (p) { return p.slots > 0; }),
+      want: want, capacity: capacity, scaled: want > capacity
+    };
+  }
+
+  /** 기상~취침을 뺀 나머지 = 실제로 잘 수 있는 시간 */
+  function vpAiSleepHours() {
+    var wake = vpAiParseTime($('vpAiWake').value, 7);
+    var bed = vpAiParseTime($('vpAiSleep').value, 23);
+    var h = ((wake - bed) % 24 + 24) % 24;
+    return h === 0 ? 24 : h;
+  }
+
+  /** 실제로 잘 수 있는 시간을 보고 "몇 시간 공부하고 한 시간 쉴지" 를 정한다.
+   *  성적 목표는 휴식량을 줄이는 근거로 쓰지 않는다. */
+  function vpAiRestPlan() {
+    var sleepH = vpAiSleepHours();
+    var run = 2;
+    var why = '성적 목표와 관계없이 2시간마다 쉬는 표준 리듬으로 잡았습니다';
+
+    if (sleepH < 6) {
+      run = 1;
+      why = '잘 수 있는 시간이 ' + fmtDur(sleepH * 60) + '뿐이라 1시간마다 쉬도록 늘렸습니다';
+    }
+    return { run: run, why: why, sleepH: sleepH };
+  }
+
+  function renderVpAiIntensity() {
+    var el = $('vpAiIntensity');
+    if (!el) return;
+    if (!$('vpAiAutoRest').checked) {
+      el.innerHTML = '휴식 자동 배치를 껐습니다. 고정 일정을 뺀 시간을 모두 공부로 채웁니다.';
+      return;
+    }
+    var p = vpAiRestPlan();
+    el.innerHTML = '잘 수 있는 시간 <b>' + fmtDur(p.sleepH * 60) + '</b> → <b>' + p.run +
+      '시간 공부마다 1시간 휴식</b>으로 배치합니다. ' + p.why + '.';
+  }
+
+  /* ------------------------------------------------- 학기 중 / 방학 모드
+   *
+   * 두 모드는 하루의 뼈대가 다르다. 학기 중에는 낮이 통째로 학교에 묶여 있어
+   * 실제로 배분할 수 있는 시간은 등교 전·하교 후·주말뿐이다. 이걸 구분하지 않으면
+   * 학기 중에 쓰는 사람에게 "평일 오전 10시에 수학 2시간" 같은 계획표가 나온다. */
+
+  function vpAiMode() {
+    var el = $('vpAiMode');
+    return el && el.value === 'vacation' ? 'vacation' : 'term';
+  }
+
+  /** 등교 요일 체크박스. 요일 이름은 계획표 열에서 그대로 가져온다. */
+  function renderVpAiSchoolDays(picked) {
+    var wrap = $('vpAiSchoolDays');
+    if (!wrap || !state.vacplan) return;
+    var days = state.vacplan.days;
+    var on = picked || [0, 1, 2, 3, 4];
+    wrap.innerHTML = days.map(function (d, i) {
+      return '<label class="va-day"><input type="checkbox"' + (on.indexOf(i) >= 0 ? ' checked' : '') +
+        ' aria-label="' + esc(d) + ' 등교"><span>' + esc(vpDayShort(i)) + '</span></label>';
+    }).join('');
+  }
+
+  function vpAiSchoolCols() {
+    var cols = [];
+    $$('#vpAiSchoolDays input').forEach(function (cb, i) { if (cb.checked) cols.push(i); });
+    return cols;
+  }
+
+  /* 모드를 바꾸면 그 모드의 표준 시각으로 맞춰 준다.
+   * 단, 사용자가 직접 고친 값은 건드리지 않는다 — 다른 모드의 기본값 그대로일 때만 옮긴다. */
+  function vpAiSyncModeDefaults(mode) {
+    function swap(el, from, to) { if (el && el.value === from) el.value = to; }
+    if (mode === 'term') {
+      swap($('vpAiWake'), '07:00', '06:30');
+      swap($('vpAiBreakfastTime'), '08:00', '07:00');
+    } else {
+      swap($('vpAiWake'), '06:30', '07:00');
+      swap($('vpAiBreakfastTime'), '07:00', '08:00');
+    }
+  }
+
+  function renderVpAiMode() {
+    var mode = vpAiMode();
+    var box = $('vpAiSchoolBox');
+    if (box) box.classList.toggle('is-hidden', mode !== 'term');
+
+    var hint = $('vpAiModeHint');
+    if (hint) {
+      hint.innerHTML = mode === 'term'
+        ? '학교에 있는 시간을 먼저 막아 두고, <b>등교 전·하교 후·등교하지 않는 요일</b>에만 과목을 배분합니다.'
+        : '하루 전체가 내 시간입니다. 고정 일정을 뺀 <b>모든 칸</b>에 과목을 배분합니다.';
+    }
+    renderVpAiTtStatus();
+  }
+
+  function renderVpAiTtStatus() {
+    var el = $('vpAiTtStatus');
+    if (!el) return;
+    var p = Store.profile();
+    if ($('vpAiProfileClass')) {
+      $('vpAiProfileClass').textContent = p && p.klass
+        ? '청여고 ' + p.grade + '학년 ' + p.klass + '반 · 프로필과 연결됨'
+        : '프로필에서 반을 설정하면 실제 과목을 반영합니다.';
+    }
+
+    if (!$('vpAiUseTimetable').checked) {
+      el.innerHTML = '학교 시간은 <b>‘학교’</b> 한 덩어리로만 막아 둡니다.';
+      return;
+    }
+    if (!p || !Neis.hasTimetable(p.level)) {
+      el.innerHTML = '이 학교급은 나이스에 시간표가 없어 <b>‘학교’</b>로만 막아 둡니다.';
+      return;
+    }
+    if (!p.neis || !p.neis.schoolCode) {
+      el.innerHTML = '청여고 학교 연결 정보를 확인하지 못해 지금은 ‘학교’로만 막습니다. 프로필을 다시 저장해 주세요.';
+      return;
+    }
+    var klass = p.klass || '';
+    if (!klass) {
+      el.innerHTML = '<b>반</b>을 입력하면 이번 주 시간표를 불러와 과목명으로 채웁니다.';
+      return;
+    }
+    el.innerHTML = '이번 주 시간표를 불러와 <b>1교시부터 순서대로</b> 채웁니다. 방학·휴업으로 시간표가 없으면 ‘학교’로 막습니다.';
+  }
+
+  function fillVpAiGradeOptions(keepValue) {
+    var sel = $('vpAiTtGrade');
+    if (!sel) return;
+    var p = Store.profile();
+    sel.value = keepValue || (p && p.grade) || '1';
+  }
+
+  /** 이번 주 시간표를 요일 열(0=월) → 교시 목록으로 바꿔 준다. 못 받으면 null. */
+  function vpAiFetchTimetable() {
+    var p = Store.profile();
+    if (!$('vpAiUseTimetable').checked) return Promise.resolve(null);
+    if (!p || !Neis.hasTimetable(p.level) || !p.neis || !p.neis.schoolCode) return Promise.resolve(null);
+
+    var grade = p.grade;
+    var klass = p.klass;
+    if (!grade || !klass) return Promise.resolve(null);
+
+    return Neis.weekTimetable(p.neis, grade, klass).then(function (byDate) {
+      var out = {}, any = false;
+      Object.keys(byDate).sort().forEach(function (d) {
+        var dt = new Date(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8));
+        var col = (dt.getDay() + 6) % 7;          // 월=0
+        if (out[col]) return;                      // 같은 요일이 겹치면 먼저 온 날을 쓴다
+        var list = byDate[d].filter(function (t) { return t.subject; });
+        if (!list.length) return;
+        out[col] = list;
+        any = true;
+      });
+      return any ? out : null;
+    })['catch'](function () { return null; });
+  }
+
+  /** 기상·취침·식사·학교·학원 시간을 입력받아 시간표 칸을 자동으로 채운다.
+   *  나머지 빈 칸은 입력한 과목을 돌아가며 채우고, 켜져 있으면 2시간마다 휴식을 끼워 넣는다. */
+  function vpAiGenerate() {
+    var mode = vpAiMode();
+    var wake = vpAiParseTime($('vpAiWake').value, 7);
+    var sleepRaw = vpAiParseTime($('vpAiSleep').value, 23);
+    var sleep = sleepRaw <= wake ? sleepRaw + 24 : sleepRaw;
+
+    // 취침 시각 자체가 마지막 줄이 된다. 23:00 취침이면 23:00 칸에 '취침' 이 적혀야
+    // 사용자가 입력한 시각과 계획표가 어긋나지 않는다.
+    var startH = Math.floor(wake);
+    var bedH = Math.floor(sleep);
+    if (bedH - startH < 1) { toast('기상 시각과 취침 시각을 확인해 주세요.', true); return; }
+    if (bedH - startH > 22) { toast('기상~취침 시간이 너무 깁니다. 시각을 확인해 주세요.', true); return; }
+
+    var meals = [];
+    if ($('vpAiBreakfastOn').checked) meals.push({ name: '아침식사', hour: Math.floor(vpAiParseTime($('vpAiBreakfastTime').value, 8)) });
+    if ($('vpAiLunchOn').checked) meals.push({ name: '점심식사', hour: Math.floor(vpAiParseTime($('vpAiLunchTime').value, 12)) });
+    if ($('vpAiDinnerOn').checked) meals.push({ name: '저녁식사', hour: Math.floor(vpAiParseTime($('vpAiDinnerTime').value, 18)) });
+
+    var academies = $$('.vpai-academy-row').map(function (row) {
+      var name = row.querySelector('.va-name').value.trim();
+      var s = row.querySelector('.va-start').value;
+      var e = row.querySelector('.va-end').value;
+      if (!name || !s || !e) return null;
+      var sh = vpAiParseTime(s, null), eh = vpAiParseTime(e, null);
+      if (sh === null || eh === null || eh <= sh) return null;
+      var cols = [];
+      $$('.va-day input', row).forEach(function (cb, i) { if (cb.checked) cols.push(i); });
+      if (!cols.length) return null;   // 요일을 하나도 안 고르면 없는 일정으로 본다
+      return { name: name, startHour: Math.floor(sh), endHour: Math.ceil(eh), cols: cols };
+    }).filter(Boolean);
+
+    // 학교 (학기 중에만)
+    var schoolCols = [], schoolStartH = 0, schoolEndH = 0;
+    if (mode === 'term') {
+      schoolCols = vpAiSchoolCols();
+      if (!schoolCols.length) { toast('등교하는 요일을 하나 이상 골라 주세요.', true); return; }
+
+      var ss = vpAiParseTime($('vpAiSchoolStart').value, 8);
+      var se = vpAiParseTime($('vpAiSchoolEnd').value, 16);
+      schoolStartH = Math.floor(ss);
+      schoolEndH = Math.ceil(se);
+      if (schoolEndH <= schoolStartH) { toast('등교 시각과 하교 시각을 확인해 주세요.', true); return; }
+      if (schoolStartH < startH) { toast('등교 시각이 기상 시각보다 빠릅니다. 확인해 주세요.', true); return; }
+      if (schoolEndH > bedH) { toast('하교 시각이 취침 시각보다 늦습니다. 확인해 주세요.', true); return; }
+    }
+
+    var subjects = vpAiReadSubjects();
+    var autoRest = $('vpAiAutoRest').checked;
+    var restPlan = vpAiRestPlan();
+
+    if (!subjects.length) {
+      toast('공부할 과목과 주간 목표 시간을 하나 이상 입력해 주세요.', true);
+      return;
+    }
+
+    // 빈 표라면 지울 것이 없으니 굳이 되묻지 않는다
+    if (vpHasContent(state.vacplan) &&
+        !confirm('지금 시간표 내용을 지우고 자동으로 새로 세울까요? 되돌릴 수 없습니다.')) return;
+
+    /* 시간표는 네트워크에서 받아 오므로 여기서 한 번 갈라진다.
+     * 표를 실제로 세우는 일은 전부 build 안에서 한다 — 받아 오든 못 받아 오든 같은 경로. */
+    if (mode === 'term' && $('vpAiUseTimetable').checked) {
+      toast('학교 시간표를 불러오는 중…');
+      vpAiFetchTimetable().then(build);
+    } else {
+      build(null);
+    }
+
+    function build(tt) {
+    var days = state.vacplan.days;
+    var hours = [];
+    for (var h = startH; h <= bedH; h++) hours.push(h);
+    var grid = hours.map(function () { return days.map(function () { return ''; }); });
+
+    function setCell(hourAbs, col, text) {
+      var idx = hourAbs - startH;
+      if (idx >= 0 && idx < grid.length) grid[idx][col] = text;
+    }
+    function cellAt(hourAbs, col) {
+      var idx = hourAbs - startH;
+      return (idx >= 0 && idx < grid.length) ? grid[idx][col] : null;
+    }
+
+    // 기상 / 취침
+    for (var c = 0; c < days.length; c++) {
+      setCell(startH, c, '기상');
+      setCell(bedH, c, '취침');
+    }
+
+    // 식사 (기상 시각과 겹치면 합쳐서 적는다)
+    meals.forEach(function (meal) {
+      var hourAbs = meal.hour < startH ? meal.hour + 24 : meal.hour;
+      var idx = hourAbs - startH;
+      var merged = (idx >= 0 && idx < grid.length && grid[idx][0] === '기상') ? '기상 및 ' + meal.name : meal.name;
+      for (var c2 = 0; c2 < days.length; c2++) setCell(hourAbs, c2, merged);
+    });
+
+    /* 학교 (학기 중에만). 식사 뒤에 깔고, 학원이 그 위를 덮는다.
+     *
+     * 시간표를 받아 왔으면 1교시부터 등교 시각 칸에 차례로 얹는다.
+     * 계획표는 한 시간 단위라 교시 시각을 그대로 옮길 수 없으므로 "순서" 를 옮긴다 —
+     * 급식 시간처럼 이미 채워진 칸은 교시를 쓰지 않고 건너뛰기만 해서,
+     * 점심 때문에 한 교시가 통째로 사라지는 일이 없게 한다. */
+    var schoolFilled = 0, ttUsed = 0;
+    if (mode === 'term') {
+      schoolCols.forEach(function (col) {
+        var periods = tt && tt[col] ? tt[col] : null;
+        var h = schoolStartH;
+
+        if (periods) {
+          var pi = 0;
+          while (pi < periods.length && h <= bedH) {
+            if (cellAt(h, col)) { h++; continue; }   // 식사·기상 칸은 건드리지 않는다
+            setCell(h, col, periods[pi].subject);
+            pi++; h++; ttUsed++;
+          }
+        }
+        // 시간표가 없거나 하교 시각보다 일찍 끝나면 남은 학교 시간을 한 덩어리로 막는다
+        for (; h < schoolEndH; h++) {
+          if (!cellAt(h, col)) { setCell(h, col, '학교'); schoolFilled++; }
+        }
+      });
+    }
+
+    // 학원 · 과외 (식사·학교보다 우선해서 그 위에 덮어쓴다)
+    academies.forEach(function (ac) {
+      var s2 = ac.startHour < startH ? ac.startHour + 24 : ac.startHour;
+      var e2 = ac.endHour <= s2 ? ac.endHour + 24 : ac.endHour;
+      for (var hh = s2; hh < e2; hh++) {
+        ac.cols.forEach(function (col) { setCell(hh, col, ac.name); });
+      }
+    });
+
+    /* 남는 칸을 과목별 "부족한 정도" 에 비례해 나눠 준다.
+     *
+     * 부드러운 가중 라운드로빈(각 칸마다 가중치만큼 저울에 얹고, 가장 무거운
+     * 과목을 뽑은 뒤 총합만큼 덜어 낸다). 단순히 순서대로 돌리면 5점짜리와
+     * 1점짜리가 같은 시간을 가져가고, 몫을 미리 세어 한 과목씩 몰아 넣으면
+     * 하루가 통째로 한 과목이 된다. 이 방식은 비율을 지키면서도 과목이
+     * 고르게 흩어진다.
+     *
+     * 저울은 주 전체에서 한 번만 초기화한다(열마다 새로 시작하지 않는다).
+     * 그래야 주간 목표 비율이 정확히 맞는다 — 대신 매일 아침 첫 칸이
+     * 항상 같은 과목은 아니고 요일마다 돌아가며 바뀐다. */
+    /* 1) 고정 일정이 없는 모든 칸을 후보로 모은다. 휴식은 실제 과목 배치가 끝난 뒤
+     *    연속 공부가 생긴 구간에만 넣는다. */
+    var studySlots = [];
+    for (var col = 0; col < days.length; col++) {
+      for (var r = 0; r < grid.length; r++) {
+        if (!grid[r][col]) studySlots.push([r, col]);
+      }
+    }
+
+    // 2) 주간 목표 시간을 남은 칸 수에 맞춰 확정한다
+    var alloc = vpAiAllocate(subjects, studySlots.length);
+
+    /* 3) 부드러운 가중 라운드로빈으로 흩뿌린다.
+     *    몫을 세어 한 과목씩 몰아 넣으면 하루가 통째로 한 과목이 되고,
+     *    단순 순환은 시간 비율을 못 지킨다. 이 방식은 둘 다 피한다. */
+    var totalW = alloc.pool.reduce(function (a, p) { return a + p.slots; }, 0) || 1;
+    var credit = alloc.pool.map(function () { return 0; });
+    var left = alloc.pool.map(function (p) { return p.slots; });
+
+    studySlots.forEach(function (pos) {
+      var i, best = -1;
+      for (i = 0; i < alloc.pool.length; i++) if (left[i] > 0) credit[i] += alloc.pool[i].slots;
+      for (i = 0; i < alloc.pool.length; i++) {
+        if (left[i] <= 0) continue;
+        if (best < 0 || credit[i] > credit[best]) best = i;
+      }
+      // 과목을 하나도 안 넣었을 때만 여기로 온다
+      if (best < 0) { grid[pos[0]][pos[1]] = '자기주도학습'; return; }
+      credit[best] -= totalW;
+      left[best]--;
+      grid[pos[0]][pos[1]] = alloc.pool[best].name;
+    });
+
+    // 실제 과목이 연속된 구간에만 휴식을 둔다. 다음 칸이 과목이면 같은 구간의
+    // 뒤쪽 자유 시간으로 그 과목을 옮겨 목표 시간을 그대로 보존한다.
+    var restCount = 0;
+    if (autoRest) {
+      var subjectSet = {};
+      subjects.forEach(function (s) { subjectSet[s.name] = true; });
+      for (var dc = 0; dc < days.length; dc++) {
+        var studyRun = 0;
+        for (var rr = 0; rr < grid.length; rr++) {
+          var value = grid[rr][dc];
+          if (!subjectSet[value]) { studyRun = 0; continue; }
+          studyRun++;
+          if (studyRun < restPlan.run || rr + 1 >= grid.length) continue;
+
+          var next = rr + 1;
+          if (grid[next][dc] === '자유 시간') {
+            grid[next][dc] = '휴식';
+            restCount++;
+          } else if (subjectSet[grid[next][dc]]) {
+            var free = -1;
+            for (var fr = next + 1; fr < grid.length; fr++) {
+              if (grid[fr][dc] === '자유 시간') { free = fr; break; }
+              if (!subjectSet[grid[fr][dc]]) break;
+            }
+            if (free >= 0) {
+              grid[free][dc] = grid[next][dc];
+              grid[next][dc] = '휴식';
+              restCount++;
+            }
+          }
+          studyRun = 0;
+        }
+      }
+    }
+
+    state.vacplan.rows = hours.map(function (h2, i) {
+      return { time: pad(h2 % 24) + ':00', cells: grid[i] };
+    });
+    state.vacplan.mode = mode;
+    state.vacplan.colors = {};   // 과목 구성이 바뀌었을 수 있으니 색은 새로 배정한다
+    vpSave();
+    renderVacPlanPage();
+
+    /* 학교 시간표는 "넣었는데 안 들어왔다" 가 가장 헷갈리는 실패다.
+     * 켰는데 못 받아 온 경우를 반드시 말해 준다. */
+    if (mode === 'term' && $('vpAiUseTimetable').checked && !ttUsed) {
+      toast('학교 시간표를 불러오지 못해 ‘학교’로만 막았습니다. 학교·학년·반과 인터넷 연결을 확인해 주세요.', true);
+      return;
+    }
+    if (ttUsed) {
+      toast('학교 시간표 ' + ttUsed + '교시를 넣고' + (schoolFilled ? ' 나머지 학교 시간도 막은 뒤' : '') +
+        ' 남는 시간에 과목을 배분했습니다.');
+      return;
+    }
+    if (alloc.scaled) {
+      toast('목표 ' + alloc.want + '시간이 남는 ' + alloc.capacity + '시간을 넘어 비율대로 줄였습니다.', true);
+    } else if (alloc.want && alloc.want < alloc.capacity) {
+      toast('주 ' + alloc.want + '시간을 배치하고 남은 ' + Math.max(0, alloc.capacity - alloc.want - restCount) +
+        '시간은 자유 시간' + (restCount ? ', ' + restCount + '시간은 휴식' : '') + '으로 두었습니다.');
+    } else {
+      toast('큰 틀을 세웠습니다. 이제 칸을 눌러 자유롭게 다듬으세요.');
+    }
+    }
+  }
+
+  function renderVacPlanPage() {
+    var m = state.vacplan;
+    $('vpTitle').value = m.title || '';
+    $('vpSubtitle').value = m.subtitle || '';
+    $('vpFont').value = m.font;
+    renderVpPalettes();
+    paintVpSwatches();
+    buildVpTable();
+    renderVpLegend();
+    vpRenderPreview();
+  }
+
+  function initVacPlan() {
+    state.vacplan = vpLoad();
+
+    $('vpFont').innerHTML = VP_FONTS.map(function (f) {
+      return '<option value="' + f.id + '">' + esc(f.label) + '</option>';
+    }).join('');
+
+    $('vpTitle').addEventListener('input', function () {
+      state.vacplan.title = $('vpTitle').value;
+      state.vacplan.titleAuto = false;   // 직접 고쳤으니 이름이 바뀌어도 건드리지 않는다
+      vpSave();
+      vpRefresh();
+    });
+    $('vpSubtitle').addEventListener('input', function () {
+      state.vacplan.subtitle = $('vpSubtitle').value;
+      vpSave();
+      vpRefresh();
+    });
+    $('vpFont').addEventListener('change', function () {
+      state.vacplan.font = $('vpFont').value;
+      vpSave();
+      buildVpTable();
+      // 웹폰트는 처음 고를 때 아직 안 받아졌을 수 있어 로드를 기다린 뒤 다시 그린다
+      vpEnsureFontLoaded(state.vacplan.font).then(vpRenderPreview);
+    });
+    $('vpAddRow').addEventListener('click', function () {
+      state.vacplan.rows.push({ time: '', cells: state.vacplan.days.map(function () { return ''; }) });
+      vpSave();
+      buildVpTable();
+      vpRenderPreview();
+    });
+    addVpAiAcademyRow();
+    $('vpAiAcademyAdd').addEventListener('click', function () { addVpAiAcademyRow(); });
+    addVpAiSubjectRow(); addVpAiSubjectRow(); addVpAiSubjectRow();
+    $('vpAiSubjectAdd').addEventListener('click', function () { addVpAiSubjectRow(); });
+    $('vpAiSubjectList').addEventListener('input', renderVpAiSubjectTotal);
+    $('vpAiGenerate').addEventListener('click', vpAiGenerate);
+
+    ['vpAiWake', 'vpAiSleep', 'vpAiAutoRest'].forEach(function (id) {
+      $(id).addEventListener('change', renderVpAiIntensity);
+    });
+    renderVpAiIntensity();
+
+    /* 학기 중 / 방학.
+     * 저장해 둔 모드로 복원한다 — 학기 중에 쓰던 사람이 앱을 다시 열 때마다
+     * 방학 기준 화면을 마주하면 매번 같은 걸 다시 고르게 된다. */
+    $('vpAiMode').value = state.vacplan.mode === 'vacation' ? 'vacation' : 'term';
+    paintSegs();
+    renderVpAiSchoolDays();
+    // initSegs 의 핸들러가 먼저 등록돼 있어 값이 바뀐 뒤에 이 핸들러가 돈다
+    $$('.vpai-mode').forEach(function (seg) {
+      seg.addEventListener('click', function (e) {
+        if (!e.target.closest('button')) return;
+        var mode = vpAiMode();
+        state.vacplan.mode = mode;
+        vpSave();
+        vpAiSyncModeDefaults(mode);
+        renderVpAiMode();
+        renderVpAiIntensity();
+      });
+    });
+
+    var p0 = Store.profile();
+    fillVpAiGradeOptions(p0 ? p0.grade : null);
+    if (p0 && p0.klass) $('vpAiTtClass').value = p0.klass;
+    $('vpAiUseTimetable').addEventListener('change', renderVpAiTtStatus);
+    $('vpAiTtClass').addEventListener('input', renderVpAiTtStatus);
+    $('vpAiTtGrade').addEventListener('change', renderVpAiTtStatus);
+    renderVpAiMode();
+
+    [
+      ['vpAiToggle', 'vpAiBody'],
+      ['vpPaletteToggle', 'vpPalettes'],
+      ['vpPreviewToggle', 'vpPreviewBody']
+    ].forEach(function (pair) {
+      var btn = $(pair[0]), body = $(pair[1]);
+      var txt = btn.querySelector('.rm-txt') ? null : btn; // res-more 버튼은 화살표 회전만으로 상태를 보여 준다
+      btn.addEventListener('click', function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        body.classList.toggle('is-hidden', open);
+        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        if (txt) txt.textContent = open ? '펼치기' : '접기';
+      });
+    });
+
+    $('vpDownload').addEventListener('click', exportVacPlanImage);
+    $('vpReset').addEventListener('click', function () {
+      if (!confirm('계획표를 빈 표로 되돌릴까요? 지금까지 입력한 내용이 사라집니다.')) return;
+      state.vacplan = vpDefaultModel();
+      vpSave();
+      renderVacPlanPage();
+      renderVpAiSchoolDays();   // 요일 이름이 기본값으로 돌아갔으니 등교 요일 칩도 다시 만든다
+      toast('빈 표로 되돌렸습니다. 자동 계획표 세우기로 다시 시작해 보세요.');
+    });
+
+    renderVacPlanPage();
+    // 아직 아무것도 안 짠 상태라면 첫 화면에서 바로 자동 계획표 카드를 펼쳐 준다.
+    // 빈 표만 덩그러니 보여 주면 무엇부터 해야 할지 알 수 없다.
+    if (!vpHasContent(state.vacplan)) {
+      $('vpAiBody').classList.remove('is-hidden');
+      $('vpAiToggle').setAttribute('aria-expanded', 'true');
+      $('vpAiToggle').textContent = '접기';
+    }
+    // 저장된 글씨체가 웹폰트면 로드된 뒤 미리보기를 한 번 더 그린다
+    vpEnsureFontLoaded(state.vacplan.font).then(vpRenderPreview);
+  }
+
+  function bindGotoIn(root) {
+    $$('[data-goto]', root).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.goto); });
+    });
+  }
+
+  /* ========================================================= 설정 페이지 == */
+
+  function neisStatus(msg, kind) {
+    var el = $('neisStatus');
+    el.className = 'neis-status show ' + (kind || 'info');
+    el.innerHTML = msg;
+  }
+
+  function initNeis() {
+    /* 전용 학교 조회는 공개 호출 범위로 충분하다. 예전 버전에서 사용자가 넣은
+     * 개인 키가 남아 있다면 더는 필요 없으므로 브라우저 저장소에서도 지운다. */
+    if (Neis.hasKey()) {
+      Neis.setKey('');
+      Neis.clearCache();
+      Neis.clearTimetableCache();
+      Neis.clearScheduleCache();
+      resetSchedule();
+    }
+    $('neisKey').value = '';
+    neisStatus('✅ 청주여자고등학교 학교 데이터에 자동 연결됩니다.', 'ok');
+
+    $('neisClearCache').addEventListener('click', function () {
+      Neis.clearCache();
+      Neis.clearTimetableCache();
+      Neis.clearScheduleCache();
+      resetSchedule();
+      renderMeals();
+      renderTimetable();
+      renderCalendar();
+      toast('청여고 학교 데이터를 새로 불러옵니다.');
+    });
+  }
+
+  function renderSettingsPage() {
+    var p = Store.profile();
+    if (!p) return;
+
+    renderMealAlarmSettings();
+
+    var neisTag = p.neis && p.neis.schoolCode
+      ? ' · <span style="color:var(--good);font-weight:600">나이스 연결됨</span>'
+      : ' · <span style="color:var(--warn)">학교 미선택 (급식 없음)</span>';
+
+    var myMin = Avatar.lifetimeMinutes();
+    $('profileSummary').innerHTML =
+      Avatar.html(Avatar.get(), myMin, 'av-lg') +
+      '<div><div class="ps-name">' + esc(p.nick) + '</div>' +
+      '<div class="ps-meta">' + esc(Group.groupLabel(p)) +
+        (p.neis && p.neis.region ? ' <span style="color:var(--dim)">(' + esc(p.neis.region) + ')</span>' : '') + '</div>' +
+      '<div class="ps-goal">주간 목표 ' + (p.goal || 25) + '시간' +
+        (kidsOn() ? (parentMode(p) ? ' · 학부모 성장 모드 켜짐' : ' · 성장 모드 켜짐') : '') + neisTag + '</div></div>';
+
+    var sess = StudyLog.all();
+    var days = Object.keys(sess).length;
+    var totalMin = 0;
+    Object.keys(sess).forEach(function (d) {
+      Object.keys(sess[d]).forEach(function (s) { totalMin += sess[d][s].m; });
+    });
+
+    $('dataSummary').innerHTML =
+      '<div class="ds"><div class="k">기록된 학습일</div><div class="v">' + days + '<small style="font-size:12px;color:var(--muted)">일</small></div></div>' +
+      '<div class="ds"><div class="k">누적 순공 시간</div><div class="v">' + fmtDur(totalMin) + '</div></div>' +
+      '<div class="ds"><div class="k">학습 준비도 기록</div><div class="v">' + Store.history().length + '<small style="font-size:12px;color:var(--muted)">건</small></div></div>' +
+      '<div class="ds"><div class="k">그룹원</div><div class="v">' + Group.members().length + '<small style="font-size:12px;color:var(--muted)">명</small></div></div>';
+
+    renderStorageStatus();
+    renderBackupCard();
+    renderCloudSettings();
+    renderStudentShareSettings();
+  }
+
+  /* ============================================== 복구 코드 백업 (설정) ==
+   * 파일 백업과 나란히 두되 역할이 다르다.
+   *   파일  — 지금 이 순간을 내 손에 쥐는 것 (기기가 죽어도 파일은 남는다)
+   *   코드  — 앞으로를 자동으로 맡기는 것 (누르는 걸 잊어도 하루 한 번 올라간다)
+   * 둘 중 하나만 두면 각각의 실패 방식이 그대로 남는다. */
+
+  function bkStatus(msg, kind) {
+    var el = $('bkStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'neis-status' + (msg ? ' show ' + (kind || 'info') : '');
+  }
+
+  function renderBackupCard() {
+    if (!$('bkLinked')) return;
+
+    var on = Backup.linked();
+    $('bkLinked').classList.toggle('is-hidden', !on);
+    $('bkUnlinked').classList.toggle('is-hidden', on);
+
+    var s = Backup.load();
+
+    if (on) {
+      $('bkCode').value = Backup.format(s.code);
+      $('bkAuto').checked = s.auto;
+      $('bkSaved').innerHTML = s.savedAt
+        ? '마지막 저장 ' + esc(agoText(s.savedAt)) + ' · ' + Math.round((s.bytes || 0) / 1024) + 'KB'
+        : '아직 한 번도 올리지 않았습니다.';
+      if (s.lastError) bkStatus('마지막 저장이 실패했습니다 — ' + s.lastError, 'bad');
+      else bkStatus('');
+    } else if (!Backup.available()) {
+      bkStatus(Backup.unavailableReason(), 'info');
+    } else {
+      bkStatus('');
+    }
+
+    /* 쓸 수 없는 환경(파일로 직접 연 경우 등)에서는 버튼을 눌러 봐야 실패한다 */
+    var usable = Backup.available();
+    ['bkCreate', 'bkRestoreOpen', 'bkPush'].forEach(function (id) {
+      if ($(id)) $(id).disabled = !usable;
+    });
+  }
+
+  function initBackupCard() {
+    if (!$('bkCreate')) return;
+
+    $('bkCreate').addEventListener('click', function () {
+      if (!Backup.available()) { bkStatus(Backup.unavailableReason(), 'bad'); return; }
+      var code = Backup.generate();
+      bkStatus('복구 코드를 만들고 첫 저장을 올리는 중…', 'info');
+      Backup.push(code).then(function () {
+        renderBackupCard();
+        bkStatus('저장했습니다. 이 코드를 꼭 따로 적어 두세요.', 'ok');
+        celebrate(['🔑 복구 코드가 생겼어요']);
+      }, function (e) {
+        /* 실패했으면 코드를 남기지 않는다 — 서버에 없는 코드를 "내 코드" 라고
+         * 적어 두게 하면, 나중에 복구를 시도할 때가 되어서야 알게 된다. */
+        Backup.patch({ code: '', savedAt: 0, bytes: 0 });
+        renderBackupCard();
+        bkStatus('저장하지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkCopy').addEventListener('click', function () {
+      copyText($('bkCode').value, '복구 코드를 복사했어요!');
+    });
+
+    $('bkPush').addEventListener('click', function () {
+      bkStatus('저장하는 중…', 'info');
+      Backup.push().then(function () {
+        renderBackupCard();
+        renderStorageStatus();
+        bkStatus('지금 기록을 저장했습니다.', 'ok');
+      }, function (e) {
+        renderBackupCard();
+        bkStatus('저장하지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkAuto').addEventListener('change', function () {
+      Backup.patch({ auto: this.checked });
+      bkStatus(this.checked ? '앱을 열 때 하루 한 번 저절로 올립니다.' : '자동 저장을 껐습니다. 직접 눌러야 올라갑니다.', 'info');
+    });
+
+    $('bkUnlink').addEventListener('click', function () {
+      if (!confirm('연결을 끊고 서버에 저장된 백업도 지울까요?\n\n이 기기의 기록은 그대로 남습니다.\n복구 코드는 다시 만들어야 합니다.')) return;
+      bkStatus('지우는 중…', 'info');
+      Backup.unlink(true).then(function () {
+        renderBackupCard();
+        bkStatus('연결을 끊고 서버의 백업을 지웠습니다.', 'ok');
+      }, function (e) {
+        renderBackupCard();
+        bkStatus('연결은 끊었지만 서버에서 지우지 못했습니다 — ' + e.message, 'bad');
+      });
+    });
+
+    $('bkRestoreOpen').addEventListener('click', function () {
+      var box = $('bkRestoreBox');
+      box.classList.toggle('is-hidden');
+      if (!box.classList.contains('is-hidden')) $('bkInput').focus();
+    });
+
+    /* 입력하는 동안 XXXX-XXXX-XXXX 모양으로 맞춰 준다.
+     * 카톡으로 받은 코드를 통째로 붙여넣는 경우가 많아 'MNDR-' 과 구분선이 섞여 들어온다 —
+     * fromInput 이 길이로 판단해 접두사만 떼어 낸다. */
+    $('bkInput').addEventListener('input', function () {
+      var caretAtEnd = this.selectionStart === this.value.length;
+      var f = Backup.group(Backup.fromInput(this.value));
+      if (f !== this.value) {
+        this.value = f;
+        if (caretAtEnd) this.setSelectionRange(f.length, f.length);
+      }
+    });
+
+    $('bkInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('bkRestore').click(); }
+    });
+
+    $('bkRestore').addEventListener('click', function () {
+      var code = Backup.fromInput($('bkInput').value);
+      if (!Backup.valid(code)) { bkStatus('복구 코드는 MNDR- 뒤에 12자입니다.', 'bad'); return; }
+
+      bkStatus('백업을 찾는 중…', 'info');
+      Backup.peek(code).then(function (found) {
+        var when = found.savedAt ? agoText(found.savedAt) : '시점 불명';
+        if (!confirm('백업을 찾았습니다 (' + when + ' 저장, 약 ' +
+                     Math.round((found.bytes || 0) / 1024) + 'KB).\n\n' +
+                     '이 기기의 기록을 이 백업으로 덮어쓸까요?\n되돌릴 수 없습니다.')) {
+          bkStatus('불러오기를 취소했습니다.', 'info');
+          return;
+        }
+        var n = Backup.restore(code, found);
+        bkStatus(n + '개 항목을 복원했습니다. 화면을 새로 불러옵니다…', 'ok');
+        /* 복원 뒤에는 통째로 다시 읽는 편이 안전하다. 프로필·과목·계획표·모리까지
+         * 저장소 전체가 바뀌었는데 화면만 부분 갱신하면 옛 값이 섞여 남는다. */
+        setTimeout(function () { location.reload(); }, 900);
+      }, function (e) {
+        bkStatus(e.message, 'bad');
+      });
+    });
+  }
+
+  /* 기록이 몇 달치 쌓이는 앱이라, 저장이 안전한 상태인지 스스로 알려 준다.
+   * 브라우저가 공간을 회수할 수 있는 상태라면 그 사실을 숨기지 않는다. */
+  function renderStorageStatus() {
+    var el = $('storageStatus');
+    if (!el) return;
+
+    var last = Store.lastBackupAt();
+    var days = last ? Math.floor((Date.now() - last) / 86400000) : null;
+    var hasData = Store.history().length > 0 || StudyLog.todayTotal() > 0;
+
+    var backup = last
+      ? (days <= 0 ? '오늘 백업했습니다.' : days + '일 전에 백업했습니다.')
+      : '아직 백업한 적이 없습니다.';
+    var warn = (!last && hasData) || (days !== null && days >= 14);
+
+    Store.persistStatus().then(function (st) {
+      var line, cls;
+      if (st === 'persisted') {
+        line = '✅ <b>브라우저 보관 보호 사용 중</b> — 그래도 브라우저 데이터 삭제·기기 변경 시 기록이 사라질 수 있으므로 정기적으로 백업하세요.';
+        cls = 'ok';
+      } else if (st === 'best-effort') {
+        line = '⚠️ <b>임시 보관 상태</b> — 저장 공간이 부족하면 브라우저가 기록을 지울 수 있습니다. ' +
+               '홈 화면에 추가하고 자주 열면 보관 보호를 받을 가능성이 높아집니다.';
+        cls = 'warn';
+      } else {
+        line = 'ℹ️ 이 브라우저는 보관 상태를 알려 주지 않습니다. 백업 파일을 더 자주 내려받아 두세요.';
+        cls = '';
+      }
+      el.className = 'store-status ' + cls;
+      el.innerHTML = line + '<br><span class="ss-backup' + (warn ? ' warn' : '') + '">' +
+        (warn ? '📥 ' : '') + esc(backup) +
+        (warn ? ' 지금 내려받아 두세요 — 기기를 잃어버리면 되돌릴 수 없습니다.' : '') + '</span>';
+    });
+  }
+
+  /* ================================================== 캐릭터 꾸미기 ==
+   *
+   * 고른 내용은 [저장하기] 를 눌러야 프로필에 들어간다.
+   * 그전까지는 avDraft 에만 있으므로, 이것저것 눌러 보다 나가도 원래대로 남는다. */
+
+  var avDraft = null;
+
+  function avMin() { return Avatar.lifetimeMinutes(); }
+
+  function openAvatarPage() {
+    avDraft = Avatar.get();
+    renderAvatar();
+  }
+
+  function renderAvatar() {
+    if (!avDraft) avDraft = Avatar.get();
+    renderAvatarStage();
+    renderAvatarPicks();
+    renderAvatarBorders();
+  }
+
+  function renderAvatarStage() {
+    var p = Store.profile() || {};
+    var min = avMin();
+    var t = Avatar.progress(min);
+
+    $('avStage').innerHTML =
+      '<div class="av-stage-fig">' + Avatar.html(avDraft, min, 'av-xl') + '</div>' +
+      '<div class="av-stage-txt">' +
+        '<div class="av-stage-name">' + esc(p.nick || '나') + '</div>' +
+        '<p class="av-stage-sub">지금까지 쌓은 순공 시간 <b>' + fmtDurFine(min) + '</b></p>' +
+        '<div class="av-prog">' +
+          '<div class="av-prog-top"><span>테두리 ' + (t.idx + 1) + ' / ' + Avatar.BORDERS.length + '개 해금</span>' +
+            '<span>' + (t.next ? esc(t.next.name) + '까지 ' + fmtDurFine(t.remainMin) : '모든 색을 모았어요') + '</span></div>' +
+          '<div class="av-prog-track"><i style="width:' + t.pct.toFixed(1) + '%"></i></div>' +
+        '</div>' +
+        '<p class="tiny" style="margin:10px 0 0">이 모습 그대로 <b>그룹 랭킹</b>과 상단 프로필에 표시됩니다. ' +
+          '가진 젤리 <b>✨' + Slime.jelly() + '</b> — 홈에서 모리를 키우면 늘어납니다.</p>' +
+      '</div>';
+  }
+
+  /** 옵션 하나 — 그 항목만 바꿔 본 미리보기를 그대로 그린다.
+   * buyable 은 "아직 없지만 눌러서 살 수 있는" 상태다. 시간이 차야 열리는
+   * 자물쇠와 달리 지금 당장 누를 수 있으므로 흐리게 죽이지 않는다. */
+  function avOption(kind, item, on, locked, note, buyable) {
+    var preview = {};
+    Object.keys(avDraft).forEach(function (k) { preview[k] = avDraft[k]; });
+    preview[kind] = item.id;
+
+    var fig = kind === 'border'
+      ? Avatar.html(preview, Infinity, 'av-sm')
+      : '<span class="av av-plain av-sm"><span class="av-in">' + Avatar.figure(preview) + '</span></span>';
+
+    return '<button type="button" class="av-opt' + (on ? ' on' : '') +
+      (locked && !buyable ? ' locked' : '') + (buyable ? ' buy' : '') + '"' +
+      (locked && !buyable ? ' aria-disabled="true"' : '') +
+      ' data-kind="' + kind + '" data-id="' + esc(item.id) + '">' +
+      '<span class="av-opt-fig">' + fig +
+        (locked && !buyable ? '<span class="av-lock">🔒</span>' : '') +
+        (buyable ? '<span class="av-buy-tag">✨</span>' : '') + '</span>' +
+      '<span class="av-opt-name">' + esc(item.name) + '</span>' +
+      (note ? '<span class="av-opt-note">' + esc(note) + '</span>' : '') +
+      '</button>';
+  }
+
+  function avGroup(title, hint, body) {
+    return '<div class="av-group"><div class="av-group-head"><b>' + esc(title) + '</b>' +
+      (hint ? '<em>' + esc(hint) + '</em>' : '') + '</div>' +
+      '<div class="av-opts">' + body + '</div></div>';
+  }
+
+  function renderAvatarPicks() {
+    var min = avMin();
+    var opened = Avatar.borderIndexFor(min);
+
+    function opts(kind, list) {
+      return list.map(function (it) { return avOption(kind, it, avDraft[kind] === it.id); }).join('');
+    }
+
+    /* 젤리로 사는 물건은 산 것만 고를 수 있다. 값은 옵션 밑에 그대로 적어 둔다 —
+     * 눌러 봐야 얼마인지 아는 상점은 불친절하다. */
+    function shopOpts(kind, list) {
+      return list.map(function (it) {
+        var got = avDraft.owned.indexOf(it.id) >= 0;
+        return avOption(kind, it, got && avDraft[kind] === it.id, !got,
+          got ? '보유 중' : '✨' + it.cost, !got);
+      }).join('');
+    }
+
+    var html =
+      avGroup('청여고 캐릭터', '머리 모양을 골라요', opts('char', Avatar.CHARS)) +
+      avGroup('교복', '캐릭터와 별도로 바꿀 수 있어요', opts('uniform', Avatar.UNIFORMS)) +
+      avGroup('착용 아이템', '하나씩 착용하거나 벗을 수 있어요', opts('item', Avatar.ITEMS)) +
+      avGroup('테두리 색', '공부한 시간이 쌓이면 열려요', Avatar.BORDERS.map(function (b, i) {
+        var locked = i > opened;
+        return avOption('border', b, avDraft.border === b.id, locked,
+          locked ? '누적 ' + b.hours + '시간' : (b.hours ? b.hours + '시간 달성' : '기본'));
+      }).join('')) +
+      avGroup('✨ 젤리 상점', '모리를 키워 모은 젤리로 삽니다',
+        shopOpts('char', Avatar.SHOP_CHARS) + shopOpts('border', Avatar.SHOP_BORDERS));
+
+    $('avPicks').innerHTML = html;
+
+    $$('#avPicks .av-opt').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.dataset.id;
+        var shop = Avatar.shopItem(id);
+        if (shop && avDraft.owned.indexOf(id) < 0) { avBuy(shop, b.dataset.kind); return; }
+        if (b.classList.contains('locked')) {
+          var need = Avatar.byId(Avatar.BORDERS, id);
+          toast('누적 ' + need.hours + '시간을 채우면 ' + need.name + ' 테두리가 열려요.', true);
+          return;
+        }
+        avDraft[b.dataset.kind] = id;
+        renderAvatar();
+      });
+    });
+  }
+
+  /** 젤리로 사기 — 값을 보여 주고 확인을 받은 뒤에만 깎는다 */
+  function avBuy(item, kind) {
+    var have = Slime.jelly();
+    if (have < item.cost) {
+      toast('젤리가 ' + (item.cost - have) + '개 모자라요. 홈에서 공부 시간을 정산해 보세요.', true);
+      return;
+    }
+    if (!confirm(item.name + josa(item.name, '을', '를') + ' 젤리 ' + item.cost + '개로 살까요?\n\n지금 가진 젤리 ' + have + '개')) return;
+    if (!Slime.spend(item.cost)) { toast('젤리가 모자라요.', true); return; }
+
+    // 산 사실은 바로 프로필에 남긴다 — 값을 치렀는데 저장하기를 안 눌렀다고 사라지면 안 된다.
+    // 어떤 걸 입을지(char/border)만 저장하기 전까지 미리보기로 남는다.
+    if (!Avatar.grant(item.id)) { toast('저장에 실패했습니다.', true); return; }
+
+    if (avDraft.owned.indexOf(item.id) < 0) avDraft.owned.push(item.id);
+    avDraft[kind] = item.id;          // 산 것을 바로 입혀 준다
+    renderAvatar();
+    toast(item.name + josa(item.name, '을', '를') + ' 샀어요! 저장하기를 눌러 반영하세요.', 'party');
+  }
+
+  function renderAvatarBorders() {
+    var min = avMin();
+    var opened = Avatar.borderIndexFor(min);
+    $('avBorderCount').innerHTML = '<span class="sp-chip">' + (opened + 1) + ' / ' + Avatar.BORDERS.length + ' 해금</span>';
+
+    $('avBorderList').innerHTML = Avatar.BORDERS.map(function (b, i) {
+      var got = i <= opened;
+      var remain = Math.max(0, b.hours * 60 - min);
+      return '<div class="av-brd' + (got ? ' got' : '') + (i === opened ? ' now' : '') + '">' +
+        '<span class="av-brd-ring ' + b.cls + '"><i></i></span>' +
+        '<div class="av-brd-txt">' +
+          '<div class="av-brd-name">' + esc(b.name) +
+            (i === opened ? '<span class="me-tag">지금</span>' : '') + '</div>' +
+          '<div class="av-brd-sub">' + (b.hours ? '누적 ' + b.hours + '시간' : '기본 제공') +
+            (b.desc ? ' · ' + esc(b.desc) : '') + '</div>' +
+        '</div>' +
+        '<div class="av-brd-state">' + (got ? '✅ 사용 가능' : '남은 ' + fmtDurFine(remain)) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function initAvatarPage() {
+    $('openAvatar').addEventListener('click', function () { goPage('secAvatar'); });
+
+    $('avRandom').addEventListener('click', function () {
+      var list = Avatar.CHARS;
+      avDraft.char = list[Math.floor(Math.random() * list.length)].id;
+      renderAvatar();
+    });
+
+    $('avSave').addEventListener('click', function () {
+      if (!Avatar.save(avDraft)) { toast('저장에 실패했습니다.', true); return; }
+      avDraft = Avatar.get();
+      Group.syncSelf();            // 공유 코드에도 바뀐 모습이 실리도록
+      renderAvatar();
+      renderProfileChip();
+      renderSettingsPage();
+      renderGroup();
+      toast('캐릭터를 저장했습니다.');
+    });
+
+    $('avRevert').addEventListener('click', function () {
+      avDraft = Avatar.get();
+      renderAvatar();
+      toast('저장된 모습으로 되돌렸습니다.');
+    });
+  }
+
+  /* =============================================== 학부모·중학생 성장 모드 == */
+
+  function renderKids() {
+    if (!kidsOn()) return;
+    var k = Kids.state();
+
+    $('kidHero').innerHTML =
+      '<div class="kh-char">' + k.char.emoji + '</div>' +
+      '<div>' +
+        '<div class="kh-top"><span class="kh-name">' + esc(k.char.name) + '</span>' +
+        '<span class="kh-lv">Lv.' + k.level + '</span></div>' +
+        '<p class="kh-line">' + esc(k.char.line) +
+          (k.next ? ' Lv.' + k.next.min + '이 되면 ' + esc(k.next.name) + '(' + k.next.emoji + ')로 자라요!' : '') + '</p>' +
+        '<div class="xp-top"><span>경험치</span><span>' + k.inLevel + ' / ' + k.need + ' XP</span></div>' +
+        '<div class="xp-track"><div class="xp-fill" id="xpFill"></div></div>' +
+        '<div class="kh-stats">' +
+          '<span>오늘 모은 경험치 <b>+' + k.todayXp + ' XP</b></span>' +
+          '<span>지금까지 <b>' + k.xp + ' XP</b></span>' +
+          '<span>연속 학습 <b>' + StudyLog.streak() + '일</b></span>' +
+        '</div>' +
+      '</div>';
+    setTimeout(function () { if ($('xpFill')) $('xpFill').style.width = k.pct.toFixed(1) + '%'; }, 80);
+
+    var missions = Kids.todayMissions();
+    var doneCount = missions.filter(function (m) { return m.done; }).length;
+    $('missionCount').innerHTML = '<span class="sp-chip">' + doneCount + ' / ' + missions.length + ' 완료</span>';
+    $('missionList').innerHTML = missions.map(function (m) {
+      var nowTxt = (Math.round(m.now * 10) / 10) + (m.unit || '');
+      var goalTxt = m.goal + (m.unit || '');
+      return '<div class="mission' + (m.done ? ' done' : '') + '">' +
+        '<div class="ms-icon">' + m.icon + '</div>' +
+        '<div><div class="ms-text">' + esc(m.text) + '</div>' +
+        '<div class="ms-track"><div class="ms-fill" style="width:' + m.pct.toFixed(1) + '%"></div></div>' +
+        '<div class="ms-num">' + esc(nowTxt) + ' / ' + esc(goalTxt) + '</div></div>' +
+        '<div class="ms-state">' + (m.done ? '✅<small>+30 XP</small>' : '⬜') + '</div>' +
+      '</div>';
+    }).join('');
+
+    var st = Kids.stamps();
+    var got = st.filter(function (s) { return s.got; }).length;
+    $('stampBoard').innerHTML = st.map(function (s) {
+      var cls = (s.got ? ' got' : '') + (s.isToday ? ' today' : '') + (s.isFuture ? ' future' : '');
+      return '<div class="stamp' + cls + '" title="' + esc(s.date) + ' · ' + fmtDurFine(s.min) + '">' +
+        '<div class="sc">' + (s.got ? '⭐' : (s.isFuture ? '' : '·')) + '</div>' +
+        '<div class="sd">' + s.dow + '</div></div>';
+    }).join('');
+
+    var p = Store.profile() || {};
+    var daily = ((p.goal || 25) * 60) / 7;
+    $('stampNote').textContent = '하루 ' + fmtDurFine(daily) + ' 이상 공부하면 도장을 받아요. 이번 주에 ' + got + '개 모았어요!';
+
+    var badges = Kids.badgeList();
+    var earned = badges.filter(function (b) { return b.earnedOn; }).length;
+    $('badgeCount').innerHTML = '<span class="sp-chip">' + earned + ' / ' + badges.length + ' 획득</span>';
+    $('badgeGrid').innerHTML = badges.map(function (b) {
+      return '<div class="badge' + (b.earnedOn ? ' got' : '') + '" title="' + esc(b.desc) + '">' +
+        '<div class="bi">' + b.icon + '</div>' +
+        '<div class="bn">' + esc(b.name) + '</div>' +
+        '<div class="bd">' + esc(b.earnedOn ? b.earnedOn + ' 획득' : b.desc) + '</div></div>';
+    }).join('');
+  }
+
+  /** 미션·배지·레벨업을 판정하고 축하 메시지를 띄운다 */
+  /* 완주 레벨업 축하. 초·중 성장 모드와 달리 학교급을 가리지 않는다.
+   * 레벨이 여러 칸 올랐어도 축하는 한 줄로 모은다 — 토스트가 줄줄이 뜨면
+   * 정작 마지막에 뜬 것만 보이고 나머지는 스쳐 지나간다. */
+  function awardLevel() {
+    var n = Level.takeLevelUp();
+    if (!n) return;
+    var s = Level.summary();
+    toast('🎉 레벨 업! Lv.' + s.level + ' — 블록 ' + s.blocks + '개 완주', 'party');
+    renderGroup();
+  }
+
+  function awardKids() {
+    if (!kidsOn()) return;
+    var res = Kids.evaluate();
+    var msgs = [];
+    res.missions.forEach(function (m) { msgs.push('🎯 미션 완료! ' + m.text + ' (+' + Kids.XP_PER_MISSION + ' XP)'); });
+    res.badges.forEach(function (b) { msgs.push(b.icon + ' 배지 획득! ' + b.name + ' (+' + Kids.XP_PER_BADGE + ' XP)'); });
+    if (res.levelUp) msgs.push('🎉 레벨 업! Lv.' + res.levelUp.to + ' ' + res.levelUp.char.name + ' ' + res.levelUp.char.emoji);
+    renderKids();
+    celebrate(msgs);
+  }
+
+  /* ========================================================== 그룹 랭킹 == */
+
+  /* ------------------------------------------------- 같은 반 자동 랭킹
+   *
+   * 공유 코드를 주고받는 방식은 번거로워서 결국 아무도 안 쓴다.
+   * 같은 학교·학년·반이면 등록 없이 같은 판에 들어가고, 프로필에 적은 닉네임이
+   * 그대로 보인다. 그래서 입력 화면에서 실명을 권하지 않는다고 미리 알린다.
+   * 닉네임이 아직 없는 옛 기록은 서버가 짧은 태그로 대신 채워 준다.
+   *
+   * 서버가 꺼져 있거나 5명이 안 모였으면 아무것도 그리지 않고,
+   * 예전처럼 이 브라우저가 아는 그룹원 목록이 그대로 남는다. */
+  function renderClassRank() {
+    var p = Store.profile();
+    if (!p || !Cloud.enabled() || !Cloud.classEnabled()) return;
+
+    var cid = League.myClassId(p);
+    if (!cid) return;
+
+    var wk = Store.key(Store.weekStart(new Date()));
+    Cloud.fetchClassMembers(cid, wk).then(function (rows) {
+      if (!rows.length) return;   // 5명 미만이면 서버가 아무것도 주지 않는다
+
+      // 내 줄만 실시간 값으로 바꾼다. 서버 값은 마지막 동기화 시점이라 뒤처져 있다.
+      var mine = League.myCappedWeek();
+      rows.forEach(function (r) { if (r.me) r.minutes = Math.max(r.minutes, mine); });
+      rows.sort(function (a, b) { return b.minutes - a.minutes; });
+
+      var max = rows.reduce(function (m, r) { return Math.max(m, r.minutes); }, 0);
+
+      // 클릭했을 때 다시 서버를 부르지 않도록 지금 받은 목록을 들고 있는다.
+      // 친구 카드를 닫지 않고 있었으면 최신 값으로 바로 다시 그린다.
+      state.classRows = rows;
+
+      $('rankList').innerHTML = rows.map(function (r, i) {
+        var rank = i + 1;
+        var medal = rank <= 3 ? ' m' + rank : '';
+        var badge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+        var w = max > 0 ? (r.minutes / max * 100) : 0;
+        var color = Group.avatarColor(r.tag);
+        return '<div class="rank clickable' + (r.me ? ' is-me' : '') + (rank === 1 ? ' top1' : '') + '" data-ridx="' + i + '" tabindex="0" role="button" aria-label="' + esc(r.tag) + ' 레벨·도감 보기">' +
+          '<div class="rk-pos' + medal + '">' + badge + '</div>' +
+          '<div class="rk-tag" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
+          '<div class="rk-info">' +
+            '<div class="rk-name">' + esc(r.tag) +
+              (r.me ? '<span class="me-tag">나</span>' : '') +
+              (r.me && r.hidden ? '<span class="me-tag">숨김</span>' : '') +
+              (r.levelNum > 0 ? '<span class="brain">Lv.' + r.levelNum + '</span>' : '') + '</div>' +
+            '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
+            '<div class="rk-date">' + (r.me ? '실시간 반영' : agoText(r.updatedAt)) + '</div>' +
+          '</div>' +
+          '<div class="rk-time">' + durHtml(r.minutes) + '</div>' +
+          '<div class="rk-chev" aria-hidden="true">›</div>' +
+        '</div>';
+      }).join('');
+
+      $$('#rankList .rank[data-ridx]').forEach(function (el) {
+        var open = function () { openFriendCard(+el.dataset.ridx); };
+        el.addEventListener('click', open);
+        el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      });
+
+      // 열려 있던 친구 카드가 이번에 새로 받은 목록에도 있으면 값만 갱신한다
+      if (state.friendTag) {
+        var again = rows.filter(function (r) { return r.tag === state.friendTag; })[0];
+        if (again) renderFriendCard(again); else closeFriendCard();
+      }
+
+      $('groupHero').innerHTML =
+        '<div><p class="gh-name">' + esc(cid.label) + '</p>' +
+        '<p class="gh-sub">' + rows.length + '명 참여 · 이번 주 합계 ' +
+          fmtDurFine(rows.reduce(function (s, r) { return s + r.minutes; }, 0)) +
+          ' · 같은 반이면 자동으로 들어옵니다</p></div>' +
+        '<div class="gh-stats">' +
+          '<div class="gh-stat"><div class="k">내 순위</div><div class="v">' +
+            (rows.findIndex ? (rows.findIndex(function (r) { return r.me; }) + 1) : 0) + '<small>위</small></div></div>' +
+          '<div class="gh-stat"><div class="k">내 주간 순공</div><div class="v">' + durHtml(mine) + '</div></div>' +
+          '<div class="gh-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '<small>일</small></div></div>' +
+        '</div>';
+    }, function () { /* 못 받아 오면 로컬 목록을 그대로 둔다 */ });
+  }
+
+  /* --------------------------------------------------- 친구 카드 (레벨·도감)
+   *
+   * 같은 반 랭킹(renderClassRank)에서 친구를 누르면 연다. 로컬 전용 랭킹에는
+   * 애초에 레벨·도감 데이터가 없어 이 카드가 뜨지 않는다 — 학급 대항전에
+   * 동의하고 5명 이상 모인 반에서만 나오는, 지금 랭킹과 같은 조건이다.
+   *
+   * ⚠ 이 값은 검증되지 않는다. 순공 시간과 같은 신뢰 구조라 서버가
+   *   "정말 그만큼 키웠는지" 확인할 방법이 없다 — 그래서 표시만 하고,
+   *   이 값으로 무언가를 주고받는 기능은 만들지 않았다. */
+
+  function openFriendCard(idx) {
+    var r = state.classRows[idx];
+    if (!r) return;
+    renderFriendCard(r);
+    $('friendCard').classList.remove('is-hidden');
+    $('friendCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeFriendCard() {
+    state.friendTag = null;
+    $('friendCard').classList.add('is-hidden');
+  }
+
+  function renderFriendCard(r) {
+    state.friendTag = r.tag;
+    var color = Group.avatarColor(r.tag);
+    $('friendName').textContent = r.tag + (r.me ? ' (나)' : '');
+
+    var counts = Slime.parseDexCsv(r.dex);
+    var species = Slime.speciesList();
+    var got = counts.reduce(function (n, c) { return n + (c > 0 ? 1 : 0); }, 0);
+
+    var grid = species.map(function (sp, i) {
+      var n = counts[i] || 0;
+      var fig = n ? Slime.speciesFaceSvg(sp.id) : '<span class="sd-unknown" aria-hidden="true">?</span>';
+      return '<div class="sd-cell' + (n ? ' got' : '') + '"' + (n ? ' title="' + esc(sp.line) + '"' : '') + '>' +
+        '<div class="sd-fig">' + fig + (n > 1 ? '<span class="sd-n">×' + n + '</span>' : '') + '</div>' +
+        '<b>' + (n ? esc(sp.name) : '???') + '</b>' +
+        '<span class="sd-rare">' + esc(sp.rare) + '</span>' +
+        '</div>';
+    }).join('');
+
+    $('friendBody').innerHTML =
+      '<div class="fr-head">' +
+        '<div class="rk-tag fr-av" style="background:' + color + '">' + esc(r.tag.slice(0, 1)) + '</div>' +
+        '<div>' +
+          '<div class="fr-level">' + (r.levelNum > 0 ? '🏅 학습 레벨 Lv.' + r.levelNum : '아직 완주 레벨이 없습니다') + '</div>' +
+          '<div class="fr-time">이번 주 순공 ' + durHtml(r.minutes) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="sl-dex" style="margin-top:16px;padding-top:14px">' +
+        '<div class="sl-dex-head"><b>📖 말랑이 도감</b><span>' + got + ' / ' + species.length + ' 종</span></div>' +
+        '<div class="sl-dex-grid">' + grid + '</div>' +
+      '</div>' +
+      '<p class="tiny" style="margin-top:12px">완주 레벨과 도감은 본인이 신고한 값으로, 순공 시간처럼 서버가 정확성을 검증하지 않습니다.</p>';
+  }
+
+  function renderGroup() {
+    var p = Store.profile();
+    if (!p) return;
+    Group.syncSelf();
+
+    var r = Group.rank(state.rankRange);
+    var isWeek = state.rankRange === 'week';
+    var myRank = r.me ? r.me.rank : null;
+
+    $('groupHero').innerHTML =
+      '<div><p class="gh-name">' + esc(Group.groupLabel(p)) + '</p>' +
+      '<p class="gh-sub">' + r.count + '명 · ' + (isWeek ? '이번 주' : '오늘') + ' 합계 ' + fmtDurFine(r.total) +
+      (r.count > 1 ? ' · 평균 ' + fmtDurFine(r.avg) : '') + '</p></div>' +
+      '<div class="gh-stats">' +
+        '<div class="gh-stat"><div class="k">내 순위</div><div class="v">' + (myRank ? myRank + '<small>위</small>' : '—') + '</div></div>' +
+        '<div class="gh-stat"><div class="k">' + (isWeek ? '내 주간 순공' : '내 오늘 순공') + '</div><div class="v">' + durHtml(r.me ? r.me.value : 0) + '</div></div>' +
+        '<div class="gh-stat"><div class="k">연속 학습</div><div class="v">' + StudyLog.streak() + '<small>일</small></div></div>' +
+        /* 완주 레벨. 순공 시간과 다른 것을 세므로 나란히 둔다 —
+         * 오래 앉아 있는 것과 시작한 것을 끝내는 것은 같지 않다. */
+        (function () {
+          var lv = Level.summary();
+          return '<div class="gh-stat" title="집중 블록을 건너뛰지 않고 완주하면 오릅니다 (' +
+            lv.into + '/' + lv.need + ')">' +
+            '<div class="k">학습 레벨</div><div class="v">Lv.' + lv.level +
+            '<small>' + lv.blocks + '블록</small></div></div>';
+        })() +
+      '</div>';
+
+    $('rankList').innerHTML = r.list.length ? r.list.map(function (m) {
+      var medal = m.rank <= 3 ? ' m' + m.rank : '';
+      var badge = m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : m.rank === 3 ? '🥉' : m.rank;
+      var w = r.max > 0 ? (m.value / r.max * 100) : 0;
+      var color = Group.avatarColor(m.nick);
+      var stale = m.date !== Store.key();
+      /* 캐릭터. 내 것은 실시간이고, 그룹원은 코드를 받은 시점의 값이다.
+       * lifeMin 이 없는 옛 코드로 들어온 사람은 기본 테두리로 보인다. */
+      var lifeMin = m.self ? Avatar.lifetimeMinutes() : m.lifeMin;
+      var av = m.self ? Avatar.get() : m.avatar;
+      return '<div class="rank' + (m.self ? ' is-me' : '') + (m.rank === 1 ? ' top1' : '') + '">' +
+        '<div class="rk-pos' + medal + '">' + badge + '</div>' +
+        Avatar.html(av, lifeMin || 0, 'rk-av') +
+        '<div class="rk-info">' +
+          '<div class="rk-name">' + esc(m.nick) + (m.self ? '<span class="me-tag">나</span>' : '') +
+            (m.overall != null ? '<span class="brain" title="학습 준비도 참고값">준비도 ' + displayScore(m.overall) + '</span>' : '') + '</div>' +
+          '<div class="rk-track"><div class="rk-fill" style="width:' + w.toFixed(1) + '%;background:' + color + '"></div></div>' +
+          '<div class="rk-date">' + (m.self ? '실시간 반영'
+            : (stale ? '⚠ ' + esc(m.date) + ' 기록 (' + agoText(m.ts) + ')' : '코드 받은 시점 · ' + agoText(m.ts))) +
+            (m.streak ? ' · 연속 ' + m.streak + '일' : '') + '</div>' +
+        '</div>' +
+        '<div class="rk-time">' + durHtml(m.value) + '</div>' +
+        (m.self ? '<span></span>' : '<button type="button" class="icon-btn rk-del" data-id="' + esc(m.id) + '" title="그룹에서 제외">✕</button>') +
+      '</div>';
+    }).join('')
+      : '<div class="m-empty">아직 같은 반 친구가 없습니다.<br>' +
+        '<b>설정 → 학급 대항전</b>을 켜면 같은 학교·학년·반 친구들이 <b>자동으로</b> 여기에 올라옵니다.<br>' +
+        '같은 반에서 5명 이상 참가하면 순위가 공개됩니다.</div>';
+
+    if (r.list.length > 1) {
+      $('rankList').insertAdjacentHTML('beforeend',
+        '<p class="tiny">⚠ 친구 기록은 <b>코드를 받은 시점에 멈춰 있습니다.</b> 서버가 없어 자동으로 갱신되지 않으니, ' +
+        '정확한 비교를 원하면 새 코드를 다시 주고받으세요.</p>');
+    }
+
+    $$('.rk-del').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = Group.members().filter(function (x) { return x.id === b.dataset.id; })[0];
+        if (!m || !confirm(m.nick + ' 님을 그룹에서 제외할까요?')) return;
+        Group.remove(b.dataset.id);
+        renderGroup();
+        toast(m.nick + ' 님을 제외했습니다.');
+      });
+    });
+
+    renderGroupCompare();
+
+    // 서버에서 같은 반 명단을 받아 오면 위 목록을 그것으로 갈아 끼운다
+    renderClassRank();
+  }
+
+  function renderGroupCompare() {
+    var ga = Group.capacityAverage();
+    var mine = Store.history();
+    mine = mine.length ? mine[mine.length - 1] : null;
+
+    if (!ga || !mine || ga.count < 2) {
+      $('groupCompare').innerHTML = '<div class="m-empty">' +
+        (!mine ? '먼저 오늘의 학습 준비도를 확인해 주세요.' : '그룹원이 2명 이상이면 과제 적합도 참고값을 비교해 드립니다.') + '</div>';
+      return;
+    }
+
+    $('groupCompare').innerHTML = BrainEngine.CAPACITIES.map(function (c) {
+      var my = displayScore(mine.scores[c.id] || 0);
+      var avg = displayScore(ga.avg[c.id] || 0);
+      var diff = my - avg;
+      return '<div class="gc">' +
+        '<div class="gc-top"><span class="nm">' + c.icon + ' ' + esc(c.label) + '</span>' +
+        '<span style="color:' + c.color + ';font-weight:800">' + my + '</span>' +
+        '<span class="df ' + (diff >= 0 ? 'up' : 'dn') + '">평균 ' + avg + ' 대비 ' + (diff >= 0 ? '+' : '') + diff + '</span></div>' +
+        '<div class="gc-track"><div class="gc-mine" style="width:' + my + '%;background:' + c.color + '"></div>' +
+        '<div class="gc-avg" style="left:calc(' + avg.toFixed(1) + '% - 1px)"></div></div></div>';
+    }).join('') + '<div class="gc-legend"><span><i class="bar"></i>내 참고값</span><span><i class="tick"></i>그룹 평균 (' + ga.count + '명)</span></div>';
+  }
+
+  /* ========================================================= 주간 리포트 == */
+
+  function renderReport() {
+    if (!Store.profile()) return;
+    var r = Report.full(state.weekOffset);
+
+    $('weekLabel').textContent = r.label + (r.isCurrent ? ' (이번 주)' : '');
+    $('reportRange').textContent = r.isCurrent
+      ? '이번 주 학습 상태입니다. 매주 월요일에 지난주 리포트를 확인하면 흐름이 잘 보입니다.'
+      : r.label + ' 주간 리포트입니다.';
+    $('nextWeek').disabled = state.weekOffset >= 0;
+
+    var dPct = r.deltaPct === null ? null : Math.round(r.deltaPct);
+    /* 1% 미만이라고 0% 로 반올림하면 "공부했는데 0" 이 된다.
+     * 예전엔 '<1' 로 적었는데 부등호가 숫자처럼 안 읽혀서, 소수 한 자리로 그냥 보여 준다. */
+    var goalPctLabel = r.goalPct > 0 && r.goalPct < 1 ? r.goalPct.toFixed(1) : Math.round(r.goalPct);
+    $('repStats').innerHTML =
+      '<div class="rs hi"><div class="rs-k">주간 총 순공 시간</div><div class="rs-v">' +
+        durHtml(r.totalMin) + '</div>' +
+        (dPct === null ? '<div class="rs-d flat">비교할 지난주 기록 없음</div>'
+          : '<div class="rs-d ' + (dPct > 0 ? 'up' : dPct < 0 ? 'dn' : 'flat') + '">지난주 대비 ' + (dPct > 0 ? '+' : '') + dPct + '%</div>') +
+      '</div>' +
+      '<div class="rs"><div class="rs-k">목표 달성률</div><div class="rs-v">' + goalPctLabel + '<small>%</small></div>' +
+        '<div class="rs-d flat">목표 ' + (r.goalMin / 60) + '시간</div></div>' +
+      '<div class="rs"><div class="rs-k">학습한 날</div><div class="rs-v">' + r.studyDays + '<small>일</small></div>' +
+        '<div class="rs-d flat">학습일 평균 ' + fmtDur(r.dailyAvgMin) + '</div></div>' +
+      '<div class="rs"><div class="rs-k">평균 학습 준비도</div><div class="rs-v">' +
+        (r.brainAvg === null ? '—' : displayScore(r.brainAvg)) + (r.brainAvg === null ? '' : '<small>점</small>') + '</div>' +
+        '<div class="rs-d flat">' + (r.brainRows.length ? r.brainRows.length + '일 기록' : '기록 없음') + '</div></div>';
+
+    var maxDay = Math.max.apply(null, r.days.map(function (d) { return d.min; }).concat([1]));
+    $('weekBars').innerHTML = r.days.map(function (d) {
+      var h = d.min > 0 ? Math.max(4, d.min / maxDay * 100) : 2;
+      return '<div class="wb' + (d.isToday ? ' today' : '') + (d.min <= 0 ? ' zero' : '') + '">' +
+        '<div class="wb-col">' + (d.min > 0 ? '<div class="wb-val">' + fmtDur(d.min) + '</div>' : '') +
+        '<div class="wb-bar" style="height:' + h.toFixed(1) + '%"></div></div>' +
+        '<div class="wb-day">' + d.dow + '</div></div>';
+    }).join('');
+
+    var dailyGoal = r.goalMin / 7;
+    $('weekBarsNote').textContent = '주간 목표를 7일로 나누면 하루 ' + fmtDur(dailyGoal) + '입니다. ' +
+      (r.bestDay ? '가장 많이 한 날은 ' + r.bestDay.dow + '요일(' + fmtDur(r.bestDay.min) + ')입니다.' : '아직 기록된 날이 없습니다.');
+
+    $('subjSplit').innerHTML = r.subjects.length ? r.subjects.map(function (s) {
+      return '<div class="ss">' +
+        '<div class="ss-name"><i style="background:' + s.color + '"></i><b>' + esc(s.name) + '</b>' +
+        '<span style="color:var(--dim);font-size:11px">' + esc(s.label) + '</span></div>' +
+        '<div class="ss-time">' + fmtDur(s.min) + ' · ' + Math.round(s.pct) + '%</div>' +
+        '<div class="ss-track"><div class="ss-fill" style="width:' + s.pct.toFixed(1) + '%;background:' + s.color + '"></div></div>' +
+      '</div>';
+    }).join('') : '<div class="m-empty">이 주에 기록된 학습이 없습니다.</div>';
+
+    renderHistoryChart(r);
+
+    $('repSummary').innerHTML = r.summary.map(function (s) {
+      return '<div class="rsum ' + (s.tone || '') + '"><div class="ri">' + s.icon + '</div>' +
+        '<div><h5>' + esc(s.title) + '</h5><p>' + esc(s.text) + '</p></div></div>';
+    }).join('');
+
+    renderPersonalPattern();
+    renderGoalSuggestion();
+    renderExamReflection();
+    renderLearningExperiment();
+  }
+
+  function renderPersonalPattern() {
+    var box = $('personalPattern');
+    var rows = Store.history().filter(function (r) { return StudyLog.dayTotal(r.date) > 0; });
+    if (rows.length < 7) {
+      box.innerHTML = '<p class="insight-empty">아직 학습일 기록이 <b>' + rows.length + '일</b>입니다. 최소 7일이 쌓이면 원인이 아닌 <b>기록에서 나타난 경향</b>만 보여 드립니다.</p>';
+      return;
+    }
+    var enough = rows.filter(function (r) { return r.sleep >= 6; });
+    var short = rows.filter(function (r) { return r.sleep < 6; });
+    var msg = '';
+    if (enough.length >= 2 && short.length >= 2) {
+      var a = enough.reduce(function (s, r) { return s + StudyLog.dayTotal(r.date); }, 0) / enough.length;
+      var b = short.reduce(function (s, r) { return s + StudyLog.dayTotal(r.date); }, 0) / short.length;
+      var diff = b > 0 ? Math.round((a - b) / b * 100) : 0;
+      msg = '최근 기록에서 수면이 6시간 이상인 날의 평균 순공은 <b>' + fmtDur(a) + '</b>, 6시간 미만인 날은 <b>' + fmtDur(b) + '</b>이었습니다. ' +
+        (Math.abs(diff) >= 10 ? '6시간 이상인 날이 ' + Math.abs(diff) + '% ' + (diff > 0 ? '높게' : '낮게') + ' 나타났습니다.' : '두 집단의 차이는 아직 크지 않습니다.');
+    } else {
+      msg = '7일 이상 기록됐지만 수면 구간별 표본이 한쪽에 몰려 있어 비교를 보류합니다. 각 구간이 2일 이상 쌓이면 보여 드립니다.';
+    }
+    var fb = Store.feedback().filter(function (x) { return typeof x.recommendation === 'number'; });
+    if (fb.length >= 5) {
+      var good = fb.filter(function (x) { return x.recommendation > 0; }).length;
+      msg += ' 공부 후 피드백 ' + fb.length + '건 중 추천이 맞았다는 응답은 ' + Math.round(good / fb.length * 100) + '%였습니다.';
+    }
+    box.innerHTML = '<p class="insight-value">기록에서 나타난 경향</p><p class="tiny">' + msg + ' 다른 요인의 영향도 있을 수 있으며 인과관계를 뜻하지 않습니다.</p>';
+  }
+
+  function renderGoalSuggestion() {
+    var box = $('goalSuggestion');
+    var weeks = [-1, -2, -3].map(function (o) { return StudyLog.weekTotal(o); }).filter(function (m) { return m > 0; });
+    if (weeks.length < 2) {
+      box.innerHTML = '<p class="insight-empty">완료된 주간 기록이 ' + weeks.length + '주입니다. 2주 이상 쌓이면 최근 평균보다 최대 15%만 높은 현실적인 목표를 제안합니다.</p>';
+      return;
+    }
+    var avg = weeks.reduce(function (s, m) { return s + m; }, 0) / weeks.length;
+    var suggested = Math.max(1, Math.round((avg * 1.10) / 60));
+    var current = (Store.profile() || {}).goal || 25;
+    suggested = Math.min(suggested, Math.max(1, Math.ceil(current * 1.15)));
+    box.innerHTML = '<p class="insight-value">다음 주 ' + suggested + '시간을 제안합니다</p>' +
+      '<p class="tiny">최근 ' + weeks.length + '주 평균은 ' + fmtDur(avg) + '입니다. 한 번에 과도하게 늘지 않도록 제한했습니다.</p>' +
+      '<div class="insight-actions"><button type="button" class="btn primary sm" id="applyGoalSuggestion" data-goal="' + suggested + '">추천 목표 적용</button>' +
+      '<button type="button" class="btn ghost sm" data-goto="secSettings">직접 설정</button></div>';
+    $('applyGoalSuggestion').addEventListener('click', function () {
+      var p = Store.profile();
+      if (!p) return;
+      p.goal = Number(this.dataset.goal);
+      Store.saveProfile(p);
+      $('pfGoal').value = p.goal;
+      syncAllRanges();
+      renderSettingsPage();
+      renderReport();
+      toast('주간 목표를 ' + p.goal + '시간으로 바꿨습니다.');
+    });
+    var direct = box.querySelector('[data-goto]');
+    if (direct) direct.addEventListener('click', function () { goPage(direct.dataset.goto); });
+  }
+
+  function subjectMinutesUntil(name, examDate) {
+    var all = StudyLog.all(), total = 0;
+    Object.keys(all).forEach(function (date) {
+      if (date > examDate) return;
+      if (all[date] && all[date][name]) total += all[date][name].m || 0;
+    });
+    return total;
+  }
+
+  function renderExamReflection() {
+    var box = $('examReflection');
+    var saved = Store.loadInput();
+    var today = Store.key();
+    var refs = Store.examReflections();
+    var ended = (saved && saved.subjects || []).filter(function (s) {
+      if (!s.examDate || s.examDate >= today) return false;
+      var days = Math.round((Store.parseKey(today) - Store.parseKey(s.examDate)) / 86400000);
+      return days <= 14 && !refs[s.name + '|' + s.examDate];
+    });
+    if (!ended.length) {
+      box.innerHTML = '<p class="insight-empty">최근 14일 안에 끝난 시험 중 아직 회고할 항목이 없습니다. 시험이 끝나면 실제 결과 체감을 다음 추천에 연결합니다.</p>';
+      return;
+    }
+    var s = ended[0], key = s.name + '|' + s.examDate;
+    box.innerHTML = '<p class="insight-value">' + esc(s.name) + ' 시험 준비 회고</p>' +
+      '<p class="tiny">시험일까지 기록된 순공 시간은 ' + fmtDur(subjectMinutesUntil(s.name, s.examDate)) + '입니다. 실제 결과는 예상과 비교해 어땠나요?</p>' +
+      '<div class="insight-actions"><button type="button" class="btn ghost sm exam-ref" data-v="low">예상보다 낮음</button>' +
+      '<button type="button" class="btn ghost sm exam-ref" data-v="same">비슷함</button>' +
+      '<button type="button" class="btn ghost sm exam-ref" data-v="high">예상보다 높음</button></div>';
+    $$('.exam-ref', box).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        Store.saveExamReflection(key, btn.dataset.v);
+        toast('시험 회고를 저장했습니다. 다음 시험 계획의 참고 데이터로 사용합니다.');
+        renderExamReflection();
+      });
+    });
+  }
+
+  var EXPERIMENTS = {
+    water: { title: '공부 시작 전 물 한 컵', question: '물 한 컵이 집중 체감에 영향을 줄까?' },
+    block: { title: '15분과 25분 블록 비교', question: '나에게 더 잘 맞는 집중 블록은 무엇일까?' },
+    music: { title: '음악 사용 여부 비교', question: '음악이 집중 체감에 영향을 줄까?' },
+    walk: { title: '공부 전 10분 산책', question: '짧은 산책이 집중 체감에 영향을 줄까?' }
+  };
+
+  function renderLearningExperiment() {
+    var box = $('learningExperiment');
+    var ex = Store.experiment();
+    if (!ex) {
+      box.innerHTML = '<p class="insight-empty">한 번에 한 가지 습관만 6일 동안 비교합니다. 결과는 원인 판정이 아니라 내 기록에서 나타난 차이로 표시합니다.</p>' +
+        '<select id="experimentType" class="input"><option value="water">물 한 컵</option><option value="block">15분/25분 블록</option><option value="music">음악 사용</option><option value="walk">10분 산책</option></select>' +
+        '<div class="insight-actions"><button type="button" class="btn primary sm" id="startExperiment">실험 시작</button></div>';
+      $('startExperiment').addEventListener('click', function () {
+        var id = $('experimentType').value;
+        Store.saveExperiment({ id: id, title: EXPERIMENTS[id].title, question: EXPERIMENTS[id].question, startedAt: Store.key(), days: [] });
+        renderLearningExperiment();
+        toast('개인 학습 실험을 시작했습니다.');
+      });
+      return;
+    }
+    var today = Store.key();
+    var todayRow = ex.days.filter(function (d) { return d.date === today; })[0];
+    var feedback = Store.feedback();
+    function avgFor(cond) {
+      var dates = ex.days.filter(function (d) { return d.condition === cond; }).map(function (d) { return d.date; });
+      var rows = feedback.filter(function (f) { return dates.indexOf(f.date) >= 0 && typeof f.focus === 'number'; });
+      return rows.length ? rows.reduce(function (s, f) { return s + f.focus; }, 0) / rows.length : null;
+    }
+    var a = avgFor('test'), b = avgFor('control');
+    var result = ex.days.length >= 6 && a !== null && b !== null
+      ? '<p class="tiny"><b>현재 기록의 차이:</b> 실험 조건 집중 체감 ' + a.toFixed(1) + ', 평소 조건 ' + b.toFixed(1) + '. 원인 판정이 아닌 이번 기록의 경향입니다.</p>'
+      : '<p class="tiny">' + ex.days.length + '/6일 기록 · 두 조건을 각각 3일 정도 남기고 공부 후 피드백까지 저장하세요.</p>';
+    box.innerHTML = '<p class="insight-value">' + esc(ex.question) + '</p>' + result +
+      '<div class="insight-actions"><button type="button" class="btn sm experiment-day" data-cond="test"' + (todayRow && todayRow.condition === 'test' ? ' disabled' : '') + '>오늘은 실험 조건</button>' +
+      '<button type="button" class="btn sm experiment-day" data-cond="control"' + (todayRow && todayRow.condition === 'control' ? ' disabled' : '') + '>오늘은 평소대로</button>' +
+      '<button type="button" class="btn ghost sm" id="endExperiment">실험 종료</button></div>';
+    $$('.experiment-day', box).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        ex.days = ex.days.filter(function (d) { return d.date !== today; });
+        ex.days.push({ date: today, condition: btn.dataset.cond });
+        Store.saveExperiment(ex);
+        renderLearningExperiment();
+        toast('오늘의 실험 조건을 기록했습니다.');
+      });
+    });
+    $('endExperiment').addEventListener('click', function () {
+      if (!confirm('현재 개인 학습 실험을 종료할까요?')) return;
+      Store.saveExperiment(null);
+      renderLearningExperiment();
+    });
+  }
+
+  function renderHistoryChart(r) {
+    var rows = r.brainRows;
+    if (!rows.length) {
+      $('historyChart').innerHTML = '<text x="360" y="110" text-anchor="middle" fill="#8b93a8" font-size="13">아직 표시할 학습 준비도 기록이 없습니다</text>' +
+        '<text x="360" y="136" text-anchor="middle" fill="#8b93a8" font-size="11">컨디션 확인 후 타이머 한 블록을 시작해 보세요</text>';
+      $('historyNote').textContent = '7일 이상 기록되기 전에는 패턴을 해석하지 않습니다.';
+      return;
+    }
+
+    var W = 720, H = 240, pd = { l: 36, r: 16, t: 16, b: 30 };
+    var iw = W - pd.l - pd.r, ih = H - pd.t - pd.b;
+    var svg = [];
+
+    [0, 25, 50, 75, 100].forEach(function (v) {
+      var y = pd.t + ih * (1 - v / 100);
+      svg.push('<line x1="' + pd.l + '" y1="' + y + '" x2="' + (W - pd.r) + '" y2="' + y + '" stroke="rgba(22,26,39,0.08)" stroke-width="1"/>');
+      svg.push('<text x="' + (pd.l - 8) + '" y="' + (y + 4) + '" text-anchor="end" fill="#8b93a8" font-size="10">' + v + '</text>');
+    });
+
+    var n = rows.length;
+    var xOf = function (i) { return pd.l + (n === 1 ? iw / 2 : iw * i / (n - 1)); };
+    var yOf = function (v) { return pd.t + ih * (1 - v / 100); };
+    var pts = rows.map(function (x, i) { return xOf(i) + ',' + yOf(x.overall); });
+
+    svg.push('<defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="rgba(109,74,255,0.28)"/><stop offset="100%" stop-color="rgba(109,74,255,0)"/></linearGradient></defs>');
+    svg.push('<polygon points="' + xOf(0) + ',' + (pd.t + ih) + ' ' + pts.join(' ') + ' ' + xOf(n - 1) + ',' + (pd.t + ih) + '" fill="url(#hg)"/>');
+    svg.push('<polyline points="' + pts.join(' ') + '" fill="none" stroke="#6d4aff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>');
+
+    rows.forEach(function (x, i) {
+      svg.push('<circle cx="' + xOf(i) + '" cy="' + yOf(x.overall) + '" r="4.5" fill="#ffffff" stroke="#6d4aff" stroke-width="2.5"><title>' + x.date + ' · ' + x.overall + '점</title></circle>');
+      svg.push('<text x="' + xOf(i) + '" y="' + (H - 8) + '" text-anchor="middle" fill="#8b93a8" font-size="10">' + x.date.slice(5) + '</text>');
+    });
+    $('historyChart').innerHTML = svg.join('');
+
+    if (rows.length === 1) {
+      $('historyNote').textContent = '이 주에는 ' + rows[0].date + ' 하루만 기록됐습니다 (준비도 참고값 ' + displayScore(rows[0].overall) +
+        '점, 수면 ' + rows[0].sleep + '시간). 7일 전에는 관계를 해석하지 않습니다.';
+      return;
+    }
+    if (rows.length < 7) {
+      $('historyNote').textContent = '현재 ' + rows.length + '일 기록입니다. 7일 이상 쌓이기 전에는 수면과 학습 준비도의 관계를 해석하지 않습니다.';
+      return;
+    }
+    var sorted = rows.slice().sort(function (a, b) { return b.overall - a.overall; });
+    var hi = sorted[0], lo = sorted[sorted.length - 1];
+    $('historyNote').textContent = '기록에서 준비도 참고값이 가장 높았던 날은 ' + hi.date + '(' + displayScore(hi.overall) + '점), ' +
+      '가장 낮았던 날은 ' + lo.date + '(' + displayScore(lo.overall) + '점)입니다. 다른 요인의 영향도 있을 수 있어 원인으로 단정하지 않습니다.';
+  }
+
+  /* ---------------------------------------------------------------- 실행 */
+
+  function runAnalysis() {
+    var input = collectInput();
+    if (!input.subjects.length) {
+      toast('과목명을 최소 1개 입력해 주세요.', true);
+      $('subjectList').querySelector('.s-name').focus();
+      return;
+    }
+
+    var a = BrainEngine.analyze(input);
+    var p = BrainPlanner.plan(a);
+    state.analysis = a; state.plan = p;
+
+    renderResult(a);
+    renderPlan(p);
+    state.timer.load(p.timeline);
+
+    input._date = Store.key();   // 언제 입력한 값인지 기억해 다음 방문에 안내한다
+    Store.saveInput(input);
+    Store.pushRecord(a);
+    saveSession();               // 새로고침해도 이 플랜과 타이머 자리로 돌아온다
+    Group.syncSelf();
+
+    renderLiveTotal();
+    renderGroup();
+    renderLeague();
+    renderReport();
+    renderKids();
+    renderSoundNow();
+    renderSettingsPage();
+    renderQuickNote();
+    renderTodayHome();
+
+    renderNav();
+    goPage('secResult');
+    toast('분석 완료 — 오늘의 학습 준비도 ' + scoreBand(a.overall));
+    setTimeout(awardKids, 1600);
+  }
+
+  function dateAfter(d) {
+    var t = new Date(); t.setDate(t.getDate() + d);
+    return Store.key(t);
+  }
+
+  var SAMPLE = {
+    sleep: { hours: 5.5, quality: 2, regularity: 2 },
+    stress: 7, fatigue: 7, mood: 2,
+    meals: { breakfast: false, lunch: true, dinner: false },
+    hoursSinceMeal: 5, water: 3, caffeine: 3, exercise: 0,
+    availableHours: 6,
+    subjects: [
+      { name: '미적분', type: 'calculate', examDate: dateAfter(3), importance: 5, readiness: 2 },
+      { name: '영어 단어', type: 'memorize', examDate: dateAfter(10), importance: 4, readiness: 3 },
+      { name: '국어 비문학', type: 'reading', examDate: dateAfter(3), importance: 4, readiness: 3 },
+      { name: '수리논술', type: 'creative', examDate: dateAfter(24), importance: 3, readiness: 2 }
+    ]
+  };
+
+  function initClock() {
+    var tick = function () {
+      var n = new Date();
+      $('clock').textContent = pad(n.getHours()) + ':' + pad(n.getMinutes());
+    };
+    tick(); setInterval(tick, 20000);
+  }
+
+  /** 월요일이면 지난주 리포트를 안내한다 */
+  function weeklyNotice() {
+    if (new Date().getDay() !== 1) return;
+    if (StudyLog.weekTotal(-1) <= 0) return;
+    setTimeout(function () {
+      toast('📊 지난주 리포트가 준비됐습니다 — 총 ' + fmtDur(StudyLog.weekTotal(-1)) + ' 공부했어요');
+    }, 1400);
+  }
+
+  /* ================================================================= 학교 리그
+   * 티어는 골라 들어가는 게 아니라 매주 정산으로 오르내린다.
+   * 그래서 레일은 고를 수 있는 탭이 아니라 진행 상황을 보여 주는 눈금으로 쓴다. */
+
+  var LG_ROW_H = 56;
+
+  /* 판을 좁혀 보는 필터. 순위 자체는 전체 기준으로 매기고, 보여 줄 때만 추린다 —
+   * 학년별로 다시 1위를 매기면 "우리 학년 1등" 과 "리그 1등" 이 뒤섞여 헷갈린다. */
+  function lgFilterRows(b) {
+    if (b.mode !== 'class') return b.ranked;
+    var sc = state.lgSchool || '', gr = state.lgGrade || '';
+    return b.ranked.filter(function (r) {
+      if (sc && r.schoolOnly !== sc) return false;
+      if (gr && r.grade !== gr) return false;
+      return true;
+    });
+  }
+
+  function renderLeagueFilters(b) {
+    var wrap = $('lgFilters');
+    if (!wrap) return;
+    wrap.classList.toggle('is-hidden', b.mode !== 'class');
+    if (b.mode !== 'class') return;
+
+    var schools = [], grades = [];
+    b.ranked.forEach(function (r) {
+      if (r.schoolOnly && schools.indexOf(r.schoolOnly) < 0) schools.push(r.schoolOnly);
+      if (r.grade && grades.indexOf(r.grade) < 0) grades.push(r.grade);
+    });
+    schools.sort();
+    grades.sort(function (x, y) { return parseInt(x, 10) - parseInt(y, 10); });
+
+    var sSel = $('lgFilterSchool'), gSel = $('lgFilterGrade');
+    sSel.innerHTML = '<option value="">전체 학교</option>' + schools.map(function (s) {
+      return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+    }).join('');
+    gSel.innerHTML = '<option value="">전체 학년</option>' + grades.map(function (g) {
+      return '<option value="' + esc(g) + '">' + esc(g) + '학년</option>';
+    }).join('');
+    sSel.value = state.lgSchool || '';
+    gSel.value = state.lgGrade || '';
+  }
+
+  function renderLeague() {
+    if (!$('lgBoard')) return;
+
+    var b = League.board(state.leagueMode);
+    if (!b) return;                        // 프로필 전에는 그릴 게 없다
+
+    $$('#lgModes .lg-mode').forEach(function (btn) {
+      var on = btn.dataset.mode === b.mode;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    renderLeagueFilters(b);
+
+    /* 아직 5명이 안 모여 순위표에 못 오른 반이면, 사라지는 대신 이유를 말해 준다.
+     * 합계는 보여 주지 않는다 — 2명짜리 반에서 내 시간을 빼면 나머지 한 명이 드러난다. */
+    var pend = $('lgPending');
+    if (pend) {
+      if (b.mode === 'class' && b.pending) {
+        pend.classList.remove('is-hidden');
+        pend.innerHTML = '👥 <b>' + esc(b.pending.label) + '</b> — 지금 ' + b.pending.active +
+          '명 참여 중입니다. <b>' + b.pending.need + '명</b> 더 모이면 순위표에 올라갑니다.' +
+          '<span class="lp-why">인원이 적으면 합계가 사실상 한 사람의 공부 시간이 되기 때문에, 5명부터 공개합니다.</span>';
+      } else {
+        pend.classList.add('is-hidden');
+      }
+    }
+
+    /* 티어 눈금 */
+    $('lgRail').innerHTML = b.tiers.map(function (t, i) {
+      return '<button type="button" role="tab" disabled aria-selected="' + (i === b.tierIdx) + '"' +
+        ' class="' + (i === b.tierIdx ? 'on' : '') + '">' + esc(t.name) + '</button>';
+    }).join('');
+
+    /* 내 학교 카드 */
+    $('lgDaysLeft').textContent = b.daysLeft > 0 ? (b.daysLeft + '일 남음') : '오늘 마감';
+    $('lgSchoolName').textContent = b.me.schoolName;
+    $('lgMyRank').textContent = b.me.rank;
+    $('lgMyTotal').textContent = b.me.total.toLocaleString();
+    $('lgMyActive').textContent = b.me.active;
+    $('lgMySteady').textContent = b.me.steady;
+
+    /* 참가 학교 수에 따라 할 수 있는 말이 다르다.
+     * 상대가 없는데 승급을 이야기하면 없는 경쟁을 지어내는 셈이다. */
+    var unit = b.unit;                       // '반' 또는 '학교'
+    var countUnit = b.mode === 'class' ? '개 반' : '개교';
+    var gapTxt, gapCls = b.myZone;
+    if (b.solo) {
+      gapTxt = b.mode === 'class'
+        ? '아직 우리 반만 참가하고 있어요. 같은 학교 다른 반 친구가 참가하면 순위가 생깁니다.'
+        : '아직 우리 학교만 참가하고 있어요. 다른 학교 친구가 참가하면 순위가 생깁니다.';
+      gapCls = 'stay';
+    } else if (!b.ranked3) {
+      gapTxt = b.ahead
+        ? b.ahead.schoolName + josa(b.ahead.schoolName, '을', '를') +
+          ' 앞서려면 ' + b.aheadGap.toLocaleString() + '분 더 필요해요'
+        : '지금 1위예요. ' + b.size + countUnit + '이 참가 중입니다';
+      gapCls = 'stay';
+    } else if (b.myZone === 'promote') {
+      gapTxt = '승급권 안에 있어요. ' + (b.promote + 1) + '위와 ' + b.gap.toLocaleString() + '분 차이';
+    } else if (b.myZone === 'demote') {
+      gapTxt = '강등권이에요. ' + b.gap.toLocaleString() + '분 더 모으면 안전해져요';
+    } else if (b.promote > 0) {
+      gapTxt = '승급까지 ' + b.gap.toLocaleString() + '분 남았어요';
+    } else {
+      gapTxt = '최상위 리그예요. 자리를 지키는 중';
+    }
+    $('lgGapNote').textContent = gapTxt;
+    $('lgGapNote').className = 'lg-gap ' + gapCls;
+
+    /* 서버 연동 상태 — 지금 보는 순위가 어디까지 반영된 것인지 밝힌다 */
+    var cs = Cloud.status();
+    var badge = cs.enabled
+      ? '<span class="lg-cloud">🔗 ' + (cs.lastSync ? agoText(cs.lastSync) + ' 동기화' : '동기화 중') + '</span>'
+      : '<span class="lg-cloud off">📴 이 기기만</span>';
+    $('lgTierLabel').innerHTML = esc(b.tier.name) + ' 리그 · ' + b.size +
+      (b.mode === 'class' ? '개 반 참가' : '개교 참가') + badge;
+
+    /* 승강 안내 */
+    $('lgZoneNote').textContent = !b.ranked3
+      ? b.minField + countUnit + ' 이상 모이면 승급·강등이 시작됩니다'
+      : (b.tier.promote > 0 ? '상위 ' + b.promote + countUnit + ' 승급' : '최상위 리그') +
+        (b.demote > 0 ? ' · 하위 ' + b.demote + countUnit + ' 강등' : ' · 강등 없음');
+
+    /* 순위표 — 각 행을 제 순위 자리로 옮긴다.
+     * 필터를 걸면 자리가 비므로 화면상 위치는 다시 촘촘히 매기되,
+     * 번호는 전체 기준 순위를 그대로 보여 준다. */
+    var shown = lgFilterRows(b);
+    var filtered = shown.length !== b.ranked.length;
+
+    var rows = shown.map(function (s, i) {
+      var slot = filtered ? i : (s.rank - 1);
+      // 판이 작아 승강선을 그리지 않을 때는 행에도 색을 넣지 않는다
+      var zone = (b.promote || b.demote)
+        ? League.zoneOf(s.rank, { promote: b.promote, demote: b.demote }, b.size)
+        : 'stay';
+      var isMe = s.schoolCode === League.MY_CODE;
+      var d = b.deltas[s.schoolCode];
+      var deltaCls = d > 0 ? ' up' : (d < 0 ? ' down' : '');
+      var deltaTxt = d ? (d > 0 ? '▲' + d : '▼' + (-d)) : '·';
+
+      return '<div class="lg-row z-' + zone + (isMe ? ' is-me' : '') + '"' +
+        ' style="transform:translateY(' + (slot * LG_ROW_H + 6) + 'px)">' +
+        '<span class="r-rank">' + s.rank + '</span>' +
+        '<span class="r-name">' + esc(s.schoolName) +
+          '<span class="r-sub">참여 ' + s.active + '명 · 꾸준 ' + s.steady + '명</span>' +
+        '</span>' +
+        '<span class="r-total">' + s.total.toLocaleString() + '분</span>' +
+        '<span class="r-delta' + deltaCls + '">' + deltaTxt + '</span>' +
+      '</div>';
+    }).join('');
+
+    /* 승급·강등선은 전체 판의 자리를 가리키므로, 추려 보는 중에는 그리지 않는다.
+     * 그대로 두면 엉뚱한 줄 사이에 선이 그어져 오히려 잘못 읽힌다. */
+    var cuts = '';
+    if (!filtered && b.promote > 0) {
+      cuts += '<div class="lg-cut promote" style="transform:translateY(' +
+        (b.promote * LG_ROW_H + 6) + 'px)"><span><i>승급선</i></span></div>';
+    }
+    if (!filtered && b.demote > 0) {
+      cuts += '<div class="lg-cut demote" style="transform:translateY(' +
+        ((b.size - b.demote) * LG_ROW_H + 6) + 'px)"><span><i>강등선</i></span></div>';
+    }
+
+    /* 상대가 없거나, 필터로 다 걸러졌을 때 빈 판만 보여 주지 않는다 */
+    var hint = '';
+    if (b.solo) {
+      hint = '<div class="lg-solo">아직 <b>' + (b.mode === 'class' ? '우리 반' : '우리 학교') +
+        '</b>만 참가하고 있습니다.<br>같은 학교 친구들이 리그를 켜면 자동으로 판에 들어옵니다.</div>';
+    } else if (!shown.length) {
+      hint = '<div class="lg-solo">고른 조건에 맞는 반이 없습니다.<br>학교나 학년을 <b>전체</b>로 바꿔 보세요.</div>';
+    }
+
+    var slots = shown.length || 0;
+    $('lgBoard').style.height = (slots * LG_ROW_H + 12 + (hint ? 96 : 0)) + 'px';
+    $('lgBoard').innerHTML = rows + cuts + hint;
+
+    /* 오늘 인정된 시간 */
+    var used = Math.round(b.todayMin);
+    var cap = League.DAILY_CAP_MINUTES;
+    $('lgCapText').innerHTML = '오늘 인정된 시간 <b>' + used + '</b> / ' + cap + '분' +
+      (b.capLeft <= 0 ? ' — 오늘 상한을 채웠어요. 내일 또 만나요' : '');
+    $('lgCapBar').style.width = Math.min(100, (used / cap) * 100) + '%';
+
+    // 판 전체를 넘긴다 — 순위 변동(▲▼)과 다음 주 정산에 쓸 성적표를 함께 남긴다
+    League.snapshot(b);
+  }
+
+  /* ------------------------------------------------------- 리그 서버 연동 */
+
+  /* 리그 참가 스위치는 두 곳에 있다 — 첫 프로필 작성 화면(pfLeague)과
+   * 설정 화면(cloudOn). 둘 다 같은 Cloud 상태를 반영해야 하므로
+   * 여기서 한 번에 그린다. */
+  function renderCloudSettings() {
+    if (!$('cloudOn') && !$('pfLeague')) return;
+    var s = Cloud.status();
+    var isParent = parentMode();
+
+    if ($('parentPrivacyNote')) $('parentPrivacyNote').classList.toggle('is-hidden', !isParent);
+    if ($('leagueSettingsCard')) $('leagueSettingsCard').classList.toggle('is-hidden', isParent);
+    if ($('studentShareCard')) $('studentShareCard').classList.toggle('is-hidden', isParent);
+
+    ['cloudOn', 'pfLeague'].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.checked = s.enabled;
+      el.disabled = !s.configured || isParent;
+    });
+
+    if ($('pfLeagueNote')) {
+      $('pfLeagueNote').innerHTML = s.configured
+        ? '학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다. ' +
+          '학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며, ' +
+          '같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b> ' +
+          '학생 이용자는 만 14세 이상이어야 합니다. 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.'
+        : '서버가 아직 연결돼 있지 않아 지금은 켤 수 없습니다. 나중에 <b>설정</b> 화면에서 다시 시도해 주세요.';
+    }
+
+    // 학급 대항전은 학교 리그가 켜져 있을 때만 켤 수 있다
+    if ($('classEventOn')) {
+      $('classEventOn').checked = s.classOn;
+      $('classEventOn').disabled = !s.configured || !s.enabled || isParent;
+    }
+    if ($('classEventBox')) $('classEventBox').classList.toggle('is-off', !s.enabled);
+
+    if ($('cloudHidden')) {
+      $('cloudHidden').checked = Cloud.hiddenOn();
+      $('cloudHidden').disabled = !s.configured || !s.enabled || isParent;
+    }
+
+    ['cloudTest', 'cloudSync'].forEach(function (id) {
+      if ($(id)) $(id).disabled = !s.configured;
+    });
+
+    var el = $('cloudStatus');
+    if (!el) return;
+    if (!s.configured) {
+      el.className = 'neis-status show warn';
+      el.innerHTML = '서버가 아직 연결돼 있지 않습니다. ' +
+        '<b>supabase/schema.sql</b> 을 실행하고 <b>src/js/cloud.js</b> 상단에 프로젝트 주소와 anon 키를 넣으면 켜집니다. ' +
+        '그때까지 리그는 이 브라우저의 내 기록과 예전에 저장한 로컬 그룹 기록만 보여 줍니다.';
+      return;
+    }
+    if (!s.enabled) {
+      el.className = 'neis-status show' + (s.pendingDelete ? ' warn' : '');
+      el.textContent = s.pendingDelete
+        ? '전송은 꺼졌습니다. 서버 기록 삭제를 다시 시도하고 있어요 — 이 탭을 닫아도 다음 실행에 이어집니다.'
+        : '전송이 꺼져 있습니다. 이 기기의 기록은 밖으로 나가지 않습니다.';
+      return;
+    }
+    el.className = 'neis-status show ok';
+    el.innerHTML = '참가 중 · 기기 번호 <b>' + esc(String(s.deviceId).slice(0, 8)) + '…</b>' +
+      (s.lastSync ? ' · 마지막 동기화 ' + agoText(s.lastSync) : ' · 아직 동기화 전') +
+      (s.lastError ? '<br><span style="color:var(--bad)">최근 오류 — ' + esc(s.lastError) + '</span>' : '');
+  }
+
+  /** 서버에 올리고 받아 온 뒤 리그를 다시 그린다. 학생 개별 공유도 같은 타이밍에 함께 올린다. */
+  function leagueSync(force) {
+    if (parentMode() || !profileEligibility(Store.profile())) return;
+    studentShareSync(force);   // 리그와 별개 스위치지만, 동기화 타이밍은 같이 탄다
+
+    if (!Cloud.enabled()) return;
+    League.syncNow(force).then(function (ok) {
+      if (ok) { renderLeague(); renderCloudSettings(); }
+    }, function () {
+      renderCloudSettings();   // 실패해도 화면은 그대로 두고 사유만 남긴다
+    });
+  }
+
+  /* pfLeague(프로필 화면)·cloudOn(설정 화면) 둘 다 이 로직을 그대로 쓴다.
+   * 프로필을 처음 쓰는 중이라 Store.profile() 이 아직 없어도 안전하다 —
+   * leagueSync 내부의 League.syncNow/studentShareSync 는 프로필이 없으면
+   * 조용히 아무것도 하지 않고, saveProfile() 이 저장 직후 한 번 더 불러 준다. */
+  function wireLeagueToggle(id) {
+    var el = $(id);
+    if (!el) return;
+    el.addEventListener('change', function () {
+      if (this.checked) {
+        if (parentMode() || $('pfLevel').value === '학부모') {
+          this.checked = false;
+          toast('학부모 모드에서는 온라인 순위 기능을 사용할 수 없습니다.', true);
+          return;
+        }
+        if (!$('pfEligibility').checked && !profileEligibility(Store.profile())) {
+          this.checked = false;
+          toast('먼저 만 14세 이상 이용 조건을 확인해 주세요.', true);
+          return;
+        }
+        if (!confirm('학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 외부 서버로 전송됩니다.\n' +
+                     '이 동의만으로는 닉네임·학년·반과 개인 기록이 전송되지 않습니다.\n\n참가할까요?')) {
+          this.checked = false;
+          return;
+        }
+        Cloud.setEnabled(true);
+        renderCloudSettings();
+        toast('학교 리그에 참가합니다. 동기화를 시작합니다.');
+        leagueSync(true);
+      } else {
+        /* 학급 대항전을 켜 둔 상태라면 먼저 전송 필드를 비운 뒤,
+         * 리그·학급 기록 전체를 서버 삭제 RPC로 정리한다. */
+        var offNow = function () {
+          Cloud.setEnabled(false);
+          var deletion = Cloud.forget();
+          League.setCloudRows([], '');
+          renderCloudSettings();
+          renderLeague();
+          // 포스트잇도 이 동의 위에 서 있다. 벽을 걷고 조회도 멈춘다.
+          renderPins();
+          pinTimers();
+          toast('전송을 껐습니다. 서버 기록을 삭제하고 있어요.');
+          deletion.then(function () {
+            renderCloudSettings();
+            toast('서버의 학교·학급 리그 기록도 삭제했습니다.');
+          }, function () {
+            renderCloudSettings();
+            toast('전송은 꺼졌습니다. 서버 삭제는 연결될 때 자동으로 다시 시도합니다.', true);
+          });
+        };
+
+        if (Cloud.classEnabled()) {
+          Cloud.setClassEnabled(false);
+          League.syncNow(true).then(offNow, offNow);   // 실패해도 끄는 건 그대로 진행한다
+        } else {
+          offNow();
+        }
+      }
+    });
+  }
+
+  /* ══════════════════════════════════════════════ 우리 반 포스트잇
+   *
+   * 쪽지는 리그 화면에서 쓰지만 붙는 곳은 화면 전체(#pinLayer)다.
+   * 다른 화면에 있어도 계속 보이는 것이 이 기능의 요점이라 그렇게 두었다.
+   * 대신 [벽 숨기기]로 언제든 걷을 수 있게 했다 — 타이머를 가리면
+   * 공부하러 온 사람에게는 방해가 되기 때문이다.
+   *
+   * 규칙은 notes.js 머리말에 있다. 여기서는 그리는 일과 붙이는 동작만 맡는다. */
+
+  var PIN_TICK_MS = 15000;    // 남은 시간 다시 쓰기
+  var PIN_POLL_MS = 45000;    // 서버에서 새 쪽지 받아 오기
+
+  var pinState = {
+    color: -1,      // -1 = 아무 색이나
+    life: 15,
+    placing: null,  // 붙일 자리를 고르는 중인 초안
+    tick: null, poll: null,
+    drag: null
+  };
+
+  /** 쪽지를 쓸 수 있는 상태인가 — 리그·학급 대항전이 켜져 있고 학년·반이 있어야 한다 */
+  function pinCls() { return Cloud.classEnabled() ? League.myClassId() : null; }
+  function pinReady() { return !!pinCls(); }
+
+  /* ------------------------------------------------------------ 벽 그리기 */
+
+  /** 쪽지가 화면 밖으로 잘려 나가지 않게 자리를 당긴다 */
+  function pinClamp(x, y) {
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var mx = ((w < 560 ? 142 : 168) / 2 + 10) / w * 100;
+    var my = (110 / 2 + 10) / h * 100;
+    return {
+      x: Math.round(Math.min(100 - mx, Math.max(mx, x))),
+      y: Math.round(Math.min(100 - my, Math.max(my, y)))
+    };
+  }
+
+  function pinHtml(n) {
+    return '<div class="pin-body">' + esc(n.body) + '</div>' +
+      '<div class="pin-foot">' +
+        '<span class="pin-who">' + esc(n.nick || '익명') + (n.me ? ' (나)' : '') + '</span>' +
+        '<span class="pin-left"></span>' +
+      '</div>' +
+      (n.me ? '<button type="button" class="pin-btn pin-del" title="모두의 화면에서 떼기" aria-label="내 쪽지 떼기">🗑</button>' : '') +
+      '<button type="button" class="pin-btn pin-x" title="내 화면에서만 치우기" aria-label="이 쪽지 내 화면에서 치우기">✕</button>';
+  }
+
+  function pinNode(n) {
+    var el = document.createElement('div');
+    el.className = 'pin c' + (((n.color % 8) + 8) % 8) + (n.me ? ' is-mine' : '');
+    el.dataset.pin = n.id;
+    el.style.setProperty('--pin-tilt', (n.tilt || 0) + 'deg');
+    el.innerHTML = pinHtml(n);
+    return el;
+  }
+
+  /* 저장된 자리는 붙인 사람의 화면 기준이다. 화면이 더 좁은 기기에서 열면
+   * 가장자리 쪽지가 잘리므로, 그릴 때마다 이쪽 화면에 맞게 당겨 준다. */
+  function pinPlaceAt(el, n) {
+    var spot = pinClamp(n.x, n.y);
+    el.style.left = spot.x + '%';
+    el.style.top = spot.y + '%';
+  }
+
+  function pinLeftText(el, n) {
+    var lbl = el.querySelector('.pin-left');
+    if (lbl) lbl.textContent = Notes.remainText(n);
+    el.classList.toggle('is-going', Notes.remain(n) < 60000);
+  }
+
+  /**
+   * 이미 붙어 있는 쪽지는 다시 만들지 않는다.
+   * 매번 새로 그리면 붙는 동작이 다시 재생되고, 끌고 있던 쪽지가 손에서 빠진다.
+   */
+  function renderPinWall() {
+    var layer = $('pinLayer');
+    if (!layer) return;
+
+    var on = Notes.wallOn() && pinReady();
+    layer.classList.toggle('is-off', !on);
+    if (!on) { layer.innerHTML = ''; return; }
+
+    var seen = {};
+    Notes.list().forEach(function (n) {
+      seen[n.id] = true;
+      var el = layer.querySelector('[data-pin="' + n.id + '"]');
+      if (!el) { el = pinNode(n); layer.appendChild(el); }
+      if (!el.classList.contains('is-dragging')) pinPlaceAt(el, n);
+      pinLeftText(el, n);
+    });
+
+    $$('.pin', layer).forEach(function (el) {
+      if (!seen[el.dataset.pin]) el.remove();
+    });
+  }
+
+  /* ------------------------------------------------------- 리그 화면의 작성 칸 */
+
+  function pinWarn(msg) {
+    var el = $('pinWarn');
+    if (!el) return;
+    el.hidden = !msg;
+    el.textContent = msg || '';
+  }
+
+  /* 색·시간 단추는 15초마다 도는 갱신에도 걸린다. 고른 것이 그대로면
+   * 다시 그리지 않는다 — 매번 새로 만들면 키보드로 고르던 사람의 초점이
+   * 15초마다 날아간다. */
+  function pinPickerSame(wrap, sel, value) {
+    if (!wrap.children.length) return false;
+    var on = wrap.querySelector(sel);
+    return !!on && on.dataset[value.key] === String(value.now);
+  }
+
+  function renderPinColors() {
+    var wrap = $('pinColors');
+    if (!wrap) return;
+    if (pinPickerSame(wrap, '.pin-sw.on', { key: 'color', now: pinState.color })) return;
+
+    var html = '<button type="button" class="pin-sw rand' + (pinState.color < 0 ? ' on' : '') +
+      '" data-color="-1" role="radio" aria-checked="' + (pinState.color < 0) +
+      '" title="아무 색이나" aria-label="색 아무거나">🎲</button>';
+    html += Notes.COLORS.map(function (c) {
+      var on = pinState.color === c.id;
+      return '<button type="button" class="pin-sw c' + c.id + (on ? ' on' : '') +
+        '" data-color="' + c.id + '" role="radio" aria-checked="' + on +
+        '" title="' + esc(c.name) + '" aria-label="' + esc(c.name) + '"></button>';
+    }).join('');
+    wrap.innerHTML = html;
+  }
+
+  function renderPinLifes() {
+    var wrap = $('pinLifes');
+    if (!wrap) return;
+    if (pinPickerSame(wrap, '.pin-life.on', { key: 'life', now: pinState.life })) return;
+
+    wrap.innerHTML = Notes.LIFE.map(function (m) {
+      var on = pinState.life === m;
+      return '<button type="button" class="pin-life' + (on ? ' on' : '') +
+        '" data-life="' + m + '" role="radio" aria-checked="' + on + '">' + m + '분</button>';
+    }).join('');
+  }
+
+  /** 리그·학급 대항전이 꺼져 있으면 왜 못 쓰는지와 어디서 켜는지를 적는다 */
+  function renderPinLocked() {
+    var box = $('pinLocked');
+    if (!box) return;
+
+    var msg = '';
+    if (!Cloud.configured()) {
+      msg = '이 앱에 서버가 설정돼 있지 않아 포스트잇을 쓸 수 없습니다.';
+    } else if (!Cloud.enabled()) {
+      msg = '포스트잇은 <b>같은 반 친구들과 함께 보는 기능</b>이라 서버를 씁니다. ' +
+        '<b>설정 → 학교 리그 참가</b>를 먼저 켜 주세요.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    } else if (!Cloud.classEnabled()) {
+      msg = '누가 붙였는지 알려면 <b>학년·반과 닉네임</b>이 필요합니다. ' +
+        '<b>설정 → 학급 대항전</b>을 켜면 포스트잇도 함께 열립니다.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    } else if (!League.myClassId()) {
+      msg = '프로필에 <b>학년·반</b>이 없어 어느 반 벽에 붙일지 알 수 없습니다. ' +
+        '<b>설정 → 내 프로필</b>에서 학년과 반을 채워 주세요.' +
+        '<button type="button" class="btn sm" data-goto="secSettings">설정으로 가기</button>';
+    }
+
+    box.classList.toggle('is-hidden', !msg);
+    if (box.dataset.msg === msg) return;    // 색·시간 단추와 같은 이유로, 그대로면 다시 그리지 않는다
+    box.dataset.msg = msg;
+    box.innerHTML = msg;
+    // 새로 그린 [설정으로 가기] 에도 이동 기능을 달아 준다 (init 때 걸어 둔 것은 이 버튼을 모른다)
+    $$('[data-goto]', box).forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.goto); });
+    });
+  }
+
+  function renderPinCard() {
+    if (!$('pinCard')) return;
+
+    var ready = pinReady();
+    renderPinLocked();
+    $('pinCompose').classList.toggle('is-hidden', !ready);
+    $('pinRefresh').disabled = !ready;
+
+    var wallOn = Notes.wallOn();
+    $('pinWallToggle').textContent = wallOn ? '벽 숨기기' : '벽 보기';
+    $('pinWallToggle').setAttribute('aria-pressed', wallOn ? 'true' : 'false');
+
+    renderPinColors();
+    renderPinLifes();
+
+    var left = Notes.MAX_LEN - ($('pinText').value || '').length;
+    $('pinLeft').textContent = left;
+    $('pinLeft').parentNode.classList.toggle('is-full', left <= 0);
+
+    var n = Notes.list().length, hid = Notes.hiddenCount(), mine = Notes.mine().length;
+    var txt;
+    if (!ready) txt = '아직 열리지 않았습니다.';
+    else if (!n && !hid) txt = '지금 붙어 있는 쪽지가 없어요. 첫 쪽지를 붙여 보세요.';
+    else txt = '지금 ' + n + '장 붙어 있어요' + (mine ? ' (내 쪽지 ' + mine + '장)' : '') +
+      (hid ? ' · 내가 치운 ' + hid + '장' : '');
+    $('pinCount').textContent = txt;
+    $('pinRestore').classList.toggle('is-hidden', !hid);
+  }
+
+  function renderPins() { renderPinWall(); renderPinCard(); }
+
+  /* ---------------------------------------------------------- 서버와 맞추기 */
+
+  function pinRefresh() {
+    var cls = pinCls();
+    if (!cls) { renderPins(); return Promise.resolve([]); }
+    return Notes.refresh(cls).then(function () { renderPins(); });
+  }
+
+  /* 남은 시간은 자주 다시 써야 하고, 서버 조회는 그보다 훨씬 뜸해도 된다.
+   * 화면이 안 보일 때는 둘 다 멈춘다 — 가방 속 휴대폰이 계속 서버를 부르지 않게. */
+  function pinTimers() {
+    var want = pinReady() && Notes.wallOn() && !document.hidden;
+
+    if (want && !pinState.tick) {
+      pinState.tick = setInterval(function () {
+        // 만료된 쪽지가 스스로 사라지도록 벽을 다시 훑는다
+        renderPins();
+      }, PIN_TICK_MS);
+    } else if (!want && pinState.tick) {
+      clearInterval(pinState.tick); pinState.tick = null;
+    }
+
+    if (want && !pinState.poll) {
+      pinState.poll = setInterval(pinRefresh, PIN_POLL_MS);
+    } else if (!want && pinState.poll) {
+      clearInterval(pinState.poll); pinState.poll = null;
+    }
+  }
+
+  /* --------------------------------------------------------- 붙일 자리 고르기 */
+
+  function pinGhostShow(draft) {
+    var g = $('pinGhost');
+    if (!g) return;
+    g.className = 'pin pin-ghost c' + (((draft.color % 8) + 8) % 8);
+    g.style.setProperty('--pin-tilt', draft.tilt + 'deg');
+    g.innerHTML = '<div class="pin-body">' + esc(draft.body) + '</div>' +
+      '<div class="pin-foot"><span class="pin-who">' + esc(draft.nick || '익명') + '</span>' +
+      '<span class="pin-left">' + draft.minutes + '분 뒤 사라짐</span></div>';
+    // 처음에는 화면 가운데 — 손가락으로 쓰는 기기에서는 포인터가 없다
+    var spot = pinClamp(50, 45);
+    g.style.left = spot.x + '%';
+    g.style.top = spot.y + '%';
+  }
+
+  function pinPlacingStart() {
+    var cls = pinCls();
+    if (!cls) { renderPinCard(); return; }
+
+    var body = ($('pinText').value || '').trim();
+    if (!body) { pinWarn('내용을 먼저 적어 주세요.'); $('pinText').focus(); return; }
+
+    /* 걸러지는 말은 자리를 고르기 전에 막는다. 다 붙이고 나서 거절당하면
+     * 무엇 때문인지 알기 어렵고, 서버까지 갔다 오는 것도 낭비다.
+     * 어떤 말이 걸렸는지는 되풀이해 보여 주지 않는다 — 화면에 그 말을 다시 띄우는 셈이다. */
+    var v = Filter.check(body);
+    if (!v.ok) {
+      pinWarn('욕설이나 남을 비하하는 말이 들어 있어 붙일 수 없어요. 다르게 적어 볼까요?');
+      return;
+    }
+    pinWarn('');
+
+    if (Notes.mine().length >= 5) {
+      pinWarn('한 번에 붙일 수 있는 쪽지는 5장까지예요. 하나를 떼고 다시 붙여 주세요.');
+      return;
+    }
+
+    var p = Store.profile() || {};
+    pinState.placing = {
+      body: body,
+      nick: String(p.nick || '').trim(),
+      color: pinState.color < 0 ? Notes.pickColor() : pinState.color,
+      minutes: pinState.life,
+      tilt: Notes.pickTilt()
+    };
+
+    pinGhostShow(pinState.placing);
+    $('pinPlace').classList.remove('is-hidden');
+    $('pinPlaceMsg').textContent = '붙일 자리를 눌러 주세요 · ' + pinState.placing.minutes + '분 뒤 사라져요';
+    // 벽이 꺼져 있으면 방금 붙인 쪽지가 안 보인다. 자리를 고르는 순간 다시 켠다.
+    if (!Notes.wallOn()) { Notes.setWallOn(true); renderPins(); pinTimers(); }
+  }
+
+  function pinPlacingEnd() {
+    pinState.placing = null;
+    $('pinPlace').classList.add('is-hidden');
+  }
+
+  function pinDrop(clientX, clientY) {
+    var draft = pinState.placing;
+    var cls = pinCls();
+    if (!draft || !cls) { pinPlacingEnd(); return; }
+
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var spot = pinClamp(clientX / w * 100, clientY / h * 100);
+    draft.x = spot.x; draft.y = spot.y;
+
+    pinPlacingEnd();
+    Notes.post(cls, draft).then(function () {
+      $('pinText').value = '';
+      renderPins();
+      pinTimers();
+      toast('포스트잇을 붙였어요. ' + draft.minutes + '분 뒤에 사라집니다.');
+    }, function (e) {
+      renderPins();
+      toast(e && e.message ? e.message : '붙이지 못했습니다.', true);
+    });
+  }
+
+  /* --------------------------------------------------------- 내 쪽지 끌어 옮기기 */
+
+  function pinDragStart(el, e) {
+    var r = el.getBoundingClientRect();
+    pinState.drag = {
+      el: el, id: el.dataset.pin,
+      dx: e.clientX - (r.left + r.width / 2),
+      dy: e.clientY - (r.top + r.height / 2),
+      moved: false
+    };
+    el.classList.add('is-dragging');
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+  }
+
+  function pinDragMove(e) {
+    var d = pinState.drag;
+    if (!d) return;
+    var w = window.innerWidth || 360, h = window.innerHeight || 640;
+    var spot = pinClamp((e.clientX - d.dx) / w * 100, (e.clientY - d.dy) / h * 100);
+    d.x = spot.x; d.y = spot.y; d.moved = true;
+    d.el.style.left = spot.x + '%';
+    d.el.style.top = spot.y + '%';
+  }
+
+  function pinDragEnd() {
+    var d = pinState.drag;
+    if (!d) return;
+    pinState.drag = null;
+    d.el.classList.remove('is-dragging');
+    if (!d.moved) return;
+    Notes.move(d.id, d.x, d.y);   // 화면은 이미 옮겨져 있다. 실패해도 다음 새로고침에 제자리로 돌아온다.
+  }
+
+  /* --------------------------------------------------------------- 연결 */
+
+  function initPins() {
+    if (!$('pinLayer')) return;
+
+    var d = Notes.draft();
+    pinState.color = d.color;
+    pinState.life = d.life;
+
+    /* ── 벽 위의 단추: ✕ 는 내 화면에서만, 🗑 은 모두의 화면에서 */
+    $('pinLayer').addEventListener('click', function (e) {
+      var el = e.target.closest ? e.target.closest('.pin') : null;
+      if (!el) return;
+      var id = el.dataset.pin;
+
+      if (e.target.closest('.pin-x')) {
+        var note = null;
+        Notes.list().forEach(function (n) { if (n.id === id) note = n; });
+        Notes.dismiss(id, note ? note.expiresAt : 0);
+        el.remove();
+        renderPinCard();
+        toast('내 화면에서만 치웠어요. 다른 사람 화면에는 그대로 있어요.');
+        return;
+      }
+      if (e.target.closest('.pin-del')) {
+        Notes.remove(id);
+        el.remove();
+        renderPinCard();
+        toast('쪽지를 뗐습니다.');
+      }
+    });
+
+    /* ── 내 쪽지 끌어 옮기기 */
+    $('pinLayer').addEventListener('pointerdown', function (e) {
+      if (!e.target.closest) return;
+      if (e.target.closest('.pin-btn')) return;          // 단추는 끌기가 아니다
+      var el = e.target.closest('.pin.is-mine');
+      if (!el || pinState.placing) return;
+      e.preventDefault();
+      pinDragStart(el, e);
+    });
+    $('pinLayer').addEventListener('pointermove', pinDragMove);
+    $('pinLayer').addEventListener('pointerup', pinDragEnd);
+    $('pinLayer').addEventListener('pointercancel', pinDragEnd);
+
+    /* ── 붙일 자리 고르기 */
+    var place = $('pinPlace');
+    place.addEventListener('pointermove', function (e) {
+      if (!pinState.placing) return;
+      var g = $('pinGhost');
+      var w = window.innerWidth || 360, h = window.innerHeight || 640;
+      var spot = pinClamp(e.clientX / w * 100, e.clientY / h * 100);
+      g.style.left = spot.x + '%';
+      g.style.top = spot.y + '%';
+    });
+    place.addEventListener('click', function (e) {
+      if (!pinState.placing) return;
+      if (e.target.closest && e.target.closest('.pin-place-bar')) return;   // [취소] 는 붙이는 자리가 아니다
+      pinDrop(e.clientX, e.clientY);
+    });
+    $('pinPlaceCancel').addEventListener('click', function (e) {
+      e.stopPropagation();
+      pinPlacingEnd();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && pinState.placing) pinPlacingEnd();
+    });
+
+    /* ── 작성 칸 */
+    if ($('pinCard')) {
+      $('pinText').addEventListener('input', function () {
+        pinWarn('');
+        var left = Notes.MAX_LEN - this.value.length;
+        $('pinLeft').textContent = left;
+        $('pinLeft').parentNode.classList.toggle('is-full', left <= 0);
+      });
+
+      $('pinColors').addEventListener('click', function (e) {
+        var b = e.target.closest('.pin-sw');
+        if (!b) return;
+        pinState.color = parseInt(b.dataset.color, 10);
+        Notes.setDraft(pinState.color, pinState.life);
+        renderPinColors();
+      });
+
+      $('pinLifes').addEventListener('click', function (e) {
+        var b = e.target.closest('.pin-life');
+        if (!b) return;
+        pinState.life = parseInt(b.dataset.life, 10);
+        Notes.setDraft(pinState.color, pinState.life);
+        renderPinLifes();
+      });
+
+      $('pinPost').addEventListener('click', pinPlacingStart);
+
+      $('pinWallToggle').addEventListener('click', function () {
+        Notes.setWallOn(!Notes.wallOn());
+        renderPins();
+        pinTimers();
+        toast(Notes.wallOn() ? '포스트잇 벽을 다시 띄웁니다.' : '포스트잇 벽을 숨겼습니다. 쪽지는 그대로 있어요.');
+      });
+
+      $('pinRestore').addEventListener('click', function () {
+        Notes.restoreAll();
+        renderPins();
+        toast('치워 둔 쪽지를 다시 불러왔어요.');
+      });
+
+      $('pinRefresh').addEventListener('click', function () {
+        pinRefresh().then(function () { toast('포스트잇을 새로 받아왔어요.'); });
+      });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      pinTimers();
+      if (!document.hidden) pinRefresh();
+    });
+    window.addEventListener('resize', function () {
+      // 화면 크기가 바뀌면 가장자리 쪽지가 잘릴 수 있어 자리를 다시 당긴다
+      renderPinWall();
+    });
+
+    renderPins();
+    pinTimers();
+    pinRefresh();
+  }
+
+  function initCloud() {
+    if (!$('cloudOn') && !$('pfLeague')) return;
+
+    wireLeagueToggle('cloudOn');
+    wireLeagueToggle('pfLeague');
+
+    if (!$('cloudOn')) { renderCloudSettings(); return; }
+
+    $('classEventOn').addEventListener('change', function () {
+      if (this.checked) {
+        if (!Cloud.enabled()) {
+          this.checked = false;
+          toast('학교 리그를 먼저 켜 주세요.', true);
+          return;
+        }
+        if (!confirm('학년·반과 닉네임이 학교명과 함께 서버로 전송됩니다.\n' +
+                     '닉네임은 같은 반 친구들 순위표에 그대로 보입니다.\n' +
+                     '지금 닉네임: ' + (Store.profile() || {}).nick + '\n' +
+                     '실명이라면 설정에서 별명으로 바꾸는 것을 권합니다.\n\n참가할까요?')) {
+          this.checked = false;
+          return;
+        }
+        Cloud.setClassEnabled(true);
+        renderCloudSettings();
+        toast('학급 대항전에 참가합니다. 우리 반 포스트잇도 함께 열렸어요.');
+        leagueSync(true);
+        pinRefresh(); pinTimers();
+      } else {
+        Cloud.setClassEnabled(false);
+        renderCloudSettings();
+        // 끄는 것으로 끝내지 않는다. 빈 값을 올려 서버에 남은 학년·반을 지운다.
+        leagueSync(true);
+        // 포스트잇도 같은 동의 위에 서 있다. 벽을 걷고 타이머도 멈춘다.
+        renderPins(); pinTimers();
+        toast('학급 대항전을 껐습니다. 서버에 저장된 학년·반도 지웁니다.');
+      }
+    });
+
+    $('cloudHidden').addEventListener('change', function () {
+      Cloud.setHidden(this.checked);
+      renderCloudSettings();
+      // 숨김 상태는 서버가 알아야 남에게 안 보인다. 바로 올린다.
+      leagueSync(true);
+      toast(this.checked
+        ? '순위표에서 내 기록을 숨깁니다. 반 합계에는 그대로 들어가요.'
+        : '순위표에 내 기록을 다시 표시합니다.');
+    });
+
+    $('cloudTest').addEventListener('click', function () {
+      var el = $('cloudStatus');
+      el.className = 'neis-status show';
+      el.textContent = '확인 중…';
+      Cloud.test(Store.key(Store.weekStart(new Date()))).then(function () {
+        el.className = 'neis-status show ok';
+        el.textContent = '서버에 연결됐습니다.';
+      }, function (e) {
+        el.className = 'neis-status show err';
+        el.textContent = '연결하지 못했습니다 — ' + (e.message || '알 수 없는 오류');
+      });
+    });
+
+    $$('#lgModes .lg-mode').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.leagueMode = btn.dataset.mode;
+        state.lgSchool = ''; state.lgGrade = '';   // 판이 바뀌면 필터도 푼다
+        renderLeague();
+      });
+    });
+    $('lgFilterSchool').addEventListener('change', function () {
+      state.lgSchool = $('lgFilterSchool').value; renderLeague();
+    });
+    $('lgFilterGrade').addEventListener('change', function () {
+      state.lgGrade = $('lgFilterGrade').value; renderLeague();
+    });
+
+    $('cloudSync').addEventListener('click', function () {
+      if (!Cloud.enabled()) { toast('먼저 리그 참가를 켜 주세요.', true); return; }
+      toast('동기화 중…');
+      leagueSync(true);
+    });
+
+    renderCloudSettings();
+    initStudentShare();
+    Cloud.retryPendingDeletions().then(function () {
+      renderCloudSettings();
+      renderStudentShareSettings();
+    });
+  }
+
+  /* ============================================================ 링크 공유
+   * 친구를 부르려면 앱 주소를 보내면 된다. 그런데 그 주소를 직접 치게 하면
+   * 아무도 안 한다. 그래서 한 번 눌러 바로 보낼 수 있게 해 둔다. */
+
+  /** 지금 열려 있는 주소에서 해시·쿼리를 떼어 낸 "앱 주소" */
+  function appUrl() {
+    return location.origin + location.pathname.replace(/index\.html$/, '');
+  }
+
+  var SHARE_TEXT = 'Mindora — 오늘 상태와 시험 일정을 바탕으로 시작할 공부를 제안하는 앱이야.\n' +
+                   '순공 시간으로 친구들이랑 겨루는 학교 리그도 있어. 설치 없이 링크만 열면 돼!';
+
+  /** execCommand 는 사라지는 중이고 clipboard 는 권한이 필요하다 — 둘 다 시도한다 */
+  function copyText(text, okMsg) {
+    function done(ok) {
+      toast(ok ? okMsg : '복사하지 못했어요. 주소를 직접 선택해 복사해 주세요.', !ok);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { fallback(); });
+      return;
+    }
+    fallback();
+
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, 99999);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+  }
+
+  function initShare() {
+    if (!$('shareUrl')) return;
+
+    var url = appUrl();
+    $('shareUrl').value = url;
+
+    /* 모바일에는 OS 공유 시트가 있다. 있으면 그걸 쓰는 게 압도적으로 편하다.
+     * 데스크톱 브라우저 대부분은 없으므로 복사로 대체한다.
+     * 이때 두 버튼이 모두 "복사"가 되면 뭐가 다른지 알 수 없으니 라벨을 갈라 준다. */
+    var canShare = !!(navigator.share);
+    $('shareApp').textContent = canShare ? '📤 공유하기' : '📋 초대 메시지 복사';
+    $('copyUrl').textContent = canShare ? '주소 복사' : '🔗 주소만';
+    $('shareHint').textContent = canShare
+      ? '카카오톡·문자·인스타 어디로든 보낼 수 있어요.'
+      : '초대 메시지에는 앱 소개와 주소가 함께 담깁니다.';
+
+    $('shareApp').addEventListener('click', function () {
+      if (canShare) {
+        navigator.share({ title: 'Mindora', text: SHARE_TEXT, url: url })
+          .catch(function () { /* 사용자가 취소한 경우 — 아무 말도 하지 않는다 */ });
+      } else {
+        copyText(SHARE_TEXT + '\n' + url, '초대 메시지를 복사했어요!');
+      }
+    });
+
+    $('copyUrl').addEventListener('click', function () {
+      copyText(url, '앱 주소를 복사했어요!');
+    });
+
+    $('shareUrl').addEventListener('focus', function () { this.select(); });
+  }
+
+  /* --------------------------------------------------- 학생 개별 공유 옵트인
+   * 리그(cloudOn)와는 별개의 스위치다. 여긴 닉네임이 그대로 나가므로
+   * 동의 문구도, 되돌리는 방법도 리그보다 한 단계 더 명확하게 짚는다. */
+
+  function renderStudentShareSettings() {
+    if (!$('studentShareOn')) return;
+    var s = Cloud.studentShareStatus();
+
+    $('studentShareOn').checked = s.enabled;
+    $('studentShareOn').disabled = !s.configured || parentMode();
+
+    var el = $('studentShareStatus');
+    if (!s.configured) {
+      el.className = 'neis-status show';
+      el.textContent = '서버가 연결되지 않아 이 기능을 쓸 수 없습니다.';
+      return;
+    }
+    el.className = s.enabled ? 'neis-status show ok' : 'neis-status show' + (s.pendingDelete ? ' warn' : '');
+    el.innerHTML = s.enabled
+      ? '공유 중 · ' + (s.lastPush ? '마지막 전송 ' + agoText(s.lastPush) : '아직 전송 전') +
+        (s.lastError ? '<br><span style="color:var(--bad)">오류 — ' + esc(s.lastError) + '</span>' : '')
+      : (s.pendingDelete
+          ? '전송은 꺼졌습니다. 관리자 공개 기록 삭제를 연결될 때까지 자동으로 다시 시도합니다.'
+          : '꺼져 있습니다. 닉네임이 서버로 나가지 않습니다.');
+  }
+
+  function studentShareSync(force) {
+    if (parentMode() || !profileEligibility(Store.profile())) return;
+    if (!Cloud.studentShareEnabled()) return;
+    var p = Store.profile();
+    if (!p) return;
+    var wk = Store.key(Store.weekStart(new Date()));
+    Cloud.pushStudent(p.nick, p.school, wk, League.myCappedWeek(), force)
+      .then(function () { renderStudentShareSettings(); },
+            function () { renderStudentShareSettings(); });
+  }
+
+  function initStudentShare() {
+    if (!$('studentShareOn')) return;
+
+    $('studentShareOn').addEventListener('change', function () {
+      if (this.checked) {
+        if (parentMode()) {
+          this.checked = false;
+          toast('학부모 모드에서는 자녀 정보를 서버로 공유할 수 없습니다.', true);
+          return;
+        }
+        if (!confirm('무작위 기기 번호·주차·닉네임·학교명·주간 학습 시간이 관리자 계정에 그대로 보입니다.\n' +
+                     '(익명 처리되지 않습니다 — 관리자는 "누구"인지 압니다)\n\n동의하고 켤까요?')) {
+          this.checked = false;
+          return;
+        }
+        Cloud.setStudentShareEnabled(true);
+        renderStudentShareSettings();
+        toast('관리자에게 내 기록을 보여줍니다.');
+        studentShareSync(true);
+      } else {
+        Cloud.setStudentShareEnabled(false);
+        var deletion = Cloud.forgetStudent();
+        renderStudentShareSettings();
+        toast('공유를 껐습니다. 관리자 공개 기록을 삭제하고 있어요.');
+        deletion.then(function () {
+          renderStudentShareSettings();
+          toast('서버의 관리자 공개 기록도 삭제했습니다.');
+        }, function () {
+          renderStudentShareSettings();
+          toast('전송은 꺼졌습니다. 서버 삭제는 연결될 때 자동으로 다시 시도합니다.', true);
+        });
+      }
+    });
+
+    renderStudentShareSettings();
+  }
+
+  /** 주가 바뀌었으면 승급·강등을 정산하고 결과를 한 번 보여 준다 */
+  function leagueSettle() {
+    League.settleIfNeeded();
+
+    var b = League.board();
+    if (!b || !b.lastResult) return;
+
+    var r = b.lastResult;
+    var el = document.createElement('div');
+    el.className = 'lg-settle ' + r.result;
+    el.textContent = r.result === 'promote'
+      ? '지난주 ' + r.rank + '위 — ' + r.toTier + ' 리그로 올라갔어요!'
+      : r.result === 'demote'
+        ? '지난주 ' + r.rank + '위 — ' + r.toTier + ' 리그로 내려갔어요. 이번 주에 다시 올라가요'
+        : '지난주 ' + r.rank + '위 — ' + r.toTier + ' 리그를 지켰어요';
+
+    var host = $('secLeague');
+    if (host) host.insertBefore(el, $('lgRail'));
+
+    if (r.result === 'promote') toast('🏆 ' + r.toTier + ' 리그로 승급했습니다!', 'party');
+    League.clearResult();
+  }
+
+  /* ================================================================ 관리자 모드
+   * 두 층으로 나뉜다.
+   *   ① 서버 목록(학생이 "관리자에게 내 기록 보이기"를 켰을 때만) — 실제 로그인 필요
+   *   ② 이 기기 기록(예전부터 있던 것) — 로그인 없이도 "나"와 공유 코드 그룹원만 보임
+   * ①은 여러 기기를 아우르는 진짜 데이터고, ②는 이 브라우저 하나에 갇힌 데이터다.
+   * 화면에서도 구분해 보여 준다. */
+
+  var adminState = { users: [], students: [], schoolAgg: [], leagueMembers: [] };
+
+  function collectAllUsers() {
+    var users = [];
+    var sess = Store.sessions();
+    var grp = Store.group();
+    var prof = Store.profile();
+    var hist = Store.history();
+
+    if (prof) {
+      /* sessions 는 { 날짜: { 과목: {t: 유형, m: 분} } } 구조라
+       * 과목 객체의 m 을 꺼내야 한다. */
+      var totalMinutes = 0, activeDays = 0;
+      Object.keys(sess).forEach(function (date) {
+        var dayData = sess[date], dayMin = 0;
+        Object.keys(dayData).forEach(function (subj) { dayMin += (dayData[subj].m || 0); });
+        totalMinutes += dayMin;
+        if (dayMin > 0) activeDays++;
+      });
+
+      var avgScore = 0;
+      if (hist.length) {
+        var sum = 0;
+        hist.forEach(function (h) { sum += (h.overall || 0); });
+        avgScore = Math.round(sum / hist.length);
+      }
+
+      /* 마지막 활동 = 공부 기록과 컨디션 기록 중 더 최근 날짜 */
+      var lastStudy = Object.keys(sess).sort().pop() || '';
+      var lastHist = hist.length ? hist[hist.length - 1].date : '';
+      var last = lastStudy > lastHist ? lastStudy : lastHist;
+
+      users.push({
+        id: Group.memberId(prof),
+        name: prof.nick,
+        school: prof.school,
+        badge: prof.level,           // 학년은 groupLabel 에 이미 들어 있다
+        groupId: Group.groupId(prof),
+        groupLabel: Group.groupLabel(prof),
+        totalMinutes: totalMinutes,
+        totalHours: Math.round(totalMinutes / 60),
+        sessionCount: activeDays,
+        avgScore: avgScore,
+        lastActive: last || 'N/A',
+        self: true
+      });
+    }
+
+    grp.members.forEach(function (m) {
+      var dup = users.filter(function (u) { return u.id === m.id; }).length > 0;
+      if (!dup) {
+        users.push({
+          id: m.id,
+          name: m.nick,
+          school: m.school || 'N/A',
+          badge: m.level || '기타',
+          groupId: m.groupId,
+          groupLabel: Group.groupLabel(m),
+          /* 공유 코드에는 누적 기록이 없다. 받은 시점의 주간 합계가 최선이다. */
+          totalMinutes: m.weekMin || 0,
+          totalHours: Math.round((m.weekMin || 0) / 60),
+          sessionCount: m.streak || 0,
+          avgScore: m.overall || 0,
+          lastActive: m.date || (m.ts ? Store.key(new Date(m.ts)) : 'N/A'),
+          self: false
+        });
+      }
+    });
+
+    return users;
+  }
+
+  function calculateAdminStats() {
+    var users = collectAllUsers();
+    var stats = {
+      totalUsers: users.length,
+      activeToday: 0,
+      totalMinutes: 0,
+      avgScore: 0
+    };
+
+    var today = Store.key();
+    var scoreSum = 0, scoreCount = 0;
+
+    users.forEach(function (u) {
+      stats.totalMinutes += u.totalMinutes;
+      if (u.lastActive === today) stats.activeToday++;
+      if (u.avgScore > 0) { scoreSum += u.avgScore; scoreCount++; }
+    });
+
+    if (scoreCount) stats.avgScore = Math.round(scoreSum / scoreCount);
+
+    adminState.users = users;
+    return stats;
+  }
+
+  function renderAdminStats() {
+    var stats = calculateAdminStats();
+    var m = Math.round(stats.totalMinutes);
+    $('totalUsers').textContent = stats.totalUsers;
+    $('activeToday').textContent = stats.activeToday;
+    $('totalStudyHours').textContent = Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+    $('avgScore').textContent = stats.avgScore || '—';
+  }
+
+  /* 사용자 목록에 담을 줄을 모은다.
+   *
+   *  이 기기(내 기록 + 코드로 받은 그룹원)와 서버(관리자 공개를 스스로 켠 학생)는
+   *  출처가 다르고 숫자의 뜻도 다르다. 그렇다고 목록을 둘로 갈라 두면 "지금 이
+   *  앱을 쓰는 사람" 을 보려고 두 군데를 번갈아 봐야 한다. 한 목록에 합치되
+   *  줄마다 어디서 온 값인지 배지로 밝힌다.
+   *
+   *  같은 사람이 양쪽에 있으면(내 기록이 서버에도 올라간 경우) 이 기기 쪽을
+   *  남긴다 — 주간 합계보다 누적 기록이 더 많은 것을 말해 준다. */
+  function adminUserRows() {
+    var rows = adminState.users.map(function (u) {
+      var r = {};
+      for (var k in u) if (u.hasOwnProperty(k)) r[k] = u[k];
+      r.source = 'local';
+      return r;
+    });
+
+    var seen = {};
+    rows.forEach(function (u) { seen[(u.name + '|' + u.school).toLowerCase()] = true; });
+
+    adminState.students.forEach(function (s) {
+      if (seen[(s.nickname + '|' + s.schoolName).toLowerCase()]) return;
+      rows.push({
+        id: s.deviceId,
+        name: s.nickname,
+        school: s.schoolName,
+        badge: agoText(s.updatedAt),
+        groupLabel: s.schoolName,
+        totalMinutes: s.minutes,
+        avgScore: 0,                       // 컨디션 값은 서버로 보내지 않는다
+        sessionCount: 0,
+        lastActive: s.updatedAt ? Store.key(new Date(s.updatedAt)) : 'N/A',
+        self: false,
+        source: 'server'
+      });
+    });
+
+    // 내 기록을 맨 위에, 나머지는 많이 한 순서로
+    return rows.sort(function (a, b) {
+      if (a.self !== b.self) return a.self ? -1 : 1;
+      return b.totalMinutes - a.totalMinutes;
+    });
+  }
+
+  function renderAdminUsersList() {
+    var searchTerm = ($('adminSearch').value || '').toLowerCase();
+    var filtered = adminUserRows().filter(function (u) {
+      return (u.name + u.school + u.groupLabel).toLowerCase().indexOf(searchTerm) >= 0;
+    });
+
+    var counts = { local: 0, server: 0 };
+    filtered.forEach(function (u) { counts[u.source]++; });
+    $('adminUsersCount').textContent = filtered.length
+      ? filtered.length + '명 (서버 ' + counts.server + ' · 이 기기 ' + counts.local + ')' : '';
+
+    var html = filtered.map(function (u) {
+      /* 내 기록은 누적 전체, 그룹원과 서버 학생은 주간 합계다.
+       * 같은 칸에 다른 뜻을 넣으면 헷갈리므로 라벨을 나눈다. */
+      var src = u.source === 'server'
+        ? '<span class="auc-src server">🌐 서버</span>'
+        : '<span class="auc-src">📱 이 기기</span>';
+      return '<div class="admin-user-card">' +
+        '<div class="auc-header">' +
+          '<div>' +
+            '<div class="auc-name">' + esc(u.name) + (u.self ? ' (나)' : '') + ' ' + src + '</div>' +
+            '<div class="auc-group">' + esc(u.groupLabel) + '</div>' +
+          '</div>' +
+          '<div class="auc-badge">' + esc(u.badge) + '</div>' +
+        '</div>' +
+        /* 서버 줄에는 컨디션도 연속 학습도 없다 — 애초에 전송되지 않는 값이다.
+         * 빈 칸에 0 을 적어 두면 "0일 했다" 로 읽히므로 칸 자체를 빼 버린다. */
+        '<div class="auc-stats">' +
+          '<div class="aus-item"><div class="aus-label">' + (u.self ? '누적 공부' : '이번 주') + '</div>' +
+            '<div class="aus-value">' + fmtDur(u.totalMinutes) + '</div></div>' +
+          (u.source === 'server' ? '' :
+            '<div class="aus-item"><div class="aus-label">' + (u.self ? '평균 컨디션' : '최근 컨디션') + '</div>' +
+              '<div class="aus-value">' + (u.avgScore ? u.avgScore + '점' : '—') + '</div></div>') +
+        '</div>' +
+        '<div class="auc-stats">' +
+          (u.source === 'server' ? '' :
+            '<div class="aus-item"><div class="aus-label">' + (u.self ? '공부한 날' : '연속 학습') + '</div>' +
+              '<div class="aus-value">' + u.sessionCount + '일</div></div>') +
+          '<div class="aus-item"><div class="aus-label">마지막 활동</div>' +
+            '<div class="aus-value">' + esc(u.lastActive) + '</div></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    $('adminUsersList').innerHTML = html || '<div class="adm-empty">조건에 맞는 사용자가 없습니다.</div>';
+  }
+
+  /** 날짜별로 무엇을 얼마나 했는지 — 내 실제 기록이 근거다 */
+  function renderAdminTimeline() {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var from = Store.addDays(today, -13);
+    var days = StudyLog.rangeDays(from, today);
+    var max = Math.max.apply(null, days.map(function (d) { return d.min; }).concat([1]));
+
+    var html = days.slice().reverse().map(function (d) {
+      var subs = StudyLog.daySubjects(d.date);
+      var rec = Store.recordOn(d.date);
+      var md = d.date.slice(5).replace('-', '.');
+
+      return '<div class="adm-day' + (d.min > 0 ? '' : ' empty') + '">' +
+        '<div class="d-date">' + md + '<small>' + d.dow + '요일' + (d.isToday ? ' · 오늘' : '') + '</small></div>' +
+        '<div>' +
+          '<div class="d-bar"><i style="width:' + (d.min > 0 ? Math.max(3, (d.min / max) * 100) : 0) + '%"></i></div>' +
+          '<div class="d-subs">' + (subs.length
+            ? subs.map(function (s) { return esc(s.name) + ' ' + Math.round(s.min) + '분'; }).join(' · ')
+            : '기록 없음') + '</div>' +
+        '</div>' +
+        '<div><span class="d-min">' + (d.min > 0 ? fmtDur(d.min) : '—') + '</span>' +
+          '<span class="d-score">' + (rec ? '컨디션 ' + rec.overall + '점' : '&nbsp;') + '</span></div>' +
+      '</div>';
+    }).join('');
+
+    $('adminTimeline').innerHTML = html;
+  }
+
+  /** 최근에 무슨 일이 있었는지 시간순으로 */
+  function renderAdminFeed() {
+    var events = [];
+    var p = Store.profile();
+    var meId = p ? Group.memberId(p) : null;
+
+    // 내 학습 준비도 기록
+    Store.history().forEach(function (h) {
+      events.push({
+        ts: h.ts, icon: '🧠',
+        text: '<b>' + esc(p ? p.nick : '나') + '</b> 님이 컨디션을 분석했습니다',
+        sub: '종합 ' + h.overall + '점 · 수면 ' + h.sleep + '시간 · 스트레스 ' + h.stress
+      });
+    });
+
+    // 그룹원이 코드를 넘겨준 시점의 스냅숏
+    Group.members().forEach(function (m) {
+      if (m.id === meId) return;
+      events.push({
+        ts: m.ts, icon: '👤',
+        text: '<b>' + esc(m.nick) + '</b> 님의 기록이 들어왔습니다',
+        sub: Group.groupLabel(m) + ' · 오늘 ' + fmtDur(m.todayMin || 0) +
+             ' · 이번 주 ' + fmtDur(m.weekMin || 0) +
+             (m.streak ? ' · ' + m.streak + '일 연속' : '')
+      });
+    });
+
+    events.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+
+    if (!events.length) {
+      $('adminFeed').innerHTML = '<div class="adm-empty">아직 기록된 활동이 없습니다.</div>';
+      return;
+    }
+
+    $('adminFeed').innerHTML = events.slice(0, 30).map(function (e) {
+      return '<div class="adm-ev">' +
+        '<span class="e-ic">' + e.icon + '</span>' +
+        '<span class="e-txt">' + e.text + '<span class="e-sub">' + esc(e.sub) + '</span></span>' +
+        '<span class="e-ago">' + agoText(e.ts) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  var ADMIN_LOCAL_CARDS = '#adminStatsCard, #adminUsersCard, #adminActivityCard, #adminFeedCard, #adminScopeNote';
+  var ADMIN_SERVER_CARDS = '#adminStudentsCard, #adminLeagueMembersCard, #adminSchoolAggCard, #adminServerScopeNote';
+
+  function renderAdminLocal() {
+    renderAdminStats();
+    renderAdminUsersList();
+    renderAdminTimeline();
+    renderAdminFeed();
+  }
+
+  /* 관리자 조회 실패를 "고칠 수 있는 말" 로 옮긴다.
+   *
+   * 예전에는 무슨 일이 났든 "잠시 후 다시 시도해 주세요" 한 줄이라,
+   * 스키마를 안 올린 것인지·권한이 없는 것인지·인터넷이 끊긴 것인지
+   * 구분할 수가 없었다. 실제 원인은 console 에만 남아 있었다.
+   *
+   * 참고: admins 테이블에 계정이 등록되지 않은 경우는 여기로 오지 않는다.
+   * RLS 가 행만 걸러 내므로 HTTP 200 + 빈 배열이 되어 "아직 아무도 없습니다" 로 뜬다. */
+  function adminFetchError(e, what) {
+    var s = e && e.status;
+    var msg = String((e && e.message) || '');
+    var eul = josa(what, '을', '를');
+
+    if (s === 404 || /PGRST205|does not exist/i.test(msg)) {
+      return what + ' 테이블이 서버에 없습니다 — supabase/' +
+        (what === '학생 목록' ? 'schema_admin.sql' : 'schema.sql') + ' 을 아직 실행하지 않았습니다.';
+    }
+    if (s === 403 || /42501|permission denied/i.test(msg)) {
+      return what + eul + ' 읽을 권한이 없습니다 — supabase/' +
+        (what === '학생 목록' ? 'schema_admin.sql' : 'schema_admin_league.sql') + ' 을 실행하세요. ' +
+        'schema.sql 을 나중에 다시 돌렸다면 그 안의 revoke 가 권한을 지우므로 이 파일도 다시 실행해야 합니다.';
+    }
+    if (!s) return '서버에 연결하지 못했습니다 — ' + (msg || '네트워크를 확인해 주세요.');
+    return what + eul + ' 불러오지 못했습니다 (HTTP ' + s + '). 잠시 후 다시 시도해 주세요.';
+  }
+
+  /** 서버에 등록된 학생 개별 기록 — 로그인된 관리자만 부를 수 있다 */
+  function renderAdminStudents() {
+    var wk = Store.key(Store.weekStart(new Date()));
+    var statusEl = $('adminStudentsStatus');
+    statusEl.textContent = '불러오는 중…';
+
+    return Cloud.fetchStudentWeek(wk).then(function (rows) {
+      adminState.students = rows;
+      statusEl.textContent = rows.length
+        ? rows.length + '명 · 방금 갱신'
+        : '아직 아무도 공유하지 않았습니다.';
+      drawAdminStudents();
+      renderAdminUsersList();   // 아래 사용자 목록도 이 결과를 함께 보여 준다
+    }, function (e) {
+      if (e.status === 401) {
+        statusEl.textContent = '';
+        adminShowLoggedOut('세션이 만료됐습니다. 다시 로그인해 주세요.');
+      } else {
+        console.error('admin student fetch failed', e);
+        statusEl.textContent = adminFetchError(e, '학생 목록');
+      }
+    });
+  }
+
+  function drawAdminStudents() {
+    var q = ($('adminStudentSearch').value || '').toLowerCase();
+    var rows = adminState.students.filter(function (r) {
+      return (r.nickname + r.schoolName).toLowerCase().indexOf(q) >= 0;
+    }).sort(function (a, b) { return b.minutes - a.minutes; });
+
+    var html = rows.map(function (r) {
+      return '<div class="admin-user-card">' +
+        '<div class="auc-header">' +
+          '<div>' +
+            '<div class="auc-name">' + esc(r.nickname) + '</div>' +
+            '<div class="auc-group">' + esc(r.schoolName) + '</div>' +
+          '</div>' +
+          '<div class="auc-badge">' + esc(agoText(r.updatedAt)) + '</div>' +
+        '</div>' +
+        '<div class="auc-stats">' +
+          '<div class="aus-item"><div class="aus-label">이번 주 순공</div>' +
+            '<div class="aus-value">' + fmtDur(r.minutes) + '</div></div>' +
+        '</div>' +
+        '<div class="auc-act">' +
+          '<button type="button" class="btn ghost sm adm-del" data-device="' + esc(r.deviceId) +
+            '" data-label="' + esc(r.nickname + ' · ' + r.schoolName) + '">기록 삭제</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    $('adminStudentsList').innerHTML = html || '<div class="adm-empty">조건에 맞는 학생이 없습니다.</div>';
+    bindAdminDelete($('adminStudentsList'));
+  }
+
+  /** 학교 리그(익명 합계)도 관리자 화면에 같이 보여 준다 — 개인 목록과의 차이를 비교하도록 */
+  function renderAdminSchoolAgg() {
+    var wk = Store.key(Store.weekStart(new Date()));
+    return Cloud.fetchWeek(wk).then(function (rows) {
+      adminState.schoolAgg = rows;
+      if (!rows.length) {
+        $('adminSchoolAgg').innerHTML = '<div class="adm-empty">아직 리그에 참가한 학교가 없습니다.</div>';
+        return;
+      }
+      $('adminSchoolAgg').innerHTML = rows
+        .sort(function (a, b) { return b.total - a.total; })
+        .map(function (r) {
+          return '<div class="adm-ev">' +
+            '<span class="e-ic">🏫</span>' +
+            '<span class="e-txt"><b>' + esc(r.schoolName) + '</b>' +
+              '<span class="e-sub">참여 ' + r.active + '명 · ' + agoText(r.updatedAt) + '</span></span>' +
+            '<span class="e-ago">' + fmtDur(r.total) + '</span>' +
+          '</div>';
+        }).join('');
+    }, function () { /* 리그를 안 켰으면 자연스럽게 비어 있다 — 조용히 둔다 */ });
+  }
+
+  /* 잘못 올라온 기록을 지운다. 거짓 정보나 오류로 들어온 값을 운영자가 정리할
+   * 수 있어야 판이 굴러간다. 리그와 학생 목록 양쪽에서 함께 사라진다. */
+  function bindAdminDelete(root) {
+    $$('.adm-del', root).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var label = btn.dataset.label || '이 기록';
+        var wk = Store.key(Store.weekStart(new Date()));
+        if (!confirm(label + '\n\n이번 주 기록을 삭제할까요?\n' +
+                     '리그 순위와 학생 목록 양쪽에서 사라지며 되돌릴 수 없습니다.\n\n' +
+                     '※ 그 학생이 앱을 계속 쓰면 다음 동기화 때 다시 올라옵니다.')) return;
+
+        btn.disabled = true;
+        Cloud.adminDeleteDevice(btn.dataset.device, wk).then(function (n) {
+          toast(n + '개 기록을 삭제했습니다.');
+          renderAdminServer();
+        }, function (e) {
+          btn.disabled = false;
+          toast('삭제하지 못했습니다 — ' + (e.message || '알 수 없는 오류'), true);
+        });
+      });
+    });
+  }
+
+  /* 리그에만 참가한 학생들. 이름이 없으므로 기기 번호 앞자리로만 구분한다.
+   * 같은 사람을 계속 알아볼 수는 있어도 누구인지는 알 수 없다 — 의도한 선이다. */
+  function renderAdminLeagueMembers() {
+    var wk = Store.key(Store.weekStart(new Date()));
+    var statusEl = $('adminLeagueStatus');
+    var listEl = $('adminLeagueMembers');
+    statusEl.textContent = '불러오는 중…';
+
+    return Cloud.fetchLeagueMembers(wk).then(function (rows) {
+      adminState.leagueMembers = rows;
+      var sum = rows.reduce(function (a, r) { return a + r.minutes; }, 0);
+      statusEl.textContent = rows.length
+        ? rows.length + '명 · 합계 ' + fmtDur(sum) + ' · 방금 갱신'
+        : '이번 주에 리그 시간을 올린 참가자가 아직 없습니다.';
+
+      listEl.innerHTML = rows.map(function (r) {
+        return '<div class="adm-ev">' +
+          '<span class="e-ic">🙈</span>' +
+          '<span class="e-txt"><b>익명 ' + esc(r.deviceId.slice(0, 4).toUpperCase()) + '</b>' +
+            '<span class="e-sub">' + esc(r.schoolName) + ' · ' + esc(agoText(r.updatedAt)) + '</span></span>' +
+          '<span class="e-ago">' + fmtDur(r.minutes) + '</span>' +
+          '<button type="button" class="icon-btn adm-del" data-device="' + esc(r.deviceId) +
+            '" data-label="' + esc(r.schoolName + ' · 익명 ' + r.deviceId.slice(0, 4).toUpperCase()) +
+            '" title="이 기록 삭제">✕</button>' +
+        '</div>';
+      }).join('') || '<div class="adm-empty">아직 참가자가 없습니다.</div>';
+
+      bindAdminDelete(listEl);
+    }, function (e) {
+      if (e.status === 401) {
+        statusEl.textContent = '';
+        adminShowLoggedOut('세션이 만료됐습니다. 다시 로그인해 주세요.');
+        return;
+      }
+      listEl.innerHTML = '';
+      console.error('admin league fetch failed', e);
+      statusEl.textContent = adminFetchError(e, '익명 참가자 목록');
+    });
+  }
+
+  function renderAdminServer() {
+    renderAdminStudents();
+    renderAdminLeagueMembers();
+    renderAdminSchoolAgg();
+  }
+
+  /** 로그인 화면으로 되돌린다. 세션 만료 때도 이걸 쓴다. */
+  function adminShowLoggedOut(msg) {
+    $('adminAuthSection').classList.remove('is-hidden');
+    $('adminContent').classList.add('is-hidden');
+    $$(ADMIN_SERVER_CARDS).forEach(function (el) { el.classList.add('is-hidden'); });
+    $$(ADMIN_LOCAL_CARDS).forEach(function (el) { el.classList.add('is-hidden'); });
+    if (msg) { $('adminAuthStatus').className = 'neis-status show warn'; $('adminAuthStatus').textContent = msg; }
+  }
+
+  function adminShowLoggedIn() {
+    var s = Cloud.adminSession();
+    $('adminAuthSection').classList.add('is-hidden');
+    $('adminContent').classList.remove('is-hidden');
+    $('adminWhoAmI').textContent = s ? ('관리자 계정 · ' + maskEmail(s.email)) : '관리자 계정';
+    $$(ADMIN_SERVER_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
+    $$(ADMIN_LOCAL_CARDS).forEach(function (el) { el.classList.remove('is-hidden'); });
+    renderAdminServer();
+    renderAdminLocal();
+  }
+
+  function adminLogin() {
+    var email = $('adminEmail').value;
+    var pw = $('adminPassword').value;
+    var statusEl = $('adminAuthStatus');
+    statusEl.className = 'neis-status show';
+    statusEl.textContent = '로그인 중…';
+
+    Cloud.adminSignIn(email, pw).then(function () {
+      $('adminPassword').value = '';
+      statusEl.className = 'neis-status';
+      statusEl.textContent = '';
+      adminShowLoggedIn();
+      toast('관리자로 로그인했습니다.');
+    }, function (e) {
+      console.error('admin sign-in failed', e);
+      statusEl.className = 'neis-status show err';
+      statusEl.textContent = '관리자 로그인에 실패했습니다. 계정 정보와 권한을 확인해 주세요.';
+    });
+  }
+
+  function logoutAdmin() {
+    Cloud.adminSignOut();
+    adminShowLoggedOut();
+    toast('로그아웃했습니다.');
+  }
+
+  /** 앱을 새로 열었을 때 세션이 남아 있으면 로그인 화면을 건너뛴다 */
+  function initAdminSession() {
+    if (!$('adminAuthSection')) return;
+    if (Cloud.adminSession()) adminShowLoggedIn();
+    else adminShowLoggedOut();
+  }
+
+  function init() {
+    migrateDedicatedSchoolProfile();
+    moveOptionalDailyCards();
+    initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initBackupCard(); initTimetable(); initVacPlan(); initGoalCalendar();
+    initMore();
+    Cloud.retryPendingDeletions();
+    Slime.init({ toast: toast });
+    Slime.touch();   // 앱을 닫아 둔 동안 농장이 모은 젤리를 먼저 정리해 둔다
+
+    /* 오래 안 들어와 모리가 작아졌다면 말없이 넘어가지 않는다.
+     * 이유를 모른 채 작아져 있으면 사용자에게는 그냥 버그로 보인다. */
+    var slimeLost = Slime.takeDecayNote();
+    if (slimeLost) {
+      setTimeout(function () {
+        toast('오랜만이에요! 그동안 모리가 조금 작아졌어요 (경험치 −' + slimeLost + '). 밥을 주면 금방 돌아와요.');
+      }, 1800);
+    }
+
+    /* 저장 공간 영구 보관을 신청한다. 거절돼도 앱 동작에는 영향이 없고,
+     * 크롬 계열은 방문이 쌓이면 나중에 조용히 승격시켜 준다. */
+    Store.requestPersist().then(function () { renderStorageStatus(); });
+
+    /* 복구 코드를 만들어 둔 사람의 기록을 하루 한 번 올린다.
+     * 여는 순간에 붙이면 첫 화면이 그만큼 늦으므로 뒤로 미룬다.
+     * 실패해도 조용히 넘어간다 — 지하철에서 열 때마다 오류가 뜨면 기능을 꺼 버린다. */
+    setTimeout(function () {
+      Backup.autoPush().then(function (done) { if (done) renderStorageStatus(); });
+    }, 6000);
+
+    // 끼니를 체크하면 급식 안내 문구와 채점 기준표를 다시 계산한다
+    ['mealBreakfast', 'mealLunch', 'mealDinner'].forEach(function (id) {
+      $(id).addEventListener('change', function () { renderMeals(); renderMealSched(); });
+    });
+    initMealAlarm();
+    renderMealSched();
+
+    $('detailToggle').addEventListener('click', function () { toggleDetail(); });
+    $('resultMore').addEventListener('click', toggleResultDetail);
+    $('planMore').addEventListener('click', togglePlanDetail);
+    $('queueEditBtn').addEventListener('click', toggleQueueEdit);
+    DETAIL_IDS.forEach(function (id) {
+      $(id).addEventListener('input', updateDetailSummary);
+      $(id).addEventListener('change', updateDetailSummary);
+    });
+    ['startTime', 'bedTime', 'availableHours'].forEach(function (id) {
+      $(id).addEventListener('input', updateCurfewHint);
+      $(id).addEventListener('change', updateCurfewHint);
+    });
+
+    var now = new Date();
+    $('startTime').value = pad(now.getHours()) + ':' + pad(Math.floor(now.getMinutes() / 5) * 5);
+
+    var saved = Store.loadInput();
+    if (saved) applyInput(saved);
+    else { addSubjectRow({ name: '', type: 'calculate' }); addSubjectRow({ name: '', type: 'memorize' }); }
+
+    /* 오늘 만든 플랜과 타이머 자리를 되살린다.
+     * renderNav() 보다 먼저 해야 2·3·4번 탭이 열린 채로 시작하고,
+     * 해시로 들어온 #timer 도 입력 화면으로 튕기지 않는다. */
+    var resumed = false;
+    var sess = loadSession();
+    if (sess) resumed = restoreSession(sess);
+    if (!resumed && sess) clearSession();   // 못 읽는 값은 남겨 두지 않는다
+
+    /* 프로필 게이트 */
+    $('pfLevel').addEventListener('change', function () {
+      fillGradeOptions();
+      $('pfEligibility').checked = false;
+      renderProfileModeFields();
+      renderSchoolChoiceStatus();
+    });
+    $('saveProfile').addEventListener('click', saveProfile);
+    $('cancelProfile').addEventListener('click', function () { goPage(Store.profile() ? 'secSettings' : 'secProfile'); });
+    $('profileChip').addEventListener('click', function () { openProfile(true); });
+
+    $('editProfile').addEventListener('click', function () { openProfile(true); });
+    $('friendClose').addEventListener('click', closeFriendCard);
+    initAvatarPage();
+
+    if (Store.profile()) {
+      renderProfileChip();
+      renderNav();
+      if (!profileEligibility(Store.profile())) {
+        openProfile(true);
+      } else {
+      // 주소창 해시가 있으면 그 페이지로, 없으면 홈에서 시작.
+      // 해시가 열 수 없는 페이지를 가리키면 goPage 가 false 를 주므로 홈으로 떨어진다.
+      var pg = pageByHash((location.hash || '').replace('#', ''));
+      if (pg && pg.needAnalysis && !state.analysis) {
+        // 설치형 바로가기에서 타이머를 눌러도 새 실행에는 아직 오늘 플랜이 없다.
+        // 막힌 홈으로 돌려보내지 않고 곧바로 입력 화면에서 시작하게 한다.
+        goPage('secInput', false, true);
+        setTimeout(function () { toast('타이머를 만들려면 오늘 상태를 먼저 확인해 주세요.'); }, 250);
+      /* 홈은 secHome 이다. 개편 때 [오늘] 화면(secToday)이 탭 목록에서 빠졌는데
+       * 여기만 그대로 남아 있었다. secToday 는 openPages() 에도 HIDDEN_PAGES 에도
+       * 없어서 goPage 가 조용히 false 를 돌려주고, 그러면 어떤 섹션도 열리지 않는다.
+       * 그때 화면에 남는 것은 유일하게 is-hidden 이 없는 secProfile — 즉 이미 쓰던
+       * 사람이 앱을 열 때마다 프로필 입력 화면을 보고 있었다. */
+      } else if (!pg || !goPage(pg.id, true)) {
+        goPage('secHome', false, true);
+      }
+
+      /* 되살렸으면 조용히 넘어가지 않는다 — 말없이 2번째 블록에서 시작하면
+       * 사용자에게는 앱이 자기 마음대로 움직인 것처럼 보인다. */
+      if (resumed) setTimeout(announceResumed, 900);
+
+      }
+    } else {
+      fillGradeOptions();
+      $('cancelProfile').style.display = 'none';
+      renderNav();
+      goPage('secProfile', true);
+    }
+
+    window.addEventListener('hashchange', function () {
+      var pg = pageByHash((location.hash || '').replace('#', ''));
+      if (pg && pg.id !== state.page) goPage(pg.id, true);
+    });
+
+    /* 입력 */
+    $('addSubject').addEventListener('click', function () {
+      if ($$('.subject-row', $('subjectList')).length >= 8) { toast('과목은 최대 8개까지 추가할 수 있습니다.', true); return; }
+      addSubjectRow().querySelector('.s-name').focus();
+    });
+    $('analyzeBtn').addEventListener('click', runAnalysis);
+    $('sampleBtn').addEventListener('click', function () {
+      applyInput(SAMPLE);
+      toast('예시 데이터를 채웠습니다 — 수면 부족·고스트레스 시나리오');
+    });
+    $('resetBtn').addEventListener('click', function () {
+      if (!confirm('입력값을 초기화할까요? (저장된 학습 기록과 그룹은 유지됩니다)')) return;
+      applyInput({
+        sleep: { hours: 7, quality: 3, regularity: 3 },
+        stress: 4, fatigue: 4, mood: 3,
+        meals: { breakfast: true, lunch: true, dinner: false },
+        hoursSinceMeal: 2, water: 4, caffeine: 1, exercise: 0,
+        availableHours: 4, subjects: []
+      });
+      toast('초기화했습니다.');
+    });
+
+    $('startTimerBtn').addEventListener('click', function () {
+      goto('secTimer');
+      setTimeout(function () { if (!state.timer.running) state.timer.start(); }, 500);
+    });
+
+    /* 랭킹 */
+    $$('#rankTabs button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.rankRange = b.dataset.range;
+        $$('#rankTabs button').forEach(function (x) {
+          var on = x === b;
+          x.classList.toggle('on', on);
+          x.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        renderGroup();
+      });
+    });
+
+    initShare();
+
+    /* 리포트 */
+    $('prevWeek').addEventListener('click', function () { state.weekOffset--; renderReport(); });
+    $('nextWeek').addEventListener('click', function () { if (state.weekOffset < 0) { state.weekOffset++; renderReport(); } });
+    $('thisWeek').addEventListener('click', function () { state.weekOffset = 0; renderReport(); });
+    $('exportData').addEventListener('click', exportData);
+    $('importFile').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (f) importData(f);
+    });
+
+    $('clearHistory').addEventListener('click', function () {
+      if (!confirm('학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹원을 모두 삭제할까요?\n모은 배지와 경험치, 키우던 모리도 함께 사라지며 되돌릴 수 없습니다.')) return;
+      Store.clearAll();
+      Kids.reset();
+      League.reset();
+      // 내가 붙인 쪽지는 서버에서 스스로 사라진다. 여기서는 이 기기의
+      // 흔적(치운 목록·벽 설정)만 지운다.
+      Notes.reset();
+      // 모리의 젤리는 순공 시간에서 나온다. 기록만 지우고 남겨 두면
+      // "이미 정산한 분" 만 남아 앞으로 한참을 공부해도 정산이 안 된다.
+      Slime.reset();
+      Level.reset();
+      // 기록을 지웠는데 오늘 플랜과 타이머 자리만 남아 다음 실행에 되살아나면 안 된다
+      clearSession();
+      renderGroup(); renderReport(); renderLiveTotal(); renderKids(); renderSettingsPage();
+      renderLeague();
+      renderPins();
+      toast('모든 기록을 삭제했습니다.');
+    });
+
+    // 관리자 모드 이벤트
+    $('adminLogin').addEventListener('click', adminLogin);
+    $('adminLogout').addEventListener('click', logoutAdmin);
+    $('adminPassword').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') adminLogin();
+    });
+    $('adminSearch').addEventListener('input', renderAdminUsersList);
+    $('adminStudentSearch').addEventListener('input', drawAdminStudents);
+    $('adminStudentRefresh').addEventListener('click', renderAdminStudents);
+    $('adminLeagueRefresh').addEventListener('click', renderAdminLeagueMembers);
+    /* 들어갈 때마다 세션을 다시 본다. 한 번만 확인하면, 토큰이 만료된 뒤
+     * 다시 들어왔을 때 지난번 학생 목록이 화면에 그대로 남는다.
+     * 겸사겸사 목록도 새로 받아 오게 된다. */
+    $('openAdmin').addEventListener('click', function () {
+      goPage('secAdmin');
+      initAdminSession();
+    });
+    initAdminSession();
+
+    // 카드 안에서 다른 페이지로 보내는 링크 버튼들
+    $$('[data-goto]').forEach(function (b) {
+      b.addEventListener('click', function () { goPage(b.dataset.goto); });
+    });
+
+    renderSettingsPage();
+    renderMeals();
+    if (Store.profile()) { fillTtGradeOptions(Store.profile().grade); $('ttClass').value = Store.profile().klass || ''; }
+    renderTimetable();
+    renderQuickNote();
+    renderTodayHome();
+    updateDetailSummary();
+    updateCurfewHint();
+    renderLiveTotal();
+    renderGroup();
+    renderReport();
+    renderKids();
+    if (Store.profile()) { leagueSettle(); renderLeague(); leagueSync(false); }
+    initPins();
+    weeklyNotice();
+
+    if (!Store.available) toast('브라우저 저장소를 쓸 수 없어 기록이 유지되지 않습니다.', true);
+
+    initIntro();
+    initInstallPrompt();
+    registerServiceWorker();
+  }
+
+  /* 서비스 워커 — 홈 화면 설치와 오프라인 실행을 위해 필요하다.
+   * file:// 로 열었을 때는 등록 자체가 불가능하므로 조용히 건너뛴다.
+   * (README 대로 index.html 을 더블클릭해서 쓰는 경로가 살아 있어야 한다) */
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+    navigator.serviceWorker.register('sw.js')['catch'](function () {
+      // 등록에 실패해도 앱 동작에는 지장이 없다 — 설치·오프라인만 빠진다
+    });
+  }
+
+  /* ============================================================ 홈 화면 설치
+   *
+   * 매일 여는 앱은 홈 화면 아이콘이 있어야 실제로 매일 열린다.
+   * 안드로이드·크롬은 beforeinstallprompt 로 설치 창을 띄울 수 있지만,
+   * iOS 사파리는 그 이벤트가 없어서 "공유 → 홈 화면에 추가" 를 직접 안내해야 한다.
+   * 이미 설치해서 standalone 으로 열었다면 아무것도 보여 주지 않는다. */
+
+  var deferredInstall = null;
+  var INSTALL_DISMISS_KEY = 'neurostudy.installDismissed.v1';
+
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
+  }
+
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  function installDismissed() {
+    try { return localStorage.getItem(INSTALL_DISMISS_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function dismissInstall() {
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, '1'); } catch (e) { /* 무시 */ }
+    var el = $('installBar');
+    if (el) el.classList.add('is-hidden');
+  }
+
+  function showInstallBar(mode) {
+    var el = $('installBar');
+    if (!el || isStandalone() || installDismissed()) return;
+
+    $('installText').innerHTML = mode === 'ios'
+      ? '홈 화면에 추가하면 앱처럼 바로 열 수 있어요 — 아래 <b>공유 <span aria-hidden="true">⎋</span></b> 를 누르고 <b>“홈 화면에 추가”</b>를 고르세요.'
+      : '홈 화면에 추가하면 앱처럼 바로 열 수 있어요.';
+
+    $('installGo').classList.toggle('is-hidden', mode === 'ios');
+    el.classList.remove('is-hidden');
+  }
+
+  /* ================================================================= 인트로
+   *
+   * 앱 화면에 들어가기 전에 소개를 한 번 보여 준다.
+   * 매번 뜨면 매일 쓰는 사람에게는 방해가 되므로, 이미 본 사람에게는
+   * 건너뛴다. (다시 보게 하려면 아래 키를 지우면 된다) */
+
+  var INTRO_SEEN_KEY = 'neurostudy.introSeen.v1';
+
+  function introSeen() {
+    try { return localStorage.getItem(INTRO_SEEN_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function closeIntro() {
+    var el = $('intro');
+    if (!el || el.hidden) return;
+    try { localStorage.setItem(INTRO_SEEN_KEY, '1'); } catch (e) { /* 무시 */ }
+    el.classList.add('is-out');
+    document.body.classList.remove('intro-open');
+    var done = function () { el.hidden = true; el.classList.remove('is-out'); };
+    // transitionend 가 오지 않는 환경(모션 축소 등)에서도 반드시 닫히게 한다
+    var t = setTimeout(done, 400);
+    el.addEventListener('transitionend', function () { clearTimeout(t); done(); }, { once: true });
+  }
+
+  function initIntro() {
+    var el = $('intro');
+    if (!el) return;
+    $('introGo').addEventListener('click', closeIntro);
+    if (introSeen()) return;
+    el.hidden = false;
+    document.body.classList.add('intro-open');
+    $('introGo').focus();
+  }
+
+  function initInstallPrompt() {
+    if (!$('installBar')) return;
+
+    $('installClose').addEventListener('click', dismissInstall);
+    $('installGo').addEventListener('click', function () {
+      if (!deferredInstall) return;
+      deferredInstall.prompt();
+      deferredInstall.userChoice.then(function (r) {
+        if (r && r.outcome === 'accepted') dismissInstall();
+        deferredInstall = null;
+      });
+    });
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();          // 크롬 기본 배너 대신 우리 배너를 쓴다
+      deferredInstall = e;
+      showInstallBar('prompt');
+    });
+
+    window.addEventListener('appinstalled', function () { dismissInstall(); });
+
+    // iOS 는 beforeinstallprompt 가 없다 — 안내만 띄운다
+    if (isIOS() && !isStandalone()) setTimeout(function () { showInstallBar('ios'); }, 2500);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+})();

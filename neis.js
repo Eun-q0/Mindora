@@ -1,0 +1,626 @@
+/* =========================================================================
+ * neis.js — 나이스 교육정보 개방포털 연동
+ *
+ *   · 학교 검색 (schoolInfo)
+ *   · 급식 식단 (mealServiceDietInfo)
+ *   · 학급 시간표 (elsTimetable / misTimetable / hisTimetable)
+ *
+ * 브라우저에서 직접 호출한다. 확인 결과 file:// 에서도 CORS 없이 응답한다.
+ * 인터넷이 없거나 키가 없으면 호출하지 않고 오프라인 자동완성으로 되돌아간다.
+ *
+ * ⚠ 인증키는 소스에 넣지 않는다.
+ *    이 저장소는 공개돼 있어서 키를 커밋하면 누구나 가져다 쓸 수 있다.
+ *    키는 앱의 [설정 → 나이스(NEIS) 연동] 에서 입력하며 브라우저의
+ *    localStorage 에만 저장된다. 발급은 https://open.neis.go.kr (무료).
+ * ========================================================================= */
+(function (global) {
+  'use strict';
+
+  var BASE = 'https://open.neis.go.kr/hub/';
+  var KEY_STORE = 'neurostudy.neiskey.v1';
+  var MEAL_CACHE = 'neurostudy.mealcache.v1';
+  var TIMETABLE_CACHE = 'neurostudy.ttcache.v1';
+  // 소스에는 키를 두지 않는다. 사용자가 설정 화면에서 직접 넣는다.
+  var DEFAULT_KEY = '';
+
+  /* 식품 알레르기 유발 물질 표시 번호 (교육부 고시 기준) */
+  var ALLERGENS = {
+    1: '난류', 2: '우유', 3: '메밀', 4: '땅콩', 5: '대두', 6: '밀', 7: '고등어',
+    8: '게', 9: '새우', 10: '돼지고기', 11: '복숭아', 12: '토마토', 13: '아황산류',
+    14: '호두', 15: '닭고기', 16: '쇠고기', 17: '오징어', 18: '조개류', 19: '잣'
+  };
+
+  /* ------------------------------------------------------------- 키 관리 */
+
+  function key() {
+    try {
+      var k = localStorage.getItem(KEY_STORE);
+      return k === null ? DEFAULT_KEY : k;   // 빈 문자열이면 "연동 안 함" 을 뜻한다
+    } catch (e) { return DEFAULT_KEY; }
+  }
+
+  function setKey(k) {
+    try { localStorage.setItem(KEY_STORE, String(k || '').trim()); } catch (e) { /* 무시 */ }
+  }
+
+  function hasKey() { return !!key(); }
+
+  /* --------------------------------------------------------------- 호출 */
+
+  /* 나이스는 인증키가 없어도 응답한다 (요청당 5건 제한).
+   * 그래서 KEY 파라미터는 값이 있을 때만 붙인다 —
+   * 빈 KEY= 를 보내도 통과하지만, 아예 빼는 편이 의도가 분명하다.
+   * 키를 넣으면 제한이 풀려 한 번에 더 많이 받아 온다. */
+  function url(path, params) {
+    var q = ['Type=json'];
+    if (hasKey()) q.unshift('KEY=' + encodeURIComponent(key()));
+    Object.keys(params).forEach(function (k) {
+      if (params[k] === undefined || params[k] === null || params[k] === '') return;
+      q.push(k + '=' + encodeURIComponent(params[k]));
+    });
+    return BASE + path + '?' + q.join('&');
+  }
+
+  /** 키 없이 한 번에 받을 수 있는 최대 건수 (페이지네이션은 무시된다) */
+  var FREE_LIMIT = 5;
+
+  /**
+   * 나이스 응답은 두 가지 모양으로 온다.
+   *   정상  : { <서비스명>: [ {head:[...]}, {row:[...]} ] }
+   *   무자료: { RESULT: { CODE:'INFO-200', ... } }
+   * 어느 쪽이든 행 배열로 정리해서 돌려준다.
+   */
+  function call(path, params, service) {
+    return fetch(url(path, params)).then(function (res) {
+      if (!res.ok) throw new Error('NEIS_HTTP_' + res.status);
+      return res.json();
+    }).then(function (json) {
+      if (json && json.RESULT) {
+        var code = json.RESULT.CODE;
+        if (code === 'INFO-200') return [];                       // 자료 없음은 오류가 아니다
+        throw new Error(json.RESULT.MESSAGE || code || 'NEIS_ERROR');
+      }
+      var svc = json && json[service];
+      if (!svc || !svc[1] || !svc[1].row) return [];
+      var head = svc[0] && svc[0].head;
+      var result = head && head[1] && head[1].RESULT;
+      if (result && result.CODE && result.CODE !== 'INFO-000' && result.CODE !== 'INFO-200') {
+        throw new Error(result.MESSAGE || result.CODE);
+      }
+      return svc[1].row;
+    });
+  }
+
+  /* ---------------------------------------------------------- 학교 검색 */
+
+  var KIND_TO_LEVEL = {
+    '초등학교': '초등학교', '중학교': '중학교', '고등학교': '고등학교',
+    '대학교': '대학교', '전문대학': '대학교'
+  };
+
+  /* 오프라인 학교 데이터 - 전국 인기 학교 목록 */
+  var LOCAL_SCHOOLS = [
+    /* 서울 */
+    {name:'서울대학교',kind:'대학교',region:'서울',address:'서울 관악구'},
+    {name:'고려대학교',kind:'대학교',region:'서울',address:'서울 성북구'},
+    {name:'연세대학교',kind:'대학교',region:'서울',address:'서울 서대문구'},
+    {name:'이화여자대학교',kind:'대학교',region:'서울',address:'서울 서대문구'},
+    {name:'숙명여자대학교',kind:'대학교',region:'서울',address:'서울 용산구'},
+    {name:'광운대학교',kind:'대학교',region:'서울',address:'서울 노원구'},
+    {name:'서울과학기술대학교',kind:'대학교',region:'서울',address:'서울 노원구'},
+    {name:'동국대학교',kind:'대학교',region:'서울',address:'서울 중구'},
+    {name:'명지대학교',kind:'대학교',region:'서울',address:'서울 성북구'},
+    {name:'한국외국어대학교',kind:'대학교',region:'서울',address:'서울 동대문구'},
+    {name:'경희대학교',kind:'대학교',region:'서울',address:'서울 동대문구'},
+    {name:'강남고등학교',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    {name:'서울고등학교',kind:'고등학교',region:'서울',address:'서울 중구'},
+    {name:'경기고등학교',kind:'고등학교',region:'서울',address:'서울 종로구'},
+    {name:'서울대학교사범대학부속고등학교',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    {name:'휘문고등학교',kind:'고등학교',region:'서울',address:'서울 종로구'},
+    {name:'용산고등학교',kind:'고등학교',region:'서울',address:'서울 용산구'},
+    {name:'신사고등학교',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    {name:'중앙고등학교',kind:'고등학교',region:'서울',address:'서울 은평구'},
+    {name:'사대부고',kind:'고등학교',region:'서울',address:'서울 강남구'},
+    /* 경기 */
+    {name:'한국과학기술원',kind:'대학교',region:'대전',address:'대전 유성구'},
+    {name:'수원고등학교',kind:'고등학교',region:'경기',address:'경기 수원시'},
+    {name:'용인외국어고등학교',kind:'고등학교',region:'경기',address:'경기 용인시'},
+    {name:'분당고등학교',kind:'고등학교',region:'경기',address:'경기 성남시'},
+    {name:'판교고등학교',kind:'고등학교',region:'경기',address:'경기 성남시'},
+    /* 부산 */
+    {name:'부산대학교',kind:'대학교',region:'부산',address:'부산 금정구'},
+    {name:'동아대학교',kind:'대학교',region:'부산',address:'부산 서구'},
+    {name:'신라대학교',kind:'대학교',region:'부산',address:'부산 사상구'},
+    /* 대구 */
+    {name:'대구대학교',kind:'대학교',region:'대구',address:'대구 남구'},
+    {name:'경북대학교',kind:'대학교',region:'대구',address:'대구 북구'},
+    /* 중학교 샘플 */
+    {name:'한빛중학교',kind:'중학교',region:'서울',address:'서울 강남구'},
+    {name:'예일중학교',kind:'중학교',region:'서울',address:'서울 강남구'},
+    {name:'영동중학교',kind:'중학교',region:'서울',address:'서울 강남구'},
+    /* 초등학교 샘플 */
+    {name:'한빛초등학교',kind:'초등학교',region:'서울',address:'서울 강남구'},
+    {name:'신사초등학교',kind:'초등학교',region:'서울',address:'서울 강남구'},
+    {name:'대곡초등학교',kind:'초등학교',region:'서울',address:'서울 강남구'}
+  ];
+
+  var searchCache = {};
+
+  /** 로컬 데이터에서 학교 검색 */
+  function searchSchoolsLocal(query, kind) {
+    var q = String(query || '').trim().toLowerCase();
+    if (q.length < 1) return [];
+
+    return LOCAL_SCHOOLS.filter(function (s) {
+      if (kind && kind !== '기타' && s.kind !== kind) return false;
+      return s.name.toLowerCase().indexOf(q) >= 0;
+    }).sort(function (a, b) {
+      var aq = a.name.toLowerCase().indexOf(q);
+      var bq = b.name.toLowerCase().indexOf(q);
+      if (aq === 0 && bq !== 0) return -1;
+      if (aq !== 0 && bq === 0) return 1;
+      return a.name.length - b.name.length;
+    }).slice(0, 30);
+  }
+
+  function mapRow(r) {
+    return {
+      name: r.SCHUL_NM,
+      eduCode: r.ATPT_OFCDC_SC_CODE,
+      eduName: r.ATPT_OFCDC_SC_NM,
+      schoolCode: r.SD_SCHUL_CODE,
+      region: r.LCTN_SC_NM,
+      kind: r.SCHUL_KND_SC_NM,
+      level: KIND_TO_LEVEL[r.SCHUL_KND_SC_NM] || '기타',
+      address: r.ORG_RDNMA || ''
+    };
+  }
+
+  /**
+   * 학교 이름 일부로 나이스에서 검색한다.
+   *
+   * 인증키가 없어도 동작한다. 대신 요청당 5건으로 잘리고 페이지네이션이 무시되므로,
+   * 그 5칸을 최대한 쓸모 있게 채우는 게 관건이다.
+   *   1) 사용자가 고른 학교급으로 좁힌 질의 — 대개 이게 정답을 담고 있다
+   *   2) 학교급 없는 질의 — 학교급을 잘못 골랐거나 특수학교인 경우를 건진다
+   * 두 결과를 합치면 무키로도 최대 10건까지 볼 수 있다.
+   *
+   * 키를 넣으면 한 번에 30건을 받아 오므로 1)만으로 충분하다.
+   *
+   * 인터넷이 없거나 나이스가 죽었을 때만 내장 목록으로 떨어진다.
+   */
+  function searchSchools(query, kind) {
+    var q = String(query || '').trim();
+    if (q.length < 1) return Promise.resolve([]);
+
+    var ck = q + '|' + (kind || '');
+    if (searchCache[ck]) return Promise.resolve(searchCache[ck]);
+
+    var narrow = (kind && kind !== '기타') ? kind : '';
+    var size = hasKey() ? 30 : FREE_LIMIT;
+
+    var queries = [call('schoolInfo', {
+      pIndex: 1, pSize: size, SCHUL_NM: q, SCHUL_KND_SC_NM: narrow
+    }, 'schoolInfo')];
+
+    // 무키 + 학교급 지정 상태라면 넓은 질의를 한 번 더 걸어 5칸을 늘린다
+    if (!hasKey() && narrow) {
+      queries.push(call('schoolInfo', {
+        pIndex: 1, pSize: FREE_LIMIT, SCHUL_NM: q
+      }, 'schoolInfo')['catch'](function () { return []; }));
+    }
+
+    return Promise.all(queries).then(function (results) {
+      var seen = {}, list = [];
+      results.forEach(function (rows) {
+        (rows || []).forEach(function (r) {
+          var s = mapRow(r);
+          // 같은 학교가 두 질의에 다 걸리므로 학교 코드로 중복을 없앤다
+          var k = s.schoolCode || (s.name + '|' + s.kind);
+          if (seen[k]) return;
+          seen[k] = true;
+          list.push(s);
+        });
+      });
+
+      if (!list.length) {
+        // 나이스가 "자료 없음" 을 준 경우 — 내장 목록으로 한 번 더 본다
+        list = searchSchoolsLocal(q, kind);
+      }
+
+      // 고른 학교급과 일치하는 학교를 위로, 그다음 검색어로 시작하는 이름 순
+      list.sort(function (a, b) {
+        if (narrow) {
+          var ak = a.kind === narrow ? 0 : 1, bk = b.kind === narrow ? 0 : 1;
+          if (ak !== bk) return ak - bk;
+        }
+        var as = a.name.indexOf(q) === 0 ? 0 : 1;
+        var bs = b.name.indexOf(q) === 0 ? 0 : 1;
+        if (as !== bs) return as - bs;
+        return a.name.length - b.name.length;
+      });
+
+      searchCache[ck] = list;
+      return list;
+    })['catch'](function () {
+      // 오프라인 — 내장 목록으로 떨어진다. 캐시에는 넣지 않는다(연결되면 다시 시도).
+      return searchSchoolsLocal(q, kind);
+    });
+  }
+
+  /* ------------------------------------------------------------- 급식 */
+
+  function ymd(d) {
+    var p = function (n) { return n < 10 ? '0' + n : '' + n; };
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
+  }
+
+  /** "*찰보리밥 <br/>*된장국 (5.6)" → [{name:'찰보리밥', allergens:[]}, ...] */
+  function parseDishes(raw) {
+    return String(raw || '')
+      .split(/<br\s*\/?>/i)
+      .map(function (s) { return s.replace(/\s+/g, ' ').trim(); })
+      .filter(Boolean)
+      .map(function (s) {
+        var nums = [];
+        var name = s.replace(/\(([\d.\s]+)\)\s*$/, function (_, g) {
+          g.split('.').forEach(function (n) {
+            n = parseInt(n.trim(), 10);
+            if (n && ALLERGENS[n] && nums.indexOf(n) < 0) nums.push(n);
+          });
+          return '';
+        });
+        name = name.replace(/^[*\s]+/, '').replace(/\s+$/, '');
+        return { name: name, allergens: nums };
+      })
+      .filter(function (d) { return d.name; });
+  }
+
+  function parseNutrients(raw) {
+    return String(raw || '')
+      .split(/<br\s*\/?>/i)
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean)
+      .map(function (s) {
+        var m = s.split(':');
+        return { label: (m[0] || '').trim(), value: (m[1] || '').trim() };
+      });
+  }
+
+  var ORDER = { '조식': 0, '중식': 1, '석식': 2 };
+
+  /* 예전에는 인증키가 없으면 급식을 못 불러와서, 학교 몇 곳의 예시 식단을
+   * 코드에 넣어 두고 그걸 보여 줬다. 지금은 키 없이도 실제 급식이 오므로
+   * 그 예시 데이터는 지웠다 — 남겨 두면 이름이 우연히 겹치는 학교에
+   * 실제 급식 대신 지어낸 식단을 보여 주게 된다. */
+
+  /* 하루 단위 캐시 — 같은 날 같은 학교를 반복 호출하지 않는다 */
+  function cacheRead() {
+    try { return JSON.parse(localStorage.getItem(MEAL_CACHE) || '{}'); } catch (e) { return {}; }
+  }
+  function cacheWrite(o) {
+    try { localStorage.setItem(MEAL_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  /** from~to 구간의 급식을 날짜별로 묶어 돌려준다 */
+  function meals(school, from, to) {
+    if (!school) return Promise.resolve({});
+
+    var f = from || ymd(new Date());
+    var t = to || f;
+    var ck = (school.schoolCode || school.name) + '|' + f + '|' + t;
+
+    var cache = cacheRead();
+    if (cache[ck] && (Date.now() - cache[ck].at) < 6 * 3600 * 1000) {
+      return Promise.resolve(cache[ck].data);
+    }
+
+    // 학교 코드가 없으면 조회할 수 없다 (목록에서 고르지 않고 직접 입력한 경우)
+    if (!school.eduCode || !school.schoolCode) {
+      return Promise.resolve({});
+    }
+
+    // 나이스에서 조회 — 키가 없어도 동작한다
+    return call('mealServiceDietInfo', {
+      pIndex: 1, pSize: 100,
+      ATPT_OFCDC_SC_CODE: school.eduCode,
+      SD_SCHUL_CODE: school.schoolCode,
+      MLSV_FROM_YMD: f,
+      MLSV_TO_YMD: t
+    }, 'mealServiceDietInfo').then(function (rows) {
+      var byDate = {};
+      rows.forEach(function (r) {
+        var d = r.MLSV_YMD;
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push({
+          date: d,
+          type: r.MMEAL_SC_NM,
+          dishes: parseDishes(r.DDISH_NM),
+          kcal: (r.CAL_INFO || '').trim(),
+          nutrients: parseNutrients(r.NTR_INFO),
+          origin: r.ORPLC_INFO || ''
+        });
+      });
+      Object.keys(byDate).forEach(function (d) {
+        byDate[d].sort(function (a, b) { return (ORDER[a.type] || 9) - (ORDER[b.type] || 9); });
+      });
+
+      var c = cacheRead();
+      c[ck] = { at: Date.now(), data: byDate };
+      // 캐시가 너무 커지지 않게 오래된 것부터 정리
+      var keys = Object.keys(c);
+      if (keys.length > 40) {
+        keys.sort(function (a, b) { return c[a].at - c[b].at; });
+        keys.slice(0, keys.length - 40).forEach(function (k) { delete c[k]; });
+      }
+      cacheWrite(c);
+      return byDate;
+    }).catch(function (e) {
+      // 온라인 오류시 빈 결과 반환
+      return {};
+    });
+  }
+
+  function todayMeals(school) {
+    var k = ymd(new Date());
+    return meals(school, k, k).then(function (m) { return m[k] || []; });
+  }
+
+  /** 이번 주(월~금) 급식 */
+  function weekMeals(school) {
+    var d = new Date(); d.setHours(0, 0, 0, 0);
+    var dow = (d.getDay() + 6) % 7;
+    var mon = new Date(d.getTime()); mon.setDate(mon.getDate() - dow);
+    var fri = new Date(mon.getTime()); fri.setDate(fri.getDate() + 4);
+    return meals(school, ymd(mon), ymd(fri));
+  }
+
+  function clearCache() { try { localStorage.removeItem(MEAL_CACHE); } catch (e) { /* 무시 */ } }
+
+  /* ----------------------------------------------------------- 시간표 */
+
+  /* 학교급마다 API가 다르고, 응답 컬럼 이름도 조금씩 다르다 */
+  var TIMETABLE_ENDPOINT = {
+    '초등학교': 'elsTimetable',
+    '중학교': 'misTimetable',
+    '고등학교': 'hisTimetable'
+  };
+
+  function timetableCacheRead() {
+    try { return JSON.parse(localStorage.getItem(TIMETABLE_CACHE) || '{}'); } catch (e) { return {}; }
+  }
+  function timetableCacheWrite(o) {
+    try { localStorage.setItem(TIMETABLE_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  /** from~to 구간, 특정 학년·반의 시간표를 날짜별로 묶어 돌려준다.
+   *  대학교·기타는 나이스에 시간표 API가 없어 빈 결과를 준다. */
+  function timetable(school, grade, klass, from, to) {
+    if (!school) return Promise.resolve({});
+
+    var endpoint = TIMETABLE_ENDPOINT[school.level];
+    if (!endpoint || !school.eduCode || !school.schoolCode || !grade) {
+      return Promise.resolve({});
+    }
+
+    var f = from || ymd(new Date());
+    var t = to || f;
+    var ck = endpoint + '|' + (school.schoolCode || school.name) + '|' + grade + '|' + (klass || '') + '|' + f + '|' + t;
+
+    var cache = timetableCacheRead();
+    if (cache[ck] && (Date.now() - cache[ck].at) < 6 * 3600 * 1000) {
+      return Promise.resolve(cache[ck].data);
+    }
+
+    return call(endpoint, {
+      pIndex: 1, pSize: 100,
+      ATPT_OFCDC_SC_CODE: school.eduCode,
+      SD_SCHUL_CODE: school.schoolCode,
+      GRADE: grade,
+      CLASS_NM: klass || '',
+      TI_FROM_YMD: f,
+      TI_TO_YMD: t
+    }, endpoint).then(function (rows) {
+      var byDate = {};
+      rows.forEach(function (r) {
+        var d = r.ALL_TI_YMD;
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push({
+          date: d,
+          period: parseInt(r.PERIO, 10) || 0,
+          subject: (r.ITRT_CNTNT || '').trim(),
+          classroom: (r.CLRM_NM || '').trim()
+        });
+      });
+      Object.keys(byDate).forEach(function (d) {
+        byDate[d].sort(function (a, b) { return a.period - b.period; });
+      });
+
+      var c = timetableCacheRead();
+      c[ck] = { at: Date.now(), data: byDate };
+      var keys = Object.keys(c);
+      if (keys.length > 40) {
+        keys.sort(function (a, b) { return c[a].at - c[b].at; });
+        keys.slice(0, keys.length - 40).forEach(function (k) { delete c[k]; });
+      }
+      timetableCacheWrite(c);
+      return byDate;
+    }).catch(function () {
+      return {};
+    });
+  }
+
+  function todayTimetable(school, grade, klass) {
+    var k = ymd(new Date());
+    return timetable(school, grade, klass, k, k).then(function (m) { return m[k] || []; });
+  }
+
+  /** 이번 주(월~금) 시간표 */
+  function weekTimetable(school, grade, klass) {
+    var d = new Date(); d.setHours(0, 0, 0, 0);
+    var dow = (d.getDay() + 6) % 7;
+    var mon = new Date(d.getTime()); mon.setDate(mon.getDate() - dow);
+    var fri = new Date(mon.getTime()); fri.setDate(fri.getDate() + 4);
+    return timetable(school, grade, klass, ymd(mon), ymd(fri));
+  }
+
+  function clearTimetableCache() { try { localStorage.removeItem(TIMETABLE_CACHE); } catch (e) { /* 무시 */ } }
+
+  /* ----------------------------------------------------------- 학사일정
+   *
+   * SchoolSchedule 은 행사명(EVENT_NM)을 학교가 자유롭게 적어 넣는다.
+   * "중간고사" 를 "1학기 중간고사", "지필평가(1차)", "2학년 중간고사" 처럼
+   * 제각각 쓰고 표준 코드가 없다. 그래서 이름을 정규식으로 훑어 갈래만 나누고,
+   * 화면에는 학교가 올린 원래 이름을 그대로 보여 준다 — 우리가 고쳐 쓰지 않는다.
+   * (갈래를 잘못 잡아도 이름은 정확하므로 사용자가 바로 알아본다) */
+
+  var SCHEDULE_CACHE = 'neurostudy.schcache.v1';
+
+  /* 위에서부터 순서대로 본다. "영어듣기평가" 가 '평가' 때문에 시험으로 빠지지
+   * 않도록 듣기를 먼저 두었다. */
+  var EVENT_KINDS = [
+    { id: 'listen', label: '영어듣기', icon: '🎧', re: /(영어\s*듣기|듣기\s*평가|듣기평가)/ },
+    { id: 'mock',   label: '모의고사', icon: '📝', re: /(전국연합|학력평가|모의고사|모의평가|대학수학능력|수능)/ },
+    { id: 'exam',   label: '시험',     icon: '📕', re: /(중간고사|기말고사|지필|고사|평가기간|평가주간|수행평가)/ },
+    { id: 'break',  label: '방학·개학', icon: '🏖️', re: /(방학|개학|종업)/ },
+    { id: 'off',    label: '휴업일',   icon: '🏠', re: /(휴업|재량|휴일)/ },
+    { id: 'event',  label: '학사일정', icon: '🏫', re: null }
+  ];
+
+  var KIND_OFF = EVENT_KINDS[4];
+  var KIND_ETC = EVENT_KINDS[EVENT_KINDS.length - 1];
+
+  function eventKind(name, subtractDay) {
+    for (var i = 0; i < EVENT_KINDS.length; i++) {
+      if (EVENT_KINDS[i].re && EVENT_KINDS[i].re.test(name)) return EVENT_KINDS[i];
+    }
+    // 수업공제일(공휴일·휴업일)로 표시된 날은 이름이 무엇이든 쉬는 날이다
+    return subtractDay ? KIND_OFF : KIND_ETC;
+  }
+
+  /** 달력 칸에 넣을 두 글자 요약. 학교가 적은 이름에서 뽑는다. */
+  function eventShort(name, kindId) {
+    if (/중간/.test(name)) return '중간';
+    if (/기말/.test(name)) return '기말';
+    if (kindId === 'listen') return '듣기';
+    if (kindId === 'mock') return '모의';
+    if (kindId === 'exam') return '시험';
+    return '';
+  }
+
+  var GRADE_YN = ['ONE_GRADE_EVENT_YN', 'TWO_GRADE_EVENT_YN', 'THREE_GRADE_EVENT_YN',
+                  'FOUR_GRADE_EVENT_YN', 'FIVE_GRADE_EVENT_YN', 'SIX_GRADE_EVENT_YN'];
+
+  /** 내 학년 행사인가. 학년 표시가 하나도 없으면 전교 행사로 본다. */
+  function forGrade(row, grade) {
+    var any = false, i;
+    for (i = 0; i < GRADE_YN.length; i++) if (row[GRADE_YN[i]] === 'Y') any = true;
+    if (!any) return true;
+    var g = parseInt(grade, 10);
+    if (!(g >= 1 && g <= 6)) return true;   // 학년을 모르면 걸러 내지 않는다
+    return row[GRADE_YN[g - 1]] === 'Y';
+  }
+
+  function scheduleCacheRead() {
+    try { return JSON.parse(localStorage.getItem(SCHEDULE_CACHE) || '{}'); } catch (e) { return {}; }
+  }
+  function scheduleCacheWrite(o) {
+    try { localStorage.setItem(SCHEDULE_CACHE, JSON.stringify(o)); } catch (e) { /* 무시 */ }
+  }
+
+  /**
+   * from~to (YYYYMMDD) 구간의 학사일정을 날짜별로 묶어 돌려준다.
+   * 학교 코드가 없으면(목록에서 고르지 않았으면) 조회할 수 없다.
+   */
+  function schedule(school, from, to, grade) {
+    if (!school || !school.eduCode || !school.schoolCode) return Promise.resolve({});
+
+    var f = from || ymd(new Date());
+    var t = to || f;
+    var ck = school.schoolCode + '|' + (grade || '') + '|' + f + '|' + t;
+
+    var cache = scheduleCacheRead();
+    /* 학사일정은 학기 초에 정해지고 거의 바뀌지 않는다 — 급식(6시간)보다 길게 잡는다.
+     * 중간에 일정이 바뀌면 설정의 [캐시 비우기] 로 즉시 다시 받을 수 있다. */
+    if (cache[ck] && (Date.now() - cache[ck].at) < 24 * 3600 * 1000) {
+      return Promise.resolve(cache[ck].data);
+    }
+
+    return call('SchoolSchedule', {
+      pIndex: 1, pSize: 300,
+      ATPT_OFCDC_SC_CODE: school.eduCode,
+      SD_SCHUL_CODE: school.schoolCode,
+      AA_FROM_YMD: f, AA_TO_YMD: t
+    }, 'SchoolSchedule').then(function (rows) {
+      var byDate = {};
+      rows.forEach(function (r) {
+        if (!forGrade(r, grade)) return;
+        var name = String(r.EVENT_NM || '').trim();
+        if (!name) return;
+
+        var kind = eventKind(name, String(r.SBTR_DD_SC_NM || '').trim());
+        var d = String(r.AA_YMD || '').trim();
+        if (!/^\d{8}$/.test(d)) return;
+
+        if (!byDate[d]) byDate[d] = [];
+        // 같은 날 같은 행사가 학년별로 여러 줄 올 수 있다
+        var dup = byDate[d].some(function (x) { return x.name === name; });
+        if (dup) return;
+
+        byDate[d].push({
+          date: d, name: name,
+          kind: kind.id, label: kind.label, icon: kind.icon,
+          short: eventShort(name, kind.id),
+          detail: String(r.EVENT_CNTNT || '').trim()
+        });
+      });
+
+      var c = scheduleCacheRead();
+      c[ck] = { at: Date.now(), data: byDate };
+      var keys = Object.keys(c);
+      if (keys.length > 24) {
+        keys.sort(function (a, b) { return c[a].at - c[b].at; });
+        keys.slice(0, keys.length - 24).forEach(function (k) { delete c[k]; });
+      }
+      scheduleCacheWrite(c);
+      return byDate;
+    })['catch'](function () { return {}; });
+  }
+
+  /** 그 달 1일~말일 */
+  function monthSchedule(school, year, month0, grade) {
+    return schedule(school,
+      ymd(new Date(year, month0, 1)),
+      ymd(new Date(year, month0 + 1, 0)), grade);
+  }
+
+  /** 오늘부터 days 일 뒤까지 — 다가오는 시험을 D-day 로 띄우는 데 쓴다 */
+  function upcomingSchedule(school, days, grade) {
+    var a = new Date(); a.setHours(0, 0, 0, 0);
+    var b = new Date(a.getTime()); b.setDate(b.getDate() + (days || 120));
+    return schedule(school, ymd(a), ymd(b), grade);
+  }
+
+  function clearScheduleCache() {
+    try { localStorage.removeItem(SCHEDULE_CACHE); } catch (e) { /* 무시 */ }
+  }
+
+  /** 설정 화면에서 키가 살아 있는지 확인할 때 쓴다 */
+  function testKey() {
+    return call('schoolInfo', { pIndex: 1, pSize: 1, SCHUL_NM: '서울' }, 'schoolInfo')
+      .then(function (rows) { return { ok: true, count: rows.length }; });
+  }
+
+  global.Neis = {
+    key: key, setKey: setKey, hasKey: hasKey, DEFAULT_KEY: DEFAULT_KEY,
+    searchSchools: searchSchools,
+    meals: meals, todayMeals: todayMeals, weekMeals: weekMeals,
+    clearCache: clearCache, testKey: testKey,
+    timetable: timetable, todayTimetable: todayTimetable, weekTimetable: weekTimetable,
+    clearTimetableCache: clearTimetableCache, hasTimetable: function (level) { return !!TIMETABLE_ENDPOINT[level]; },
+    schedule: schedule, monthSchedule: monthSchedule, upcomingSchedule: upcomingSchedule,
+    clearScheduleCache: clearScheduleCache, EVENT_KINDS: EVENT_KINDS,
+    ALLERGENS: ALLERGENS, ymd: ymd
+  };
+
+})(window);
