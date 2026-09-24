@@ -268,9 +268,11 @@
   function classUnits() {
     var mineId = myClassId();
     var acc = localClasses();
+    var mySchool = mineId && mineId.school;
 
     if (cloudClassWeek === weekKey(0)) {
       cloudClassRows.forEach(function (r) {
+        if (norm(r.schoolName) !== mySchool) return;
         var k = classKey(r.schoolName, r.level, r.grade, r.klass);
         var cur = acc[k];
         var total = Math.round(r.total);
@@ -291,7 +293,9 @@
       });
     }
 
-    return Object.keys(acc).map(function (k) {
+    return Object.keys(acc).filter(function (k) {
+      return acc[k].schoolOnly === mySchool;
+    }).map(function (k) {
       var u = acc[k];
       u.total = Math.round(u.total);
       u.mine = !!(mineId && k === mineId.key);

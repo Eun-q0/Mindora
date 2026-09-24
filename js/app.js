@@ -7,6 +7,28 @@
   var $ = function (id) { return document.getElementById(id); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
 
+  /* 청주여자고등학교 전용 앱이다. 사용자가 학교를 다시 입력하게 하지 않고
+   * 공개된 학교 기본정보와 나이스 식별자를 한 곳에서만 관리한다. */
+  var DEDICATED_SCHOOL = {
+    name: '청주여자고등학교',
+    level: '고등학교',
+    eduCode: 'M10',
+    schoolCode: '8000069',
+    region: '충청북도',
+    kind: '고등학교',
+    address: '충청북도 청주시 청원구 충청대로107번길 82'
+  };
+
+  function dedicatedSchoolNeis() {
+    return {
+      name: DEDICATED_SCHOOL.name,
+      eduCode: DEDICATED_SCHOOL.eduCode,
+      schoolCode: DEDICATED_SCHOOL.schoolCode,
+      region: DEDICATED_SCHOOL.region,
+      kind: DEDICATED_SCHOOL.kind
+    };
+  }
+
   var state = {
     analysis: null,
     plan: null,
@@ -176,15 +198,32 @@
     ]);
   }
 
-  function migrateProfileRole() {
+  function migrateDedicatedSchoolProfile() {
     var p = Store.profile();
-    if (!p || p.level !== '초등학교') return false;
-    p.level = '학부모';
-    delete p.eligibility;
+    if (!p) return false;
+
+    var old = {
+      nick: p.nick, school: p.school, level: p.level, grade: p.grade,
+      klass: p.klass, goal: p.goal, avatar: p.avatar, eligibility: p.eligibility,
+      neis: p.neis
+    };
+    var movedSchool = p.school !== DEDICATED_SCHOOL.name || p.level !== DEDICATED_SCHOOL.level;
+
+    p.school = DEDICATED_SCHOOL.name;
+    p.level = DEDICATED_SCHOOL.level;
+    p.neis = dedicatedSchoolNeis();
+
+    /* 다른 학교/학부모 프로필에서 넘어온 서버 동의는 새 학교 동의로 간주하지 않는다.
+     * 기존 서버 레코드 삭제를 먼저 예약하고, 청여고에서는 다시 선택하게 한다. */
+    if (movedSchool) {
+      delete p.eligibility;
+      Group.remove(Group.memberId(old));
+      disableParentSharing();
+    }
     Store.saveProfile(p);
-    disableParentSharing();
     return true;
   }
+
 
   /* ============================================================ 라우팅 ==
    * 한 번에 한 페이지만 보여 준다. 길게 스크롤할 필요가 없도록
@@ -208,7 +247,7 @@
     { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true, icon: '📅', desc: '방학·주간 계획표 만들기' },
     { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true, icon: '★', desc: '경험치 · 배지 · 미션' },
     { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true, studentOnly: true, icon: '🏅', desc: '같은 반 순공 시간 등수' },
-    { id: 'secLeague', label: '리그', hash: 'league', tool: true, studentOnly: true, icon: '🏆', desc: '반 대항 · 학교 대항 주간 리그' },
+    { id: 'secLeague', label: '리그', hash: 'league', tool: true, studentOnly: true, icon: '🏆', desc: '청여고 반 대항 주간 리그' },
     { id: 'secReport', label: '리포트', hash: 'report', tool: true, icon: '📈', desc: '주간 학습 리포트' },
     { id: 'secSettings', label: '설정', hash: 'settings', tool: true, icon: '⚙️', desc: '프로필 · 사운드 · 데이터' }
   ];
@@ -343,7 +382,7 @@
     if (!allowed) {
       var p = pageBy(id);
       if (p && p.needAnalysis) toast('먼저 오늘의 데이터를 분석해 주세요.', true);
-      else if (p && p.kidsOnly) toast('학부모 모드 또는 중학교 프로필에서만 열립니다.', true);
+      else if (p && p.kidsOnly) toast('이 기능은 청여고 전용 모드에서 사용하지 않습니다.', true);
       return false;
     }
 
@@ -622,25 +661,19 @@
   /* ============================================================ 프로필 == */
 
   function renderProfileModeFields() {
-    var isParent = $('pfLevel').value === '학부모';
-    $('pfNickLabel').textContent = isParent ? '자녀 별명' : '닉네임';
-    $('pfNickHint').textContent = isParent ? '이 브라우저에만 저장됩니다' : '같은 반 친구들 순위표에 그대로 보입니다';
-    $('pfSchoolLabel').textContent = isParent ? '자녀 학교명' : '학교명';
-    $('pfGradeLabel').textContent = isParent ? '자녀 학년' : '학년';
-    $('pfClassLabel').textContent = isParent ? '자녀 반' : '반';
-    $('pfModeNote').innerHTML = isParent
-      ? '학부모 모드에서는 초등 자녀의 성장·계획·타이머 기능을 이용합니다. 자녀 정보는 <b>이 브라우저에만 저장</b>되고 온라인 순위 기능은 꺼집니다.'
-      : '학생 프로필은 같은 <b>학교 + 학교급 + 학년(+반)</b>이 하나의 그룹이 됩니다.';
-    $('pfEligibilityText').innerHTML = isParent
-      ? '<b>보호자인 본인이 이 프로필을 관리합니다.</b> 학부모 이용 조건을 확인했습니다.'
-      : '<b>학생 이용자는 만 14세 이상입니다.</b> 서비스 이용 조건을 확인했습니다.';
-    $('pfLeagueWrap').classList.toggle('is-hidden', isParent);
-    if (isParent) $('pfLeague').checked = false;
+    $('pfSchool').value = DEDICATED_SCHOOL.name;
+    $('pfLevel').value = DEDICATED_SCHOOL.level;
+    $('pfNickLabel').textContent = '닉네임';
+    $('pfNickHint').textContent = '같은 반 친구들 순위표에 그대로 보입니다';
+    $('pfGradeLabel').textContent = '학년';
+    $('pfClassLabel').textContent = '반';
+    $('pfModeNote').innerHTML = '학년과 반은 <b>청여고 학급 시간표·우리 반 순위·포스트잇</b>에 공통으로 사용됩니다.';
+    $('pfEligibilityText').innerHTML = '<b>학생 이용자는 만 14세 이상입니다.</b> 서비스 이용 조건을 확인했습니다.';
+    $('pfLeagueWrap').classList.remove('is-hidden');
   }
 
   function fillGradeOptions(keepValue) {
-    var level = $('pfLevel').value;
-    var list = Group.GRADES[level] || Group.GRADES['고등학교'];
+    var list = Group.GRADES[DEDICATED_SCHOOL.level];
     $('pfGrade').innerHTML = list.map(function (g) {
       return '<option value="' + esc(g) + '">' + esc(g === '해당 없음' ? g : g + '학년') + '</option>';
     }).join('');
@@ -701,15 +734,16 @@
     if (qq && o.name.indexOf(qq) === 0) shown = '<b>' + esc(qq) + '</b>' + esc(o.name.slice(qq.length));
 
     var attrs = ' data-name="' + esc(o.name) + '"';
-    var sub = '', tag = '', icon = '🏫';
+    var sub = '', tag = '완성', icon = '🏫';
 
+    // 나이스 응답만 학교 코드를 갖는다 — 나이스가 죽었을 때 내장 목록으로
+    // 떨어지면(neis.js) 코드가 없어 급식·시간표 조회로 이어지지 않는다.
     if (o.schoolCode) {
       attrs += ' data-school="' + esc(o.schoolCode) + '" data-edu="' + esc(o.eduCode) + '"' +
                ' data-region="' + esc(o.region) + '" data-kind="' + esc(o.kind) + '" data-level="' + esc(o.level) + '"';
       sub = '<span class="asub">' + esc(o.region) + ' · ' + esc(o.kind) + '</span>';
       tag = '나이스';
-    } else if (o.kind === 'recent') { icon = '🕘'; tag = '이전 입력'; }
-    else { tag = '완성'; }
+    }
 
     return '<button type="button" class="ac-item"' + attrs + '>' +
       '<span class="ai">' + icon + '</span>' +
@@ -732,15 +766,11 @@
   function openAc() {
     var q = $('pfSchool').value;
     var level = schoolLevel($('pfLevel').value);
-    var offline = Group.schoolSuggestions(q, level);
 
-    /* 나이스는 인증키가 없어도 실제 학교를 돌려준다.
-     * 예전에는 키가 있을 때만 물어봐서, 키 없는 사용자에게는
-     * "직접 입력한 학교 + 접미사 붙인 추측" 만 보였다.
-     * 이제 두 글자만 쳐도 실제 학교 목록을 받아 온다. */
+    // 나이스는 인증키가 없어도 실제 학교를 돌려준다. 두 글자 미만은 검색하지 않는다.
     var useNeis = q.trim().length >= 2;
-    paintAc(offline, useNeis);
-    if (!useNeis) return;
+    if (!useNeis) { closeAc(); return; }
+    paintAc([], true);
 
     clearTimeout(acTimer);
     var seq = ++acSeq;
@@ -755,41 +785,18 @@
       };
       Neis.searchSchools(q, level).then(function (rows) {
         if (!stillValid()) return;
-        paintAc(rows.length ? rows.slice(0, 8) : offline, false);
+        paintAc(rows.slice(0, 8), false);
       }).catch(function () {
         if (!stillValid()) return;
-        paintAc(offline, false);                          // 실패하면 오프라인 후보 유지
+        closeAc();
       });
     }, 280);
   }
 
   function initSchoolAc() {
-    var inp = $('pfSchool');
-    inp.addEventListener('input', function () { state.pickedSchool = null; renderSchoolChoiceStatus(); openAc(); });
-    inp.addEventListener('focus', openAc);
-    inp.addEventListener('blur', function () { setTimeout(closeAc, 150); });
-    $('pfLevel').addEventListener('change', function () { if (document.activeElement === inp) openAc(); });
-
-    inp.addEventListener('keydown', function (e) {
-      var items = acItems();
-      if ($('schoolAc').classList.contains('is-hidden') || !items.length) {
-        if (e.key === 'ArrowDown') openAc();
-        return;
-      }
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        acIndex += (e.key === 'ArrowDown' ? 1 : -1);
-        if (acIndex < 0) acIndex = items.length - 1;
-        if (acIndex >= items.length) acIndex = 0;
-        items.forEach(function (b, i) { b.classList.toggle('on', i === acIndex); });
-        items[acIndex].scrollIntoView({ block: 'nearest' });
-      } else if (e.key === 'Enter' && acIndex >= 0) {
-        e.preventDefault();
-        pickAc(items[acIndex]);
-      } else if (e.key === 'Escape') {
-        closeAc();
-      }
-    });
+    $('pfSchool').value = DEDICATED_SCHOOL.name;
+    $('pfLevel').value = DEDICATED_SCHOOL.level;
+    state.pickedSchool = dedicatedSchoolNeis();
   }
 
   function renderProfileChip() {
@@ -807,17 +814,18 @@
     var p = Store.profile();
     if (p) {
       $('pfNick').value = p.nick || '';
-      $('pfSchool').value = p.school || '';
-      $('pfLevel').value = p.level || '고등학교';
-      if (!$('pfLevel').value) $('pfLevel').value = '고등학교';
+      $('pfSchool').value = DEDICATED_SCHOOL.name;
+      $('pfLevel').value = DEDICATED_SCHOOL.level;
       fillGradeOptions(p.grade);
       $('pfClass').value = p.klass || '';
       $('pfGoal').value = p.goal || 25;
-      state.pickedSchool = p.neis || null;
+      state.pickedSchool = dedicatedSchoolNeis();
       syncAllRanges();
       $('pfEligibility').checked = profileEligibility(p);
     } else {
-      state.pickedSchool = null;
+      $('pfSchool').value = DEDICATED_SCHOOL.name;
+      $('pfLevel').value = DEDICATED_SCHOOL.level;
+      state.pickedSchool = dedicatedSchoolNeis();
       fillGradeOptions();
       $('pfEligibility').checked = false;
     }
@@ -830,20 +838,15 @@
 
   function saveProfile() {
     var nick = $('pfNick').value.trim();
-    var school = $('pfSchool').value.trim();
+    var school = DEDICATED_SCHOOL.name;
     if (!nick) { toast('닉네임을 입력해 주세요.', true); $('pfNick').focus(); return; }
-    if (!school) { toast('학교명을 입력해 주세요.', true); $('pfSchool').focus(); return; }
     if (!$('pfEligibility').checked) {
-      toast($('pfLevel').value === '학부모' ? '보호자 이용 확인이 필요합니다.' : '만 14세 이상 이용 확인이 필요합니다.', true);
+      toast('만 14세 이상 이용 확인이 필요합니다.', true);
       $('pfEligibility').focus();
       return;
     }
 
     var prev = Store.profile();
-    var hasNeisSchool = (state.pickedSchool && state.pickedSchool.name === school) ||
-      (prev && prev.neis && prev.neis.name === school);
-    if (!hasNeisSchool && $('pfLevel').value !== '기타' &&
-        !confirm('목록에서 실제 학교를 선택하지 않았습니다. 이대로 저장하면 급식과 학급 시간표를 볼 수 없습니다.\n\n직접 입력한 이름으로 계속할까요?')) return;
 
     /* 학년이 비면 반 리그에 조용히 못 들어간다. 목록이 아직 안 채워진 상태로
      * 저장되는 경우가 있어(선택지가 비어 있으면 value 가 '' 다) 여기서 막는다. */
@@ -854,22 +857,23 @@
       }
     }
 
+    var klass = $('pfClass').value.trim();
+    if (!/^\d+$/.test(klass) || +klass < 1 || +klass > 20) {
+      toast('반을 1~20 사이 숫자로 입력해 주세요.', true); $('pfClass').focus(); return;
+    }
+
     var p = {
       nick: nick, school: school,
-      level: $('pfLevel').value,
+      level: DEDICATED_SCHOOL.level,
       grade: $('pfGrade').value,
-      klass: $('pfClass').value.trim(),
+      klass: klass,
       goal: parseInt($('pfGoal').value, 10),
-      eligibility: $('pfLevel').value === '학부모' ? 'parent' : 'age14'
+      eligibility: 'age14',
+      neis: dedicatedSchoolNeis()
     };
 
     // 프로필 폼은 아바타를 다루지 않는다. 여기서 넘겨받지 않으면 저장할 때마다 꾸민 게 초기화된다.
     if (prev && prev.avatar) p.avatar = prev.avatar;
-
-    // 나이스에서 고른 학교면 급식 조회용 코드를 함께 저장한다.
-    // 이름을 바꿨는데 코드가 그대로면 엉뚱한 학교 급식이 뜨므로 이름이 같을 때만 유지.
-    if (state.pickedSchool && state.pickedSchool.name === school) p.neis = state.pickedSchool;
-    else if (prev && prev.neis && prev.neis.name === school) p.neis = prev.neis;
 
     // 그룹이 바뀌면 이전 내 기록은 새 id 로 옮겨야 하므로 옛 항목을 지운다
     if (prev && Group.memberId(prev) !== Group.memberId(p)) Group.remove(Group.memberId(prev));
@@ -881,7 +885,6 @@
     }
 
     Store.saveProfile(p);
-    if (parentMode(p)) disableParentSharing();
     Store.rememberSchool(school);
     Group.syncSelf();
     renderProfileChip();
@@ -904,8 +907,8 @@
     }
     // 리그 참가를 프로필이 없던 시점(첫 화면)에 이미 켰다면 그때는 보낼 학교가 없어
     // 조용히 넘어갔었다 — 이제 프로필이 생겼으니 한 번 밀어 준다.
-    if (!parentMode(p) && Cloud.enabled()) leagueSync(true);
-    toast(parentMode(p) ? '학부모 모드로 자녀 학습 프로필을 저장했습니다.' : Group.groupLabel(p) + ' 그룹으로 설정했습니다.');
+    if (Cloud.enabled()) leagueSync(true);
+    toast('청여고 ' + p.grade + '학년 ' + p.klass + '반으로 설정했습니다.');
     goPage(prev ? 'secSettings' : 'secHome');
   }
 
@@ -2371,12 +2374,10 @@
     if (!box) return;
     var p = Store.profile();
 
-    /* 나이스는 키가 없어도 급식을 준다. 그래서 더 이상 "연동을 켜라" 고 막지 않는다.
-     * 대신 학교를 목록에서 골라야 학교 코드를 알 수 있으므로 그건 그대로 요구한다. */
+    /* 청여고 나이스 식별자는 프로필에 자동으로 들어간다. */
     if (!p || !p.neis || !p.neis.schoolCode) {
-      box.innerHTML = '<div class="meal-empty">급식을 보려면 프로필에서 <b>학교를 검색해 목록에서 선택</b>해 주세요. ' +
-        '직접 입력한 이름만으로는 학교를 특정할 수 없습니다. ' +
-        '<button type="button" class="btn ghost sm" id="mealGoProfile">학교 다시 고르기</button></div>';
+      box.innerHTML = '<div class="meal-empty">청여고 학교 연결 정보를 확인하지 못했습니다. ' +
+        '<button type="button" class="btn ghost sm" id="mealGoProfile">프로필 다시 저장</button></div>';
       var b = $('mealGoProfile');
       if (b) b.addEventListener('click', function () { openProfile(true); });
       return;
@@ -2422,7 +2423,7 @@
     }).catch(function (err) {
       var msg = String(err && err.message || err);
       box.innerHTML = '<div class="meal-empty">급식을 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
-        '<b>인터넷 연결이나 설정의 API 키를 확인해 주세요.</b></div>';
+        '<b>인터넷 연결을 확인한 뒤 다시 시도해 주세요.</b></div>';
     });
   }
 
@@ -3126,9 +3127,9 @@
       var prof = Store.profile();
       note.innerHTML = (prof && prof.neis && prof.neis.schoolCode)
         ? '중간·기말·모의고사·영어듣기는 <b>나이스 학사일정</b>에서 학교가 올린 이름 그대로 가져옵니다. ' +
-          '일정이 바뀌었다면 <b>설정 → 나이스 연동 → 캐시 비우기</b> 를 누르세요.'
+          '일정이 바뀌었다면 <b>설정 → 청여고 학교 데이터 → 최신 학교 데이터 다시 받기</b>를 누르세요.'
         : '중간·기말·모의고사·영어듣기를 자동으로 채우려면 <b>설정 → 내 프로필</b> 에서 ' +
-          '<b>학교를 검색해 목록에서 선택</b>해 주세요. 이름만 직접 입력하면 학교를 특정할 수 없습니다.';
+          '<b>프로필을 다시 저장</b>해 주세요. 청여고 학교 정보는 자동으로 연결됩니다.';
     }
 
     renderCalDay();
@@ -3302,12 +3303,7 @@
 
   function fillTtGradeOptions(keepValue) {
     var p = Store.profile();
-    var level = p ? p.level : $('pfLevel').value;
-    var list = Group.GRADES[level] || Group.GRADES['고등학교'];
-    $('ttGrade').innerHTML = list.map(function (g) {
-      return '<option value="' + esc(g) + '">' + esc(g === '해당 없음' ? g : g + '학년') + '</option>';
-    }).join('');
-    if (keepValue && list.indexOf(keepValue) >= 0) $('ttGrade').value = keepValue;
+    $('ttGrade').value = keepValue || (p && p.grade) || '1';
   }
 
   function renderTimetable() {
@@ -3315,6 +3311,13 @@
     if (!box) return;
     var p = Store.profile();
     if (!p) return;
+    $('ttGrade').value = p.grade || '1';
+    $('ttClass').value = p.klass || '';
+    if ($('ttProfileClass')) {
+      $('ttProfileClass').textContent = p.klass
+        ? '청여고 ' + p.grade + '학년 ' + p.klass + '반 · 프로필과 연결됨'
+        : '프로필에서 반을 설정하면 시간표를 불러옵니다.';
+    }
 
     if (!Neis.hasTimetable(p.level)) {
       box.innerHTML = '<div class="meal-empty">' + esc(p.level) + '은(는) 나이스 시간표 조회를 지원하지 않습니다.</div>';
@@ -3322,18 +3325,17 @@
     }
 
     if (!p.neis || !p.neis.schoolCode) {
-      box.innerHTML = '<div class="meal-empty">시간표를 보려면 프로필에서 <b>학교를 검색해 목록에서 선택</b>해 주세요. ' +
-        '직접 입력한 이름만으로는 학교를 특정할 수 없습니다. ' +
-        '<button type="button" class="btn ghost sm" id="ttGoProfile">학교 다시 고르기</button></div>';
+      box.innerHTML = '<div class="meal-empty">청여고 학교 연결 정보를 확인하지 못했습니다. ' +
+        '<button type="button" class="btn ghost sm" id="ttGoProfile">프로필 다시 저장</button></div>';
       var b = $('ttGoProfile');
       if (b) b.addEventListener('click', function () { openProfile(true); });
       return;
     }
 
-    var grade = $('ttGrade').value || p.grade;
-    var klass = $('ttClass').value.trim() || p.klass;
+    var grade = p.grade;
+    var klass = p.klass;
     if (!klass) {
-      box.innerHTML = '<div class="meal-empty">반을 입력하면 그 반의 시간표를 볼 수 있습니다. 위에 <b>반</b>을 입력해 주세요.</div>';
+      box.innerHTML = '<div class="meal-empty">시간표를 보려면 <b>설정 → 내 프로필</b>에서 반을 입력해 주세요.</div>';
       return;
     }
 
@@ -3368,14 +3370,12 @@
     }).catch(function (err) {
       var msg = String(err && err.message || err);
       box.innerHTML = '<div class="meal-empty">시간표를 불러오지 못했습니다 — ' + esc(msg) + '<br>' +
-        '<b>인터넷 연결이나 설정의 API 키를 확인해 주세요.</b></div>';
+        '<b>인터넷 연결을 확인한 뒤 다시 시도해 주세요.</b></div>';
     });
   }
 
   function initTimetable() {
     fillTtGradeOptions();
-    $('ttGrade').addEventListener('change', renderTimetable);
-    $('ttClass').addEventListener('change', renderTimetable);
   }
 
   /* ====================================================== 방학 계획표 == */
@@ -4175,6 +4175,11 @@
     var el = $('vpAiTtStatus');
     if (!el) return;
     var p = Store.profile();
+    if ($('vpAiProfileClass')) {
+      $('vpAiProfileClass').textContent = p && p.klass
+        ? '청여고 ' + p.grade + '학년 ' + p.klass + '반 · 프로필과 연결됨'
+        : '프로필에서 반을 설정하면 실제 과목을 반영합니다.';
+    }
 
     if (!$('vpAiUseTimetable').checked) {
       el.innerHTML = '학교 시간은 <b>‘학교’</b> 한 덩어리로만 막아 둡니다.';
@@ -4185,10 +4190,10 @@
       return;
     }
     if (!p.neis || !p.neis.schoolCode) {
-      el.innerHTML = '프로필에서 <b>학교를 고르면</b> 실제 과목명으로 채울 수 있습니다. 지금은 ‘학교’로만 막습니다.';
+      el.innerHTML = '청여고 학교 연결 정보를 확인하지 못해 지금은 ‘학교’로만 막습니다. 프로필을 다시 저장해 주세요.';
       return;
     }
-    var klass = ($('vpAiTtClass').value || '').trim() || (p.klass || '');
+    var klass = p.klass || '';
     if (!klass) {
       el.innerHTML = '<b>반</b>을 입력하면 이번 주 시간표를 불러와 과목명으로 채웁니다.';
       return;
@@ -4200,11 +4205,7 @@
     var sel = $('vpAiTtGrade');
     if (!sel) return;
     var p = Store.profile();
-    var list = Group.GRADES[p ? p.level : '고등학교'] || Group.GRADES['고등학교'];
-    sel.innerHTML = list.map(function (g) {
-      return '<option value="' + esc(g) + '">' + esc(g === '해당 없음' ? g : g + '학년') + '</option>';
-    }).join('');
-    if (keepValue && list.indexOf(keepValue) >= 0) sel.value = keepValue;
+    sel.value = keepValue || (p && p.grade) || '1';
   }
 
   /** 이번 주 시간표를 요일 열(0=월) → 교시 목록으로 바꿔 준다. 못 받으면 null. */
@@ -4213,8 +4214,8 @@
     if (!$('vpAiUseTimetable').checked) return Promise.resolve(null);
     if (!p || !Neis.hasTimetable(p.level) || !p.neis || !p.neis.schoolCode) return Promise.resolve(null);
 
-    var grade = $('vpAiTtGrade').value || p.grade;
-    var klass = ($('vpAiTtClass').value || '').trim() || p.klass;
+    var grade = p.grade;
+    var klass = p.klass;
     if (!grade || !klass) return Promise.resolve(null);
 
     return Neis.weekTimetable(p.neis, grade, klass).then(function (byDate) {
@@ -4610,50 +4611,17 @@
   }
 
   function initNeis() {
-    $('neisKey').value = Neis.key();
-
-    var save = function () {
-      Neis.setKey($('neisKey').value);
-      Neis.clearCache();
-      Neis.clearTimetableCache();
-      Neis.clearScheduleCache();
-      resetSchedule();
-      renderMeals();
-      renderTimetable();
-      renderSettingsPage();
-      if (!Neis.hasKey()) neisStatus('키를 비웠습니다. 학교 검색과 급식은 계속 되지만 한 번에 5건까지만 받아 옵니다.', 'info');
-    };
-    $('neisKey').addEventListener('change', save);
-    $('neisKey').addEventListener('blur', save);
-
-    $('neisTest').addEventListener('click', function () {
-      Neis.setKey($('neisKey').value);
-      neisStatus('확인 중…', 'info');
-      Neis.testKey().then(function (r) {
-        neisStatus(Neis.hasKey()
-          ? '✅ 키가 정상입니다. 한 번에 30건까지 받아 옵니다.'
-          : '✅ 키 없이도 연결됩니다. 한 번에 5건까지 받아 오며, 키를 넣으면 30건으로 늘어납니다.', 'ok');
-        renderMeals();
-        renderTimetable();
-      }).catch(function (e) {
-        neisStatus('❌ 연결 실패 — ' + esc(String(e.message || e)) +
-          '<br>키가 맞는지, 인터넷이 연결돼 있는지 확인해 주세요.', 'bad');
-      });
-    });
-
-    $('neisDeleteKey').addEventListener('click', function () {
-      if (!Neis.hasKey()) { toast('저장된 나이스 인증키가 없습니다.'); return; }
-      if (!confirm('이 브라우저에 저장된 나이스 인증키를 삭제할까요?\n학교 검색·급식·시간표는 키 없이도 제한된 범위에서 계속 동작합니다.')) return;
-      $('neisKey').value = '';
+    /* 전용 학교 조회는 공개 호출 범위로 충분하다. 예전 버전에서 사용자가 넣은
+     * 개인 키가 남아 있다면 더는 필요 없으므로 브라우저 저장소에서도 지운다. */
+    if (Neis.hasKey()) {
       Neis.setKey('');
       Neis.clearCache();
       Neis.clearTimetableCache();
       Neis.clearScheduleCache();
       resetSchedule();
-      neisStatus('인증키를 삭제했습니다. 키 없는 조회로 전환했습니다.', 'ok');
-      renderMeals();
-      renderTimetable();
-    });
+    }
+    $('neisKey').value = '';
+    neisStatus('✅ 청주여자고등학교 학교 데이터에 자동 연결됩니다.', 'ok');
 
     $('neisClearCache').addEventListener('click', function () {
       Neis.clearCache();
@@ -4663,7 +4631,7 @@
       renderMeals();
       renderTimetable();
       renderCalendar();
-      toast('급식·시간표·학사일정 캐시를 비웠습니다.');
+      toast('청여고 학교 데이터를 새로 불러옵니다.');
     });
   }
 
@@ -4957,7 +4925,6 @@
     var min = avMin();
     var opened = Avatar.borderIndexFor(min);
 
-    function bySex(list, sex) { return list.filter(function (x) { return x.sex === sex; }); }
     function opts(kind, list) {
       return list.map(function (it) { return avOption(kind, it, avDraft[kind] === it.id); }).join('');
     }
@@ -4973,8 +4940,8 @@
     }
 
     var html =
-      avGroup('캐릭터 — 남학생', '3종', opts('char', bySex(Avatar.CHARS, 'm'))) +
-      avGroup('캐릭터 — 여학생', '5종', opts('char', bySex(Avatar.CHARS, 'f'))) +
+      avGroup('청여고 캐릭터', '동복 4종·하복 1종 중에서 골라요', opts('char', Avatar.CHARS)) +
+      avGroup('착용 아이템', '핀을 달거나 벗을 수 있어요', opts('item', Avatar.ITEMS)) +
       avGroup('테두리 색', '공부한 시간이 쌓이면 열려요', Avatar.BORDERS.map(function (b, i) {
         var locked = i > opened;
         return avOption('border', b, avDraft.border === b.id, locked,
@@ -5759,29 +5726,27 @@
     wrap.classList.toggle('is-hidden', b.mode !== 'class');
     if (b.mode !== 'class') return;
 
-    var schools = [], grades = [];
+    var grades = [];
     b.ranked.forEach(function (r) {
-      if (r.schoolOnly && schools.indexOf(r.schoolOnly) < 0) schools.push(r.schoolOnly);
       if (r.grade && grades.indexOf(r.grade) < 0) grades.push(r.grade);
     });
-    schools.sort();
     grades.sort(function (x, y) { return parseInt(x, 10) - parseInt(y, 10); });
 
     var sSel = $('lgFilterSchool'), gSel = $('lgFilterGrade');
-    sSel.innerHTML = '<option value="">전체 학교</option>' + schools.map(function (s) {
-      return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
-    }).join('');
+    sSel.innerHTML = '<option value="' + esc(DEDICATED_SCHOOL.name) + '">' + esc(DEDICATED_SCHOOL.name) + '</option>';
     gSel.innerHTML = '<option value="">전체 학년</option>' + grades.map(function (g) {
       return '<option value="' + esc(g) + '">' + esc(g) + '학년</option>';
     }).join('');
-    sSel.value = state.lgSchool || '';
+    sSel.value = DEDICATED_SCHOOL.name;
     gSel.value = state.lgGrade || '';
   }
 
   function renderLeague() {
     if (!$('lgBoard')) return;
 
-    var b = League.board(state.leagueMode);
+    // 청여고 전용 화면에서는 이전 학교 대항 판을 다시 열지 않는다.
+    state.leagueMode = 'class';
+    var b = League.board('class');
     if (!b) return;                        // 프로필 전에는 그릴 게 없다
 
     $$('#lgModes .lg-mode').forEach(function (btn) {
@@ -5825,9 +5790,7 @@
     var countUnit = b.mode === 'class' ? '개 반' : '개교';
     var gapTxt, gapCls = b.myZone;
     if (b.solo) {
-      gapTxt = b.mode === 'class'
-        ? '아직 우리 반만 참가하고 있어요. 같은 학교 다른 반 친구가 참가하면 순위가 생깁니다.'
-        : '아직 우리 학교만 참가하고 있어요. 다른 학교 친구가 참가하면 순위가 생깁니다.';
+      gapTxt = '아직 우리 반만 참가하고 있어요. 청여고 다른 반 친구가 참가하면 순위가 생깁니다.';
       gapCls = 'stay';
     } else if (!b.ranked3) {
       gapTxt = b.ahead
@@ -5951,7 +5914,7 @@
         ? '학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다. ' +
           '학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며, ' +
           '같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b> ' +
-          '학생 이용자는 만 14세 이상이어야 합니다. 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.'
+          '학생 이용자는 만 14세 이상이어야 합니다. 나중에 <b>설정 → 청여고 반 대항전 연결</b>에서 언제든 켜고 끌 수 있습니다.'
         : '서버가 아직 연결돼 있지 않아 지금은 켤 수 없습니다. 나중에 <b>설정</b> 화면에서 다시 시도해 주세요.';
     }
 
@@ -7307,7 +7270,7 @@
   }
 
   function init() {
-    migrateProfileRole();
+    migrateDedicatedSchoolProfile();
     moveOptionalDailyCards();
     initRanges(); initSegs(); initClock(); initTimer(); initStudyFeedback(); initSound(); initSchoolAc(); initNeis(); initCloud(); initBackupCard(); initTimetable(); initVacPlan(); initGoalCalendar();
     initMore();

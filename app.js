@@ -247,7 +247,7 @@
     { id: 'secVacPlan', label: '계획표', hash: 'vacplan', tool: true, icon: '📅', desc: '방학·주간 계획표 만들기' },
     { id: 'secKids', label: '내 성장', hash: 'grow', kidsOnly: true, tool: true, icon: '★', desc: '경험치 · 배지 · 미션' },
     { id: 'secGroup', label: '랭킹', hash: 'rank', tool: true, studentOnly: true, icon: '🏅', desc: '같은 반 순공 시간 등수' },
-    { id: 'secLeague', label: '리그', hash: 'league', tool: true, studentOnly: true, icon: '🏆', desc: '반 대항 · 학교 대항 주간 리그' },
+    { id: 'secLeague', label: '리그', hash: 'league', tool: true, studentOnly: true, icon: '🏆', desc: '청여고 반 대항 주간 리그' },
     { id: 'secReport', label: '리포트', hash: 'report', tool: true, icon: '📈', desc: '주간 학습 리포트' },
     { id: 'secSettings', label: '설정', hash: 'settings', tool: true, icon: '⚙️', desc: '프로필 · 사운드 · 데이터' }
   ];
@@ -4940,9 +4940,8 @@
     }
 
     var html =
-      avGroup('청여고 캐릭터', '머리 모양을 골라요', opts('char', Avatar.CHARS)) +
-      avGroup('교복', '캐릭터와 별도로 바꿀 수 있어요', opts('uniform', Avatar.UNIFORMS)) +
-      avGroup('착용 아이템', '하나씩 착용하거나 벗을 수 있어요', opts('item', Avatar.ITEMS)) +
+      avGroup('청여고 캐릭터', '동복 4종·하복 1종 중에서 골라요', opts('char', Avatar.CHARS)) +
+      avGroup('착용 아이템', '핀을 달거나 벗을 수 있어요', opts('item', Avatar.ITEMS)) +
       avGroup('테두리 색', '공부한 시간이 쌓이면 열려요', Avatar.BORDERS.map(function (b, i) {
         var locked = i > opened;
         return avOption('border', b, avDraft.border === b.id, locked,
@@ -5727,29 +5726,27 @@
     wrap.classList.toggle('is-hidden', b.mode !== 'class');
     if (b.mode !== 'class') return;
 
-    var schools = [], grades = [];
+    var grades = [];
     b.ranked.forEach(function (r) {
-      if (r.schoolOnly && schools.indexOf(r.schoolOnly) < 0) schools.push(r.schoolOnly);
       if (r.grade && grades.indexOf(r.grade) < 0) grades.push(r.grade);
     });
-    schools.sort();
     grades.sort(function (x, y) { return parseInt(x, 10) - parseInt(y, 10); });
 
     var sSel = $('lgFilterSchool'), gSel = $('lgFilterGrade');
-    sSel.innerHTML = '<option value="">전체 학교</option>' + schools.map(function (s) {
-      return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
-    }).join('');
+    sSel.innerHTML = '<option value="' + esc(DEDICATED_SCHOOL.name) + '">' + esc(DEDICATED_SCHOOL.name) + '</option>';
     gSel.innerHTML = '<option value="">전체 학년</option>' + grades.map(function (g) {
       return '<option value="' + esc(g) + '">' + esc(g) + '학년</option>';
     }).join('');
-    sSel.value = state.lgSchool || '';
+    sSel.value = DEDICATED_SCHOOL.name;
     gSel.value = state.lgGrade || '';
   }
 
   function renderLeague() {
     if (!$('lgBoard')) return;
 
-    var b = League.board(state.leagueMode);
+    // 청여고 전용 화면에서는 이전 학교 대항 판을 다시 열지 않는다.
+    state.leagueMode = 'class';
+    var b = League.board('class');
     if (!b) return;                        // 프로필 전에는 그릴 게 없다
 
     $$('#lgModes .lg-mode').forEach(function (btn) {
@@ -5793,9 +5790,7 @@
     var countUnit = b.mode === 'class' ? '개 반' : '개교';
     var gapTxt, gapCls = b.myZone;
     if (b.solo) {
-      gapTxt = b.mode === 'class'
-        ? '아직 우리 반만 참가하고 있어요. 같은 학교 다른 반 친구가 참가하면 순위가 생깁니다.'
-        : '아직 우리 학교만 참가하고 있어요. 다른 학교 친구가 참가하면 순위가 생깁니다.';
+      gapTxt = '아직 우리 반만 참가하고 있어요. 청여고 다른 반 친구가 참가하면 순위가 생깁니다.';
       gapCls = 'stay';
     } else if (!b.ranked3) {
       gapTxt = b.ahead
@@ -5919,7 +5914,7 @@
         ? '학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다. ' +
           '학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며, ' +
           '같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b> ' +
-          '학생 이용자는 만 14세 이상이어야 합니다. 나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.'
+          '학생 이용자는 만 14세 이상이어야 합니다. 나중에 <b>설정 → 청여고 반 대항전 연결</b>에서 언제든 켜고 끌 수 있습니다.'
         : '서버가 아직 연결돼 있지 않아 지금은 켤 수 없습니다. 나중에 <b>설정</b> 화면에서 다시 시도해 주세요.';
     }
 

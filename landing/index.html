@@ -38,7 +38,7 @@
       "applicationCategory": "EducationalApplication",
       "operatingSystem": "Web (PWA)",
       "inLanguage": "ko",
-      "description": "수면·피로·스트레스 등 오늘 상태를 바탕으로 학습 준비도 참고값을 만들고, 무엇부터 몇 분 공부할지 정리해 주는 무료 웹 학습 코치입니다.",
+      "description": "청주여자고등학교 학생을 위한 학습 준비도·시간표·급식 웹앱입니다.",
       "image": "https://www.mindora.co.kr/og-cover.png",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" },
       "featureList": [
@@ -46,7 +46,7 @@
         "과목별 시간 배분과 우선순위",
         "컨디션 맞춤 뽀모도로 타이머",
         "실시간 합성 집중 사운드 10종",
-        "우리 반·학교 순공 시간 리그",
+        "청여고 반 대항 순공 시간 리그",
         "주간 학습 리포트",
         "방학 계획표 자동 배분",
         "급식·학사일정 자동 표시"
@@ -62,11 +62,11 @@
         { "@type": "Question", "name": "앱을 설치해야 하나요?",
           "acceptedAnswer": { "@type": "Answer", "text": "아니요, 브라우저에서 그대로 돌아갑니다. 홈 화면에 추가하면 앱처럼 전체 화면으로 열리고, 인터넷이 끊겨도 대부분의 기능이 동작합니다." } },
         { "@type": "Question", "name": "친구들과 등수는 어떻게 겨루나요?",
-          "acceptedAnswer": { "@type": "Answer", "text": "학교 리그에 동의하면 학교별 주간 순공 시간이 집계됩니다. 학급 대항전에도 별도로 동의하면 같은 학교·학년·반 친구들과 자동으로 순위표가 만들어지며, 닉네임과 학급 정보가 전송된다는 안내를 먼저 확인합니다." } },
-        { "@type": "Question", "name": "초등학생·중학생도 쓸 수 있나요?",
-          "acceptedAnswer": { "@type": "Answer", "text": "학교급을 초등학교나 중학교로 고르면 성장 모드가 켜집니다. 순공 1분이 1 경험치가 되고, 레벨이 오르면 캐릭터가 자라며, 배지 16종과 주간 도장판이 생깁니다. 설명 문구도 쉬운 말로 바뀝니다." } },
+          "acceptedAnswer": { "@type": "Answer", "text": "청여고 학생이 리그와 학급 대항전에 각각 동의하면 학년·반별 집계가 표시됩니다. 닉네임과 학급 정보가 서버로 전송됩니다." } },
+        { "@type": "Question", "name": "청여고 학생만 쓸 수 있나요?",
+          "acceptedAnswer": { "@type": "Answer", "text": "청주여자고등학교의 급식·시간표·학급 기능에 맞춘 앱입니다. 현재 재학 여부를 인증하는 기능은 없습니다." } },
         { "@type": "Question", "name": "기기를 바꾸면 기록이 사라지나요?",
-          "acceptedAnswer": { "@type": "Answer", "text": "기록은 그 브라우저 안에 저장되므로, 옮길 때는 설정에서 백업 파일을 내려받아 새 기기에서 불러오면 됩니다." } },
+          "acceptedAnswer": { "@type": "Answer", "text": "기록은 기본적으로 브라우저에 저장됩니다. 백업 파일로 옮기거나 복구 코드를 직접 만든 뒤 암호화된 백업을 서버에 저장할 수 있습니다." } },
         { "@type": "Question", "name": "점수가 낮게 나오면 어떻게 되나요?",
           "acceptedAnswer": { "@type": "Answer", "text": "더 몰아붙이는 대신 집중 시간을 줄입니다. 38점 아래면 15분 집중 / 10분 휴식의 회복 우선 모드로 바뀌고, 난도 높은 과제 대신 오답노트처럼 부담이 적은 학습법을 제안합니다." } }
       ]
@@ -467,7 +467,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
   <section class="hero">
     <div class="wrap">
   
-      <div class="hero-kicker up">30초 체크 · 자가보고 기반 참고값</div>
+      <div class="hero-kicker up">청주여자고등학교 학생을 위한 학습 앱 · 30초 체크</div>
       <h1>
         <span class="mask" style="--d:40ms"><span>무작정 오래 앉아 있는</span></span>
         <span class="mask" style="--d:150ms"><span class="accent">공부는 그만.</span></span>
@@ -530,8 +530,8 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
       <span class="chip">🧠 학습 준비도 5영역</span><span class="chip">📅 과목별 시간 배분</span>
       <span class="chip">⏳ 컨디션 맞춤 뽀모도로</span><span class="chip">🎧 실시간 합성 집중 사운드</span>
       <span class="chip">🏆 우리 반 순공 리그</span><span class="chip">📊 주간 리포트</span>
-      <span class="chip">🍱 오늘의 급식</span><span class="chip">⭐ 학부모 성장 모드</span>
-      <span class="chip">🔒 기록은 내 기기에만</span><span class="chip">💸 0원</span>
+      <span class="chip">🍱 청여고 급식</span><span class="chip">🎨 캐릭터 꾸미기</span>
+      <span class="chip">🔒 기록은 기본적으로 내 기기에</span><span class="chip">💸 0원</span>
     </div>
   </div>
 
@@ -682,7 +682,7 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <div><b data-count="5" data-suffix="영역">0영역</b><span>매일 확인하는 학습 준비도</span></div>
   
         <div><b data-count="10" data-suffix="종">0종</b><span>실시간 합성 집중 사운드</span></div>
-        <div><b data-count="16" data-suffix="종">0종</b><span>학부모·중학생 성장 배지</span></div>
+        <div><b data-count="5" data-suffix="종">0종</b><span>꾸밀 수 있는 프로필 캐릭터</span></div>
         <div><b data-count="0" data-suffix="원">0원</b><span>가입도 결제도 없음</span></div>
       </div>
     </div>
@@ -720,16 +720,16 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <article class="feat"><div class="ico">📋</div><h3>방학 계획표</h3>
           <p>과목과 학원 시간을 넣으면 일주일 표로 자동 배분됩니다. 손으로 고치고 이미지로 저장해 붙여 두세요.</p></article>
         <article class="feat"><div class="ico">🍱</div><h3>급식 · 학사일정 자동 표시</h3>
-          <p>학교를 한 번 고르면 오늘 급식과 알레르기 정보가 뜨고, 중간·기말·모의고사가 달력에 저절로 올라옵니다.</p>
+          <p>청여고의 오늘 급식과 알레르기 정보가 뜨고, 학교가 등록한 일정이 달력에 표시됩니다.</p>
           <span class="note">나이스에 학교가 올린 일정을 그대로 받아 옵니다</span></article>
         <article class="feat"><div class="ico">🎯</div><h3>목표 · D-day · 학습 캘린더</h3>
           <p>목표 대학과 한 줄 다짐, 시험까지 남은 날, 한 달 치 순공 시간 막대를 홈에서 한눈에 봅니다.</p></article>
         <article class="feat"><div class="ico">📌</div><h3>우리 반 포스트잇</h3>
           <p>같은 반 친구들과 화면 아무 자리에나 붙이는 쪽지. 고른 시간이 지나면 저절로 사라집니다.</p>
           <span class="note">욕설·비하 표현은 붙기 전에 걸러집니다</span></article>
-        <article class="feat"><div class="ico">⭐</div><h3>초·중 성장 모드</h3>
-          <p>학교급을 초·중으로 고르면 경험치·레벨·배지 16종·주간 도장판이 켜지고 설명이 쉬운 말로 바뀝니다.</p>
-          <span class="note">배지는 실제 기록에서만 판정합니다 — 그냥 주는 보상은 없습니다</span></article>
+        <article class="feat"><div class="ico">🎨</div><h3>캐릭터 꾸미기</h3>
+          <p>청여고 동복·하복 캐릭터 다섯 가지 중에서 고르고, 핀을 달거나 공부 시간으로 테두리를 열 수 있습니다.</p>
+          <span class="note">고른 모습은 프로필에 저장됩니다</span></article>
 
       </div>
     </div>
@@ -775,13 +775,13 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <div class="lock">🔒</div>
         <div>
           <h3>공부 기록은 기본적으로 내 브라우저에 저장됩니다</h3>
-          <p>회원가입 없이 시작하며, 리그·관리자 공개는 직접 동의해 켠 경우에만 필요한 항목을 서버로 보냅니다.</p>
+          <p>회원가입 없이 시작하며, 리그·관리자 공개·복구 코드 백업은 각각 선택한 경우에만 서버를 사용합니다.</p>
           <ul>
-            <li>학습 기록·프로필·그룹 데이터는 브라우저 저장소에만 저장됩니다</li>
+            <li>학습 기록·프로필은 기본적으로 이 브라우저에 저장됩니다. 복구 코드를 만들면 암호화한 백업이 서버에도 저장됩니다</li>
             <li>등록한 음악 파일도 기기 안에만 남습니다 (전송 없음)</li>
-            <li>학부모 모드의 초등 자녀 정보는 온라인 순위 기능으로 전송되지 않습니다</li>
+            <li>학교는 청여고로 고정되지만 재학 여부 인증은 하지 않습니다</li>
             <li>학생 리그 공유는 설정에서 언제든 끄고 서버 기록 삭제를 요청할 수 있습니다</li>
-            <li>학교 검색·급식 조회와 선택한 공유 기능 외에는 오프라인에서도 쓸 수 있습니다</li>
+            <li>급식·시간표 조회와 선택한 공유·복구 기능 외에는 오프라인에서도 쓸 수 있습니다</li>
             <li>백업 파일로 내려받아 다른 기기로 옮길 수 있습니다</li>
           </ul>
           <p style="margin-top:16px"><a href="../privacy/" style="color:var(--accent);font-weight:700">개인정보처리방침 전문 보기 →</a></p>
@@ -798,8 +798,8 @@ footer{padding:56px 0 70px; border-top:1px solid var(--line)}
         <details open><summary>정말 무료인가요?</summary><div class="ans"><div><p>네. 결제도 구독도 없고 회원가입도 받지 않습니다. 링크를 열면 바로 씁니다.</p></div></div></details>
         <details><summary>앱을 설치해야 하나요?</summary><div class="ans"><div><p>아니요, 브라우저에서 그대로 돌아갑니다. 홈 화면에 추가하면 앱처럼 전체 화면으로 열리고, 인터넷이 끊겨도 대부분의 기능이 동작합니다.</p></div></div></details>
         <details><summary>친구들과 등수는 어떻게 겨루나요?</summary><div class="ans"><div><p>만 14세 이상 학생이 학교 리그 참가를 직접 켜면 학교명·주차·순공 시간·무작위 기기 번호가 서버로 전송됩니다. 학급 대항전은 학년·반·닉네임 공유에 별도로 동의해야 켜집니다.</p></div></div></details>
-        <details><summary>초등 기능은 어떻게 쓰나요?</summary><div class="ans"><div><p>보호자가 이용 유형에서 <b>학부모 (초등 자녀)</b>를 선택하면 성장 모드가 켜집니다. 자녀의 순공 시간이 경험치가 되고 배지와 주간 도장판을 이용할 수 있습니다. 자녀 정보는 브라우저에만 저장되며 온라인 순위 기능은 제공하지 않습니다.</p></div></div></details>
-        <details><summary>기기를 바꾸면 기록이 사라지나요?</summary><div class="ans"><div><p>기록은 그 브라우저 안에 저장되므로, 옮길 때는 설정에서 백업 파일을 내려받아 새 기기에서 불러오면 됩니다.</p></div></div></details>
+        <details><summary>청여고 학생만 쓸 수 있나요?</summary><div class="ans"><div><p>청주여자고등학교의 급식·시간표·학급 기능에 맞춘 앱입니다. 현재 재학 여부를 인증하지는 않으므로 순위 참여 시 별명을 쓰고 개인 정보는 게시하지 마세요.</p></div></div></details>
+        <details><summary>기기를 바꾸면 기록이 사라지나요?</summary><div class="ans"><div><p>기록은 기본적으로 그 브라우저에 저장됩니다. 설정에서 백업 파일을 내려받거나, 복구 코드를 직접 만들어 암호화한 백업을 서버에 저장한 뒤 새 기기에서 불러올 수 있습니다. 코드를 잃으면 서버 백업은 복구할 수 없습니다.</p></div></div></details>
         <details><summary>점수가 낮게 나오면 어떻게 되나요?</summary><div class="ans"><div><p>더 몰아붙이는 대신 집중 시간을 줄입니다. 38점 아래면 15분 집중 / 10분 휴식의 회복 우선 모드로 바뀌고, 난도 높은 과제 대신 오답노트처럼 부담이 적은 학습법을 제안합니다.</p></div></div></details>
       </div>
     </div>

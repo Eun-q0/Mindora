@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mindora — 오늘의 학습 준비도 코치</title>
+<title>Mindora 청여고 — 오늘의 학습 준비도 코치</title>
 
 <!-- 처음 온 사람에게는 랜딩을 먼저 보여 주고, 이미 쓰는 사람은 곧바로 앱을 연다.
      설치형(PWA) 실행도 곧바로 앱이다.
@@ -50,11 +50,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Do+Hyeon&family=Jua&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
 
 <!-- 링크를 카톡·문자로 보냈을 때 뜨는 미리보기 카드 -->
-<meta name="description" content="수면·스트레스·피로와 시험 일정을 바탕으로 오늘 시작할 과목과 시간을 제안합니다. 설치 없이 링크만 열면 됩니다.">
+<meta name="description" content="청주여자고등학교 학생을 위한 학습 준비도·시간표·급식·학습 루틴 앱입니다.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Mindora">
-<meta property="og:title" content="Mindora — 오늘의 학습 준비도 코치">
-<meta property="og:description" content="오늘 상태를 짧게 확인하고 지금 시작할 과목과 시간을 제안받는 학습 코치입니다.">
+<meta property="og:title" content="Mindora 청여고 — 오늘의 학습 준비도 코치">
+<meta property="og:description" content="청주여자고등학교 학생을 위한 시간표·급식·학습 루틴 앱입니다.">
 <meta property="og:locale" content="ko_KR">
 <!-- 대표 주소는 www. apex 는 여기로 308 리다이렉트된다.
      apex 로 옮기면 안 된다: 저장 기록(localStorage)은 출처별로 분리되므로
@@ -82,7 +82,7 @@
   "applicationCategory": "EducationalApplication",
   "operatingSystem": "Web (PWA)",
   "inLanguage": "ko",
-  "description": "수면·스트레스·피로와 시험 일정을 바탕으로 오늘 시작할 과목과 시간을 제안하는 무료 학습 코치입니다. 설치도 회원가입도 없습니다.",
+  "description": "청주여자고등학교 학생을 위한 학습 준비도·시간표·급식·학습 루틴 앱입니다. 설치도 회원가입도 없습니다.",
   "image": "https://www.mindora.co.kr/og-cover.png",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" },
   "isAccessibleForFree": true,
@@ -111,7 +111,7 @@
   <div class="intro-card">
     <img class="intro-logo" src="icon-512.png" alt="" aria-hidden="true">
     <h2 class="intro-title" id="introTitle">Mindora</h2>
-    <p class="intro-lead">오늘 잘 되는 공부부터 시작하세요.</p>
+    <p class="intro-lead">청여고에서 오늘 잘 되는 공부부터 시작하세요.</p>
     <p class="intro-body">수면·피로·스트레스와 시험 일정을 바탕으로
       오늘 시작할 과목과 공부 시간을 제안합니다.</p>
     <p class="intro-tag">로그인 없이 시작 · 기록은 기본적으로 이 기기에 저장</p>
@@ -133,7 +133,7 @@
       <div class="brand-text">
         <!-- 화면마다 h2 로 제목이 붙으므로, 문서 전체를 대표하는 h1 은 여기 하나만 둔다 -->
         <h1>Mindora</h1>
-        <span>나를 이해하는 학습 루틴</span>
+        <span>청여고 전용 학습 루틴</span>
       </div>
     </button>
     <nav class="steps" id="stepNav" aria-label="학습 단계"></nav>
@@ -267,21 +267,14 @@
     <div class="card wide">
       <div class="card-head"><span class="ci">🗓️</span><h3>학급 시간표</h3></div>
       <div class="card-body">
-        <div class="two-col">
-          <div class="field">
-            <label for="ttGrade">학년</label>
-            <select id="ttGrade" class="input"></select>
-          </div>
-          <div class="field">
-            <label for="ttClass">반</label>
-            <input type="text" id="ttClass" class="input" maxlength="8" placeholder="예) 3">
-          </div>
-        </div>
+        <input type="hidden" id="ttGrade">
+        <input type="hidden" id="ttClass">
+        <p class="school-fixed-line" id="ttProfileClass">프로필의 학년·반 시간표를 불러옵니다.</p>
         <div class="field" id="ttField">
           <label>이번 주 시간표 <em>나이스 교육정보 개방포털</em></label>
           <div id="ttToday" class="meal-box"></div>
         </div>
-        <p class="tiny">반을 바꾸면 그 반의 시간표를 바로 볼 수 있습니다. 비워 두면 내 프로필의 반으로 조회합니다.</p>
+        <p class="tiny">학년·반을 바꾸려면 설정에서 프로필만 한 번 수정하세요. 급식·학사일정·시간표에 함께 반영됩니다.</p>
       </div>
     </div>
 
@@ -293,7 +286,7 @@
   <section id="secProfile" class="section">
     <div class="sec-head">
       <h2><span class="sec-num">00</span> 시작하기</h2>
-      <p>학생은 만 14세 이상부터 이용할 수 있습니다. 초등 기능은 <b>학부모 모드</b>에서 보호자가 자녀의 학습을 관리하는 방식으로 제공합니다.</p>
+      <p>청주여자고등학교 학생을 위한 전용 프로필입니다. 학년과 반만 설정하면 급식·시간표·학급 기능에 함께 적용됩니다.</p>
     </div>
 
     <div class="onboard">
@@ -318,53 +311,40 @@
               학급 대항전을 켜면 이 이름이 같은 반 친구들에게 그대로 보입니다.
               별명이나 별칭을 쓰세요 — 나중에 <b>설정</b>에서 언제든 바꿀 수 있습니다.</p>
           </div>
-          <div class="field">
-            <label for="pfSchool"><span id="pfSchoolLabel">학교명</span> <em>앞 글자만 쳐도 아래에서 고를 수 있어요</em></label>
-            <div class="ac-wrap">
-              <input type="text" id="pfSchool" class="input" maxlength="24" placeholder="예) 한빛" autocomplete="off">
-              <div class="ac-list is-hidden" id="schoolAc"></div>
-            </div>
-            <p class="tiny" id="pfSchoolStatus" role="status" aria-live="polite">목록에서 실제 학교를 선택하면 급식과 학급 시간표를 볼 수 있습니다.</p>
+          <input type="hidden" id="pfSchool" value="청주여자고등학교">
+          <input type="hidden" id="pfLevel" value="고등학교">
+          <div id="schoolAc" class="is-hidden"></div>
+          <div class="school-fixed-card" aria-label="이 앱의 학교">
+            <span class="school-fixed-mark">⚜</span>
+            <span><b>청주여자고등학교</b><small>공립 여자고등학교 · 청주시 청원구 · 백합인을 위한 전용 앱</small></span>
           </div>
           <div class="two-col">
-            <div class="field">
-              <label for="pfLevel">이용 유형</label>
-              <select id="pfLevel" class="input">
-                <option value="학부모">학부모 (초등 자녀)</option>
-                <option value="중학교">중학교 (만 14세 이상)</option>
-                <option value="고등학교" selected>고등학교</option>
-                <option value="대학교">대학교</option>
-                <option value="기타">기타 (재수·검정고시 등)</option>
-              </select>
-            </div>
             <div class="field">
               <label for="pfGrade"><span id="pfGradeLabel">학년</span></label>
               <select id="pfGrade" class="input"></select>
             </div>
-          </div>
-          <div class="two-col">
             <div class="field">
-              <label for="pfClass"><span id="pfClassLabel">반</span> <em>선택</em></label>
-              <input type="text" id="pfClass" class="input" maxlength="8" placeholder="예) 3">
-            </div>
-            <div class="field">
-              <label for="pfGoal">주간 목표 학습 시간</label>
-              <div class="range-row">
-                <input type="range" id="pfGoal" min="1" max="70" step="1" value="25" data-out="pfGoalOut">
-                <output id="pfGoalOut" class="out">25시간</output>
-              </div>
+              <label for="pfClass"><span id="pfClassLabel">반</span></label>
+              <input type="number" id="pfClass" class="input" min="1" max="20" inputmode="numeric" placeholder="예) 2">
             </div>
           </div>
-          <p class="tiny" id="pfModeNote">학생 프로필은 같은 <b>학교 + 학교급 + 학년(+반)</b>이 하나의 그룹이 됩니다.</p>
+          <div class="field">
+            <label for="pfGoal">주간 목표 학습 시간</label>
+            <div class="range-row">
+              <input type="range" id="pfGoal" min="1" max="70" step="1" value="25" data-out="pfGoalOut">
+              <output id="pfGoalOut" class="out">25시간</output>
+            </div>
+          </div>
+          <p class="tiny" id="pfModeNote">학년과 반은 청여고 학급 시간표·우리 반 순위·포스트잇에 공통으로 사용됩니다.</p>
 
           <label class="toggle eligibility-toggle"><input type="checkbox" id="pfEligibility"><span id="pfEligibilityText"><b>학생 이용자는 만 14세 이상입니다.</b> 서비스 이용 조건을 확인했습니다.</span></label>
 
           <div id="pfLeagueWrap">
-          <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
+          <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 리그 서버에 기록을 보냅니다</b> — 학급 대항전은 설정에서 별도로 켭니다</span></label>
           <p class="tiny" id="pfLeagueNote">학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
             학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며,
             같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b>
-            나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
+            나중에 <b>설정 → 청여고 반 대항전 연결</b>에서 언제든 켜고 끌 수 있습니다.</p>
           </div>
 
           <div class="actions">
@@ -875,16 +855,9 @@
 
           <div class="field">
             <label class="toggle"><input type="checkbox" id="vpAiUseTimetable" checked><span><b>학교 시간표 반영</b> — 학교 시간을 과목명(국어·수학…)으로 채웁니다</span></label>
-            <div class="two-col" style="margin-top:10px">
-              <div class="field">
-                <label for="vpAiTtGrade">학년</label>
-                <select id="vpAiTtGrade" class="input"></select>
-              </div>
-              <div class="field">
-                <label for="vpAiTtClass">반</label>
-                <input type="text" id="vpAiTtClass" class="input" maxlength="8" placeholder="예) 3">
-              </div>
-            </div>
+            <select id="vpAiTtGrade" hidden></select>
+            <input type="hidden" id="vpAiTtClass">
+            <p class="school-fixed-line" id="vpAiProfileClass">프로필의 학년·반 시간표를 사용합니다.</p>
             <p class="tiny" id="vpAiTtStatus">—</p>
           </div>
         </div>
@@ -1061,11 +1034,10 @@
 
     <div class="lg-modes" id="lgModes" role="tablist" aria-label="리그 종류">
       <button type="button" class="lg-mode on" data-mode="class" role="tab" aria-selected="true">🏫 반 대항</button>
-      <button type="button" class="lg-mode" data-mode="school" role="tab" aria-selected="false">🏛️ 학교 대항</button>
     </div>
 
     <div class="lg-filters" id="lgFilters">
-      <label class="lg-f">
+      <label class="lg-f is-hidden" aria-hidden="true">
         <span>학교</span>
         <select id="lgFilterSchool" class="input"></select>
       </label>
@@ -1168,9 +1140,9 @@
       </div>
     </div>
 
-    <p class="tiny lg-disclaimer">🔒 <b>리그에는 실제 기록이 있는 반·학교만 올라갑니다.</b> 지어낸 상대는 넣지 않습니다.
-      <b>리그 참가를 켜면</b> 같은 리그를 켠 다른 반·학교의 집계가 서버에서 내려와 순위가 됩니다.
-      <b>끄면</b> 우리 반만 보입니다. 반 대항에 들어가려면 <b>설정 → 학급 대항전</b>도 함께 켜야 합니다.
+    <p class="tiny lg-disclaimer">🔒 <b>청여고에서 실제 기록이 있는 반만 순위에 올라갑니다.</b>
+      <b>리그 참가와 학급 대항전을 켜면</b> 다른 반의 집계가 서버에서 내려옵니다.
+      <b>끄면</b> 이 기기의 기록만 보입니다.
       전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부이며, 학급 대항을 켜면 학교급·학년·반과 닉네임, 그리고 붙인 <b>포스트잇 내용</b>이 더해집니다.
       참가 여부는 [설정]에서 언제든 바꿀 수 있습니다.</p>
   </section>
@@ -1373,25 +1345,20 @@
       </div>
     </div>
 
-    <div class="card wide is-hidden" id="parentPrivacyNote">
-      <div class="card-head"><span class="ci">👨‍👩‍👧</span><h3>학부모 모드</h3></div>
-      <div class="card-body">
-        <p class="tiny" style="margin:0">초등 자녀의 프로필과 학습 기록은 <b>이 브라우저에만 저장</b>됩니다. 학교 리그·학급 대항전·관리자 공개 기능은 사용할 수 없습니다.</p>
-      </div>
-    </div>
+    <div class="is-hidden" id="parentPrivacyNote"></div>
 
     <div class="card wide" id="leagueSettingsCard">
-      <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 참가</h3></div>
+      <div class="card-head"><span class="ci">🏆</span><h3>청여고 반 대항전 연결</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px">이 앱은 원래 모든 기록을 <b>이 브라우저에만</b> 보관합니다.
-          학교 리그에 참가하면 <b>딱 아래 다섯 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
+        <p class="tiny" style="margin:0 0 14px">학습 기록은 기본적으로 <b>이 브라우저에</b> 보관합니다. 복구 코드를 만들면 암호화한 백업이 서버에도 저장됩니다.
+          리그 참가를 켜면 <b>아래 다섯 가지</b>가 서버에 저장됩니다. 청여고의 다른 반과 겨루려면 학급 대항전에도 따로 동의해야 합니다.
           끄면 즉시 전송이 멈춥니다.</p>
 
         <div class="cl-what">
           <div class="cl-yes">
             <p class="cl-h">✅ 전송되는 것</p>
             <ul>
-              <li><b>학교명</b> — 프로필에 입력한 학교</li>
+              <li><b>학교명</b> — 청주여자고등학교</li>
               <li><b>주차</b> — 그 주 월요일 날짜</li>
               <li><b>순공 시간</b> — 그 주 내 합계(분)</li>
               <li><b>기기 번호</b> — 무작위 숫자. 같은 사람을 두 번 세지 않으려고 씁니다.</li>
@@ -1482,24 +1449,14 @@
     </div>
 
     <div class="card wide">
-      <div class="card-head"><span class="ci">🏫</span><h3>나이스(NEIS) 연동</h3></div>
+      <div class="card-head"><span class="ci">🏫</span><h3>청여고 학교 데이터</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px"><b>키 없이도 실제 학교 검색과 급식 조회가 됩니다.</b>
-          다만 나이스가 키 없는 요청은 <b>한 번에 5건</b>까지만 주기 때문에, 흔한 이름으로 찾을 때
-          우리 학교가 목록에 안 보일 수 있습니다.
-          <a href="https://open.neis.go.kr" target="_blank" rel="noopener">open.neis.go.kr</a> 에서 무료 키를 받아 넣으면
-          한 번에 30건까지 받아 와 훨씬 정확해집니다.</p>
-        <div class="field">
-          <label for="neisKey">API 인증키 <em>이 브라우저에만 저장됩니다</em></label>
-          <div class="file-row" style="margin-top:0">
-            <input type="password" id="neisKey" class="input code" placeholder="키를 비우면 연동하지 않습니다" autocomplete="off" style="flex:1;min-width:220px">
-            <button type="button" class="btn sm" id="neisTest">연결 확인</button>
-            <button type="button" class="btn ghost sm" id="neisDeleteKey">인증키 삭제</button>
-            <button type="button" class="btn ghost sm" id="neisClearCache">급식 캐시 비우기</button>
-          </div>
-          <div id="neisStatus" class="neis-status"></div>
-        </div>
-        <p class="tiny">🔒 키는 소스 코드에 포함되지 않고 <b>이 브라우저의 저장소에만</b> 남습니다. 다른 기기나 브라우저에서 쓰려면 그곳에서 한 번 더 입력하면 됩니다.</p>
+        <p class="tiny" style="margin:0 0 12px">청주여자고등학교의 급식·시간표·학사일정을 나이스 교육정보 개방포털에서 자동으로 불러옵니다. 학교 검색이나 개인 API 키 입력은 필요하지 않습니다.</p>
+        <input type="hidden" id="neisKey">
+        <button type="button" class="btn ghost sm" id="neisClearCache">최신 학교 데이터 다시 받기</button>
+        <button type="button" class="is-hidden" id="neisTest" tabindex="-1"></button>
+        <button type="button" class="is-hidden" id="neisDeleteKey" tabindex="-1"></button>
+        <div id="neisStatus" class="neis-status"></div>
       </div>
     </div>
 
@@ -1517,14 +1474,14 @@
           <button type="button" class="btn ghost" id="clearHistory">모든 기록 삭제</button>
         </div>
         <p class="tiny">백업에는 프로필·학습 기록·학습 준비도·공부 후 피드백·개인 실험·그룹·배지·사운드 설정·계획표·리그 티어가 담깁니다.
-          나이스 인증키는 개인 자격 증명이라 <b>백업에 포함하지 않습니다.</b> 새 기기에서는 설정에서 한 번 더 입력하세요.</p>
+          청여고 학교 연결 정보는 앱에 포함되어 있어 별도로 입력하거나 백업할 필요가 없습니다.</p>
         <details class="privacy-details">
           <summary>동의 철회·보관 기간·삭제 방법 보기</summary>
           <p class="tiny">학교 리그·학급 대항전·관리자 공개는 위의 각 스위치에서 서로 별도로 철회할 수 있습니다.
             끄면 새 전송이 즉시 중단되고 해당 공유 기능으로 보낸 서버 기록의 삭제를 요청합니다. 연결 문제로 실패하면 이 기기에 삭제 요청을 보관해 다음 실행 때 다시 시도합니다.
             정기 정리 작업을 설정한 운영 환경에서는 60일이 지난 기록도 삭제하며, 철회 요청의 완료 여부는 각 공유 설정 아래에서 확인할 수 있습니다.
-            이 기기의 로컬 기록은 <b>모든 기록 삭제</b>로 즉시 지울 수 있습니다. 학부모 모드의 초등 자녀 기록은 서버 전송 기능을 사용할 수 없습니다.
-            학교 검색·급식은 나이스(NEIS), 계획표 글꼴은 Google Fonts에 직접 요청됩니다.</p>
+            이 기기의 로컬 기록은 <b>모든 기록 삭제</b>로 즉시 지울 수 있습니다.
+            청여고 급식·시간표·학사일정은 나이스(NEIS), 계획표 글꼴은 Google Fonts에 직접 요청됩니다.</p>
         </details>
       </div>
     </div>

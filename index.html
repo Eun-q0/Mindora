@@ -340,11 +340,11 @@
           <label class="toggle eligibility-toggle"><input type="checkbox" id="pfEligibility"><span id="pfEligibilityText"><b>학생 이용자는 만 14세 이상입니다.</b> 서비스 이용 조건을 확인했습니다.</span></label>
 
           <div id="pfLeagueWrap">
-          <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 학교 리그에 참가합니다</b> — 다른 학교와 순공 시간으로 순위를 겨룹니다</span></label>
+          <label class="toggle" style="margin-top:14px"><input type="checkbox" id="pfLeague"><span><b>🏆 리그 서버에 기록을 보냅니다</b> — 학급 대항전은 설정에서 별도로 켭니다</span></label>
           <p class="tiny" id="pfLeagueNote">학교명·주차·주간 순공 시간·무작위 기기 번호·랭킹 숨김 여부가 서버로 전송됩니다. 시험·수면·컨디션 같은 개인 기록은 전송되지 않습니다.
             학년·반과 <b>닉네임</b>은 <b>설정 → 학급 대항전</b>을 따로 켠 경우에만 함께 전송되며,
             같은 반 친구들 순위표에 그대로 보입니다 — <b>그래서 실명은 권하지 않습니다.</b>
-            나중에 <b>설정 → 학교 리그 참가</b>에서 언제든 켜고 끌 수 있습니다.</p>
+            나중에 <b>설정 → 청여고 반 대항전 연결</b>에서 언제든 켜고 끌 수 있습니다.</p>
           </div>
 
           <div class="actions">
@@ -1034,11 +1034,10 @@
 
     <div class="lg-modes" id="lgModes" role="tablist" aria-label="리그 종류">
       <button type="button" class="lg-mode on" data-mode="class" role="tab" aria-selected="true">🏫 반 대항</button>
-      <button type="button" class="lg-mode" data-mode="school" role="tab" aria-selected="false">🏛️ 학교 대항</button>
     </div>
 
     <div class="lg-filters" id="lgFilters">
-      <label class="lg-f">
+      <label class="lg-f is-hidden" aria-hidden="true">
         <span>학교</span>
         <select id="lgFilterSchool" class="input"></select>
       </label>
@@ -1141,9 +1140,9 @@
       </div>
     </div>
 
-    <p class="tiny lg-disclaimer">🔒 <b>리그에는 실제 기록이 있는 반·학교만 올라갑니다.</b> 지어낸 상대는 넣지 않습니다.
-      <b>리그 참가를 켜면</b> 같은 리그를 켠 다른 반·학교의 집계가 서버에서 내려와 순위가 됩니다.
-      <b>끄면</b> 우리 반만 보입니다. 반 대항에 들어가려면 <b>설정 → 학급 대항전</b>도 함께 켜야 합니다.
+    <p class="tiny lg-disclaimer">🔒 <b>청여고에서 실제 기록이 있는 반만 순위에 올라갑니다.</b>
+      <b>리그 참가와 학급 대항전을 켜면</b> 다른 반의 집계가 서버에서 내려옵니다.
+      <b>끄면</b> 이 기기의 기록만 보입니다.
       전송되는 것은 학교명·주차·학습 시간·무작위 기기 번호·랭킹 숨김 여부이며, 학급 대항을 켜면 학교급·학년·반과 닉네임, 그리고 붙인 <b>포스트잇 내용</b>이 더해집니다.
       참가 여부는 [설정]에서 언제든 바꿀 수 있습니다.</p>
   </section>
@@ -1349,10 +1348,10 @@
     <div class="is-hidden" id="parentPrivacyNote"></div>
 
     <div class="card wide" id="leagueSettingsCard">
-      <div class="card-head"><span class="ci">🏆</span><h3>학교 리그 참가</h3></div>
+      <div class="card-head"><span class="ci">🏆</span><h3>청여고 반 대항전 연결</h3></div>
       <div class="card-body">
-        <p class="tiny" style="margin:0 0 14px">이 앱은 원래 모든 기록을 <b>이 브라우저에만</b> 보관합니다.
-          학교 리그에 참가하면 <b>딱 아래 다섯 가지만</b> 서버로 전송해 다른 학교와 순위를 겨룹니다.
+        <p class="tiny" style="margin:0 0 14px">학습 기록은 기본적으로 <b>이 브라우저에</b> 보관합니다. 복구 코드를 만들면 암호화한 백업이 서버에도 저장됩니다.
+          리그 참가를 켜면 <b>아래 다섯 가지</b>가 서버에 저장됩니다. 청여고의 다른 반과 겨루려면 학급 대항전에도 따로 동의해야 합니다.
           끄면 즉시 전송이 멈춥니다.</p>
 
         <div class="cl-what">

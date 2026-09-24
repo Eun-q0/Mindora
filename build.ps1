@@ -36,7 +36,7 @@ foreach ($dir in @('css', 'js')) {
 # PWA·검색·공유 미리보기 자원은 브라우저와 크롤러가 별도 URL로 요청한다.
 $assets = @('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-maskable.svg',
             'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png',
-            'avatar-sheet.png', 'og-cover.png',
+            'avatar-sheet.png', 'avatar-sheet-cheongju.png', 'cheongju-logo.png', 'cheongju-crest.jpg', 'og-cover.png',
             'ads.txt', 'robots.txt', 'sitemap.xml')
 foreach ($a in $assets) {
     $from = Join-Path $src $a

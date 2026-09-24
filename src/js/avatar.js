@@ -1,11 +1,8 @@
 /* =========================================================================
  * avatar.js — 프로필 캐릭터 + 누적 순공 시간에 따라 열리는 테두리
  *
- * 그림은 avatar-sheet.png 한 장에 모여 있다 (4열 × 2행, 셀 200px).
- *   0..7  캐릭터 8명 — 남 3 · 여 5
- * 시트는 tools/slice-avatar.ps1 이 원본 그림(tools/avatar-source.png)에서
- * 잘라 만든다. 각 칸은 그려진 모습 그대로다 — 옷을 갈아입히거나 색을 바꾸지
- * 않으므로 원본 그림의 완성도가 그대로 남는다.
+ * 청여고 캐릭터 5종은 avatar-sheet-cheongju.png 의 4열 × 2행에 놓인다.
+ * 각 그림에 교복이 포함된 완성형이므로 머리·옷을 따로 합성하지 않는다.
  *
  * 테두리는 그림이 아니라 CSS 링이며, 지금까지 쌓은 순공 시간이 늘면 쓸 수 있는
  * 색이 하나씩 늘어난다. 등급을 매기지는 않는다.
@@ -24,24 +21,26 @@
   /* 그림 주소는 CSS 가 아니라 여기서 붙인다.
    * CSS 안에 두면 src/css/ 기준으로 찾아 개발 서버에서만 깨지고,
    * 빌드된 index.html(스타일이 인라인)에서는 잘 되는 함정에 빠진다. */
-  var SHEET_URL = 'avatar-sheet.png';
+  var SHEET_URL = 'avatar-sheet-cheongju.png';
 
   /* ------------------------------------------------------------- 캐릭터 */
 
   var CHARS = [
-    { id: 'm1', name: '웨이브 컷', sex: 'm', cell: 0 },
-    { id: 'm2', name: '앞머리 컷', sex: 'm', cell: 1 },
-    { id: 'm3', name: '뻗친 컷', sex: 'm', cell: 2 },
-    { id: 'f1', name: '긴 웨이브', sex: 'f', cell: 3 },
-    { id: 'f2', name: '올림머리', sex: 'f', cell: 4 },
-    { id: 'f3', name: '단발', sex: 'f', cell: 5 },
-    { id: 'f4', name: '긴 생머리', sex: 'f', cell: 6 },
-    { id: 'f5', name: '땋은 머리', sex: 'f', cell: 7 }
+    { id: 'f1', name: '긴 웨이브 · 동복', sex: 'f', cell: 0 },
+    { id: 'f2', name: '올림머리 · 동복', sex: 'f', cell: 1 },
+    { id: 'f3', name: '단발 · 동복', sex: 'f', cell: 2 },
+    { id: 'f4', name: '긴 생머리 · 동복', sex: 'f', cell: 3 },
+    { id: 'f5', name: '땋은 머리 · 하복', sex: 'f', cell: 4 }
+  ];
+
+  var ITEMS = [
+    { id: 'none', name: '착용 안 함' },
+    { id: 'lily', name: '백합 핀' },
+    { id: 'ribbon', name: '남색 리본' }
   ];
 
   /* ------------------------------------------------------- 젤리로 사는 것
-   * 원래 있던 캐릭터 8종과 시간으로 열리는 테두리 5색은 그대로 둔다.
-   * 이미 쓰던 것을 뺏어 다시 팔지 않는다 — 여기 있는 건 전부 새로 더한 것이다.
+   * 시간으로 열리는 테두리 5색은 그대로 둔다.
    *
    * 젤리는 순공 1분당 1개다. 결국 이것도 공부해서 여는 것이지, 그냥 주는 게 아니다.
    * 모리는 그림 시트에 칸이 없어 slime.js 가 그리는 SVG 를 그대로 쓴다 —
@@ -128,7 +127,7 @@
   /* ------------------------------------------------------------- 설정 값 */
 
   function defaults() {
-    return { char: CHARS[0].id, border: BORDERS[0].id, owned: [] };
+    return { char: CHARS[0].id, border: BORDERS[0].id, item: ITEMS[0].id, owned: [] };
   }
 
   /**
@@ -149,6 +148,7 @@
     var out = {
       char: byId(allChars(), cfg.char) ? cfg.char : d.char,
       border: byId(allBorders(), cfg.border) ? cfg.border : d.border,
+      item: byId(ITEMS, cfg.item) ? cfg.item : d.item,
       owned: owned
     };
 
@@ -209,15 +209,18 @@
   /** 테두리 없이 캐릭터 그림만 */
   function figure(cfg) {
     var c = sanitize(cfg, Infinity);   // 그리기에서는 테두리 잠금을 따지지 않는다
+    var item = c.item === 'lily'
+      ? '<i class="av-item av-item-lily" aria-hidden="true">✿</i>'
+      : (c.item === 'ribbon' ? '<i class="av-item av-item-ribbon" aria-hidden="true">◆</i>' : '');
     // 모리는 시트에 칸이 없다 — slime.js 가 그리는 SVG 를 그대로 넣는다.
     // 아직 slime.js 가 없는 상황(예: 옛 백업 복원 중)에서는 기본 캐릭터로 떨어진다.
     if (c.char === 'slime') {
       if (global.Slime && global.Slime.faceSvg) {
-        return '<i class="av-l av-slime">' + global.Slime.faceSvg() + '</i>';
+        return '<i class="av-l av-slime">' + global.Slime.faceSvg() + '</i>' + item;
       }
       c.char = defaults().char;
     }
-    return '<i class="av-l" style="' + cellStyle(byId(CHARS, c.char).cell) + '"></i>';
+    return '<i class="av-l" style="' + cellStyle(byId(CHARS, c.char).cell) + '"></i>' + item;
   }
 
   /**
@@ -232,7 +235,7 @@
   }
 
   global.Avatar = {
-    CHARS: CHARS, BORDERS: BORDERS,
+    CHARS: CHARS, ITEMS: ITEMS, BORDERS: BORDERS,
     SHOP_CHARS: SHOP_CHARS, SHOP_BORDERS: SHOP_BORDERS,
     allChars: allChars, allBorders: allBorders, shopItem: shopItem,
     grant: grant, owns: owns,
