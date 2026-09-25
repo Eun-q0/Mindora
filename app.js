@@ -4940,7 +4940,8 @@
     }
 
     var html =
-      avGroup('청여고 캐릭터', '동복 4종·하복 1종 중에서 골라요', opts('char', Avatar.CHARS)) +
+      avGroup('동복 캐릭터', '머리 모양 10종', opts('char', Avatar.CHARS.slice(0, 10))) +
+      avGroup('하복 캐릭터', '머리 모양 10종', opts('char', Avatar.CHARS.slice(10))) +
       avGroup('착용 아이템', '핀을 달거나 벗을 수 있어요', opts('item', Avatar.ITEMS)) +
       avGroup('테두리 색', '공부한 시간이 쌓이면 열려요', Avatar.BORDERS.map(function (b, i) {
         var locked = i > opened;
