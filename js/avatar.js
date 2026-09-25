@@ -1,8 +1,8 @@
 /* =========================================================================
  * avatar.js — 프로필 캐릭터 + 누적 순공 시간에 따라 열리는 테두리
  *
- * 청여고 캐릭터 5종은 avatar-sheet-cheongju.png 의 4열 × 2행에 놓인다.
- * 각 그림에 교복이 포함된 완성형이므로 머리·옷을 따로 합성하지 않는다.
+ * 캐릭터 20종은 사용자가 제공한 동복·하복 이미지의 네 줄에 놓인다.
+ * 각 그림에 교복이 포함되어 있으므로 옷을 따로 합성하지 않는다.
  *
  * 테두리는 그림이 아니라 CSS 링이며, 지금까지 쌓은 순공 시간이 늘면 쓸 수 있는
  * 색이 하나씩 늘어난다. 등급을 매기지는 않는다.
@@ -15,13 +15,11 @@
 
   var S = global.Store;
 
-  var SHEET_COLS = 4;
-  var SHEET_ROWS = 2;
-
-  /* 그림 주소는 CSS 가 아니라 여기서 붙인다.
-   * CSS 안에 두면 src/css/ 기준으로 찾아 개발 서버에서만 깨지고,
-   * 빌드된 index.html(스타일이 인라인)에서는 잘 되는 함정에 빠진다. */
-  var SHEET_URL = 'avatar-sheet-cheongju.png';
+  /* 이미지 URL은 문서 기준. 새 파일명을 사용해 설치형 앱의 이전 이미지 캐시를 피한다. */
+  var SHEET_URL = 'avatar-sheet-2026.jpeg';
+  var SHEET_WIDTH = 1122, SHEET_HEIGHT = 1402;
+  var PORTRAIT_X = [17, 240, 463, 683, 900];
+  var PORTRAIT_Y = [72, 375, 755, 1065];
 
   /* ------------------------------------------------------------- 캐릭터 */
 
@@ -30,7 +28,22 @@
     { id: 'f2', name: '올림머리 · 동복', sex: 'f', cell: 1 },
     { id: 'f3', name: '단발 · 동복', sex: 'f', cell: 2 },
     { id: 'f4', name: '긴 생머리 · 동복', sex: 'f', cell: 3 },
-    { id: 'f5', name: '땋은 머리 · 하복', sex: 'f', cell: 4 }
+    { id: 'w5', name: '옆 땋은 머리 · 동복', sex: 'f', cell: 4 },
+    { id: 'w6', name: '높은 포니테일 · 동복', sex: 'f', cell: 5 },
+    { id: 'w7', name: '낮은 포니테일 · 동복', sex: 'f', cell: 6 },
+    { id: 'w8', name: '낮은 번 · 동복', sex: 'f', cell: 7 },
+    { id: 'w9', name: '앞머리 없는 생머리 · 동복', sex: 'f', cell: 8 },
+    { id: 'w10', name: '반묶음 · 동복', sex: 'f', cell: 9 },
+    { id: 's1', name: '긴 웨이브 · 하복', sex: 'f', cell: 10 },
+    { id: 's2', name: '올림머리 · 하복', sex: 'f', cell: 11 },
+    { id: 's3', name: '단발 · 하복', sex: 'f', cell: 12 },
+    { id: 's4', name: '긴 생머리 · 하복', sex: 'f', cell: 13 },
+    { id: 'f5', name: '옆 땋은 머리 · 하복', sex: 'f', cell: 14 },
+    { id: 's6', name: '높은 포니테일 · 하복', sex: 'f', cell: 15 },
+    { id: 's7', name: '낮은 포니테일 · 하복', sex: 'f', cell: 16 },
+    { id: 's8', name: '낮은 번 · 하복', sex: 'f', cell: 17 },
+    { id: 's9', name: '앞머리 없는 생머리 · 하복', sex: 'f', cell: 18 },
+    { id: 's10', name: '반묶음 · 하복', sex: 'f', cell: 19 }
   ];
 
   var ITEMS = [
@@ -198,12 +211,10 @@
 
   /* --------------------------------------------------------------- 그리기 */
 
-  /** 시트에서 그 칸만 보이도록 하는 인라인 스타일 */
+  /** 배경 그림 없이 시트의 인물 영역을 똑같은 비율로 잘라 보인다. */
   function cellStyle(cell) {
-    var c = cell % SHEET_COLS, r = Math.floor(cell / SHEET_COLS);
-    return 'background-image:url(' + SHEET_URL + ');background-position:' +
-      (c / (SHEET_COLS - 1) * 100).toFixed(4) + '% ' +
-      (r / (SHEET_ROWS - 1) * 100).toFixed(4) + '%';
+    var c = cell % 5, r = Math.floor(cell / 5);
+    return 'viewBox="' + PORTRAIT_X[c] + ' ' + PORTRAIT_Y[r] + ' 220 250"';
   }
 
   /** 테두리 없이 캐릭터 그림만 */
@@ -220,7 +231,10 @@
       }
       c.char = defaults().char;
     }
-    return '<i class="av-l" style="' + cellStyle(byId(CHARS, c.char).cell) + '"></i>' + item;
+    return '<i class="av-l"><svg class="av-portrait" ' +
+      cellStyle(byId(CHARS, c.char).cell) + ' preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
+      '<image href="' + SHEET_URL + '" width="' + SHEET_WIDTH + '" height="' + SHEET_HEIGHT + '"></image>' +
+      '</svg></i>' + item;
   }
 
   /**
