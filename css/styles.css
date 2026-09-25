@@ -2117,11 +2117,9 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 /* 캐릭터 한 장 + 옷 한 장을 같은 자리에 겹쳐 놓는다.
  * 옷 그림은 배경이 뚫려 있어 얼굴·머리는 그대로 보이고 상의만 갈아입는다. */
 /* background-image 는 avatar.js 가 인라인으로 붙인다 (경로가 문서 기준이어야 한다) */
-.av-l {
-  position: absolute; inset: 0; display: block;
-  background-size: 400% 200%;   /* 시트 4열 × 2행 */
-  background-repeat: no-repeat;
-}
+.av-l { position: absolute; inset: 0; display: block; }
+/* SVG viewBox로 원본 비율을 유지하며 각 캐릭터를 표시한다. */
+.av-portrait { display: block; width: 100%; height: 100%; }
 .av-item {
   position: absolute; z-index: 1; pointer-events: none; display: grid; place-items: center;
   width: 19%; height: 19%; font-size: calc(var(--av) * .15); line-height: 1;
