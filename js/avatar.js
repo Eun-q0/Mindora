@@ -46,12 +46,6 @@
     { id: 's10', name: '반묶음 · 하복', sex: 'f', cell: 19 }
   ];
 
-  var ITEMS = [
-    { id: 'none', name: '착용 안 함' },
-    { id: 'lily', name: '백합 핀' },
-    { id: 'ribbon', name: '남색 리본' }
-  ];
-
   /* ------------------------------------------------------- 젤리로 사는 것
    * 시간으로 열리는 테두리 5색은 그대로 둔다.
    *
@@ -140,7 +134,7 @@
   /* ------------------------------------------------------------- 설정 값 */
 
   function defaults() {
-    return { char: CHARS[0].id, border: BORDERS[0].id, item: ITEMS[0].id, owned: [] };
+    return { char: CHARS[0].id, border: BORDERS[0].id, owned: [] };
   }
 
   /**
@@ -161,7 +155,6 @@
     var out = {
       char: byId(allChars(), cfg.char) ? cfg.char : d.char,
       border: byId(allBorders(), cfg.border) ? cfg.border : d.border,
-      item: byId(ITEMS, cfg.item) ? cfg.item : d.item,
       owned: owned
     };
 
@@ -220,21 +213,18 @@
   /** 테두리 없이 캐릭터 그림만 */
   function figure(cfg) {
     var c = sanitize(cfg, Infinity);   // 그리기에서는 테두리 잠금을 따지지 않는다
-    var item = c.item === 'lily'
-      ? '<i class="av-item av-item-lily" aria-hidden="true">✿</i>'
-      : (c.item === 'ribbon' ? '<i class="av-item av-item-ribbon" aria-hidden="true">◆</i>' : '');
     // 모리는 시트에 칸이 없다 — slime.js 가 그리는 SVG 를 그대로 넣는다.
     // 아직 slime.js 가 없는 상황(예: 옛 백업 복원 중)에서는 기본 캐릭터로 떨어진다.
     if (c.char === 'slime') {
       if (global.Slime && global.Slime.faceSvg) {
-        return '<i class="av-l av-slime">' + global.Slime.faceSvg() + '</i>' + item;
+        return '<i class="av-l av-slime">' + global.Slime.faceSvg() + '</i>';
       }
       c.char = defaults().char;
     }
     return '<i class="av-l"><svg class="av-portrait" ' +
       cellStyle(byId(CHARS, c.char).cell) + ' preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
       '<image href="' + SHEET_URL + '" width="' + SHEET_WIDTH + '" height="' + SHEET_HEIGHT + '"></image>' +
-      '</svg></i>' + item;
+      '</svg></i>';
   }
 
   /**
@@ -249,7 +239,7 @@
   }
 
   global.Avatar = {
-    CHARS: CHARS, ITEMS: ITEMS, BORDERS: BORDERS,
+    CHARS: CHARS, BORDERS: BORDERS,
     SHOP_CHARS: SHOP_CHARS, SHOP_BORDERS: SHOP_BORDERS,
     allChars: allChars, allBorders: allBorders, shopItem: shopItem,
     grant: grant, owns: owns,

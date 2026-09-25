@@ -17,7 +17,7 @@
 'use strict';
 
 /* 정책을 바꿀 때마다 올린다. activate 에서 옛 버전 캐시를 통째로 지운다. */
-var VERSION = 'neurostudy-v18';
+var VERSION = 'neurostudy-v19';
 var SHELL = ['./', './index.html', './manifest.webmanifest',
              './css/styles.css',
              './js/engine.js', './js/planner.js', './js/storage.js', './js/meals.js',

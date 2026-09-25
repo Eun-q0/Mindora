@@ -2120,13 +2120,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
 .av-l { position: absolute; inset: 0; display: block; }
 /* SVG viewBox로 원본 비율을 유지하며 각 캐릭터를 표시한다. */
 .av-portrait { display: block; width: 100%; height: 100%; }
-.av-item {
-  position: absolute; z-index: 1; pointer-events: none; display: grid; place-items: center;
-  width: 19%; height: 19%; font-size: calc(var(--av) * .15); line-height: 1;
-  color: #fff; text-shadow: 0 1px 2px #243148;
-}
-.av-item-lily { top: 56%; left: 69%; border-radius: 50%; background: #3b4663; }
-.av-item-ribbon { top: 6%; left: 67%; border-radius: 4px; background: #202f4e; transform: rotate(-20deg); }
 /* 링 없이 캐릭터만 (꾸미기 화면의 미리보기) */
 .av-plain::before { display: none; }
 .av-plain .av-in { inset: 0; border: 1px solid var(--line); }

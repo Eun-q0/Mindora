@@ -33,18 +33,11 @@
     { id: 'f5', name: '땋은 머리', sex: 'f', cell: 4 }
   ];
 
-  /* 머리 모양과 교복·아이템은 서로 독립적으로 저장한다. 그림 시트의 원래 옷 위에
+  /* 머리 모양과 교복은 서로 독립적으로 저장한다. 그림 시트의 원래 옷 위에
    * CSS 레이어를 올리므로 어느 캐릭터든 같은 얼굴로 동복과 하복을 오갈 수 있다. */
   var UNIFORMS = [
     { id: 'winter', name: '동복', desc: '짙은 남색 재킷과 단색 넥타이' },
     { id: 'summer', name: '하복', desc: '연한 하늘색 반소매 블라우스' }
-  ];
-
-  var ITEMS = [
-    { id: 'none', name: '착용 안 함' },
-    { id: 'lily', name: '백합 머리핀' },
-    { id: 'glasses', name: '동그란 안경' },
-    { id: 'headphones', name: '공부 헤드폰' }
   ];
 
   /* ------------------------------------------------------- 젤리로 사는 것
@@ -136,7 +129,7 @@
   /* ------------------------------------------------------------- 설정 값 */
 
   function defaults() {
-    return { char: CHARS[0].id, uniform: 'winter', item: 'none', border: BORDERS[0].id, owned: [] };
+    return { char: CHARS[0].id, uniform: 'winter', border: BORDERS[0].id, owned: [] };
   }
 
   /**
@@ -157,7 +150,6 @@
     var out = {
       char: byId(allChars(), cfg.char) ? cfg.char : d.char,
       uniform: byId(UNIFORMS, cfg.uniform) ? cfg.uniform : d.uniform,
-      item: byId(ITEMS, cfg.item) ? cfg.item : d.item,
       border: byId(allBorders(), cfg.border) ? cfg.border : d.border,
       owned: owned
     };
@@ -223,16 +215,12 @@
     // 아직 slime.js 가 없는 상황(예: 옛 백업 복원 중)에서는 기본 캐릭터로 떨어진다.
     if (c.char === 'slime') {
       if (global.Slime && global.Slime.faceSvg) {
-        return '<i class="av-l av-slime">' + global.Slime.faceSvg() + '</i>' + itemHtml(c.item);
+        return '<i class="av-l av-slime">' + global.Slime.faceSvg() + '</i>';
       }
       c.char = defaults().char;
     }
     return '<i class="av-l" style="' + cellStyle(byId(CHARS, c.char).cell) + '"></i>' +
-      '<i class="av-uniform av-uniform-' + c.uniform + '" aria-hidden="true"><span class="av-school-crest"></span></i>' + itemHtml(c.item);
-  }
-
-  function itemHtml(id) {
-    return id && id !== 'none' ? '<i class="av-item av-item-' + id + '" aria-hidden="true"></i>' : '';
+      '<i class="av-uniform av-uniform-' + c.uniform + '" aria-hidden="true"><span class="av-school-crest"></span></i>';
   }
 
   /**
@@ -247,7 +235,7 @@
   }
 
   global.Avatar = {
-    CHARS: CHARS, UNIFORMS: UNIFORMS, ITEMS: ITEMS, BORDERS: BORDERS,
+    CHARS: CHARS, UNIFORMS: UNIFORMS, BORDERS: BORDERS,
     SHOP_CHARS: SHOP_CHARS, SHOP_BORDERS: SHOP_BORDERS,
     allChars: allChars, allBorders: allBorders, shopItem: shopItem,
     grant: grant, owns: owns,

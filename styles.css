@@ -2131,7 +2131,7 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   background-size: 400% 200%;   /* 시트 4열 × 2행 */
   background-repeat: no-repeat;
 }
-/* 교복과 착용 아이템은 얼굴 그림과 독립된 레이어다. 캐릭터를 바꿔도 선택이 유지된다. */
+/* 교복은 얼굴 그림과 독립된 레이어다. 캐릭터를 바꿔도 선택이 유지된다. */
 .av-uniform {
   position:absolute; z-index:2; left:7%; right:7%; bottom:-5%; height:47%;
   display:block; border-radius:38% 38% 8% 8%; overflow:hidden;
@@ -2165,29 +2165,6 @@ input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border-radius
   content:""; position:absolute; left:49%; top:32%; bottom:0; width:2px;
   background:#263b59; box-shadow:0 10px 0 1px #263b59,0 22px 0 1px #263b59;
 }
-.av-item { position:absolute; z-index:4; display:block; pointer-events:none; }
-.av-item-lily { right:17%; top:17%; width:18%; height:18%; font-size:var(--av); }
-.av-item-lily::before {
-  content:"✿"; color:#fffdf2; font-size:19%; line-height:1;
-  text-shadow:0 1px 2px #24344f,0 0 0 #24344f;
-}
-.av-item-glasses { left:20%; right:20%; top:35%; height:23%; }
-.av-item-glasses::before,.av-item-glasses::after {
-  content:""; position:absolute; top:0; width:31%; aspect-ratio:1; border:1.5px solid #26344b; border-radius:50%;
-  background:rgba(255,255,255,.05);
-}
-.av-item-glasses::before { left:0; }
-.av-item-glasses::after { right:0; }
-.av-item-glasses { background:linear-gradient(#26344b,#26344b) center 17%/18% 1.5px no-repeat; }
-.av-item-headphones {
-  left:13%; right:13%; top:14%; height:50%; font-size:var(--av); border:.025em solid #2b3851;
-  border-bottom:0; border-radius:50% 50% 0 0;
-}
-.av-item-headphones::before,.av-item-headphones::after {
-  content:""; position:absolute; top:53%; width:12%; height:28%; border-radius:45%; background:#344561;
-}
-.av-item-headphones::before { left:-7%; }
-.av-item-headphones::after { right:-7%; }
 /* 링 없이 캐릭터만 (꾸미기 화면의 미리보기) */
 .av-plain::before { display: none; }
 .av-plain .av-in { inset: 0; border: 1px solid var(--line); }
