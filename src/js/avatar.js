@@ -16,10 +16,11 @@
   var S = global.Store;
 
   /* 이미지 URL은 문서 기준. 새 파일명을 사용해 설치형 앱의 이전 이미지 캐시를 피한다. */
-  var SHEET_URL = 'avatar-sheet-2026.jpeg';
-  var SHEET_WIDTH = 1122, SHEET_HEIGHT = 1402;
-  var PORTRAIT_X = [17, 240, 463, 683, 900];
-  var PORTRAIT_Y = [72, 375, 755, 1065];
+  var SHEET_URL = 'avatar-sheet-2026-v2.jpeg';
+  var SHEET_WIDTH = 1009, SHEET_HEIGHT = 1536;
+  var PORTRAIT_WIDTH = 200, PORTRAIT_HEIGHT = 220;
+  var PORTRAIT_X = [27, 224, 404, 584, 794];
+  var PORTRAIT_Y = [137, 453, 746, 1058];
 
   /* ------------------------------------------------------------- 캐릭터 */
 
@@ -207,7 +208,8 @@
   /** 배경 그림 없이 시트의 인물 영역을 똑같은 비율로 잘라 보인다. */
   function cellStyle(cell) {
     var c = cell % 5, r = Math.floor(cell / 5);
-    return 'viewBox="' + PORTRAIT_X[c] + ' ' + PORTRAIT_Y[r] + ' 220 250"';
+    return 'viewBox="' + PORTRAIT_X[c] + ' ' + PORTRAIT_Y[r] + ' ' +
+      PORTRAIT_WIDTH + ' ' + PORTRAIT_HEIGHT + '"';
   }
 
   /** 테두리 없이 캐릭터 그림만 */
